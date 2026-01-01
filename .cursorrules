@@ -1,0 +1,362 @@
+# Bloomly App - Cursor AI Rules
+
+You are an expert in TypeScript, React Native, Expo, and Mobile UI development.
+
+## Project Overview
+
+- React Native mobile application using Expo
+- File-based routing with expo-router
+- NativeWind (Tailwind CSS) for styling
+- TypeScript for type safety
+
+## Code Style and Structure
+
+- Write concise, technical TypeScript code with accurate examples
+- Use functional and declarative programming patterns; avoid classes
+- Prefer iteration and modularization over code duplication
+- Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError)
+- Structure files: exported component, subcomponents, helpers, static content, types
+- 4 spaces for indentation
+- No semicolons
+- Single quotes for strings
+
+## Naming Conventions
+
+- Use lowercase with dashes for directories (e.g., components/auth-wizard)
+- Favor named exports for components
+- Use PascalCase for component file names
+- Use camelCase for utility functions and hooks
+
+## File Structure
+
+- /app - Application screens (using expo-router file-based routing)
+- /components - Reusable UI components
+- /hooks - Custom React hooks
+- /utils - Utility functions
+- /types - TypeScript types and interfaces
+- /assets - Static assets (images, fonts)
+- /constants - App constants and configuration
+
+## TypeScript Usage
+
+- Use TypeScript for all code
+- Use both interfaces and types appropriately: interfaces for object shapes that might be extended, types for unions, intersections, and mapped types
+- Prefer const objects with as const for string-based enumerations; consider TypeScript enums for numeric values when appropriate
+- Use functional components with proper TypeScript typing
+- Use strict mode in TypeScript for better type safety
+- Export and reuse types when applicable
+
+## Styling with NativeWind
+
+- Prefer NativeWind (Tailwind CSS) with className prop for most styling needs
+- Use StyleSheet.create for performance-critical components or when strong type safety is needed
+- Use Tailwind's responsive prefixes (sm:, md:, lg:, xl:) for responsive layouts
+- Define custom colors and theme extensions in tailwind.config.js
+- Follow utility-first approach for component styling
+- Group related styles logically in className strings
+- Use gap-_ instead of space-y-_ and space-x-\* classes for better compatibility with Expo Go
+- When creating lists of elements, use gap-\* on parent containers for consistent spacing
+- Avoid using divide-\* classes as they don't work properly on mobile
+
+## Navigation with Expo Router
+
+- Use expo-router for file-based routing and navigation
+- Follow the folder structure conventions (\_layout.tsx for layouts)
+- Use Stack, Tabs, and other navigation components from expo-router
+- Use dynamic routes with proper type safety
+- Apply screenOptions consistently across related routes
+
+## State Management
+
+- Use Zustand for global application state
+- Use TanStack Query for server state management and data fetching
+- Keep state as local as possible; lift state only when necessary
+- Use React Context sparingly for specific complex scenarios
+- Use MMKV for efficient key-value storage instead of AsyncStorage
+
+## Component Patterns
+
+- Keep components small and focused on a single responsibility
+- Use composition over inheritance
+- Implement proper loading, error, and empty states for data-dependent components
+- Use ErrorBoundary components to catch and handle UI errors
+- Break down large components into smaller, reusable parts
+
+## Form Handling
+
+- Use react-hook-form for form management
+- Implement proper validation with clear error messages
+- Provide immediate feedback for form interactions
+- Use controlled components where necessary
+- Ensure proper keyboard handling for form inputs
+
+## Lists and Performance
+
+- Use LegendList for rendering lists instead of FlatList when possible
+- Implement proper list virtualization for long lists
+- Use proper key props for list items
+- Optimize list rendering performance
+- Implement pull-to-refresh and pagination where appropriate
+
+## Images and Media
+
+- Use ExpoImage for optimized image loading and caching
+- Provide proper image dimensions to avoid layout shifts
+- Implement progressive loading for large images
+- Support various screen densities with appropriate image resolutions
+- Use WebP format where supported for better compression
+
+## Gestures and Animations
+
+- Use react-native-gesture-handler for touch interactions
+- Use react-native-reanimated for smooth, performant animations
+- Keep animations subtle and purposeful
+- Ensure animations don't interfere with usability
+- Use shared element transitions for better UX where appropriate
+
+## Authentication and User Management
+
+- Use Clerk for user authentication and management
+- Implement proper authentication flows
+- Secure user data appropriately
+- Handle authentication errors gracefully
+- Provide clear feedback during authentication processes
+
+## Monetization
+
+- Use RevenueCat for in-app purchases and subscriptions
+- Follow platform guidelines for monetization
+- Implement proper receipt validation
+- Handle subscription status changes appropriately
+
+## Error Handling
+
+- Use Sentry for error tracking and reporting
+- Implement proper error boundaries in React
+- Provide user-friendly error messages
+- Log errors with appropriate context
+- Use try/catch for error-prone operations
+
+## UI Components
+
+- Use Zeego for dropdown menus and select components
+- Use standard platform UI patterns where appropriate
+- Ensure consistent styling across UI components
+- Implement proper accessibility for all UI components
+- Support both light and dark mode
+
+## Accessibility
+
+- Provide proper accessibility labels for UI elements
+- Ensure sufficient color contrast for text
+- Support dynamic text sizes for users with visual impairments
+- Test with screen readers on both iOS and Android
+- Follow platform accessibility guidelines
+
+## Performance Optimization
+
+- Minimize unnecessary re-renders with useMemo and useCallback
+- Profile and monitor performance regularly
+- Optimize startup time and initial load
+- Implement proper code splitting and lazy loading
+- Use Hermes engine for better JavaScript performance
+
+## Code Quality
+
+- Follow ESLint and Prettier configurations
+- Aim for cohesive, focused files; consider refactoring when a file exceeds 300 lines or has multiple distinct responsibilities
+- Use descriptive variable and function names
+- Document complex logic with comments
+- Write self-explanatory code when possible
+
+## Best Practices
+
+- Always check official documentation before adding new dependencies
+- Always look for existing code to iterate on instead of creating new code
+- Do not drastically change patterns without good reason
+- Always prefer simple solutions over complex ones
+- Avoid code duplication by checking for similar implementations elsewhere
+- Consider multiple environments (dev, staging, prod) when implementing features
+- Consult official Expo documentation before implementing complex features
+- Prefer officially supported Expo solutions over third-party alternatives when available
+
+## Cross-Platform Development
+
+- Use platform-specific file extensions (.web.tsx, .native.tsx) only for components with significant platform differences in behavior or structure
+- For components with only styling differences, use a single file approach with NativeWind 4.0's cross-platform capabilities
+- Use conditional rendering within components for minor platform-specific adjustments
+- Organize platform-specific components in dedicated directories only when necessary:
+    ```
+    components/
+    ├── Button.tsx                # Single file for Button with conditional logic if needed
+    ├── Card/
+    │   ├── index.tsx             # Common wrapper/logic
+    │   ├── Card.native.tsx       # Native implementation (only if needed)
+    │   └── Card.web.tsx          # Web implementation (only if needed)
+    ```
+- Share logic between platforms when possible, isolate platform-specific code only when necessary
+- Use the Platform.OS check for minor conditional logic within components
+- For web-only or native-only components, clearly indicate this in comments and documentation
+- Implement proper fallbacks when platform-specific features are unavailable
+- Test components on both platforms even when they appear identical
+- Use conditional imports only when necessary; prefer file extensions for better tree-shaking:
+
+    ```typescript
+    // Good (better for tree-shaking)
+    import Button from './Button' // Will automatically use Button.web.tsx or Button.native.tsx if they exist
+
+    // Avoid when possible
+    import { Platform } from 'react-native'
+    import WebButton from './Button.web'
+    import NativeButton from './Button.native'
+    const Button = Platform.OS === 'web' ? WebButton : NativeButton
+    ```
+
+- Be aware of unsupported web APIs in React Native and vice versa
+- For shared components, test thoroughly on both platforms before implementation
+
+## Testing Best Practices
+
+- Use jest-expo for testing in Expo projects (official Expo testing solution)
+- Co-locate test files with their implementation (e.g., Component.tsx and Component.test.tsx in the same directory)
+- Use @testing-library/react-native for component testing
+- Follow the official Expo testing guide for setup and configuration
+- Test components in isolation using the testing library's render method
+- Mock native modules when necessary using jest.mock()
+- Write tests that verify component behavior and user interactions
+- Use descriptive test names that explain what is being tested
+- Group related tests using describe blocks
+- Clean up after tests using cleanup() from @testing-library/react-native
+- Test both success and error states
+- Document test setup and mocking strategies
+
+## Expo Router Best Practices
+
+- Use route groups (directories with parentheses) for organization without affecting URLs
+- Keep URLs clean by properly structuring route files and directories
+- For dynamic routes, ensure parameters are properly typed
+- Use consistent navigation methods for pushing, replacing, and going back
+
+## Constants and Configuration Management
+
+- Store all color values in the Tailwind config and constants folder
+- Use Tailwind classes (e.g., `bg-primary`) for component styling
+- Use constants (e.g., `PRIMARY`) for React Native style objects
+- Group related constants in dedicated files with descriptive names
+- Export constants through an index file for easier imports
+
+## Testing and Quality Assurance
+
+- Fix warnings promptly to prevent technical debt
+- Test navigation flows thoroughly across different entry points
+- Check rendering on both iOS and Android simulators regularly
+- Verify that back navigation works as expected throughout the app
+- When encountering UI issues, check for nested containers or layout conflicts
+
+## Git Workflow
+
+- Use clear, descriptive commit messages that explain the purpose of changes
+- Group related changes into single commits
+- Update documentation alongside code changes
+- Format commit messages as a summary of changes in present tense, e.g.:
+    ```
+    style: update button styling on landing page
+    feat: add user authentication flow
+    fix: resolve navigation bug in profile screen
+    docs: update installation instructions
+    refactor: improve card component structure
+    ```
+- Always commit all changes unless otherwise specified
+
+### Pre-Commit Code Review
+
+- Before committing, review code for potential simplifications:
+    - Remove unused imports and variables
+    - Simplify complex logic where possible
+    - Consider if types can be inferred rather than explicitly declared
+    - Check for unnecessary abstractions or indirections
+    - Look for opportunities to improve code organization
+- Ask "Is this the simplest way to achieve the goal?"
+- Consider if the code could be more maintainable or easier to understand
+- Document any intentional complexity that can't be simplified
+- If significant refactoring is needed, consider if it should be done before committing
+
+## Project Structure Evolution
+
+- Maintain consistent patterns for similar features
+- Revisit and refine the navigation structure as routes are added
+- Keep frequently accessed utilities and components easily discoverable
+- Document architectural decisions that deviate from standard patterns
+
+## Documentation and References
+
+- Maintain a list of key documentation resources for the project
+- Reference the official Expo and React Native documentation for core functionality
+- Document workarounds and solutions to common issues
+- Add comments with links to relevant documentation for complex implementations
+- Create and maintain examples for custom implementations specific to this project
+
+## Development Workflow
+
+- Work in small, incremental changes rather than large refactors
+- Test each feature or change individually before moving to the next task
+- Verify functionality on both iOS and Android for critical changes
+- Request confirmation that changes work correctly before proceeding with related modifications
+- Break large tasks into smaller, manageable chunks that can be tested independently
+- Prioritize fixing one issue completely before moving to the next
+
+## Documentation Formatting
+
+- Use consistent formatting for implementation documents and task lists
+- For task headers, use the format: `## Phase X: Phase Name
+- For individual tasks, use the format:
+
+    ```
+    Xa. **Task Name** ✅ (if completed)
+
+        - Bullet point 1
+        - Bullet point 2
+        - Goal: Clear goal statement
+
+        **Implementation Notes:**
+
+        - Implementation detail 1
+        - Implementation detail 2
+    ```
+
+- Always include an empty line between the task header and bullet points
+- Always include an empty line between bullet points and implementation notes
+- Use checkmarks (✅) to mark completed tasks
+- Group related tasks under appropriate phase headings
+- Use consistent indentation (4 spaces) for all nested content
+
+## Technical Decision Documentation
+
+- Document significant technical decisions with detailed comments at the top of relevant files
+- Include the following in technical decision comments:
+    - Brief description of what the decision is about
+    - List of key reasons for the decision
+    - Benefits and trade-offs considered
+    - Any important implementation details or gotchas
+    - Links to relevant documentation or resources
+- Format technical decision comments consistently:
+    ```typescript
+    /**
+     * [Component/Feature] with [Key Technology]
+     *
+     * We use [Technology] for several key reasons:
+     * 1. [First reason with brief explanation]
+     * 2. [Second reason with brief explanation]
+     * 3. [Third reason with brief explanation]
+     *
+     * Key benefits:
+     * - [First benefit]
+     * - [Second benefit]
+     *
+     * Implementation notes:
+     * - [Important implementation detail]
+     * - [Configuration requirement]
+     */
+    ```
+- Update technical decision comments when significant changes are made
+- Reference these comments in commit messages when making related changes

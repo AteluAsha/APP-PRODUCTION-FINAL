@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "SevenChakras",
+    "slug": "SevenChakras",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/7chakras.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"],
+        "NSCameraUsageDescription": "We need access to your camera to record a video for sharing your journey.",
+        "NSMicrophoneUsageDescription": "We need access to your microphone to record audio with your video."
+      },
+      "bundleIdentifier": "com.sevenchakras.SevenChakras"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/7chakras.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.sevenchakras.SevenChakras"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#000000",
+          "image": "./assets/images/SoulSchool_HERO_Logo.png",
+          "imageWidth": 300
+        }
+      ],
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Soul School to access your camera to record videos for sharing your journey.",
+          "microphonePermission": "Allow Soul School to access your microphone to record audio with your videos."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "a698bc4b-394f-4487-b317-80884f2f0cee"
+      }
+    },
+    "owner": "seven-chakras"
+  }
+}

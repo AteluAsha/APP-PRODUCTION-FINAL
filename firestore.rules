@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Social Sanctuary Collection
+    // Allows read and write access to all users for the social_sanctuary collection
+    // This enables users to share reflections and read others' reflections
+    match /social_sanctuary/{reflectionId} {
+      allow read: if true; // Anyone can read reflections
+      allow create: if request.resource.data.keys().hasAll(['userId', 'chakraDay', 'message', 'timestamp', 'isAnonymous'])
+                    && request.resource.data.userId is string
+                    && request.resource.data.chakraDay is int
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() <= 500 // Enforce max length
+                    && request.resource.data.timestamp is timestamp
+                    && request.resource.data.isAnonymous is bool;
+      allow update, delete: if false; // No updates or deletes for now (can be enabled later if needed)
+    }
+    
+    // Chakras Collection
+    // Allows read access to all users, no write access
+    match /chakras/{chakraId} {
+      allow read: if true; // Anyone can read chakra data
+      allow write: if false; // Only admins can write (handled via Firebase Console or Admin SDK)
+    }
+    
+    // Default: Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
