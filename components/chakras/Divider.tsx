@@ -1,5 +1,18 @@
-import { View } from "react-native"
+import { View, ViewStyle } from "react-native"
 
-export const Divider = ({ className }: { className?: string }) => {
-  return <View className={`h-[1px] bg-[#8E8E8E] ${className}`} />
+export const Divider = ({
+  className,
+  style,
+}: {
+  className?: string
+  style?: ViewStyle
+}) => {
+  return (
+    <View
+      style={[
+        { height: 1, backgroundColor: "#8E8E8E" },
+        style,
+      ]}
+    />
+  )
 }

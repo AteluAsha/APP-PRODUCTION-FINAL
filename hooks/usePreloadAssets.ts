@@ -3,10 +3,10 @@ import { Asset } from "expo-asset"
 
 /**
  * Hook to preload critical assets on app startup
- * 
+ *
  * OPTIMIZATION: Only preload essential UI assets to reduce initial load time.
  * Large images (>2MB) should be loaded from Firebase Storage on-demand.
- * 
+ *
  * @param assets - Array of asset module references (from require())
  * @returns boolean indicating if assets are loaded
  */

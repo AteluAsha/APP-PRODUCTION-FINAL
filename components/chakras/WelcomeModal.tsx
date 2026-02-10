@@ -6,12 +6,36 @@
  * purple gradients, and spiritual energy of peace.
  */
 
-import React, { useMemo } from "react"
-import { View, Modal, Image, ScrollView, Pressable, Share, Linking, Platform } from "react-native"
-import { LinearGradient } from "expo-linear-gradient"
+import React, { useMemo, useState } from "react"
+import {
+  View,
+  Modal,
+  Image,
+  ScrollView,
+  Pressable,
+  Share,
+  Linking,
+  Platform,
+} from "react-native"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
-import { calculateCourseStartDate, formatDate, getNextMondayDate } from "@/utils/date"
+import {
+  calculateCourseStartDate,
+  formatDate,
+  getNextMondayDate,
+} from "@/utils/date"
+import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
+import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import { ScrollDatePicker } from "@/components/chakras/ScrollDatePicker"
+import { DateConfirmationModal } from "@/components/chakras/DateConfirmationModal"
+import { getChakraName } from "@/constants/chakras/chakraConstants"
+import { InviteFriendModal } from "@/components/invite/InviteFriendModal"
+import {
+  scheduleJourneyReminders,
+  requestNotificationPermissions,
+  hasNotificationPermission,
+} from "@/src/services/journeyNotifications"
+import { CommunicationReminderModal } from "@/components/chakras/CommunicationReminderModal"
 
 interface WelcomeModalProps {
   isVisible: boolean
@@ -46,7 +70,7 @@ const CHAKRA_NAMES = [
 
 // Chakra image mapping
 const getChakraImage = (index: number) => {
-  const chakraName = CHAKRA_NAMES[index].toLowerCase().replace(" ", "")
+  const chakraName = getChakraName(index).toLowerCase().replace(" ", "")
   switch (chakraName) {
     case "root":
       return require("@/assets/images/root.png")
@@ -67,39 +91,6 @@ const getChakraImage = (index: number) => {
   }
 }
 
-/**
- * Share app with friend
- * Opens native share dialog with download link and start date
- */
-const shareWithFriend = async (startDate: string) => {
-  try {
-    // TODO: Replace with actual app store links when available
-    const appStoreLink = Platform.select({
-      ios: "https://apps.apple.com/app/soul-school-7-chakras", // Placeholder
-      android: "https://play.google.com/store/apps/details?id=com.sevenchakras.SevenChakras", // Placeholder
-      default: "https://soulschool.app", // Placeholder
-    })
-
-    const message = `Join me on a healing journey through the 7 chakras! 🌟
-
-I'm starting my journey on ${startDate} and would love to have you join me.
-
-Download the Soul School app and begin your own transformation:
-${appStoreLink}
-
-Healing through connection. ✨`
-
-    await Share.share({
-      message,
-      title: "Join me on the 7 Chakra Journey",
-    })
-  } catch (error) {
-    if (__DEV__) {
-      console.error("Error sharing:", error)
-    }
-  }
-}
-
 export const WelcomeModal = ({
   isVisible,
   onClose,
@@ -108,8 +99,68 @@ export const WelcomeModal = ({
   completedTrialCourses = 0,
   initialOpenDate,
 }: WelcomeModalProps) => {
+  // Calendar state
+  const [selectedDateISO, setSelectedDateISO] = useState<string | null>(null)
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showCommunicationModal, setShowCommunicationModal] = useState(false)
+
+  const { setFirstLaunchComplete } = useFirstLaunchStore()
+  const { setInitialOpenDate, setCourseStartDate, courseStartDate } =
+    useChakraJourneyStore()
+
+  // Handle date selection from calendar
+  const handleDateSelect = (dateISO: string) => {
+    setSelectedDateISO(dateISO)
+    setShowConfirmation(true)
+  }
+
+  // Handle confirmation: set date, then show our communication reminder (or schedule if already permitted)
+  const handleConfirmDate = async () => {
+    if (!selectedDateISO) return
+    const todayISO = new Date().toISOString().split("T")[0]
+    setInitialOpenDate(todayISO)
+    setCourseStartDate(selectedDateISO)
+    setShowConfirmation(false)
+
+    const alreadyGranted = await hasNotificationPermission()
+    if (alreadyGranted) {
+      scheduleJourneyReminders(selectedDateISO).catch((err) => {
+        if (__DEV__) console.warn("[WelcomeModal] Failed to schedule reminders:", err)
+      })
+    } else {
+      setShowCommunicationModal(true)
+    }
+  }
+
+  const handleCommunicationAllow = async () => {
+    if (!selectedDateISO) return
+    const granted = await requestNotificationPermissions()
+    if (granted) {
+      scheduleJourneyReminders(selectedDateISO).catch((err) => {
+        if (__DEV__) console.warn("[WelcomeModal] Failed to schedule reminders:", err)
+      })
+    }
+    setShowCommunicationModal(false)
+  }
+
+  const handleCommunicationNotNow = () => {
+    setShowCommunicationModal(false)
+  }
+
+  // Handle cancel confirmation
+  const handleCancelConfirmation = () => {
+    setShowConfirmation(false)
+    // Keep selectedDateISO so they can see what they selected
+  }
+
   // Calculate when the course will start
-  const courseStartDate = useMemo(() => {
+  // Use selected date if available, otherwise use initialOpenDate or fallback
+  const displayStartDate = useMemo(() => {
+    if (selectedDateISO) {
+      // If they've selected a date, show it (it's already a Monday)
+      return formatDate(new Date(selectedDateISO + "T00:00:00"))
+    }
     if (initialOpenDate) {
       const { calculateCourseStartDate } = require("@/utils/date")
       const startDateISO = calculateCourseStartDate(initialOpenDate)
@@ -117,7 +168,7 @@ export const WelcomeModal = ({
     }
     // Fallback to next Monday
     return formatDate(getNextMondayDate())
-  }, [initialOpenDate])
+  }, [selectedDateISO, initialOpenDate])
 
   const remainingTrials = 2 - completedTrialCourses
 
@@ -128,55 +179,117 @@ export const WelcomeModal = ({
       visible={isVisible}
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-center items-center bg-black/90">
-        <View
-          className="w-[95%] max-h-[90%] rounded-3xl overflow-hidden"
-          style={{ shadowColor: "#9333ea", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 10 }}
-        >
-          <LinearGradient
-            colors={["#1a0a2e", "#16213e", "#0f3460"]}
-            style={{ width: "100%", height: "100%", borderRadius: 24 }}
-          >
-          {/* Header with close button */}
-          <View className="flex-row justify-between items-center p-5 border-b border-purple-900/30">
-            <View className="flex-1">
-              <AppText font="instrument-bold" size="2xl" className="text-white mb-1">
-                Your Path Awaits
-              </AppText>
-              <AppText font="instrument-regular" size="sm" className="text-purple-300/80">
-                The journey from self to soul
-              </AppText>
-            </View>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000000" }}>
+        <View style={{ width: "100%", height: "100%", maxWidth: 512 }}>
+          {/* Close button - top right */}
+          <View style={{ position: "absolute", top: 48, right: 24, zIndex: 10 }}>
             <Pressable
               onPress={onClose}
-              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "rgba(255,255,255,0.05)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <Ionicons name="close" size={24} color="#ffffff" />
+              <Ionicons name="close" size={20} color="#ffffff" />
             </Pressable>
           </View>
 
           {/* Content */}
-          <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
-            {/* Hero Section */}
-            <View className="items-center mb-6">
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 24,
+              paddingTop: 80,
+              paddingBottom: 140,
+            }}
+          >
+            {/* Hero Logo - Large and Prominent */}
+            <View style={{ alignItems: "center", marginBottom: 48 }}>
               <Image
                 source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
-                className="w-40 h-20 mb-6"
+                style={{ width: 256, height: 128, marginBottom: 16 }}
                 resizeMode="contain"
               />
+            </View>
+
+            {/* Title Section */}
+            <View style={{ marginBottom: 32 }}>
+              <AppText
+                font="instrument-bold"
+                size="3xl"
+                style={{ color: "#ffffff", marginBottom: 8, textAlign: "center" }}
+              >
+                Your Path Awaits
+              </AppText>
               <AppText
                 font="instrument-regular"
-                size="base"
-                className="text-center mb-4 text-white/90 leading-6"
+                size="sm"
+                style={{ color: "rgba(255,255,255,0.5)", textAlign: "center" }}
               >
-                Welcome to a sacred journey through the 7 chakras—a week-long exploration of your energy centers, guiding you from foundation to highest consciousness.
+                The journey from self to soul
               </AppText>
             </View>
 
-            {/* Trial Information - Subtle */}
-            {remainingTrials > 0 && (
-              <View className="mb-4 px-3 py-2">
-                <AppText font="instrument-regular" size="xs" className="text-white/50 text-center leading-4">
+            {/* Main Description */}
+            <View style={{ marginBottom: 32 }}>
+              <AppText
+                font="instrument-regular"
+                size="base"
+                style={{ color: "rgba(255,255,255,0.8)", textAlign: "center", lineHeight: 24 }}
+              >
+                Welcome to a sacred journey through the 7 chakras—a week-long
+                exploration of your energy centers, guiding you from foundation
+                to highest consciousness.
+              </AppText>
+            </View>
+
+            {/* Calendar - Monday Selection */}
+            <View style={{ marginBottom: 40 }}>
+              <ScrollDatePicker
+                onDateSelect={handleDateSelect}
+                selectedDateISO={selectedDateISO}
+              />
+            </View>
+
+            {/* Selected Date Display */}
+            {selectedDateISO && (
+              <View style={{ marginBottom: 24, alignItems: "center" }}>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", marginBottom: 8 }}
+                >
+                  Your journey begins
+                </AppText>
+                <AppText
+                  font="instrument-medium"
+                  size="lg"
+                  style={{ color: "#ffffff", textAlign: "center" }}
+                >
+                  {displayStartDate}
+                </AppText>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{ color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: 8 }}
+                >
+                  At midnight Monday morning
+                </AppText>
+              </View>
+            )}
+
+            {remainingTrials > 0 && !selectedDateISO && (
+              <View style={{ marginBottom: 24, alignItems: "center" }}>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{ color: "rgba(255,255,255,0.4)", textAlign: "center" }}
+                >
                   {remainingTrials === 2
                     ? "Two complete 7-day journeys await you"
                     : "One more complete 7-day journey awaits you"}
@@ -184,38 +297,38 @@ export const WelcomeModal = ({
               </View>
             )}
 
-            {/* Gentle Reminder */}
-            <View className="mb-6 px-2">
-              <AppText font="instrument-regular" size="sm" className="text-white/70 text-center leading-5 italic">
-                When you press "Begin," the app will rest until{" "}
-                <AppText font="instrument-medium" className="text-purple-300/90">
-                  {courseStartDate}
-                </AppText>
-                , ensuring your journey begins at the perfect moment, aligned with the weekly cycle.
-              </AppText>
-            </View>
-
-            {/* Weekly Path Preview */}
-            <View className="mb-6">
-              <AppText font="instrument-bold" size="lg" className="text-white mb-4">
-                Your Weekly Path
-              </AppText>
-              <View className="gap-2">
+            <View style={{ marginBottom: 40 }}>
+              <View style={{ gap: 12 }}>
                 {DAY_NAMES.map((day, index) => (
                   <View
                     key={index}
-                    className="flex-row items-center p-3 rounded-lg bg-white/5 border border-white/10"
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      borderRadius: 12,
+                      backgroundColor: "rgba(255, 255, 255, 0.03)",
+                    }}
                   >
                     <Image
                       source={getChakraImage(index)}
-                      className="w-10 h-10 mr-3"
+                      style={{ width: 32, height: 32, marginRight: 16 }}
                       resizeMode="contain"
                     />
-                    <View className="flex-1">
-                      <AppText font="instrument-medium" size="base" className="text-white">
+                    <View style={{ flex: 1 }}>
+                      <AppText
+                        font="instrument-medium"
+                        size="sm"
+                        style={{ color: "#ffffff" }}
+                      >
                         {day}
                       </AppText>
-                      <AppText font="instrument-regular" size="sm" className="text-purple-300/80">
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={{ color: "rgba(255,255,255,0.5)" }}
+                      >
                         {CHAKRA_NAMES[index]} Chakra
                       </AppText>
                     </View>
@@ -224,104 +337,109 @@ export const WelcomeModal = ({
               </View>
             </View>
 
-            {/* How It Works */}
-            <View className="mb-6">
-              <AppText font="instrument-bold" size="lg" className="text-white mb-3">
-                How It Works
-              </AppText>
-              <View className="gap-3">
-                <View className="flex-row items-start">
-                  <View className="w-8 h-8 rounded-full bg-purple-900/40 border border-purple-700/50 items-center justify-center mr-3 mt-0.5">
-                    <AppText font="instrument-bold" size="sm" className="text-purple-300">
-                      1
-                    </AppText>
-                  </View>
-                  <View className="flex-1">
-                    <AppText font="instrument-regular" size="sm" className="text-white/90 leading-5">
-                      Each day, a new chakra becomes available for deep exploration
-                    </AppText>
-                  </View>
-                </View>
-                <View className="flex-row items-start">
-                  <View className="w-8 h-8 rounded-full bg-purple-900/40 border border-purple-700/50 items-center justify-center mr-3 mt-0.5">
-                    <AppText font="instrument-bold" size="sm" className="text-purple-300">
-                      2
-                    </AppText>
-                  </View>
-                  <View className="flex-1">
-                    <AppText font="instrument-regular" size="sm" className="text-white/90 leading-5">
-                      Access meditations, affirmations, and wisdom for each energy center
-                    </AppText>
-                  </View>
-                </View>
-                <View className="flex-row items-start">
-                  <View className="w-8 h-8 rounded-full bg-purple-900/40 border border-purple-700/50 items-center justify-center mr-3 mt-0.5">
-                    <AppText font="instrument-bold" size="sm" className="text-purple-300">
-                      3
-                    </AppText>
-                  </View>
-                  <View className="flex-1">
-                    <AppText font="instrument-regular" size="sm" className="text-white/90 leading-5">
-                      Complete all 7 chakras to finish your journey and unlock your gift
-                    </AppText>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Invite Friend Button */}
             <Pressable
-              onPress={() => shareWithFriend(courseStartDate)}
-              className="mb-4 rounded-xl p-4 active:opacity-80"
-              style={{ backgroundColor: "rgba(135, 174, 115, 0.2)", borderWidth: 1, borderColor: "rgba(135, 174, 115, 0.4)" }}
+              onPress={() => setShowInviteModal(true)}
+              style={{
+                marginBottom: 32,
+                borderRadius: 12,
+                paddingVertical: 16,
+                paddingHorizontal: 24,
+                overflow: "hidden",
+                backgroundColor: "rgba(135, 174, 115, 0.15)",
+                borderWidth: 1,
+                borderColor: "rgba(135, 174, 115, 0.3)",
+                shadowColor: "#87AE73",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
             >
-              <View className="flex-row items-center justify-center">
-                <Ionicons name="heart" size={24} color="#87AE73" />
-                <View className="ml-3 flex-1">
-                  <AppText font="instrument-bold" size="base" className="mb-1" style={{ color: "#87AE73" }}>
-                    Healing Through Connection
-                  </AppText>
-                  <AppText font="instrument-regular" size="sm" className="text-white/80">
-                    Invite a friend to join you on your journey
-                  </AppText>
-                </View>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons
+                  name="heart"
+                  size={18}
+                  color="rgba(135, 174, 115, 1)"
+                  style={{ marginRight: 10 }}
+                />
+                <AppText
+                  font="instrument-medium"
+                  size="sm"
+                  style={{ textAlign: "center", color: "rgba(135, 174, 115, 1)", flex: 0 }}
+                >
+                  Invite a friend to join your journey
+                </AppText>
               </View>
             </Pressable>
           </ScrollView>
 
-          {/* Footer with Begin button */}
-          <View className="p-5 border-t border-purple-900/30 bg-black/20">
-            <LinearGradient
-              colors={["#9333ea", "#7c3aed"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+          <View
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: 24,
+              paddingBottom: 32,
+              backgroundColor: "rgba(0,0,0,0.95)",
+              borderTopWidth: 1,
+              borderTopColor: "rgba(255, 255, 255, 0.05)",
+            }}
+          >
+            <Pressable
+              onPress={onBeginJourney}
               style={{
-                borderRadius: 9999,
                 paddingVertical: 16,
-                paddingHorizontal: 32,
+                borderRadius: 16,
+                backgroundColor: "#9333ea",
                 shadowColor: "#9333ea",
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.4,
-                shadowRadius: 8,
-                elevation: 6,
+                shadowOpacity: 0.3,
+                shadowRadius: 12,
+                elevation: 8,
               }}
             >
-              <Pressable
-                onPress={onBeginJourney}
-                className="active:opacity-80"
+              <AppText
+                font="instrument-bold"
+                size="base"
+                style={{ textAlign: "center", color: "#ffffff" }}
               >
-                <AppText font="instrument-bold" size="lg" className="text-center text-white">
-                  Begin Your Journey
-                </AppText>
-              </Pressable>
-            </LinearGradient>
-            <AppText font="instrument-regular" size="xs" className="text-center mt-3 text-white/60">
-              Soul School is a Public Benefit Non Profit
+                Begin Your Journey
+              </AppText>
+            </Pressable>
+            <AppText
+              font="instrument-regular"
+              size="xs"
+              style={{ textAlign: "center", marginTop: 12, color: "rgba(255,255,255,0.4)" }}
+            >
+              Soul School is operated by Project Starseed, an IRS-recognized
+              501(c)(3) tax-exempt organization.
             </AppText>
           </View>
-          </LinearGradient>
         </View>
       </View>
+
+      {/* Date Confirmation Modal */}
+      <DateConfirmationModal
+        visible={showConfirmation}
+        selectedDateISO={selectedDateISO}
+        onConfirm={handleConfirmDate}
+        onCancel={handleCancelConfirmation}
+      />
+
+      {/* Invite Friend Modal */}
+      <InviteFriendModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        startDate={displayStartDate}
+      />
+
+      {/* Communication reminder pre-prompt (dark, our copy) before system permission dialog */}
+      <CommunicationReminderModal
+        visible={showCommunicationModal}
+        onAllow={handleCommunicationAllow}
+        onNotNow={handleCommunicationNotNow}
+      />
     </Modal>
   )
 }

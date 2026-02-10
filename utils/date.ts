@@ -121,23 +121,25 @@ export const getFormattedNextMondayDate = (): string => {
 
 /**
  * Calculates the course start date based on the initial open date.
- * 
+ *
  * Rules:
  * - If initial open date is a Monday, course starts on initial open date + 7 days (next Monday)
  * - If initial open date is any other day, course starts on the very next upcoming Monday
- * 
+ *
  * @param initialOpenDateISO ISO date string (YYYY-MM-DD) of when user first opened the app
  * @returns ISO date string (YYYY-MM-DD) of when the course should start
  */
-export const calculateCourseStartDate = (initialOpenDateISO: string): string => {
-  const initialDate = new Date(initialOpenDateISO + 'T00:00:00') // Ensure local midnight
+export const calculateCourseStartDate = (
+  initialOpenDateISO: string,
+): string => {
+  const initialDate = new Date(initialOpenDateISO + "T00:00:00") // Ensure local midnight
   const initialDayOfWeek = initialDate.getDay() // JS day: 0 = Sunday, 1 = Monday, ...
-  
+
   // Convert to our format where 0 = Monday, 6 = Sunday
   const dayOfWeek = initialDayOfWeek === 0 ? 6 : initialDayOfWeek - 1
-  
+
   let courseStartDate: Date
-  
+
   if (dayOfWeek === 0) {
     // Initial open date is Monday - course starts 7 days later (next Monday)
     courseStartDate = new Date(initialDate)
@@ -148,14 +150,14 @@ export const calculateCourseStartDate = (initialOpenDateISO: string): string => 
     courseStartDate = new Date(initialDate)
     courseStartDate.setDate(initialDate.getDate() + daysUntilMonday)
   }
-  
+
   // Set time to midnight
   courseStartDate.setHours(0, 0, 0, 0)
-  
+
   // Return ISO date string in local timezone (YYYY-MM-DD format)
   const year = courseStartDate.getFullYear()
-  const month = String(courseStartDate.getMonth() + 1).padStart(2, '0')
-  const day = String(courseStartDate.getDate()).padStart(2, '0')
+  const month = String(courseStartDate.getMonth() + 1).padStart(2, "0")
+  const day = String(courseStartDate.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
 }
 
@@ -164,12 +166,14 @@ export const calculateCourseStartDate = (initialOpenDateISO: string): string => 
  * @param courseStartDateISO ISO date string (YYYY-MM-DD) of when the course should start
  * @returns true if current date >= course start date
  */
-export const hasReachedCourseStartDate = (courseStartDateISO: string): boolean => {
+export const hasReachedCourseStartDate = (
+  courseStartDateISO: string,
+): boolean => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  
+
   const courseStartDate = new Date(courseStartDateISO)
   courseStartDate.setHours(0, 0, 0, 0)
-  
+
   return today >= courseStartDate
 }

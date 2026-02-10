@@ -40,3 +40,9 @@ app-example
 
 # build artifacts
 *.apk
+
+# backup/old code folders - exclude from all builds and git
+7-chakras-master-path/
+
+# dev gallery snapshots - temporary static visual gallery
+assets/dev-gallery/snapshots/

@@ -13,8 +13,12 @@ const Part2Section = ({ chakra }: { chakra: Chakra }) => {
     <ImageBackground
       source={require("@/assets/images/part2bg.png")}
       resizeMode="cover"
-      className="flex rounded-3xl pb-8 pt-8 mt-4"
       style={{
+        flex: 1,
+        borderRadius: 24,
+        paddingBottom: 32,
+        paddingTop: 32,
+        marginTop: 16,
         alignItems: "center",
       }}
     >
@@ -24,7 +28,7 @@ const Part2Section = ({ chakra }: { chakra: Chakra }) => {
         bottomGradientHeight={30}
       />
 
-      <View className="flex-1 px-10 mt-6 mb-2">
+      <View style={{ flex: 1, paddingHorizontal: 40, marginTop: 24, marginBottom: 8 }}>
         <SectionHeader subtitle={"— PART II —"} title={"GOING WITHIN"} />
         <TextButtonSection
           heading="HEAD TO HEART"

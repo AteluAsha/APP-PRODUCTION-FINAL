@@ -1,32 +1,86 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
     // Social Sanctuary Collection
-    // Allows read and write access to all users for the social_sanctuary collection
-    // This enables users to share reflections and read others' reflections
     match /social_sanctuary/{reflectionId} {
-      allow read: if true; // Anyone can read reflections
+      allow read: if true;
       allow create: if request.resource.data.keys().hasAll(['userId', 'chakraDay', 'message', 'timestamp', 'isAnonymous'])
                     && request.resource.data.userId is string
                     && request.resource.data.chakraDay is int
                     && request.resource.data.message is string
-                    && request.resource.data.message.size() <= 500 // Enforce max length
+                    && request.resource.data.message.size() <= 500
                     && request.resource.data.timestamp is timestamp
                     && request.resource.data.isAnonymous is bool;
-      allow update, delete: if false; // No updates or deletes for now (can be enabled later if needed)
+      allow update, delete: if false;
     }
-    
+
+    // Voice Sanctuary Collection
+    match /voice_sanctuary_responses/{responseId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['userId', 'chakraDay', 'audioStoragePath', 'audioUrl', 'duration', 'fileSize', 'createdAt', 'expiresAt', 'moderationStatus'])
+                    && request.resource.data.userId is string
+                    && request.resource.data.chakraDay is int
+                    && request.resource.data.chakraDay >= 0
+                    && request.resource.data.chakraDay <= 6
+                    && request.resource.data.audioStoragePath is string
+                    && request.resource.data.audioUrl is string
+                    && request.resource.data.duration is int
+                    && request.resource.data.duration > 0
+                    && request.resource.data.duration <= 300
+                    && request.resource.data.fileSize is int
+                    && request.resource.data.fileSize > 0
+                    && request.resource.data.createdAt is timestamp
+                    && request.resource.data.expiresAt is timestamp
+                    && request.resource.data.moderationStatus in ['pending', 'approved', 'rejected'];
+      allow update: if request.resource.data.saveCount is int;
+      allow delete: if false;
+    }
+
     // Chakras Collection
-    // Allows read access to all users, no write access
     match /chakras/{chakraId} {
-      allow read: if true; // Anyone can read chakra data
-      allow write: if false; // Only admins can write (handled via Firebase Console or Admin SDK)
+      allow read: if true;
+      allow write: if false;
     }
-    
+
+    // Anua Community Cache
+    match /anua_community_cache/{docId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // Anua Cache Stats
+    match /anua_cache_stats/{docId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // Tribe Chat – real-time messages per tribe
+    match /tribes/{tribeId}/messages/{messageId} {
+      allow read: if true;
+      allow create: if request.resource.data.text is string
+                   && request.resource.data.text.size() <= 500
+                   && request.resource.data.text.size() > 0
+                   && request.resource.data.senderName is string
+                   && 'createdAt' in request.resource.data;
+      allow update, delete: if false;
+    }
+
+    // Tribe Room Members – connected and pending friends per room
+    match /tribeRooms/{roomId}/members/{memberId} {
+      allow read: if true;
+      allow create: if request.resource.data.displayName is string
+                   && request.resource.data.status in ['connected', 'pending']
+                   && request.resource.data.invitedAt is string;
+      allow update: if true;
+      allow delete: if false;
+    }
+
     // Default: Deny all other access
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-

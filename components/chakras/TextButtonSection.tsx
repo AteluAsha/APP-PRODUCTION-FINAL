@@ -18,26 +18,29 @@ const TextButtonSection: React.FC<TextButtonSectionProps> = ({
   onPress,
 }) => {
   return (
-    <View className="mb-8">
-      {/* Heading */}
-      <AppText font="instrument-regular" className="mb-2 text-[14px]">
+    <View style={{ marginBottom: 32 }}>
+      <AppText font="instrument-regular" size="sm" style={{ marginBottom: 8, fontSize: 14, color: "#ffffff" }}>
         {heading}
       </AppText>
-
-      {/* Description */}
-
-      <AppText font="instrument-regular" size="sm" className="mb-6">
+      <AppText font="instrument-regular" size="sm" style={{ marginBottom: 24, color: "#ffffff" }}>
         {description}
       </AppText>
-      {/* Button */}
       <Pressable
-        className="border border-[#ffffff60] rounded-2xl py-4 mx-4 mt-2 active:scale-95 active:opacity-90 bg-[#00000020]"
+        style={{
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.38)",
+          borderRadius: 16,
+          paddingVertical: 16,
+          marginHorizontal: 16,
+          marginTop: 8,
+          backgroundColor: "rgba(0,0,0,0.125)",
+        }}
         onPress={onPress}
       >
-        <AppText font="instrument-medium" size="xs" className="text-center">
+        <AppText font="instrument-medium" size="xs" style={{ textAlign: "center", color: "#ffffff" }}>
           {buttonText}
         </AppText>
-        <AppText font="instrument-regular" size="lg" className="text-center">
+        <AppText font="instrument-regular" size="lg" style={{ textAlign: "center", color: "#ffffff" }}>
           {buttonSubText}
         </AppText>
       </Pressable>

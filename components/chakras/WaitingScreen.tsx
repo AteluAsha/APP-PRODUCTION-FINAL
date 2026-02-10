@@ -3,23 +3,56 @@
  *
  * A healing, mysterious countdown experience with subtle power.
  * Dark, clean, engaging design using chakra imagery for depth and presence.
+ *
+ * UPDATED: Layout fixes applied - Ask a Friend below date, For Deepest Embodiment below countdown
+ * UPDATED: Cyan border and headset icon styling for For Deepest Embodiment
+ * UPDATED: Spacing improvements and back button added
  */
 
 import React from "react"
-import { View, Image, Pressable, ScrollView } from "react-native"
+import { View, Image, Pressable, ScrollView, Platform } from "react-native"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
+import { useRouter } from "expo-router"
 import {
   getFormattedNextMondayDate,
   getNextMondayDate,
   getTimeRemaining,
-  formatDate,
 } from "@/utils/date"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { formatCountdown } from "@/utils/format"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated"
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+} from "react-native-reanimated"
+import { getCurrentWeekStartDateISO, formatDate } from "@/utils/date"
+import { InviteFriendModal } from "@/components/invite/InviteFriendModal"
+import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
+import { getCurrentDayOfWeek } from "@/utils/date"
+import { getChakraName } from "@/constants/chakras/chakraConstants"
+import { chakraContent } from "@/constants/chakras/content"
+import { Chakra } from "@/types/chakras/Chakra"
+import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
+import { TreeOfLifeIcon } from "@/components/social/TreeOfLifeIcon"
+import { LinearGradient } from "expo-linear-gradient"
+import { storage } from "@/src/services/firebase"
+import {
+  getAudioPreloadStarted,
+  setAudioPreloadStarted,
+} from "@/src/utils/audioPreloadGuard"
+
+// Countdown clock dimensions - sized to fit four segments (D/H/M/S) on small screens
+const COUNTDOWN_BOX_SIZE = 52
+const COUNTDOWN_BOX_GAP = 6
+const COUNTDOWN_BOX_RADIUS = 10
+const COUNTDOWN_LABEL_MARGIN = 6
 
 // Chakra images for mysterious background effect
 const CHAKRA_IMAGES = [
@@ -38,56 +71,12 @@ interface WaitingScreenProps {
   onSummaryPress?: () => void
   onGalleryPress?: () => void
   onBeginAgainPress?: () => void
+  onLearnAboutChakrasPress?: () => void // For navigating to Chakras101 screen
   // For starting Trial 2 after Trial 1 ends
   completedTrialCourses?: number
   hasLifetimeAccess?: boolean
   onPayPress?: () => void // For navigating to paywall after Trial 2
-}
-
-const WaitingScreenDevTools = ({
-  showDevTools,
-  toggleDevTools,
-  onHideWaitingScreen,
-}: {
-  showDevTools: boolean
-  toggleDevTools: () => void
-  onHideWaitingScreen?: () => void
-}) => {
-  return (
-    <>
-      {/* Developer tools toggle button - always visible */}
-      <Pressable
-        onPress={toggleDevTools}
-        className="absolute top-20 right-4 z-10 px-3 py-2 bg-gray-800/70 rounded-lg border border-gray-700"
-      >
-        <AppText font="instrument-medium" size="sm">
-          {showDevTools ? "Hide Developer Tools" : "Show Developer Tools"}
-        </AppText>
-      </Pressable>
-
-      {/* Developer tools panel - conditionally visible */}
-      {showDevTools && (
-        <View className="absolute top-32 right-4 z-10 p-4 bg-gray-800/80 rounded-lg border border-gray-600 min-w-[200px]">
-          <AppText
-            font="instrument-bold"
-            size="base"
-            className="mb-3 text-center"
-          >
-            Developer Tools
-          </AppText>
-
-          <Pressable
-            onPress={onHideWaitingScreen}
-            className="bg-white/10 py-2 px-4 rounded-md mb-2"
-          >
-            <AppText font="instrument-medium" size="sm" className="text-center">
-              Hide Waiting Screen
-            </AppText>
-          </Pressable>
-        </View>
-      )}
-    </>
-  )
+  onExitCourseMode?: () => void // Lifetime only: return to ChakraHub, exit somatic journey
 }
 
 export const WaitingScreen = ({
@@ -96,23 +85,36 @@ export const WaitingScreen = ({
   onSummaryPress,
   onGalleryPress,
   onBeginAgainPress,
+  onLearnAboutChakrasPress,
   completedTrialCourses = 0,
   hasLifetimeAccess = false,
   onPayPress,
+  onExitCourseMode,
 }: WaitingScreenProps) => {
-  const { courseStartDate } = useChakraJourneyStore(
-    useShallow((state) => ({
-      courseStartDate: state.courseStartDate,
-    })),
-  )
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const { courseStartDate, invitedFriends, addInvitedFriend } =
+    useChakraJourneyStore(
+      useShallow((state) => ({
+        courseStartDate: state.courseStartDate,
+        invitedFriends: state.invitedFriends,
+        addInvitedFriend: state.addInvitedFriend,
+      })),
+    )
 
   // Use course start date if available, otherwise fall back to next Monday
-  const targetDate = courseStartDate
-    ? new Date(courseStartDate + "T00:00:00") // Ensure local midnight
-    : getNextMondayDate()
-  const formattedDate = courseStartDate
-    ? formatDate(new Date(courseStartDate + "T00:00:00"))
-    : getFormattedNextMondayDate()
+  // Memoize targetDate to prevent unnecessary recalculations
+  const targetDate = useMemo(() => {
+    return courseStartDate
+      ? new Date(courseStartDate + "T00:00:00") // Ensure local midnight
+      : getNextMondayDate()
+  }, [courseStartDate])
+
+  const formattedDate = useMemo(() => {
+    return courseStartDate
+      ? formatDate(new Date(courseStartDate + "T00:00:00"))
+      : getFormattedNextMondayDate()
+  }, [courseStartDate])
 
   const [timeLeft, setTimeLeft] = useState({
     days: "0",
@@ -120,7 +122,38 @@ export const WaitingScreen = ({
     minutes: "00",
     seconds: "00",
   })
-  const [showDevTools, setShowDevTools] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const currentDay = getCurrentDayOfWeek()
+  const chakraName = getChakraName(currentDay)
+
+  // Auto-start preload of first ~3 min of all audio when user reaches waiting room (once per device)
+  useEffect(() => {
+    let cancelled = false
+    getAudioPreloadStarted().then((alreadyStarted) => {
+      if (cancelled || alreadyStarted) return
+      setAudioPreloadStarted().then(() => {
+        import("@/src/utils/audioPreloadManifest").then(
+          ({ preloadAllAudioHeads }) => {
+            if (!cancelled) preloadAllAudioHeads(storage).catch(() => {})
+          },
+        )
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleAnuaPress = () => {
+    addHapticFeedback(HapticStrength.Light)
+    useAnuaChatStore.getState().open({ isWaitingRoom: true })
+  }
+
+  // Handle invite friend - opens beautiful custom modal matching app design
+  const handleInviteFriend = () => {
+    addHapticFeedback(HapticStrength.Medium)
+    setShowInviteModal(true)
+  }
 
   // Subtle pulsing animation for chakra images
   const pulseOpacity = useSharedValue(0.1)
@@ -134,7 +167,7 @@ export const WaitingScreen = ({
         easing: Easing.inOut(Easing.ease),
       }),
       -1,
-      true
+      true,
     )
     pulseScale.value = withRepeat(
       withTiming(1.05, {
@@ -142,7 +175,7 @@ export const WaitingScreen = ({
         easing: Easing.inOut(Easing.ease),
       }),
       -1,
-      true
+      true,
     )
   }, [])
 
@@ -163,28 +196,422 @@ export const WaitingScreen = ({
 
     // Calculate immediately
     calculateTimeLeft()
-    
+
     // Update every second for smooth countdown
     const interval = setInterval(calculateTimeLeft, 1000)
 
     return () => clearInterval(interval)
   }, [targetDate])
 
-  // Toggle developer tools visibility
-  const toggleDevTools = () => {
-    setShowDevTools(!showDevTools)
+  // Handle back to date selection
+  const handleBackToDateSelection = () => {
+    addHapticFeedback(HapticStrength.Light)
+    // Navigate back to date selection to allow changing the date
+    router.replace("/(chakras)/DateSelection")
   }
 
+  // FORCE REBUILD MARKER v3.0 - Jan 25 22:00
+  // Square buttons: flex-row gap-3, flex-1, aspectRatio: 1
+  // Anua: isWaitingRoom={true}
+  // Ask a Friend: Below For Deepest Embodiment
+
   return (
-    <View className="flex-1 bg-black">
+    <View style={{ flex: 1, backgroundColor: "#000000" }}>
+      {/* Back Button - Clean arrow only, no background or circles - MUST be above ScrollView */}
+      <Pressable
+        onPress={handleBackToDateSelection}
+        style={{
+          position: "absolute",
+          top: Math.max(insets.top, 16) + 8,
+          left: 16,
+          zIndex: 10002,
+          padding: 8,
+          backgroundColor: "transparent",
+        }}
+        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        accessibilityLabel="Back"
+        accessibilityHint="Return to date selection"
+      >
+        <Ionicons name="arrow-back" size={24} color="rgba(255, 255, 255, 1)" />
+      </Pressable>
+
+      {/* Exit course mode button - Lifetime only, fixed at bottom of screen */}
+      {hasLifetimeAccess && onExitCourseMode && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            paddingBottom: Math.max(insets.bottom, 16) + 8,
+            paddingHorizontal: 24,
+            alignItems: "center",
+            zIndex: 10001,
+          }}
+        >
+          <Pressable
+            onPress={() => {
+              addHapticFeedback(HapticStrength.Medium)
+              onExitCourseMode()
+            }}
+            style={{
+              borderRadius: 12,
+              overflow: "hidden",
+              shadowColor: "#2a2520",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.4,
+              shadowRadius: 6,
+              elevation: 4,
+            }}
+          >
+            <LinearGradient
+              colors={[
+                "rgba(194, 178, 128, 0.35)",
+                "rgba(168, 154, 110, 0.28)",
+                "rgba(139, 126, 90, 0.35)",
+              ]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 20,
+                borderWidth: 1,
+                borderColor: "rgba(194, 178, 128, 0.5)",
+                borderRadius: 12,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <LinearGradient
+                colors={[
+                  "rgba(255, 255, 255, 0.12)",
+                  "rgba(255, 255, 255, 0.02)",
+                  "transparent",
+                ]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "50%",
+                  borderTopLeftRadius: 12,
+                  borderTopRightRadius: 12,
+                }}
+              />
+              <AppText
+                font="instrument-medium"
+                size="sm"
+                style={{ color: "rgba(255,255,255,0.95)", textAlign: "center", letterSpacing: 0.3 }}
+              >
+                Exit course mode
+              </AppText>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Trial: fixed bottom block - Deepest Embodiment + Build Your Tribe + icon bar (larger icons) */}
+      {!hasLifetimeAccess && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            paddingBottom: Math.max(insets.bottom, 4) + 28,
+            zIndex: 10001,
+          }}
+        >
+          {/* Deepest Embodiment + Build Your Tribe - raised a little, larger font for readability */}
+          <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+            <View
+              style={{
+                width: "100%",
+                borderRadius: 12,
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                backgroundColor: "rgba(0, 0, 0, 0.4)",
+                borderWidth: 1.5,
+                borderColor: "rgba(6, 182, 212, 0.6)",
+                shadowColor: "rgba(6, 182, 212, 0.3)",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.5,
+                shadowRadius: 8,
+                marginBottom: 20,
+              }}
+            >
+              <View style={{ alignItems: "center", width: "100%", minWidth: 0 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                  <Ionicons
+                    name="headset"
+                    size={20}
+                    color="rgba(6, 182, 212, 0.8)"
+                    style={{ marginRight: 6 }}
+                  />
+                  <AppText
+                    font="instrument-medium"
+                    size="sm"
+                    style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
+                  >
+                    For Deepest Embodiment
+                  </AppText>
+                </View>
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={{ color: "rgba(255,255,255,0.85)", lineHeight: 24, fontStyle: "italic", textAlign: "center" }}
+                >
+                  This course is most embodied when you can awake 1 hour before
+                  your day, and sit with your earphones in bliss.
+                </AppText>
+              </View>
+            </View>
+            {courseStartDate && (
+              <>
+                <Pressable
+                  onPress={handleInviteFriend}
+                  style={{
+                    marginBottom: 20,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    borderWidth: 1,
+                    borderColor: "rgba(135, 174, 115, 0.45)",
+                  }}
+                >
+                  <LinearGradient
+                    colors={[
+                      "rgba(135, 174, 115, 0.18)",
+                      "rgba(135, 174, 115, 0.1)",
+                      "rgba(6, 182, 212, 0.06)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      padding: 12,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add"
+                      size={18}
+                      color="rgba(135, 174, 115, 0.95)"
+                      style={{ marginRight: 6 }}
+                    />
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
+                    >
+                      Build Your Tribe
+                    </AppText>
+                  </LinearGradient>
+                </Pressable>
+                {invitedFriends.length > 0 && (
+                  <View style={{ marginBottom: 12, paddingHorizontal: 8 }}>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={{ color: "rgba(255,255,255,0.6)", marginBottom: 6, textAlign: "center" }}
+                    >
+                      Friends invited:
+                    </AppText>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
+                      {invitedFriends.map((friend, index) => (
+                        <View
+                          key={index}
+                          style={{
+                            backgroundColor: "rgba(135, 174, 115, 0.15)",
+                            borderWidth: 1,
+                            borderColor: "rgba(135, 174, 115, 0.3)",
+                            borderRadius: 10,
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                          }}
+                        >
+                          <AppText
+                            font="instrument-regular"
+                            size="xs"
+                            style={{ color: "rgba(255,255,255,0.8)" }}
+                          >
+                            {friend}
+                          </AppText>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
+          </View>
+          {/* Menu bar: Preview, Chakras 101, Tribe, Anua – same icon size and label line */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              paddingHorizontal: 16,
+              gap: 8,
+            }}
+          >
+            {onPreviewPress && (
+              <View style={{ alignItems: "center", minWidth: 52 }}>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 6, height: 18 }}
+                  numberOfLines={1}
+                >
+                  Preview
+                </AppText>
+                <Pressable
+                  onPress={onPreviewPress}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: "rgba(0, 0, 0, 0.6)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                  accessibilityLabel="Preview Course"
+                >
+                  <Image
+                    source={chakraContent[Chakra.SOLAR_PLEXUS].chakraHeaderImage}
+                    style={{ width: 40, height: 40, opacity: 0.95 }}
+                    resizeMode="contain"
+                  />
+                </Pressable>
+              </View>
+            )}
+            {onLearnAboutChakrasPress && (
+              <View style={{ alignItems: "center", minWidth: 52 }}>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 6, height: 18 }}
+                  numberOfLines={1}
+                >
+                  Chakras 101
+                </AppText>
+                <Pressable
+                  onPress={onLearnAboutChakrasPress}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: "rgba(0, 0, 0, 0.6)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                  accessibilityLabel="Chakras 101"
+                >
+                  <Image
+                    source={require("@/assets/images/7chakras.png")}
+                    style={{ width: 40, height: 40, opacity: 0.95 }}
+                    resizeMode="contain"
+                  />
+                </Pressable>
+              </View>
+            )}
+            <View style={{ alignItems: "center", minWidth: 52 }}>
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 6, height: 18 }}
+                numberOfLines={1}
+              >
+                tribe
+              </AppText>
+              <Pressable
+                onPress={() => {
+                  addHapticFeedback(HapticStrength.Light)
+                  router.push("/(chakras)/TribeChat")
+                }}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: "rgba(0, 0, 0, 0.7)",
+                  borderWidth: 1,
+                  borderColor: "rgba(135, 174, 115, 0.5)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  shadowColor: "#87AE73",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={28}
+                  color="rgba(135, 174, 115, 0.95)"
+                />
+              </Pressable>
+            </View>
+            <View style={{ alignItems: "center", minWidth: 52 }}>
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 6, height: 18 }}
+                numberOfLines={1}
+              >
+                Anua
+              </AppText>
+              <Pressable
+                onPress={handleAnuaPress}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  overflow: "hidden",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  shadowColor: "#9D4EDD",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 12,
+                  elevation: 10,
+                }}
+              >
+                <Image
+                  source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
+                  style={{ width: 40, height: 40, borderRadius: 20 }}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Mysterious background chakra images - subtle, layered */}
-      <View className="absolute inset-0" style={{ opacity: 0.15 }}>
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          opacity: 0.15,
+        }}
+        pointerEvents="none"
+      >
         {CHAKRA_IMAGES.map((image, index) => {
           const angle = (index * 360) / CHAKRA_IMAGES.length
           const radius = 180
           const x = Math.cos((angle * Math.PI) / 180) * radius
           const y = Math.sin((angle * Math.PI) / 180) * radius
-          
+
           return (
             <Animated.View
               key={index}
@@ -211,277 +638,686 @@ export const WaitingScreen = ({
         })}
       </View>
 
-      {/* Developer Tools */}
-      {__DEV__ && (
-        <WaitingScreenDevTools
-          showDevTools={showDevTools}
-          toggleDevTools={toggleDevTools}
-          onHideWaitingScreen={onHideWaitingScreen}
-        />
-      )}
-
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 24 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          alignItems: "center",
+          padding: hasLifetimeAccess ? 20 : 20,
+          paddingTop: Math.max(insets.top, 16) + (hasLifetimeAccess ? 20 : 20),
+          paddingBottom:
+            Math.max(insets.bottom, 4) +
+            (hasLifetimeAccess
+              ? Math.max(insets.bottom, 16) + 60
+              : 340), // Trial: space for fixed bottom block (Deepest Embodiment + Build Your Tribe + icon bar)
+          ...(hasLifetimeAccess
+            ? { justifyContent: "space-between" }
+            : { justifyContent: "center" }), // Trial: center clock on page
+        }}
         showsVerticalScrollIndicator={false}
+        style={{ zIndex: 1 }}
+        pointerEvents="box-none"
       >
-        {/* Central chakra symbol - mysterious and powerful */}
-        <View className="mb-12">
+        {hasLifetimeAccess ? (
+          <>
+            {/* Top section - title and date */}
+            <View style={{ alignItems: "center", maxWidth: 384 }}>
+              <View style={{ marginBottom: 20 }}>
+                <Image
+                  source={require("@/assets/images/7chakras.png")}
+                  style={{ width: 80, height: 80, opacity: 0.9 }}
+                  resizeMode="contain"
+                />
+              </View>
+              <AppText
+                font="instrument-bold"
+                size="xl"
+                style={{ textAlign: "center", marginBottom: 12, color: "#ffffff" }}
+              >
+                Your 7 Day Journey Begins
+              </AppText>
+              <AppText
+                font="instrument-regular"
+                size="base"
+                style={{ textAlign: "center", color: "rgba(255,255,255,0.85)", marginBottom: 20 }}
+              >
+                I will open on {formattedDate}
+              </AppText>
+            </View>
+
+            {/* Countdown - centered hero; box evenly centered on clock; fits on screen */}
+            {!(completedTrialCourses === 2 && !hasLifetimeAccess) && (
+              <View
+                style={{
+                  width: "100%",
+                  maxWidth: 384,
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 12,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: "rgba(6, 182, 212, 0.35)",
+                  backgroundColor: "rgba(0, 0, 0, 0.25)",
+                  shadowColor: "rgba(6, 182, 212, 0.25)",
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 16,
+                  elevation: 8,
+                }}
+              >
+                <View
+                  style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: COUNTDOWN_BOX_GAP }}
+                >
+                  <View style={{ alignItems: "center" }}>
+                    <LinearGradient
+                      colors={[
+                        "rgba(255, 255, 255, 0.14)",
+                        "rgba(6, 182, 212, 0.12)",
+                        "rgba(147, 51, 234, 0.08)",
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        width: COUNTDOWN_BOX_SIZE,
+                        height: COUNTDOWN_BOX_SIZE,
+                        borderRadius: COUNTDOWN_BOX_RADIUS,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginBottom: COUNTDOWN_LABEL_MARGIN,
+                        borderWidth: 1,
+                        borderColor: "rgba(6, 182, 212, 0.45)",
+                        shadowColor: "rgba(6, 182, 212, 0.4)",
+                        shadowOffset: { width: 0, height: 0 },
+                        shadowOpacity: 0.6,
+                        shadowRadius: 8,
+                        elevation: 6,
+                      }}
+                    >
+                      <AppText
+                        font="instrument-bold"
+                        size="2xl"
+                        style={{ color: "#ffffff" }}
+                      >
+                        {timeLeft.days}
+                      </AppText>
+                    </LinearGradient>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={{ color: "rgba(255,255,255,0.5)" }}
+                    >
+                      DAYS
+                    </AppText>
+                  </View>
+                  <AppText
+                    font="instrument-bold"
+                    size="2xl"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
+                    :
+                  </AppText>
+                  <View style={{ alignItems: "center" }}>
+                    <LinearGradient
+                      colors={[
+                        "rgba(255, 255, 255, 0.14)",
+                        "rgba(6, 182, 212, 0.12)",
+                        "rgba(147, 51, 234, 0.08)",
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        width: COUNTDOWN_BOX_SIZE,
+                        height: COUNTDOWN_BOX_SIZE,
+                        borderRadius: COUNTDOWN_BOX_RADIUS,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginBottom: COUNTDOWN_LABEL_MARGIN,
+                        borderWidth: 1,
+                        borderColor: "rgba(6, 182, 212, 0.45)",
+                        shadowColor: "rgba(6, 182, 212, 0.4)",
+                        shadowOffset: { width: 0, height: 0 },
+                        shadowOpacity: 0.6,
+                        shadowRadius: 8,
+                        elevation: 6,
+                      }}
+                    >
+                      <AppText
+                        font="instrument-bold"
+                        size="2xl"
+                        style={{ color: "#ffffff" }}
+                      >
+                        {timeLeft.hours}
+                      </AppText>
+                    </LinearGradient>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={{ color: "rgba(255,255,255,0.5)" }}
+                    >
+                      HOURS
+                    </AppText>
+                  </View>
+                  <AppText
+                    font="instrument-bold"
+                    size="2xl"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
+                    :
+                  </AppText>
+                  <View style={{ alignItems: "center" }}>
+                    <LinearGradient
+                      colors={[
+                        "rgba(255, 255, 255, 0.14)",
+                        "rgba(6, 182, 212, 0.12)",
+                        "rgba(147, 51, 234, 0.08)",
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        width: COUNTDOWN_BOX_SIZE,
+                        height: COUNTDOWN_BOX_SIZE,
+                        borderRadius: COUNTDOWN_BOX_RADIUS,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginBottom: COUNTDOWN_LABEL_MARGIN,
+                        borderWidth: 1,
+                        borderColor: "rgba(6, 182, 212, 0.45)",
+                        shadowColor: "rgba(6, 182, 212, 0.4)",
+                        shadowOffset: { width: 0, height: 0 },
+                        shadowOpacity: 0.6,
+                        shadowRadius: 8,
+                        elevation: 6,
+                      }}
+                    >
+                      <AppText
+                        font="instrument-bold"
+                        size="2xl"
+                        style={{ color: "#ffffff" }}
+                      >
+                        {timeLeft.minutes}
+                      </AppText>
+                    </LinearGradient>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={{ color: "rgba(255,255,255,0.5)" }}
+                    >
+                      MINS
+                    </AppText>
+                  </View>
+                  <AppText
+                    font="instrument-bold"
+                    size="2xl"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
+                    :
+                  </AppText>
+                  <View style={{ alignItems: "center" }}>
+                    <LinearGradient
+                      colors={[
+                        "rgba(255, 255, 255, 0.14)",
+                        "rgba(6, 182, 212, 0.12)",
+                        "rgba(147, 51, 234, 0.08)",
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        width: COUNTDOWN_BOX_SIZE,
+                        height: COUNTDOWN_BOX_SIZE,
+                        borderRadius: COUNTDOWN_BOX_RADIUS,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginBottom: COUNTDOWN_LABEL_MARGIN,
+                        borderWidth: 1,
+                        borderColor: "rgba(6, 182, 212, 0.45)",
+                        shadowColor: "rgba(6, 182, 212, 0.4)",
+                        shadowOffset: { width: 0, height: 0 },
+                        shadowOpacity: 0.6,
+                        shadowRadius: 8,
+                        elevation: 6,
+                      }}
+                    >
+                      <AppText
+                        font="instrument-bold"
+                        size="2xl"
+                        style={{ color: "#ffffff" }}
+                      >
+                        {timeLeft.seconds}
+                      </AppText>
+                    </LinearGradient>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={{ color: "rgba(255,255,255,0.5)" }}
+                    >
+                      SECS
+                    </AppText>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Bottom section - blue box and invite */}
+            <View style={{ width: "100%", maxWidth: 384, alignItems: "center" }}>
+              <View style={{ width: "100%", paddingHorizontal: 16, marginBottom: 24 }}>
+                <View
+                  style={{
+                    width: "100%",
+                    borderRadius: 12,
+                    paddingVertical: 16,
+                    paddingHorizontal: 20,
+                    backgroundColor: "rgba(0, 0, 0, 0.4)",
+                    borderWidth: 1.5,
+                    borderColor: "rgba(6, 182, 212, 0.6)",
+                    shadowColor: "rgba(6, 182, 212, 0.3)",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.5,
+                    shadowRadius: 8,
+                  }}
+                >
+                  <View style={{ alignItems: "center", width: "100%", minWidth: 0 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+                      <Ionicons
+                        name="headset"
+                        size={20}
+                        color="rgba(6, 182, 212, 0.8)"
+                        style={{ marginRight: 8 }}
+                      />
+                      <AppText
+                        font="instrument-medium"
+                        size="sm"
+                        style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
+                      >
+                        For Deepest Embodiment
+                      </AppText>
+                    </View>
+                    <View style={{ width: "100%", minWidth: 0 }}>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={{ color: "rgba(255,255,255,0.85)", lineHeight: 20, fontStyle: "italic", textAlign: "center" }}
+                      >
+                        This course is most embodied when you can awake 1 hour
+                        before your day, and sit with your earphones in bliss.
+                      </AppText>
+                    </View>
+                  </View>
+                </View>
+              </View>
+              {courseStartDate && (
+                <View style={{ width: "100%", paddingHorizontal: 16 }}>
+                  <Pressable
+                    onPress={handleInviteFriend}
+                    style={{
+                      borderRadius: 16,
+                      overflow: "hidden",
+                      borderWidth: 1,
+                      borderColor: "rgba(135, 174, 115, 0.45)",
+                    }}
+                  >
+                    <LinearGradient
+                      colors={[
+                        "rgba(135, 174, 115, 0.18)",
+                        "rgba(135, 174, 115, 0.1)",
+                        "rgba(6, 182, 212, 0.06)",
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        padding: 12,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons
+                        name="person-add"
+                        size={18}
+                        color="rgba(135, 174, 115, 0.95)"
+                        style={{ marginRight: 8 }}
+                      />
+                      <AppText
+                        font="instrument-regular"
+                        size="sm"
+                        style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
+                        style={{ color: "rgba(255,255,255,0.9)" }}
+                      >
+                        Build Your Tribe
+                      </AppText>
+                    </LinearGradient>
+                  </Pressable>
+                  {invitedFriends.length > 0 && (
+                    <View style={{ marginTop: 12, paddingHorizontal: 8 }}>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={{ color: "rgba(255,255,255,0.6)", marginBottom: 8, textAlign: "center" }}
+                        style={{ color: "rgba(255,255,255,0.6)" }}
+                      >
+                        Friends invited:
+                      </AppText>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
+                        {invitedFriends.map((friend, index) => (
+                          <View
+                            key={index}
+                            style={{
+                              backgroundColor: "rgba(135, 174, 115, 0.15)",
+                              borderWidth: 1,
+                              borderColor: "rgba(135, 174, 115, 0.3)",
+                              borderRadius: 12,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                            }}
+                          >
+                            <AppText
+                              font="instrument-regular"
+                              size="xs"
+                              style={{ color: "rgba(255,255,255,0.8)" }}
+                              style={{ color: "rgba(255,255,255,0.8)" }}
+                            >
+                              {friend}
+                            </AppText>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          </>
+        ) : (
+          <>
+        {/* Central chakra symbol - smaller and more refined */}
+        <View style={{ marginBottom: 24 }}>
           <Image
             source={require("@/assets/images/7chakras.png")}
-            className="w-32 h-32"
+            style={{ width: 80, height: 80, opacity: 0.9 }}
             resizeMode="contain"
-            style={{ opacity: 0.9 }}
           />
         </View>
 
-        {/* Main content */}
-        <View className="items-center mb-12 max-w-sm">
+        {/* Main content - App1 */}
+        <View style={{ alignItems: "center", marginBottom: 24, maxWidth: 384 }}>
           <AppText
-            font="instrument-regular"
-            size="2xl"
-            className="text-center mb-3 text-white/90"
-            style={{ letterSpacing: 1 }}
+            font="instrument-bold"
+            size="xl"
+            style={{ textAlign: "center", marginBottom: 12, color: "#ffffff" }}
           >
-            Your Journey Begins
+            Your 7 Day Journey Begins
           </AppText>
 
-          <AppText font="instrument-regular" size="sm" className="text-center mb-10 text-white/50 leading-5">
-            Opening on {formattedDate}
-          </AppText>
-
-          {/* Countdown display - clean, mysterious, powerful */}
-          {/* Only show countdown if not after Trial 2 */}
-          {!(completedTrialCourses === 2 && !hasLifetimeAccess) && (
-            <View className="flex-row justify-center items-center gap-3 mb-10">
-            {/* Days */}
-            <View className="items-center">
-              <View
-                className="w-16 h-16 rounded-lg justify-center items-center mb-2"
-                style={{
-                  backgroundColor: "rgba(0, 0, 0, 0.6)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                <AppText font="instrument-bold" size="2xl" className="text-white/90">
-                  {timeLeft.days}
-                </AppText>
-              </View>
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                className="text-white/40"
-                style={{ letterSpacing: 2 }}
-              >
-                DAYS
-              </AppText>
-            </View>
-
-            <AppText font="instrument-regular" size="xl" className="text-white/30">
-              :
-            </AppText>
-
-            {/* Hours */}
-            <View className="items-center">
-              <View
-                className="w-16 h-16 rounded-lg justify-center items-center mb-2"
-                style={{
-                  backgroundColor: "rgba(0, 0, 0, 0.6)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                <AppText font="instrument-bold" size="2xl" className="text-white/90">
-                  {timeLeft.hours}
-                </AppText>
-              </View>
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                className="text-white/40"
-                style={{ letterSpacing: 2 }}
-              >
-                HOURS
-              </AppText>
-            </View>
-
-            <AppText font="instrument-regular" size="xl" className="text-white/30">
-              :
-            </AppText>
-
-            {/* Minutes */}
-            <View className="items-center">
-              <View
-                className="w-16 h-16 rounded-lg justify-center items-center mb-2"
-                style={{
-                  backgroundColor: "rgba(0, 0, 0, 0.6)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                <AppText font="instrument-bold" size="2xl" className="text-white/90">
-                  {timeLeft.minutes}
-                </AppText>
-              </View>
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                className="text-white/40"
-                style={{ letterSpacing: 2 }}
-              >
-                MINS
-              </AppText>
-            </View>
-          </View>
-          )}
-        </View>
-
-        {/* Action Buttons - subtle, clean */}
-        <View className="w-full max-w-sm gap-3 mb-8">
-          {/* After Trial 2: Landing screen with pay/scholarship/gallery options */}
-          {completedTrialCourses === 2 && !hasLifetimeAccess ? (
-            <>
-              {/* Gallery Button - Always show if user has unlocked cards */}
-              {onGalleryPress && (
-                <Pressable
-                  onPress={onGalleryPress}
-                  className="bg-white/5 border border-white/10 py-3 px-6 rounded-lg active:opacity-60"
-                >
-                  <View className="flex-row items-center justify-center">
-                    <Ionicons name="images" size={18} color="rgba(255, 255, 255, 0.7)" />
-                    <AppText font="instrument-regular" size="sm" className="text-center ml-2 text-white/70">
-                      View Your Chakra Cards
-                    </AppText>
-                  </View>
-                </Pressable>
-              )}
-
-              {/* Pay/Scholarship Button */}
-              {onPayPress && (
-                <Pressable
-                  onPress={onPayPress}
-                  className="bg-purple-500/20 border border-purple-400/30 py-4 px-6 rounded-lg active:opacity-60"
-                >
-                  <View className="flex-row items-center justify-center">
-                    <Ionicons name="diamond" size={20} color="rgba(168, 85, 247, 0.9)" />
-                    <AppText font="instrument-medium" size="base" className="text-center ml-2 text-purple-300">
-                      Continue Your Journey
-                    </AppText>
-                  </View>
-                </Pressable>
-              )}
-            </>
-          ) : completedTrialCourses === 1 ? (
-            <>
-              {/* After Trial 1: Begin Again button (only on Monday) */}
-              {onBeginAgainPress && (
-                <Pressable
-                  onPress={onBeginAgainPress}
-                  className="bg-purple-500/20 border border-purple-400/30 py-4 px-6 rounded-lg active:opacity-60 mb-3"
-                >
-                  <View className="flex-row items-center justify-center">
-                    <Ionicons name="play-circle" size={20} color="rgba(168, 85, 247, 0.9)" />
-                    <AppText font="instrument-medium" size="base" className="text-center ml-2 text-purple-300">
-                      Begin Again
-                    </AppText>
-                  </View>
-                </Pressable>
-              )}
-
-              {/* Gallery Button */}
-              {onGalleryPress && (
-                <Pressable
-                  onPress={onGalleryPress}
-                  className="bg-white/5 border border-white/10 py-3 px-6 rounded-lg active:opacity-60"
-                >
-                  <View className="flex-row items-center justify-center">
-                    <Ionicons name="images" size={18} color="rgba(255, 255, 255, 0.7)" />
-                    <AppText font="instrument-regular" size="sm" className="text-center ml-2 text-white/70">
-                      View Your Chakra Cards
-                    </AppText>
-                  </View>
-                </Pressable>
-              )}
-
-              {/* Summary Button */}
-              {onSummaryPress && (
-                <Pressable
-                  onPress={onSummaryPress}
-                  className="bg-white/5 border border-white/10 py-3 px-6 rounded-lg active:opacity-60"
-                >
-                  <View className="flex-row items-center justify-center">
-                    <Ionicons name="document-text" size={18} color="rgba(255, 255, 255, 0.7)" />
-                    <AppText font="instrument-regular" size="sm" className="text-center ml-2 text-white/70">
-                      View Journey Summary
-                    </AppText>
-                  </View>
-                </Pressable>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Before first trial: Normal waiting screen */}
-              {/* Gallery Button - Always show if user has unlocked cards */}
-              {onGalleryPress && (
-                <Pressable
-                  onPress={onGalleryPress}
-                  className="bg-white/5 border border-white/10 py-3 px-6 rounded-lg active:opacity-60"
-                >
-                  <View className="flex-row items-center justify-center">
-                    <Ionicons name="images" size={18} color="rgba(255, 255, 255, 0.7)" />
-                    <AppText font="instrument-regular" size="sm" className="text-center ml-2 text-white/70">
-                      View Your Chakra Cards
-                    </AppText>
-                  </View>
-                </Pressable>
-              )}
-
-              {/* Summary Button */}
-              {onSummaryPress && (
-                <Pressable
-                  onPress={onSummaryPress}
-                  className="bg-white/5 border border-white/10 py-3 px-6 rounded-lg active:opacity-60"
-                >
-                  <View className="flex-row items-center justify-center">
-                    <Ionicons name="document-text" size={18} color="rgba(255, 255, 255, 0.7)" />
-                    <AppText font="instrument-regular" size="sm" className="text-center ml-2 text-white/70">
-                      View Journey Summary
-                    </AppText>
-                  </View>
-                </Pressable>
-              )}
-
-              {/* Preview button */}
-              {onPreviewPress && (
-                <Pressable
-                  onPress={onPreviewPress}
-                  className="bg-white/5 border border-white/10 py-3 px-6 rounded-lg active:opacity-60"
-                >
-                  <View className="flex-row items-center justify-center">
-                    <Ionicons name="eye" size={18} color="rgba(255, 255, 255, 0.7)" />
-                    <AppText font="instrument-regular" size="sm" className="text-center ml-2 text-white/70">
-                      Preview Journey
-                    </AppText>
-                  </View>
-                </Pressable>
-              )}
-            </>
-          )}
-        </View>
-
-        {/* Bottom info text - mysterious, subtle */}
-        <View className="px-8">
+          {/* Each day unlocks - prominent above countdown box */}
           <AppText
             font="instrument-regular"
-            size="xs"
-            className="text-center text-white/30 leading-4"
-            style={{ letterSpacing: 0.5 }}
+            size="sm"
+            style={{ textAlign: "center", color: "rgba(255,255,255,0.7)", marginBottom: 24, paddingHorizontal: 16 }}
           >
             Each day of the week unlocks a new chakra, guiding you from your
-            foundation to your crown. The journey begins when the time is right.
+            foundation to your crown.
           </AppText>
+
+          {/* Date + Countdown in one box - same style; clock box lowered from title */}
+          {!(completedTrialCourses === 2) && (
+            <View
+              style={{ width: "100%", alignItems: "center" }}
+              style={{
+                marginTop: 16,
+                paddingVertical: 16,
+                paddingHorizontal: 12,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: "rgba(6, 182, 212, 0.35)",
+                backgroundColor: "rgba(0, 0, 0, 0.25)",
+                shadowColor: "rgba(6, 182, 212, 0.25)",
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.8,
+                shadowRadius: 16,
+                elevation: 8,
+                maxWidth: "100%",
+              }}
+            >
+              <AppText
+                font="instrument-bold"
+                size="base"
+                style={{ textAlign: "center", marginBottom: 24 }}
+                style={{ color: "rgba(6, 182, 212, 0.95)" }}
+              >
+                I will open on {formattedDate}
+              </AppText>
+              <View
+                style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: COUNTDOWN_BOX_GAP }}
+              >
+                {/* Days */}
+                <View style={{ alignItems: "center" }}>
+                  <LinearGradient
+                    colors={[
+                      "rgba(255, 255, 255, 0.14)",
+                      "rgba(6, 182, 212, 0.12)",
+                      "rgba(147, 51, 234, 0.08)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      width: COUNTDOWN_BOX_SIZE,
+                      height: COUNTDOWN_BOX_SIZE,
+                      borderRadius: COUNTDOWN_BOX_RADIUS,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: COUNTDOWN_LABEL_MARGIN,
+                      borderWidth: 1,
+                      borderColor: "rgba(6, 182, 212, 0.45)",
+                      shadowColor: "rgba(6, 182, 212, 0.4)",
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }}
+                  >
+                    <AppText
+                      font="instrument-bold"
+                      size="2xl"
+                      style={{ color: "#ffffff" }}
+                    >
+                      {timeLeft.days}
+                    </AppText>
+                  </LinearGradient>
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    DAYS
+                  </AppText>
+                </View>
+
+                <AppText
+                  font="instrument-bold"
+                  size="2xl"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                >
+                  :
+                </AppText>
+
+                {/* Hours */}
+                <View style={{ alignItems: "center" }}>
+                  <LinearGradient
+                    colors={[
+                      "rgba(255, 255, 255, 0.14)",
+                      "rgba(6, 182, 212, 0.12)",
+                      "rgba(147, 51, 234, 0.08)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      width: COUNTDOWN_BOX_SIZE,
+                      height: COUNTDOWN_BOX_SIZE,
+                      borderRadius: COUNTDOWN_BOX_RADIUS,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: COUNTDOWN_LABEL_MARGIN,
+                      borderWidth: 1,
+                      borderColor: "rgba(6, 182, 212, 0.45)",
+                      shadowColor: "rgba(6, 182, 212, 0.4)",
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }}
+                  >
+                    <AppText
+                      font="instrument-bold"
+                      size="2xl"
+                      style={{ color: "#ffffff" }}
+                    >
+                      {timeLeft.hours}
+                    </AppText>
+                  </LinearGradient>
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    HOURS
+                  </AppText>
+                </View>
+
+                <AppText
+                  font="instrument-bold"
+                  size="2xl"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                >
+                  :
+                </AppText>
+
+                {/* Minutes */}
+                <View style={{ alignItems: "center" }}>
+                  <LinearGradient
+                    colors={[
+                      "rgba(255, 255, 255, 0.14)",
+                      "rgba(6, 182, 212, 0.12)",
+                      "rgba(147, 51, 234, 0.08)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      width: COUNTDOWN_BOX_SIZE,
+                      height: COUNTDOWN_BOX_SIZE,
+                      borderRadius: COUNTDOWN_BOX_RADIUS,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: COUNTDOWN_LABEL_MARGIN,
+                      borderWidth: 1,
+                      borderColor: "rgba(6, 182, 212, 0.45)",
+                      shadowColor: "rgba(6, 182, 212, 0.4)",
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }}
+                  >
+                    <AppText
+                      font="instrument-bold"
+                      size="2xl"
+                      style={{ color: "#ffffff" }}
+                    >
+                      {timeLeft.minutes}
+                    </AppText>
+                  </LinearGradient>
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    MINS
+                  </AppText>
+                </View>
+
+                <AppText
+                  font="instrument-bold"
+                  size="2xl"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                >
+                  :
+                </AppText>
+
+                {/* Seconds */}
+                <View style={{ alignItems: "center" }}>
+                  <LinearGradient
+                    colors={[
+                      "rgba(255, 255, 255, 0.14)",
+                      "rgba(6, 182, 212, 0.12)",
+                      "rgba(147, 51, 234, 0.08)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      width: COUNTDOWN_BOX_SIZE,
+                      height: COUNTDOWN_BOX_SIZE,
+                      borderRadius: COUNTDOWN_BOX_RADIUS,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: COUNTDOWN_LABEL_MARGIN,
+                      borderWidth: 1,
+                      borderColor: "rgba(6, 182, 212, 0.45)",
+                      shadowColor: "rgba(6, 182, 212, 0.4)",
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }}
+                  >
+                    <AppText
+                      font="instrument-bold"
+                      size="2xl"
+                      style={{ color: "#ffffff" }}
+                    >
+                      {timeLeft.seconds}
+                    </AppText>
+                  </LinearGradient>
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    SECS
+                  </AppText>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Deepest Embodiment + Build Your Tribe moved to fixed bottom block above icon bar */}
         </View>
+
+        {/* Action buttons (Preview Course, Chakras 101) moved to trial waiting room menu bar - single row with Tribe + Anua */}
+          </>
+        )}
       </ScrollView>
+
+      {/* Invite Friend Modal - Beautiful custom design matching app style */}
+      <InviteFriendModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        startDate={formattedDate}
+        onInviteSent={() => {
+          // Add friend to list when invite is sent
+          const friendLabel = `Friend ${invitedFriends.length + 1}`
+          addInvitedFriend(friendLabel)
+        }}
+      />
+
+      {/* Dev Test Flow Tools - Only in dev mode */}
+      {__DEV__ && (
+        <TrialTestFlow
+          onStartDay1={() => {
+            // Start day 1 and hide waiting screen
+            if (onHideWaitingScreen) {
+              onHideWaitingScreen()
+            }
+          }}
+          currentDay={-1}
+        />
+      )}
     </View>
   )
 }

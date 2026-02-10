@@ -1,0 +1,24 @@
+/**
+ * Sharing Configuration
+ *
+ * Centralized sharing constants and feature flags
+ */
+
+// QR Code for app sharing
+export const APP_QR_CODE_URL = "https://qrtiger.com/temp/1767694040509.png"
+
+// Feature flag to enable/disable QR code sharing
+export const ENABLE_QR_CODE_SHARING = true
+
+// App store URLs (update these when app is published)
+export const APP_STORE_URLS = {
+  ios: "https://apps.apple.com/app/soul-school", // Placeholder - update when published
+  android:
+    "https://play.google.com/store/apps/details?id=com.sevenchakras.SevenChakras", // Placeholder
+} as const
+
+// Referral/invite link (placeholder - replace when referral system is ready)
+export const REFERRAL_BASE_URL = "https://soulschool.app/invite"
+
+// Share message template
+export const SHARE_MESSAGE = `Join me on Soul School - A 7-day journey through the chakras for healing and awakening. ✨`

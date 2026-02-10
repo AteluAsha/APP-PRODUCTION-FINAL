@@ -1,87 +1,112 @@
 /**
- * Mini Audio Player
- * 
- * Compact audio player that appears at the bottom of ChakraTemplate
- * Only shows for non-meditation audio (outro audio, not embodiment meditations)
- * Acts as a UI indicator and navigation to full audio player
- * Does not manage audio playback itself (audio is managed by AudioPlayer screen)
+ * @deprecated Replaced by MenuBarMiniPlayer (above Music icon in PermanentMenuBar).
+ * Music Room now uses inline play/pause; mini bar shows when leaving Music Room.
+ * Kept for reference only.
  */
 
-import React from 'react'
-import { View, Pressable } from 'react-native'
-import { useRouter } from 'expo-router'
-import { useCurrentAudioStore } from '@/hooks/useCurrentAudioStore'
-import { AppText } from '@/components/AppText'
-import { Ionicons } from '@expo/vector-icons'
-import { getMinutesString } from '@/utils/format'
-import { LinearGradient } from 'expo-linear-gradient'
+import React from "react"
+import { View, Pressable } from "react-native"
+import { useRouter } from "expo-router"
+import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { AppText } from "@/components/AppText"
+import { Ionicons } from "@expo/vector-icons"
+import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 
 export const MiniAudioPlayer = () => {
   const router = useRouter()
   const source = useCurrentAudioStore((state) => state.source)
   const metadata = useCurrentAudioStore((state) => state.metadata)
   const prefs = useCurrentAudioStore((state) => state.prefs)
-  
-  // Only show if audio is set and it's NOT intro audio (embodiment meditations)
-  // This indicates the user has started playing outro audio and may want to continue reading
+  const reset = useCurrentAudioStore((state) => state.reset)
+
   const shouldShow = source && metadata && prefs && !prefs.isIntroAudio
-  
+
   const openFullPlayer = () => {
-    router.push('/AudioPlayer')
+    addHapticFeedback(HapticStrength.Light)
+    router.push("/AudioPlayer")
   }
-  
+
+  const goToMusicRoom = () => {
+    addHapticFeedback(HapticStrength.Light)
+    reset()
+    router.push("/(chakras)/AudioLibrary")
+  }
+
+  const handleClose = () => {
+    addHapticFeedback(HapticStrength.Light)
+    reset()
+  }
+
   if (!shouldShow || !metadata) {
     return null
   }
-  
+
   return (
-    <Pressable
-      onPress={openFullPlayer}
-      className="absolute bottom-20 left-4 right-4 z-40 active:opacity-90"
+    <View
       style={{
-        shadowColor: '#9D4EDD',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        elevation: 8,
+        position: "absolute",
+        bottom: 96,
+        left: 16,
+        right: 16,
+        zIndex: 40,
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#1a1a1a",
+        borderRadius: 20,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.08)",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
       }}
     >
-      <LinearGradient
-        colors={['rgba(157, 78, 221, 0.9)', 'rgba(123, 44, 191, 0.85)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{
-          borderRadius: 16,
-          padding: 12,
-          borderWidth: 1,
-          borderColor: '#FFD700',
-        }}
+      <Pressable
+        onPress={openFullPlayer}
+        className="mr-3 p-1.5 rounded-full active:opacity-70"
+        style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+        accessibilityLabel="Open audio player"
       >
-        <View className="flex-row items-center">
-          {/* Audio Icon */}
-          <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center mr-3">
-            <Ionicons
-              name="musical-notes"
-              size={18}
-              color="#FFFFFF"
-            />
-          </View>
-          
-          {/* Track Info */}
-          <View className="flex-1 mr-3">
-            <AppText font="instrument-medium" size="sm" className="text-white" numberOfLines={1}>
-              {metadata.title}
-            </AppText>
-            <AppText font="instrument-regular" size="xs" className="text-white/80 mt-1">
-              Tap to open audio player
-            </AppText>
-          </View>
-          
-          {/* Expand Icon */}
-          <Ionicons name="expand" size={20} color="#FFFFFF" />
-        </View>
-      </LinearGradient>
-    </Pressable>
+        <Ionicons name="play" size={18} color="#fff" />
+      </Pressable>
+
+      <Pressable
+        onPress={openFullPlayer}
+        className="flex-1 mr-2 active:opacity-70"
+        accessibilityLabel="Open audio player"
+      >
+        <AppText
+          font="instrument-medium"
+          size="xs"
+          className="text-white"
+          numberOfLines={1}
+        >
+          {metadata.title}
+        </AppText>
+      </Pressable>
+
+      <Pressable
+        onPress={goToMusicRoom}
+        className="p-2 mx-1 active:opacity-70"
+        accessibilityLabel="Go to Music Room"
+      >
+        <Ionicons
+          name="musical-notes"
+          size={18}
+          color="rgba(255,255,255,0.8)"
+        />
+      </Pressable>
+
+      <Pressable
+        onPress={handleClose}
+        className="p-2 active:opacity-70"
+        accessibilityLabel="Close and stop audio"
+      >
+        <Ionicons name="close" size={20} color="rgba(255,255,255,0.9)" />
+      </Pressable>
+    </View>
   )
 }
-

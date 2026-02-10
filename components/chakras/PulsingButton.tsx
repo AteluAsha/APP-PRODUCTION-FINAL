@@ -1,8 +1,7 @@
-import React, { useEffect } from "react"
-import { Dimensions, ImageSourcePropType } from "react-native"
+import React, { useEffect, useCallback } from "react"
+import { Dimensions, ImageSourcePropType, Pressable } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { addHapticFeedback } from "@/utils/haptic"
-import { TouchableHighlight } from "react-native-gesture-handler"
+import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 
 import Animated, {
   useSharedValue,
@@ -11,6 +10,7 @@ import Animated, {
   withRepeat,
   withSequence,
   cancelAnimation,
+  Easing,
 } from "react-native-reanimated"
 
 const PulsingButton = ({
@@ -35,13 +35,14 @@ const PulsingButton = ({
   const scale = useSharedValue(1)
   const size = useSharedValue(iconWidth)
 
-  // Pulsing animation effect
+  // Steady breath – smooth in/out easing so there’s no jerk at direction change
   useEffect(() => {
     if (isAnimating) {
+      const ease = Easing.inOut(Easing.sin)
       scale.value = withRepeat(
         withSequence(
-          withTiming(1.15, { duration: 1500 }),
-          withTiming(1, { duration: 1500 }),
+          withTiming(1.06, { duration: 2800, easing: ease }),
+          withTiming(1, { duration: 2800, easing: ease }),
         ),
         -1,
         false,
@@ -59,23 +60,31 @@ const PulsingButton = ({
     height: size.value,
   }))
 
+  // Optimized press handler - instant response
+  const handlePress = useCallback(() => {
+    // Immediate haptic feedback
+    addHapticFeedback(HapticStrength.Light)
+    // Immediate navigation
+    onPress()
+  }, [onPress])
+
   return (
-    <TouchableHighlight
-      onPress={() => {
-        onPress()
-        addHapticFeedback()
-      }}
+    <Pressable
+      onPress={handlePress}
       className={className}
-      underlayColor="transparent"
+      // Larger hit area for easier tapping
+      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+      // Disable press opacity to avoid visual lag
+      android_ripple={null}
     >
       <Animated.View style={animatedStyle}>
         <Animated.Image
           source={source}
-          style={{ width: '100%', height: '100%' }}
+          style={{ width: "100%", height: "100%" }}
           resizeMode="contain"
         />
       </Animated.View>
-    </TouchableHighlight>
+    </Pressable>
   )
 }
 

@@ -16,6 +16,7 @@ interface ChakraStackIndicatorProps {
   hasCompletedChakra: (day: number) => boolean
   hasParticipatedDay: (day: number) => boolean
   allChakrasCompleted: boolean
+  hasLifetimeAccess?: boolean // APP_2 (Lifetime): Pass to timegate service
 }
 
 const CHAKRAS = [
@@ -99,6 +100,7 @@ export const ChakraStackIndicator = ({
   hasCompletedChakra,
   hasParticipatedDay,
   allChakrasCompleted,
+  hasLifetimeAccess = false, // APP_2 (Lifetime): Default to false for trial mode
 }: ChakraStackIndicatorProps) => {
   const pulseValue = useSharedValue(1)
 
@@ -123,10 +125,10 @@ export const ChakraStackIndicator = ({
     >
       {CHAKRAS.map((chakra) => {
         const isCurrentDay = currentDay === chakra.day
-        // Use timegate service to check if chakra is accessible (includes dev override)
+        // Use timegate service to check if chakra is accessible (includes dev override and lifetime bypass)
         const isUnlocked = isChakraDayAccessible(
           chakra.day,
-          false, // hasLifetimeAccess - would need to be passed as prop if needed
+          hasLifetimeAccess, // APP_1: false, APP_2: true (properly routes to correct logic)
           hasParticipatedDay,
           currentDay,
           allChakrasCompleted,

@@ -1,0 +1,44 @@
+/**
+ * Presence Store – display name, profile image, first-Monday onboarding
+ *
+ * Persisted so name/photo and "has completed first Monday presence" survive restarts.
+ * Used by FirstMondayPresenceModal, ProfileSheet, and Tribe.
+ */
+
+import { create } from "zustand"
+import { createJSONStorage, persist } from "zustand/middleware"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+
+interface PresenceState {
+  displayName: string | null
+  profileImageUri: string | null
+  hasCompletedFirstMondayPresence: boolean
+
+  setDisplayName: (name: string | null) => void
+  setProfileImageUri: (uri: string | null) => void
+  setHasCompletedFirstMondayPresence: (value: boolean) => void
+}
+
+export const usePresenceStore = create<PresenceState>()(
+  persist(
+    (set) => ({
+      displayName: null,
+      profileImageUri: null,
+      hasCompletedFirstMondayPresence: false,
+
+      setDisplayName: (name) => set({ displayName: name }),
+      setProfileImageUri: (uri) => set({ profileImageUri: uri }),
+      setHasCompletedFirstMondayPresence: (value) =>
+        set({ hasCompletedFirstMondayPresence: value }),
+    }),
+    {
+      name: "soul-school-presence",
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        displayName: state.displayName,
+        profileImageUri: state.profileImageUri,
+        hasCompletedFirstMondayPresence: state.hasCompletedFirstMondayPresence,
+      }),
+    },
+  ),
+)

@@ -12,10 +12,19 @@ export const Pill = ({
 }) => {
   return (
     <TouchableHighlight
-      className={`px-4 py-1.5 rounded-full border border-white ${className}`}
+      style={{
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        borderRadius: 9999,
+        borderWidth: 1,
+        borderColor: "#ffffff",
+        flexShrink: 0,
+      }}
       onPress={onPress}
     >
-      <AppText font="instrument-regular">{content}</AppText>
+      <AppText font="instrument-regular" style={{ color: "#ffffff" }}>
+        {content}
+      </AppText>
     </TouchableHighlight>
   )
 }

@@ -1,13 +1,15 @@
 import { View, ScrollView, Pressable } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
-import { LoadingSpinner } from "@/components/LoadingSpinner"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import PulsingButton from "@/components/chakras/PulsingButton"
+import Animated, { FadeIn, FadeOut, Easing } from "react-native-reanimated"
+import React, { useRef } from "react"
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { AppText } from "@/components/AppText"
 import { useRouter } from "expo-router"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import GoodbyeModal from "@/components/chakras/GoodbyeModal"
-import { getChakraIndex } from "@/utils/chakraMapping"
+import { getChakraIndex, getChakraFromDay } from "@/utils/chakraMapping"
+import { chakraContent } from "@/constants/chakras/content"
 import {
   getCurrentDayOfWeek,
   getCurrentWeekStartDateISO,
@@ -15,44 +17,74 @@ import {
 } from "@/utils/date"
 import { WaitingScreen } from "@/components/chakras/WaitingScreen"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import {
-  DeveloperTools,
-  DisplayMode,
-} from "@/components/chakras/DeveloperTools"
-import { PreviewJourney } from "@/components/chakras/PreviewJourney"
-import { DayProgressIndicator } from "@/components/chakras/DayProgressIndicator"
-import { ChakraStackIndicator } from "@/components/chakras/ChakraStackIndicator"
 import { IntegratedProgressStack } from "@/components/chakras/IntegratedProgressStack"
 import { WelcomeModal } from "@/components/chakras/WelcomeModal"
+import { PreviewJourney } from "@/components/chakras/PreviewJourney"
 import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
 import { useShallow } from "zustand/react/shallow"
 import { useChakrasData } from "@/hooks/useChakrasData"
 import { CommitmentGate } from "@/components/chakras/CommitmentGate"
-import { speakAsAnua, ANUA_FIRST_VOW, isElevenLabsAvailable } from "@/src/services/elevenlabs"
+// Anua access is handled globally by FloatingNavButtons
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
-import { AnuaLogo } from "@/components/anua/AnuaLogo"
+import { Image } from "react-native"
+import { getNextDayUnlockTimeString } from "@/utils/unlockTime"
 import {
-    shouldBypassTimegate,
-    shouldAutoStartJourney,
-    shouldShowWaitingScreen as shouldShowWaitingScreenCheck,
-    isChakraDayAccessible,
-    getGlobalDevMode,
-    setGlobalDevMode,
+  shouldShowWaitingScreen as shouldShowWaitingScreenCheck,
+  isChakraDayAccessible,
 } from "@/src/services/timegate"
-import { DevOverrideSystem } from "@/components/chakras/DevOverrideSystem"
+// PermanentMenuBar is now rendered globally in app/_layout.tsx
+import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
+// FrequencyHealingIcon - Temporarily disabled
+// import { FrequencyHealingIcon } from "@/components/chakras/FrequencyHealingIcon"
+// MiniAudioPlayer - Temporarily disabled
+// import { MiniAudioPlayer } from "@/components/chakras/MiniAudioPlayer"
+import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
+import { FirstMondayPresenceModal } from "@/components/presence/FirstMondayPresenceModal"
+import { usePresenceStore } from "@/hooks/usePresenceStore"
+import { useStoreRehydration } from "@/hooks/useStoreRehydration"
+
+/**
+ * APP_1 (Trial): Trial Home Screen
+ *
+ * This is the home screen for pre-paywall users (trial mode).
+ * Features:
+ * - Progressive chakra reveal (day-by-day unlock)
+ * - Timegates enforce weekly structure
+ * - Waiting screens between trials
+ * - Payment gate after 2 trials
+ *
+ * ARCHITECTURE: Part of "Two Apps in One" - this is App 1 (Trial)
+ */
 
 // Infer the state type from the store hook
 type ChakraJourneyState = ReturnType<(typeof useChakraJourneyStore)["getState"]>
 
+/**
+ * Trial Home Screen Component
+ *
+ * APP_1: Pre-paywall trial experience with timegates and progressive reveal
+ */
 export const ChakraHome = () => {
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+
   // Memoize expensive date calculations - these don't change during component lifecycle
   const realDayOfWeek = useMemo(() => getCurrentDayOfWeek(), [])
   const currentWeekStartDate = useMemo(() => getCurrentWeekStartDateISO(), [])
 
-  // State for the day we're displaying, initialized with the real day
-  // This allows the Developer Tools to override the displayed day for testing.
+  // APP_1 (Trial): Lock to 7 days of the week for trials
+  // Use real day of week (0-6, Monday-Sunday) - NOT journey progress
+  // This ensures trials are locked to calendar days, not journey days
+  // Default starting place: Monday (day 0) = Root chakra only
   const [currentDay, setCurrentDay] = useState(realDayOfWeek)
+
+  // Update currentDay when real day of week changes (e.g., user opens app on different day)
+  // This ensures the trial always reflects the actual day of the week
+  useEffect(() => {
+    setCurrentDay(realDayOfWeek)
+  }, [realDayOfWeek])
 
   // Get journey store state and actions
   const {
@@ -69,6 +101,10 @@ export const ChakraHome = () => {
     hasLifetimeAccess,
     allChakrasCompleted,
     completedChakras,
+    trialHistory,
+    lifetimeChosenTimegateJourney,
+    devOpenPaywall,
+    setDevOpenPaywall,
   } = useChakraJourneyStore(
     useShallow((state: ChakraJourneyState) => ({
       journeyStarted: state.journeyStarted,
@@ -84,15 +120,23 @@ export const ChakraHome = () => {
       hasLifetimeAccess: state.hasLifetimeAccess,
       allChakrasCompleted: state.allChakrasCompleted,
       completedChakras: state.completedChakras,
+      trialHistory: state.trialHistory,
+      lifetimeChosenTimegateJourney: state.lifetimeChosenTimegateJourney,
+      devOpenPaywall: state.devOpenPaywall,
+      setDevOpenPaywall: state.setDevOpenPaywall,
     })),
   )
 
   // Get first launch state
-  const { isFirstLaunch, setFirstLaunchComplete, resetForTesting } =
-    useFirstLaunchStore()
+  const { isFirstLaunch, setFirstLaunchComplete } = useFirstLaunchStore()
+
+  // Get Anua introduction state
+  // AnuaIntroductionPopup temporarily disabled
 
   // State for welcome modal
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+
+  // Note: Anua access is handled globally by FloatingNavButtons
 
   // Whether to show waiting screen (show if not Monday and journey not started)
   const [showWaitingScreen, setShowWaitingScreen] = useState(false)
@@ -103,59 +147,34 @@ export const ChakraHome = () => {
   // Whether to show payment gate (Day 14 - Sunday of second trial)
   const [showPaymentGate, setShowPaymentGate] = useState(false)
 
-  // State for showing/hiding developer tools
-  const [showDevTools, setShowDevTools] = useState(false)
-  
-  // State for dev override system
-  const [showDevOverride, setShowDevOverride] = useState(false)
-  
-  // Sync global dev mode with dev override system (works even when __DEV__ is not set)
-  const [globalDevMode, setGlobalDevModeState] = useState(() => getGlobalDevMode())
-  
-  // Update global dev mode state when it changes
-  useEffect(() => {
-    const checkDevMode = () => {
-      const currentDevMode = getGlobalDevMode()
-      if (currentDevMode !== globalDevMode) {
-        setGlobalDevModeState(currentDevMode)
-      }
-    }
-    // Check periodically (every 500ms) for changes
-    const interval = setInterval(checkDevMode, 500)
-    return () => clearInterval(interval)
-  }, [globalDevMode])
-
-  // State for display mode (horizontal, vertical, integrated)
-  const [displayMode, setDisplayMode] = useState<DisplayMode>(
-    DisplayMode.INTEGRATED,
-  )
-
-  const router = useRouter()
   const [isModalVisible, setModalVisible] = useState(false)
+  const [showFirstMondayPresenceModal, setShowFirstMondayPresenceModal] = useState(false)
+  const hasTriggeredFirstMondayPresenceRef = useRef(false)
+
+  const hasCompletedFirstMondayPresence = usePresenceStore(
+    (s) => s.hasCompletedFirstMondayPresence,
+  )
 
   const { completedChakra, clearCompletedChakra } = useCompletedChakraStore()
 
+  const storeRehydrationReady = useStoreRehydration((s) =>
+    s.safetyPassed ? true : s.journeyRehydrated && s.firstLaunchRehydrated,
+  )
+
   // Fetch chakra data from Firestore
-  const { chakrasData, isLoading: isLoadingChakras, error: chakrasError } =
-    useChakrasData()
+  const {
+    chakrasData,
+    isLoading: isLoadingChakras,
+    error: chakrasError,
+  } = useChakrasData()
 
   // Set initial open date on first launch
-  // In dev mode, also ensure journey starts immediately
   useEffect(() => {
     if (isFirstLaunch && !initialOpenDate) {
-      const today = new Date().toISOString().split('T')[0]
+      const today = new Date().toISOString().split("T")[0]
       setInitialOpenDate(today)
     }
-    
-    // Development Override: Auto-start journey if in dev mode and not started
-    const bypassTimegate = shouldBypassTimegate(hasLifetimeAccess)
-    if (bypassTimegate && !journeyStarted) {
-      if (__DEV__) {
-        console.log('[ChakraHome] Dev mode: Auto-starting journey')
-      }
-      startJourney(currentWeekStartDate)
-    }
-  }, [isFirstLaunch, initialOpenDate, setInitialOpenDate, hasLifetimeAccess, journeyStarted, startJourney, currentWeekStartDate])
+  }, [isFirstLaunch, initialOpenDate, setInitialOpenDate])
 
   // Check if this is the first launch and show welcome modal
   useEffect(() => {
@@ -169,18 +188,37 @@ export const ChakraHome = () => {
   //     console.log('[ChakraHome State Log] journeyStarted is now:', journeyStarted)
   // }, [journeyStarted])
 
-  // Memoize expensive timegate calculations
-  const bypassTimegate = useMemo(() => {
-    return shouldBypassTimegate(hasLifetimeAccess) || globalDevMode
-  }, [hasLifetimeAccess, globalDevMode])
+  // Get current trial number (number of completed trials - trialHistory.length)
+  // Current trial is trialHistory.length + 1 (if journeyStarted) or 0 (if not started)
+  const currentTrialNumber = useMemo(() => {
+    if (!journeyStarted) return 0
+    return trialHistory.length + 1 // Current trial = completed trials + 1
+  }, [trialHistory.length, journeyStarted])
 
-  const hasCompletedTwoTrials = useMemo(() => {
-    return completedTrialCourses === 2
-  }, [completedTrialCourses])
-
+  // APP_1 (Trial): Payment gate logic
+  // 1. After trial 1 (Sunday night): If all 7 days completed → paywall opens
+  // 2. After trial 2 (Sunday night): Paywall opens regardless of completion
+  // NOTE: This is APP_1 (Trial) specific - APP_2 (Lifetime) never shows payment gate
   const shouldShowCommitmentGate = useMemo(() => {
-    return hasCompletedTwoTrials && !hasLifetimeAccess && !bypassTimegate
-  }, [hasCompletedTwoTrials, hasLifetimeAccess, bypassTimegate])
+    if (hasLifetimeAccess) return false // APP_2 (Lifetime): Never show payment gate
+
+    const isSunday = currentDay === 6 // Sunday is day 6
+
+    // Trial 1: Show paywall on Sunday if all 7 days completed
+    const isFirstTrialComplete =
+      currentTrialNumber === 1 && allChakrasCompleted && isSunday
+
+    // Trial 2: Show paywall on Sunday regardless of completion
+    const isSecondTrialEnded = currentTrialNumber === 2 && isSunday
+
+    return isFirstTrialComplete || isSecondTrialEnded
+  }, [
+    currentTrialNumber,
+    allChakrasCompleted,
+    currentDay,
+    hasLifetimeAccess,
+    journeyStarted,
+  ])
 
   const hasReachedStartDate = useMemo(() => {
     if (!courseStartDate) return false
@@ -196,9 +234,16 @@ export const ChakraHome = () => {
     // and whether the journey has started. It determines if the waiting screen
     // should be shown or if the journey should be automatically started (on Mondays).
 
+    // Dev only: red dev button sets this to open paywall for testing
+    if (devOpenPaywall) {
+      setDevOpenPaywall(false)
+      setShowPaymentGate(true)
+      setShowWaitingScreen(false)
+      return
+    }
+
     // Check if we should show commitment gate after 14 days (2 complete trials)
     // Commitment gate appears after completing 2 full 7-day trials
-    // Skip commitment gate in development mode
     if (shouldShowCommitmentGate) {
       setShowPaymentGate(true)
       setShowWaitingScreen(false)
@@ -207,38 +252,64 @@ export const ChakraHome = () => {
       setShowPaymentGate(false)
     }
 
-    // Development Override or Lifetime Access: Bypass all time gates
-    if (bypassTimegate) {
-      setShowWaitingScreen(false)
-      // Auto-start journey if not already started
-      if (!journeyStarted) {
-        startJourney(currentWeekStartDate)
+    // APP_2 (Lifetime): Redirect to ChakraHub UNLESS they intentionally chose the timegate journey
+    // (ChakraHub → DateSelection → ChakraHome: they want the Monday-Sunday experience)
+    if (hasLifetimeAccess) {
+      const lifetimeChosenTimegate =
+        useChakraJourneyStore.getState().lifetimeChosenTimegateJourney
+      if (!lifetimeChosenTimegate) {
+        router.replace("/(chakras)/ChakraHub")
+        setShowWaitingScreen(false)
+        setShowPaymentGate(false)
+        return
       }
-      return
+      // They chose the journey - show trial experience with hamburger to return to ChakraHub
     }
 
-    // Time gate logic only applies during trial phase (not in dev mode)
+    // APP_1 (Trial): Time gate logic only applies during trial phase (not in dev mode)
     if (!courseStartDate) {
       // Course start date not yet calculated - wait for initial open date to be set
       // But in dev mode, we've already bypassed above
       return
     }
 
-    // Check if we should show the waiting screen using timegate service
+    // APP_1 (Trial) / APP_2 (Lifetime somatic journey): Check if we should show the waiting screen
+    // Pass lifetimeChosenTimegateJourney so lifetime users in somatic flow see waiting until Monday
     const showWaiting = shouldShowWaitingScreenCheck(
       hasLifetimeAccess,
       hasReachedStartDate,
       isMonday,
       journeyStarted,
+      isFirstLaunch,
+      courseStartDate,
+      lifetimeChosenTimegateJourney,
     )
+
+    // Mark first launch as complete AFTER we've determined to show waiting screen
+    // This ensures the waiting screen logic works correctly on first-time onboarding
+    if (isFirstLaunch && showWaiting) {
+      setFirstLaunchComplete()
+    }
+
+    // Set waiting screen state
     setShowWaitingScreen(showWaiting)
 
     // Auto-start logic:
     // - First trial: Auto-start on Monday if course start date reached
+    // - Lifetime somatic journey: Auto-start on Monday (fresh course, ignore completedTrialCourses)
     // - After Trial 1: DON'T auto-start - user must press "Begin Again"
     // - After Trial 2: Show paywall (handled above)
-    const shouldAutoStart = hasReachedStartDate && isMonday && !journeyStarted && completedTrialCourses === 0
-    
+    // IMPORTANT: Don't auto-start if we're showing the waiting screen (first-time onboarding)
+    const canAutoStart =
+      completedTrialCourses === 0 ||
+      (hasLifetimeAccess && lifetimeChosenTimegateJourney)
+    const shouldAutoStart =
+      hasReachedStartDate &&
+      isMonday &&
+      !journeyStarted &&
+      canAutoStart &&
+      !showWaiting
+
     if (shouldAutoStart) {
       startJourney(currentWeekStartDate)
     }
@@ -249,10 +320,33 @@ export const ChakraHome = () => {
     currentWeekStartDate,
     courseStartDate,
     shouldShowCommitmentGate,
-    bypassTimegate,
     hasReachedStartDate,
     isMonday,
     hasLifetimeAccess,
+    isFirstLaunch,
+    setFirstLaunchComplete,
+    shouldShowWaitingScreenCheck,
+    completedTrialCourses,
+    lifetimeChosenTimegateJourney,
+    devOpenPaywall,
+    setDevOpenPaywall,
+  ])
+
+  // First Monday presence: when user first sees main home (no waiting) on or after course start, show once
+  useEffect(() => {
+    if (
+      !showWaitingScreen &&
+      hasReachedStartDate &&
+      !hasCompletedFirstMondayPresence &&
+      !hasTriggeredFirstMondayPresenceRef.current
+    ) {
+      hasTriggeredFirstMondayPresenceRef.current = true
+      setShowFirstMondayPresenceModal(true)
+    }
+  }, [
+    showWaitingScreen,
+    hasReachedStartDate,
+    hasCompletedFirstMondayPresence,
   ])
 
   useEffect(() => {
@@ -278,14 +372,14 @@ export const ChakraHome = () => {
   const chakraData = useMemo(() => {
     return chakrasData.length > 0 ? chakrasData : []
   }, [chakrasData])
-  
+
   // Debug logging in dev mode (MUST be before any conditional returns to follow Rules of Hooks)
   // Removed conditional __DEV__ check inside useEffect to ensure hook is always called
   // The console.log itself is conditional, but the hook is always called
   useEffect(() => {
     // Only log in dev mode, but hook is always called to maintain hook order
     if (__DEV__) {
-      console.log('[ChakraHome Debug]', {
+      console.log("[ChakraHome Debug]", {
         chakraDataLength: chakrasData.length,
         journeyStarted,
         hasLifetimeAccess,
@@ -295,7 +389,13 @@ export const ChakraHome = () => {
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chakrasData.length, journeyStarted, hasLifetimeAccess, currentDay, isLoadingChakras])
+  }, [
+    chakrasData.length,
+    journeyStarted,
+    hasLifetimeAccess,
+    currentDay,
+    isLoadingChakras,
+  ])
 
   const closeModal = () => {
     setModalVisible(false)
@@ -318,16 +418,15 @@ export const ChakraHome = () => {
     // and it's a Monday, as handled by the time gate logic in the useEffect
   }
 
-  // Preview handler for the waiting screen
+  // Preview handler for the waiting screen - Show PreviewJourney component
   const handlePreviewPress = () => {
     setShowPreview(true)
-    setShowWaitingScreen(false)
   }
 
   // Handler to return from preview to waiting screen
   const handleBackFromPreview = () => {
     setShowPreview(false)
-    setShowWaitingScreen(true)
+    // Don't set showWaitingScreen back to true - let the normal flow handle it
   }
 
   // Gallery handler - navigate to gallery of gnosis
@@ -335,7 +434,22 @@ export const ChakraHome = () => {
     router.push("/(chakras)/GalleryOfGnosis")
   }
 
+  // Learn About Chakras handler
+  const handleLearnAboutChakrasPress = () => {
+    // Use push to maintain navigation stack so router.back() works correctly
+    router.push("/(chakras)/Chakras101")
+  }
+
+  // Toggle waiting screen (for testing)
+  const toggleWaitingScreen = () => {
+    setShowWaitingScreen(!showWaitingScreen)
+    if (showPreview) {
+      setShowPreview(false)
+    }
+  }
+
   // Check if user has any unlocked chakra cards (across all trials)
+  // MUST be before any early returns to follow Rules of Hooks
   const hasUnlockedCards = useMemo(() => {
     // Check if any chakra was ever completed
     for (let i = 0; i < 7; i++) {
@@ -346,33 +460,33 @@ export const ChakraHome = () => {
     return false
   }, [hasEverCompletedChakra, completedChakras])
 
-  // Toggle waiting screen (for testing)
-  const toggleWaitingScreen = () => {
-    setShowWaitingScreen(!showWaitingScreen)
-    if (showPreview) {
-      setShowPreview(false)
-    }
-  }
+  // Render chakra display - always use IntegratedProgressStack
+  const renderChakraDisplay = useCallback((): React.ReactElement => {
+    return (
+      <IntegratedProgressStack
+        currentDay={currentDay}
+        hasCompletedChakra={hasCompletedChakra}
+        hasParticipatedDay={hasParticipatedDay}
+        allChakrasCompleted={allChakrasCompleted}
+        hasLifetimeAccess={hasLifetimeAccess}
+        inCourseMode={hasLifetimeAccess} // Lifetime somatic journey: apply trial timegates
+        chakraData={chakraData}
+        router={router}
+      />
+    )
+  }, [
+    currentDay,
+    hasCompletedChakra,
+    hasParticipatedDay,
+    allChakrasCompleted,
+    hasLifetimeAccess,
+    chakraData,
+    router,
+  ])
 
-  // Toggle developer tools visibility
-  const toggleDevTools = () => {
-    setShowDevTools(!showDevTools)
-  }
+  // Note: Anua access is handled globally by FloatingNavButtons
 
-  // Handler for changing the day
-  const handleChangeDay = () => {
-    const nextDay = (currentDay + 1) % 7
-    // console.log(`[ChakraHome handleChangeDay] Changing day from ${currentDay} to ${nextDay}`) // <-- Remove log
-    setCurrentDay(nextDay)
-  }
-
-  // Update developer tools to include first launch reset
-  const resetFirstLaunch = () => {
-    resetForTesting()
-    setShowWelcomeModal(true)
-  }
-
-  // console.log('[ChakraHome Rendering Check] showWaitingScreen:', showWaitingScreen, 'showPreview:', showPreview) // <-- Remove this log
+  // ALL HOOKS MUST BE ABOVE THIS LINE - NO HOOKS AFTER EARLY RETURNS
 
   // If showing payment gate, render it (highest priority)
   if (showPaymentGate) {
@@ -390,381 +504,415 @@ export const ChakraHome = () => {
     return <PreviewJourney onBackPress={handleBackFromPreview} />
   }
 
-  // If showing waiting screen, render it instead of chakras
-  if (showWaitingScreen) {
+  // Welcome (first launch) or Waiting room: show when waiting, or when trial user has no start date yet.
+  // Do not show main content until persisted stores have rehydrated (prevents skipping to chakra home
+  // on first paint before we know real courseStartDate / isFirstLaunch).
+  const needsWelcomeOrWaiting =
+    !storeRehydrationReady ||
+    showWaitingScreen ||
+    showWelcomeModal ||
+    isFirstLaunch ||
+    (hasLifetimeAccess === false && !courseStartDate)
+  if (needsWelcomeOrWaiting) {
     return (
-      <WaitingScreen
-        onPreviewPress={handlePreviewPress}
-        onHideWaitingScreen={() => setShowWaitingScreen(false)}
-        onGalleryPress={hasUnlockedCards ? handleGalleryPress : undefined}
-        onBeginAgainPress={completedTrialCourses === 1 && isMonday ? () => {
-          startJourney(currentWeekStartDate)
-          setShowWaitingScreen(false)
-        } : undefined}
-        completedTrialCourses={completedTrialCourses}
-        hasLifetimeAccess={hasLifetimeAccess}
-        onPayPress={() => {
-          setShowPaymentGate(true)
-          setShowWaitingScreen(false)
-        }}
-      />
-    )
-  }
-
-  // Show loading state while fetching chakra data
-  if (isLoadingChakras) {
-    return (
-      <View className="flex-1 justify-center items-center bg-black">
-        <LoadingSpinner size={120} />
-        <AppText font="instrument-medium" size="lg" className="mt-4 text-white italic">
-          Preparing your sacred space...
-        </AppText>
+      <View style={{ flex: 1, backgroundColor: "#000000" }}>
+        {showWaitingScreen && (
+        <WaitingScreen
+          onPreviewPress={handlePreviewPress}
+          onHideWaitingScreen={() => setShowWaitingScreen(false)}
+          onGalleryPress={hasUnlockedCards ? handleGalleryPress : undefined}
+          onBeginAgainPress={
+            completedTrialCourses === 1 && isMonday
+              ? () => {
+                  startJourney(currentWeekStartDate)
+                  setShowWaitingScreen(false)
+                }
+              : undefined
+          }
+          onLearnAboutChakrasPress={handleLearnAboutChakrasPress}
+          completedTrialCourses={completedTrialCourses}
+          hasLifetimeAccess={hasLifetimeAccess}
+          onPayPress={() => {
+            setShowPaymentGate(true)
+            setShowWaitingScreen(false)
+          }}
+          onExitCourseMode={
+            hasLifetimeAccess
+              ? () => {
+                  useChakraJourneyStore
+                    .getState()
+                    .setLifetimeChosenTimegateJourney(false)
+                  router.replace("/(chakras)/ChakraHub")
+              }
+            : undefined
+          }
+        />
+        )}
+        <WelcomeModal
+          isVisible={
+            showWelcomeModal ||
+            isFirstLaunch ||
+            (hasLifetimeAccess === false && !courseStartDate)
+          }
+          onClose={handleWelcomeModalClose}
+          onBeginJourney={handleBeginJourney}
+          currentDayOfWeek={realDayOfWeek}
+          completedTrialCourses={completedTrialCourses}
+          initialOpenDate={initialOpenDate}
+        />
       </View>
     )
   }
 
-  // Show error state if fetching failed
+  // Somatic flow: No loading screen - smooth fade-in instead
+  // Content appears naturally as data becomes available, creating embodied flow
+  // Applied somatic healing principles: natural timing, breathing rhythms, smooth transitions
+
+  // Show error state if fetching failed (with smooth fade-in)
   if (chakrasError) {
     return (
-      <View className="flex-1 justify-center items-center bg-black p-8">
-        <AppText font="instrument-medium" size="lg" className="text-center mb-4 text-white/90">
+      <Animated.View
+        entering={FadeIn.duration(1200).easing(Easing.out(Easing.ease))}
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#000000",
+          padding: 32,
+        }}
+      >
+        <AppText
+          font="instrument-medium"
+          size="lg"
+          style={{ textAlign: "center", marginBottom: 16, color: "rgba(255,255,255,0.9)" }}
+        >
           The chakras are taking a moment to arrive
         </AppText>
-        <AppText font="instrument-regular" size="base" className="text-center text-white/70 italic">
+        <AppText
+          font="instrument-regular"
+          size="base"
+          style={{ textAlign: "center", color: "rgba(255,255,255,0.7)", fontStyle: "italic" }}
+        >
           Please try again, or continue your journey
         </AppText>
-      </View>
+      </Animated.View>
     )
-  }
-
-  // Memoize unlocked count calculation for Gallery button
-  // Use completedChakras array directly for better performance
-  const unlockedCount = useMemo(() => {
-    return completedChakras.length
-  }, [completedChakras])
-
-  // Memoize render function to prevent recreation on every render
-  const renderChakraDisplay = useCallback(() => {
-    switch (displayMode) {
-      case DisplayMode.HORIZONTAL:
-        return (
-          <View className="flex-1 mt-16">
-            <DayProgressIndicator
-              currentDay={currentDay}
-              hasCompletedChakra={hasCompletedChakra}
-              hasParticipatedDay={hasParticipatedDay}
-              allChakrasCompleted={allChakrasCompleted}
-            />
-            <View className="flex-1 justify-end">
-              {/* Horizontal Day Progress Indicator */}
-              <View className="flex flex-col-reverse items-center justify-end w-full p-4">
-                {chakraData.map(
-                  ({
-                    day: chakraDay,
-                    affirmation,
-                    description,
-                    source,
-                    onPress,
-                  }) => (
-                    <View key={chakraDay}>
-                      {currentDay === chakraDay && (
-                        <View className="flex flex-col items-center justify-end w-full pb-2 pt-6">
-                          <AppText font="instrument-medium" size="lg">
-                            {affirmation}
-                          </AppText>
-                          <AppText
-                            font="instrument-medium"
-                            size="2xl"
-                            className="mt-1"
-                          >
-                            {description}
-                          </AppText>
-                        </View>
-                      )}
-                      {/* Show chakra if accessible (uses timegate service with dev override) */}
-                      {isChakraDayAccessible(
-                        chakraDay,
-                        hasLifetimeAccess,
-                        hasParticipatedDay,
-                        currentDay,
-                        allChakrasCompleted,
-                      ) && (
-                        <View>
-                          <PulsingButton
-                            source={source}
-                            isAnimating={currentDay === chakraDay}
-                            onPress={() => {
-                              onPress(router)
-                            }}
-                            small={true}
-                          />
-                        </View>
-                      )}
-                    </View>
-                  ),
-                )}
-              </View>
-            </View>
-          </View>
-        )
-
-      case DisplayMode.VERTICAL:
-        return (
-          <View className="flex-1 justify-end">
-            {/* Vertical Chakra Stack Indicator */}
-            <ChakraStackIndicator
-              currentDay={currentDay}
-              hasCompletedChakra={hasCompletedChakra}
-              hasParticipatedDay={hasParticipatedDay}
-              allChakrasCompleted={allChakrasCompleted}
-            />
-
-            <View className="flex flex-col-reverse items-center justify-end w-full p-4">
-              {chakraData.map(
-                ({
-                  day: chakraDay,
-                  affirmation,
-                  description,
-                  source,
-                  onPress,
-                }) => (
-                  <View key={chakraDay}>
-                    {currentDay === chakraDay && (
-                      <View className="flex flex-col items-center justify-end w-full pb-2 pt-6">
-                        <AppText font="instrument-medium" size="lg">
-                          {affirmation}
-                        </AppText>
-                        <AppText
-                          font="instrument-medium"
-                          size="2xl"
-                          className="mt-1"
-                        >
-                          {description}
-                        </AppText>
-                      </View>
-                    )}
-                    {/* Show chakra if accessible (uses timegate service with dev override) */}
-                    {isChakraDayAccessible(
-                      chakraDay,
-                      hasLifetimeAccess,
-                      hasParticipatedDay,
-                      currentDay,
-                      allChakrasCompleted,
-                    ) && (
-                      <View>
-                        <PulsingButton
-                          source={source}
-                          isAnimating={currentDay === chakraDay}
-                          onPress={() => {
-                            onPress(router)
-                          }}
-                        />
-                      </View>
-                    )}
-                  </View>
-                ),
-              )}
-            </View>
-          </View>
-        )
-
-      case DisplayMode.INTEGRATED:
-        return (
-          <IntegratedProgressStack
-            currentDay={currentDay}
-            hasCompletedChakra={hasCompletedChakra}
-            hasParticipatedDay={hasParticipatedDay}
-            allChakrasCompleted={allChakrasCompleted}
-            chakraData={chakraData}
-            router={router}
-          />
-        )
-
-      default:
-        return null
-    }
-  }, [displayMode, currentDay, hasCompletedChakra, hasParticipatedDay, allChakrasCompleted, hasLifetimeAccess, chakraData, router])
-
-  // Handler for Anua's first vow test button
-  const handleAnuaGreeting = async () => {
-    try {
-      if (isElevenLabsAvailable()) {
-        await speakAsAnua(ANUA_FIRST_VOW)
-      } else if (__DEV__) {
-        if (__DEV__) {
-          console.warn('ChakraHome: ElevenLabs is not configured. Please add ELEVENLABS_API_KEY and ANUA_VOICE_ID to your .env file.')
-        }
-      }
-    } catch (error) {
-      if (__DEV__) {
-        if (__DEV__) {
-          console.error('ChakraHome: Error speaking Anua greeting:', error)
-        }
-      }
-    }
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-black" edges={['top', 'bottom']}>
-      {/* Developer Tools Component */}
-      <DeveloperTools
-        showDevTools={showDevTools}
-        toggleDevTools={toggleDevTools}
-        currentDay={currentDay}
-        onChangeDay={handleChangeDay}
-        toggleWaitingScreen={toggleWaitingScreen}
-        displayMode={displayMode}
-        setDisplayMode={setDisplayMode}
-        resetFirstLaunch={resetFirstLaunch}
-      />
-
-      {/* Progress Indicator - Day X of 7 */}
-      {journeyStarted && (
-        <View className="absolute top-20 left-4 z-50">
-          <View className="bg-purple-900/30 px-4 py-2 rounded-lg border border-purple-700/50">
-            <AppText font="instrument-medium" size="sm" className="text-white">
-              Day {currentDay + 1} of 7
-            </AppText>
-            <View className="mt-1 h-1 bg-purple-700/30 rounded-full overflow-hidden">
-              <View 
-                className="h-full bg-purple-400 rounded-full"
-                style={{ width: `${((currentDay + 1) / 7) * 100}%` }}
-              />
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Top Right Buttons */}
-      <View className="absolute top-20 right-4 z-50 flex-row gap-3">
-        {/* ChakraHub Button - For Lifetime Access Users */}
+    <Animated.View
+      entering={FadeIn.duration(1400).easing(Easing.out(Easing.ease))}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }} edges={["top", "bottom"]}>
+        {/* APP_2 (Lifetime) → APP_1 (Trial) Switch: Hamburger menu to return to App 2 */}
         {hasLifetimeAccess && (
           <Pressable
-            onPress={() => router.push('/(chakras)/ChakraHub')}
-            className="active:opacity-80"
-            style={{ shadowColor: '#9D4EDD', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+            onPress={() => {
+              addHapticFeedback(HapticStrength.Light)
+              useChakraJourneyStore
+                .getState()
+                .setLifetimeChosenTimegateJourney(false)
+              router.replace("/(chakras)/ChakraHub")
+            }}
+            style={{
+              position: "absolute",
+              top: 60,
+              left: 16,
+              zIndex: 1000,
+              width: 44,
+              height: 44,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "rgba(0, 0, 0, 0.7)",
+              borderRadius: 22,
+              borderWidth: 1,
+              borderColor: "rgba(255, 255, 255, 0.2)",
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Return to Hub"
+            accessibilityHint="Tap to return to your sacred space"
           >
-            <LinearGradient
-              colors={['#9D4EDD', '#7B2CBF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                borderRadius: 12,
-                padding: 12,
-                borderWidth: 2,
-                borderColor: '#FFD700',
-              }}
-            >
-              <View className="flex-row items-center">
-                <Ionicons name="home" size={18} color="#FFD700" style={{ marginRight: 6 }} />
-                <AppText font="instrument-medium" size="sm" className="text-white">
-                  Hub
+            <View style={{ gap: 4 }}>
+              <View
+                style={{
+                  width: 20,
+                  height: 2,
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  borderRadius: 1,
+                }}
+              />
+              <View
+                style={{
+                  width: 20,
+                  height: 2,
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  borderRadius: 1,
+                }}
+              />
+              <View
+                style={{
+                  width: 20,
+                  height: 2,
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  borderRadius: 1,
+                }}
+              />
+            </View>
+          </Pressable>
+        )}
+        {/* Note: GlobalHomeButton handles "chakras 101" link on home screen (top right) */}
+
+        {/* Hamburger – Profile (name, photo, Soul School ID). Same position as ChakraHub. */}
+        <Pressable
+          onPress={() => {
+            addHapticFeedback(HapticStrength.Light)
+            useProfileSheetStore.getState().open()
+          }}
+          style={{
+            position: "absolute",
+            top: Math.max(insets.top, 8) + 12,
+            right: 16,
+            zIndex: 100,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            borderWidth: 1,
+            borderColor: "rgba(255, 255, 255, 0.15)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel="Profile menu"
+          accessibilityHint="View your profile and Soul School ID"
+        >
+          <Ionicons name="menu" size={22} color="rgba(255, 255, 255, 0.9)" />
+        </Pressable>
+
+        {/* ScrollView to enable scrolling through chakras */}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingVertical: 40,
+            minHeight: "100%",
+          }}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+          bounces={true}
+          nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* UX Improvement: Trial Progress Indication */}
+          {!hasLifetimeAccess &&
+            completedTrialCourses > 0 &&
+            journeyStarted && (
+              <View style={{ alignItems: "center", paddingHorizontal: 24, marginBottom: 16 }}>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{ color: "rgba(255,255,255,0.5)", textAlign: "center" }}
+                >
+                  {completedTrialCourses === 1
+                    ? "Trial 2 of 2"
+                    : "Trial 1 of 2"}
                 </AppText>
               </View>
-            </LinearGradient>
-          </Pressable>
-        )}
-        
-        {/* Gallery of Gnosis Button */}
-        {unlockedCount > 0 && (
-              <Pressable
-                onPress={() => router.push('/(chakras)/GalleryOfGnosis')}
-                className="active:opacity-80"
-                style={{ shadowColor: '#9D4EDD', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
-              >
-                <LinearGradient
-                  colors={['#9D4EDD', '#7B2CBF']} // Purple gradient
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    borderRadius: 12,
-                    padding: 12,
-                    borderWidth: 2,
-                    borderColor: '#FFD700', // Gold border
-                  }}
-                >
-                  <View className="flex-row items-center">
-                    <Ionicons name="images" size={18} color="#FFD700" style={{ marginRight: 6 }} />
-                    <AppText font="instrument-medium" size="sm" className="text-white">
-                      Gallery
-                    </AppText>
-                    {unlockedCount > 0 && (
-                      <View className="ml-2 bg-[#FFD700] rounded-full px-2 py-0.5 min-w-[20px] items-center">
-                        <AppText font="instrument-bold" size="xs" className="text-black">
-                          {unlockedCount}
-                        </AppText>
-                      </View>
-                    )}
-                  </View>
-                </LinearGradient>
-              </Pressable>
-        )}
+            )}
 
-        {/* Anua Button - Wisdom and Light */}
-        {isElevenLabsAvailable() && (
-          <Pressable
-            onPress={handleAnuaGreeting}
-            className="active:opacity-80"
-            style={{ 
-              shadowColor: '#E0B0FF', 
-              shadowOffset: { width: 0, height: 4 }, 
-              shadowOpacity: 0.5, 
-              shadowRadius: 12,
-              elevation: 8,
-            }}
-          >
-            <LinearGradient
-              colors={['#9D4EDD', '#7B2CBF', '#6A1B9A']} // Deep purple gradient
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+          {/* Show "Continue Your Journey" button if user has completed 2 trials but hasn't paid */}
+          {completedTrialCourses === 2 && !hasLifetimeAccess && (
+            <View
               style={{
-                borderRadius: 16,
-                padding: 10,
-                borderWidth: 2,
-                borderColor: '#FFD700', // Gold border
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: 50,
-                minHeight: 50,
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                paddingHorizontal: 24,
+                paddingVertical: 80,
               }}
             >
-              <View className="items-center justify-center">
-                {/* Anua Logo */}
-                <AnuaLogo size={28} animated={true} />
+              <View style={{ alignItems: "center", maxWidth: 448, gap: 24 }}>
+                <AppText
+                  font="instrument-bold"
+                  size="2xl"
+                  style={{ textAlign: "center", marginBottom: 16, color: "rgba(255,255,255,0.9)" }}
+                >
+                  Your Journey Awaits
+                </AppText>
+                <AppText
+                  font="instrument-regular"
+                  size="base"
+                  style={{ textAlign: "center", marginBottom: 16, color: "rgba(255,255,255,0.7)", lineHeight: 24 }}
+                >
+                  You've completed both trials. Continue your path with lifetime
+                  access to all teachings and sacred spaces.
+                </AppText>
+
+                {/* Learn About Chakras Button */}
+                <Pressable
+                  onPress={handleLearnAboutChakrasPress}
+                  style={{ width: "100%" }}
+                  accessibilityLabel="Learn About Chakras"
+                  accessibilityHint="Explore the 7 chakras"
+                >
+                  <View
+                    style={{
+                      borderRadius: 16,
+                      paddingVertical: 14,
+                      paddingHorizontal: 24,
+                      alignItems: "center",
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255, 255, 255, 0.1)",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Image
+                      source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
+                      style={{ width: 28, height: 14 }}
+                      resizeMode="contain"
+                    />
+                    <AppText
+                      font="instrument-regular"
+                      size="base"
+                      style={{ color: "rgba(255,255,255,0.8)", marginLeft: 12 }}
+                    >
+                      Learn About Chakras
+                    </AppText>
+                  </View>
+                </Pressable>
+
+                {/* Continue Your Journey Button */}
+                <Pressable
+                  onPress={() => {
+                    addHapticFeedback(HapticStrength.Medium)
+                    setShowPaymentGate(true)
+                  }}
+                  style={{ width: "100%" }}
+                  accessibilityLabel="Continue Your Journey"
+                  accessibilityHint="Proceed to payment options"
+                >
+                  <LinearGradient
+                    colors={["#60a5fa", "#a855f7", "#fb923c"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      borderRadius: 16,
+                      paddingVertical: 16,
+                      paddingHorizontal: 32,
+                      alignItems: "center",
+                      shadowColor: "#60a5fa",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 8,
+                      elevation: 8,
+                    }}
+                  >
+                    <AppText
+                      font="instrument-bold"
+                      size="lg"
+                      style={{ color: "#ffffff" }}
+                    >
+                      Continue Your Journey
+                    </AppText>
+                  </LinearGradient>
+                </Pressable>
               </View>
-            </LinearGradient>
-          </Pressable>
+            </View>
+          )}
+
+          {/* Chakra Cards button: gradient depth + chakra icon pop */}
+          {!hasLifetimeAccess &&
+            hasUnlockedCards &&
+            journeyStarted &&
+            !(completedTrialCourses === 2 && !hasLifetimeAccess) && (
+              <View style={{ alignItems: "center", paddingHorizontal: 24, marginBottom: 16 }}>
+                <Pressable
+                  onPress={handleGalleryPress}
+                  style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1 }]}
+                  accessibilityLabel="View Your Chakra Cards"
+                  accessibilityHint="Open Gallery of Gnosis"
+                >
+                  <LinearGradient
+                    colors={[
+                      "rgba(135, 174, 115, 0.22)",
+                      "rgba(135, 174, 115, 0.1)",
+                      "rgba(6, 182, 212, 0.12)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 12,
+                      paddingHorizontal: 18,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "rgba(6, 182, 212, 0.35)",
+                      shadowColor: "rgba(6, 182, 212, 0.3)",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }}
+                  >
+                    <Image
+                      source={require("@/assets/images/7chakras.png")}
+                      style={{ width: 28, height: 28, marginRight: 10 }}
+                      resizeMode="contain"
+                      accessibilityLabel="Chakra cards"
+                    />
+                    <AppText
+                      font="instrument-medium"
+                      size="sm"
+                      style={{ color: "rgba(255, 255, 255, 0.95)", flex: 1 }}
+                    >
+                      View Your Chakra Cards
+                    </AppText>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            )}
+
+          {/* Render chakra display (only if not in post-trial state) */}
+          {!(completedTrialCourses === 2 && !hasLifetimeAccess) &&
+            renderChakraDisplay()}
+        </ScrollView>
+
+        {/* Note: Anua access is handled globally by FloatingNavButtons */}
+
+        <GoodbyeModal
+          isVisible={isModalVisible}
+          onClose={() => closeModal()}
+          chakraDay={
+            completedChakra ? getChakraIndex(completedChakra) : currentDay
+          }
+        />
+
+        {/* First Monday presence: name + visual expression, then trial begins */}
+        <FirstMondayPresenceModal
+          visible={showFirstMondayPresenceModal}
+          onClose={() => setShowFirstMondayPresenceModal(false)}
+          onComplete={() => setShowFirstMondayPresenceModal(false)}
+        />
+
+        {/* Note: Anua Chat is handled globally by FloatingNavButtons via SocialSanctuaryModal */}
+
+        {/* Permanent Menu Bar - Now rendered globally in app/_layout.tsx */}
+
+        {/* Dev Test Flow Tools - Only in dev mode, and NOT on goodbye modal */}
+        {__DEV__ && !isModalVisible && (
+          <TrialTestFlow
+            onUnlockNextDay={() => {
+              // Force re-render to show newly unlocked day
+              // The store update should trigger a re-render via zustand subscription
+            }}
+            currentDay={currentDay}
+          />
         )}
-      </View>
-
-      {/* ScrollView to enable scrolling through chakras */}
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ flexGrow: 1, paddingVertical: 40, minHeight: '100%' }}
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={true}
-        bounces={true}
-        nestedScrollEnabled={true}
-        keyboardShouldPersistTaps="handled"
-      >
-        {renderChakraDisplay()}
-      </ScrollView>
-
-      <GoodbyeModal 
-        isVisible={isModalVisible} 
-        onClose={() => closeModal()}
-        chakraDay={completedChakra ? getChakraIndex(completedChakra) : currentDay}
-      />
-
-      {/* Welcome Modal for First Time Users */}
-      <WelcomeModal
-        isVisible={showWelcomeModal}
-        onClose={handleWelcomeModalClose}
-        onBeginJourney={handleBeginJourney}
-        currentDayOfWeek={realDayOfWeek}
-        completedTrialCourses={completedTrialCourses}
-        initialOpenDate={initialOpenDate}
-      />
-    </SafeAreaView>
+      </SafeAreaView>
+    </Animated.View>
   )
 }

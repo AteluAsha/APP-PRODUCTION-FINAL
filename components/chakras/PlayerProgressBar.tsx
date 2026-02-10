@@ -79,8 +79,16 @@ export const PlayerProgressBar = ({
         )}
       </View>
 
-      <AppText font="instrument-medium" className="ml-2 w-12 text-right">
-        {/* Display 0:00 if duration is invalid, otherwise format position */}
+      <AppText
+        font="instrument-medium"
+        size="sm"
+        style={{
+          marginLeft: 8,
+          width: 48,
+          textAlign: "right",
+          color: "rgba(255,255,255,0.9)",
+        }}
+      >
         {isValidDuration ? formatTime(positionMs) : "0:00"}
       </AppText>
     </View>

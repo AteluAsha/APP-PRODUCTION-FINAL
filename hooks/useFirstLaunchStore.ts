@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useStoreRehydration } from "./useStoreRehydration"
 
 interface FirstLaunchState {
   isFirstLaunch: boolean
@@ -18,6 +19,9 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
     {
       name: "first-launch-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => () => {
+        useStoreRehydration.getState().setFirstLaunchRehydrated()
+      },
     },
   ),
 )

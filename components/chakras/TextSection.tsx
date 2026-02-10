@@ -10,11 +10,11 @@ export const TextSection = ({
   content: string
 }) => {
   return (
-    <View className="my-4">
+    <View style={{ marginVertical: 16 }}>
       <AppText
         font="instrument-semibold"
-        className="mx-8 mb-1 text-[13px]"
-        style={{ letterSpacing: 0.5 }}
+        size="xs"
+        style={{ marginHorizontal: 32, marginBottom: 4, fontSize: 13, letterSpacing: 0.5, color: "#ffffff" }}
       >
         {title}
       </AppText>

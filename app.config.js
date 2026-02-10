@@ -1,60 +1,104 @@
 /**
  * Expo Configuration with Environment Variables
- * 
- * This file reads environment variables from .env and makes them available
- * via expo-constants. This allows secure API key management.
+ *
+ * This file reads environment variables from .env (in development) or
+ * from EAS Build environment variables (in production builds).
+ * This allows secure API key management.
  */
 
-require('dotenv').config()
+// Try to load dotenv in development, but don't fail if it's not available
+// EAS Build uses environment variables set in the build environment
+try {
+  require("dotenv").config()
+} catch (error) {
+  // dotenv is optional - EAS Build will use environment variables from build config
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(
+      "dotenv not available, using environment variables from system",
+    )
+  }
+}
 
 module.exports = {
   expo: {
-    name: 'SevenChakras',
-    slug: 'SevenChakras',
-    version: '1.0.0',
-    orientation: 'portrait',
-    icon: './assets/images/7chakras.png',
-    scheme: 'myapp',
-    userInterfaceStyle: 'dark',
+    name: "Soul School",
+    slug: "soul-school",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/images/7chakras.png",
+    splash: {
+      image: "./assets/images/SoulSchool_HERO_Logo.png",
+      backgroundColor: "#000000",
+      resizeMode: "contain",
+      imageWidth: 300,
+    },
+    scheme: "soul-school",
+    userInterfaceStyle: "dark",
     newArchEnabled: true,
+    jsEngine: "hermes", // Explicitly use Hermes for iOS and Android
     ios: {
+      jsEngine: "hermes", // Explicitly set Hermes for iOS
       supportsTablet: true,
+      icon: "./assets/images/7chakras.png",
       infoPlist: {
-        UIBackgroundModes: ['audio'],
-        NSCameraUsageDescription: 'We need access to your camera to record a video for sharing your journey.',
-        NSMicrophoneUsageDescription: 'We need access to your microphone to record audio with your video.',
+        CFBundleDisplayName: "Soul School",
+        LSApplicationQueriesSchemes: ["whatsapp", "sms", "mailto"],
+        UIBackgroundModes: ["audio"],
+        NSCameraUsageDescription:
+          "We need access to your camera to record a video for sharing your journey.",
+        NSMicrophoneUsageDescription:
+          "We need access to your microphone to record audio with your video.",
       },
-      bundleIdentifier: 'com.sevenchakras.SevenChakras',
+      bundleIdentifier: "com.sevenchakras.SevenChakras",
     },
     android: {
+      jsEngine: "hermes", // Explicitly set Hermes for Android
       adaptiveIcon: {
-        foregroundImage: './assets/images/7chakras.png',
-        backgroundColor: '#000000',
+        foregroundImage: "./assets/images/7chakras.png",
+        backgroundColor: "#000000",
       },
-      package: 'com.sevenchakras.SevenChakras',
+      package: "com.sevenchakras.SevenChakras",
       permissions: [
-        'CAMERA',
-        'RECORD_AUDIO',
-        'READ_EXTERNAL_STORAGE',
-        'WRITE_EXTERNAL_STORAGE',
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "SCHEDULE_EXACT_ALARM",
+        "READ_CONTACTS",
       ],
     },
     plugins: [
-      'expo-router',
+      "expo-router",
       [
-        'expo-splash-screen',
+        "expo-splash-screen",
         {
-          backgroundColor: '#000000',
-          image: './assets/images/SoulSchool_HERO_Logo.png',
+          image: "./assets/images/SoulSchool_HERO_Logo.png",
+          backgroundColor: "#000000",
+          resizeMode: "contain",
           imageWidth: 300,
         },
       ],
-      'expo-font',
+      "expo-font",
       [
-        'expo-camera',
+        "expo-camera",
         {
-          cameraPermission: 'Allow Soul School to access your camera to record videos for sharing your journey.',
-          microphonePermission: 'Allow Soul School to access your microphone to record audio with your videos.',
+          cameraPermission:
+            "Allow Soul School to access your camera to record videos for sharing your journey.",
+          microphonePermission:
+            "Allow Soul School to access your microphone to record audio with your videos.",
+        },
+      ],
+      [
+        "expo-notifications",
+        {
+          defaultChannel: "journey-reminders",
+          color: "#9D4EDD",
+        },
+      ],
+      [
+        "expo-contacts",
+        {
+          contactsPermission: "Allow Soul School to find friends who are also on the journey.",
         },
       ],
     ],
@@ -66,39 +110,51 @@ module.exports = {
         origin: false,
       },
       eas: {
-        projectId: "a698bc4b-394f-4487-b317-80884f2f0cee",
+        projectId: "778607df-420e-4e0d-9c38-e9546155bdb8",
       },
       // Environment variables accessible via Constants.expoConfig.extra
+      // These come from .env in development or EAS Build environment variables in production
       firebase: {
-        apiKey: process.env.FIREBASE_API_KEY,
-        authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.FIREBASE_APP_ID,
-        measurementId: process.env.FIREBASE_MEASUREMENT_ID,
+        apiKey: process.env.FIREBASE_API_KEY || "",
+        authDomain: process.env.FIREBASE_AUTH_DOMAIN || "",
+        projectId: process.env.FIREBASE_PROJECT_ID || "",
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "",
+        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "",
+        appId: process.env.FIREBASE_APP_ID || "",
+        measurementId: process.env.FIREBASE_MEASUREMENT_ID || "",
       },
       revenuecat: {
-        apiKey: process.env.REVENUECAT_API_KEY,
+        apiKey: process.env.REVENUECAT_API_KEY || "",
       },
       gemini: {
-        apiKey: process.env.GEMINI_API_KEY,
-        apiKey2: process.env.GEMINI_API_KEY_2,
-        apiKey3: process.env.GEMINI_API_KEY_3,
+        apiKey: process.env.GEMINI_API_KEY || "",
+        apiKey2: process.env.GEMINI_API_KEY_2 || "",
+        apiKey3: process.env.GEMINI_API_KEY_3 || "",
       },
+      // Google Cloud Speech-to-Text API (optional - for voice transcription)
+      // If not configured, responses will proceed without transcription
+      googleCloudSpeechApiKey: process.env.GOOGLE_CLOUD_SPEECH_API_KEY || "",
       elevenlabs: {
-        apiKey: process.env.ELEVENLABS_API_KEY,
-        anuaVoiceId: process.env.ANUA_VOICE_ID,
+        apiKey: process.env.ELEVENLABS_API_KEY || "",
+        anuaVoiceId: "HrWCrSWs1tCFPWiH0ax8", // Anua's permanent hero voice - curated for true alignment
       },
-      // Sentry error tracking (optional - add SENTRY_DSN to .env)
+      stripe: {
+        // Stripe Publishable Key (safe to expose in app)
+        // Updated: Non-profit account credentials (hot swap completed)
+        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || "",
+        // Backend API URL for Stripe operations (serverless function)
+        // IMPORTANT: Secret key is stored on backend, NOT in app
+        // Update STRIPE_SECRET_KEY in backend environment variables
+        backendUrl: process.env.STRIPE_BACKEND_URL || "",
+      },
+      // Sentry error tracking (optional - add SENTRY_DSN to .env or EAS Build env vars)
       sentry: {
-        dsn: process.env.SENTRY_DSN,
+        dsn: process.env.SENTRY_DSN || "",
         enableInDev: false, // Set to true to test Sentry in development
         debug: false, // Enable Sentry debug logging
         tracesSampleRate: 0.1, // 10% of transactions for performance monitoring
       },
     },
-    owner: 'seven-chakras',
+    owner: "theprofessor1111s-organization",
   },
 }
-

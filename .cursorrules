@@ -37,6 +37,10 @@ You are an expert in TypeScript, React Native, Expo, and Mobile UI development.
 - /assets - Static assets (images, fonts)
 - /constants - App constants and configuration
 
+## Protected Paths
+
+- **app/backups/** – Pre-compression copy of assets. Safety net for image compression. Do not delete, and do not include in builds; it is excluded via .easignore.
+
 ## TypeScript Usage
 
 - Use TypeScript for all code

@@ -8,6 +8,7 @@ interface SoundBathButtonProps {
   onPress: () => void // Callback when the button is pressed
   title: string // Main title for the button
   subtitle: string // Subtitle for the button
+  isLoading?: boolean // Show loading state
 }
 
 const SoundBathButton: React.FC<SoundBathButtonProps> = ({
@@ -15,24 +16,53 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
   onPress,
   title,
   subtitle,
+  isLoading = false,
 }) => {
   return (
     <Pressable
-      className={`border border-[#ffffff60] rounded-2xl py-4 w-72 active:scale-95 active:opacity-90 bg-[#00000020] ${className}`}
+      style={{
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.38)",
+        borderRadius: 16,
+        paddingVertical: 16,
+        width: 288,
+        backgroundColor: "rgba(0,0,0,0.125)",
+      }}
       onPress={onPress}
+      disabled={isLoading}
     >
-      <View className="flex-row items-center ml-8 py-2">
-        {/* Icon */}
-        <View className="border border-[#ffffffd0] rounded-full h-10 w-10 flex items-center justify-center">
-          <Ionicons name="play" size={12} className="ml-0.5" />
+      <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 32, paddingVertical: 8 }}>
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.82)",
+            borderRadius: 20,
+            width: 40,
+            height: 40,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="play" size={12} color="white" style={{ marginLeft: 2 }} />
         </View>
 
-        {/* Text */}
-        <View className="flex-col ml-4">
-          <AppText font="koh-santepheap" className="mb-1 tracking-wide">
+        <View style={{ flexDirection: "column", marginLeft: 16, flex: 1, maxWidth: "70%" }}>
+          <AppText
+            font="koh-santepheap"
+            size="sm"
+            numberOfLines={1}
+            style={{ marginBottom: 4, letterSpacing: 1, fontSize: 13, color: "#ffffff" }}
+          >
             {title}
           </AppText>
-          <AppText font="instrument-italic">{subtitle}</AppText>
+          <AppText
+            font="instrument-italic"
+            size="xs"
+            numberOfLines={1}
+            style={{ opacity: isLoading ? 0.5 : 1, fontSize: 11, color: "#ffffff" }}
+          >
+            {isLoading ? "Preparing..." : subtitle}
+          </AppText>
         </View>
       </View>
     </Pressable>

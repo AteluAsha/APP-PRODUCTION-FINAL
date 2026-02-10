@@ -9,6 +9,7 @@ interface DayProgressIndicatorProps {
   hasCompletedChakra: (day: number) => boolean
   hasParticipatedDay: (day: number) => boolean
   allChakrasCompleted: boolean
+  hasLifetimeAccess?: boolean // APP_2 (Lifetime): Pass to timegate service
 }
 
 const DAYS = ["M", "T", "W", "Th", "F", "Sa", "Su"]
@@ -61,16 +62,17 @@ export const DayProgressIndicator = ({
   hasCompletedChakra,
   hasParticipatedDay,
   allChakrasCompleted,
+  hasLifetimeAccess = false, // APP_2 (Lifetime): Default to false for trial mode
 }: DayProgressIndicatorProps) => {
   return (
     <View className="flex-row justify-center items-center gap-1 px-2">
       {DAYS.map((day, index) => {
         const isCurrentDay = currentDay === index
         const isCompleted = hasCompletedChakra(index)
-        // Use timegate service to check if day is accessible (includes dev override)
+        // Use timegate service to check if day is accessible (includes dev override and lifetime bypass)
         const isUnlocked = isChakraDayAccessible(
           index,
-          false, // hasLifetimeAccess - would need to be passed as prop if needed
+          hasLifetimeAccess, // APP_1: false, APP_2: true (properly routes to correct logic)
           hasParticipatedDay,
           currentDay,
           allChakrasCompleted,

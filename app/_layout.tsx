@@ -1,3 +1,4 @@
+import "@/src/utils/splash-keeper"
 import "../globals.css"
 import {
   DarkTheme,
@@ -6,32 +7,104 @@ import {
 } from "@react-navigation/native"
 import { useFonts } from "expo-font"
 import { Stack } from "expo-router"
-import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
 import { useEffect } from "react"
 import "react-native-reanimated"
 import { useColorScheme } from "@/hooks/useColorScheme"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
 import { usePreloadAssets } from "@/hooks/usePreloadAssets"
-import { View, Platform } from "react-native"
+import { View, Platform, LogBox } from "react-native"
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av"
+import * as SplashScreen from "expo-splash-screen"
 import { useChakraWeekTransition } from "@/hooks/useChakraWeekTransition"
 import { SplashScreenReveal } from "@/components/SplashScreenReveal"
 import { useState } from "react"
 import Animated, { FadeIn, Easing } from "react-native-reanimated"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
-// Initialize Firebase when app starts
+import { PermanentMenuBar } from "@/components/navigation/PermanentMenuBar"
+import { MusicRoomAudioManager } from "@/components/audio/MusicRoomAudioManager"
+import { OtherOriginAudioManager } from "@/components/audio/OtherOriginAudioManager"
+import { FloatingNavButtons } from "@/components/navigation/FloatingNavButtons"
+import { GlobalHomeButton } from "@/components/navigation/GlobalHomeButton"
+import { GlobalAnuaChat } from "@/components/navigation/GlobalAnuaChat"
+import { ProfileSheet } from "@/components/profile/ProfileSheet"
+import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import * as Linking from "expo-linking"
 import "@/src/services/firebase"
-// Initialize RevenueCat when app starts
 import { initializeRevenueCat } from "@/src/services/revenuecat"
-// Initialize Sentry error tracking (optional - only if configured)
 import { initializeSentry } from "@/src/services/sentry"
+import "@/src/services/journeyNotifications"
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync()
+LogBox.ignoreLogs([
+  "Error fetching tuning fork audio",
+  "Error fetching crystal bowl audio",
+  "object-not-found",
+  "Missing or insufficient permissions",
+  "Error updating cache",
+  "FirebaseError",
+])
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()
   const [showHeroLogo, setShowHeroLogo] = useState(true)
+  const [assetsReady, setAssetsReady] = useState(false)
+
+  // Keep native splash until we explicitly hide it (backup to splash-keeper).
+  useEffect(() => {
+    SplashScreen.preventAutoHideAsync().catch(() => {})
+  }, [])
+  // Hide native splash when we paint our custom hero so user sees SplashScreenReveal.
+  useEffect(() => {
+    if (!showHeroLogo) return
+    const t = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {})
+    }, 80)
+    return () => clearTimeout(t)
+  }, [showHeroLogo])
+
+  useEffect(() => {
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+          interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+          shouldDuckAndroid: true,
+        })
+      } catch (e) {
+        if (__DEV__) {
+          console.warn("[RootLayout] Audio setup skipped:", e)
+        }
+      }
+    }
+    setupAudio()
+  }, [])
+
+  useEffect(() => {
+    const checkExpiry = () => {
+      try {
+        const store = useChakraJourneyStore.getState()
+        if (store.paymentStatus === "scholarship" && store.scholarshipExpiryDate) {
+          const expiryDate = new Date(store.scholarshipExpiryDate)
+          if (new Date() > expiryDate) {
+            useChakraJourneyStore.setState({
+              hasLifetimeAccess: false,
+              paymentStatus: "pending",
+              scholarshipExpiryDate: null,
+            })
+          }
+        }
+      } catch (error) {
+        if (__DEV__) console.error("Error checking scholarship expiry:", error)
+      }
+    }
+    checkExpiry()
+    const interval = setInterval(checkExpiry, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   const [fontsLoaded, fontsError] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     KohSantepheap: require("../assets/fonts/KohSantepheap-Regular.ttf"),
@@ -47,7 +120,6 @@ export default function RootLayout() {
   })
 
   const imagesLoaded = usePreloadAssets([
-    /* Home Screen Chakra Assets */
     require("../assets/images/root.png"),
     require("../assets/images/sacral.png"),
     require("../assets/images/solar.png"),
@@ -55,7 +127,6 @@ export default function RootLayout() {
     require("../assets/images/throat.png"),
     require("../assets/images/thirdeye.png"),
     require("../assets/images/crown.png"),
-    /* Header Chakra Screen Assets */
     require("../assets/images/muladhara.png"),
     require("../assets/images/svadhisthana.png"),
     require("../assets/images/manipura.png"),
@@ -63,7 +134,6 @@ export default function RootLayout() {
     require("../assets/images/vishuddha.png"),
     require("../assets/images/ajna.png"),
     require("../assets/images/sahasrara.png"),
-    /* Location in Body Assets */
     require("../assets/images/rootlocation.png"),
     require("../assets/images/sacrallocation.png"),
     require("../assets/images/solarlocation.png"),
@@ -71,7 +141,6 @@ export default function RootLayout() {
     require("../assets/images/throatlocation.png"),
     require("../assets/images/thirdeyelocation.png"),
     require("../assets/images/crownlocation.png"),
-    /* Header Assets */
     require("../assets/images/1header.png"),
     require("../assets/images/2header.png"),
     require("../assets/images/3header.png"),
@@ -79,7 +148,6 @@ export default function RootLayout() {
     require("../assets/images/5header.jpeg"),
     require("../assets/images/6header.png"),
     require("../assets/images/7header.png"),
-    /* Elements Assets */
     require("../assets/images/elementsroot.png"),
     require("../assets/images/elementssacral.png"),
     require("../assets/images/elementssolar.png"),
@@ -87,7 +155,6 @@ export default function RootLayout() {
     require("../assets/images/elementsthroat.png"),
     require("../assets/images/elementsthirdeye.png"),
     require("../assets/images/elementscrown.png"),
-    /* Shared Assets */
     require("../assets/images/7chakras.png"),
     require("../assets/images/yoga-logo.png"),
     require("../assets/images/rootyogapose.png"),
@@ -98,6 +165,9 @@ export default function RootLayout() {
     require("../assets/images/meditationlogotemp.png"),
     require("@/assets/images/ibelong.png"),
     require("@/assets/images/heartoutline.png"),
+    require("../assets/images/SoulSchool_HERO_Logo.png"),
+    require("../assets/images/Hero_tulip_LOGO_MASTER.png"),
+    require("../assets/images/Anua_Hero_Icon_Image.png"),
   ])
   const audiosLoaded = usePreloadAssets([
     require("../assets/audio/root-erin-1.mp3"),
@@ -108,117 +178,123 @@ export default function RootLayout() {
 
   useChakraWeekTransition()
 
-  // Initialize RevenueCat on app start
   useEffect(() => {
-    initializeRevenueCat().catch((error) => {
-      if (__DEV__) {
-        console.error('RootLayout: Failed to initialize RevenueCat:', error)
+    const initRevenueCat = async () => {
+      try {
+        const { getUserId } = await import("@/src/services/userId")
+        const userId = await getUserId()
+        await initializeRevenueCat(userId)
+      } catch (error) {
+        if (__DEV__) console.error("[RootLayout] Failed to initialize RevenueCat:", error)
       }
-    })
+    }
+    initRevenueCat()
   }, [])
 
-  // Initialize Sentry error tracking on app start (optional)
   useEffect(() => {
-    initializeSentry().catch((error) => {
-      // Don't log Sentry init errors - they're expected if not configured
-      // Sentry service handles this gracefully
-    })
+    try { initializeSentry().catch(() => {}) } catch {}
   }, [])
 
-  // Populate community halls with placeholder content (one-time setup)
-  // This runs in both dev and production to ensure the community feels alive from the start
   useEffect(() => {
-    import('@/src/services/communityPlaceholders')
-      .then(({ populatePlaceholders }) => {
-        // Delay to ensure Firebase is initialized
-        setTimeout(() => {
-          populatePlaceholders().catch((error) => {
-            // Silent fail - placeholders are non-critical
-            if (__DEV__) {
-              console.log('[RootLayout] Placeholder population skipped or failed (this is okay)')
-            }
-          })
-        }, 3000) // Longer delay to ensure Firebase is fully initialized
+    const timer = setTimeout(() => {
+      Promise.resolve().then(async () => {
+        try {
+          const { populatePlaceholders } = await import("@/src/services/communityPlaceholders")
+          setTimeout(() => populatePlaceholders().catch(() => {}), 3000)
+        } catch {}
       })
-      .catch(() => {
-        // Silent fail if module doesn't load
-      })
+    }, 1000)
+    return () => clearTimeout(timer)
   }, [])
 
-  // Populate Anua's cache from community questions on app launch
-  // This auto-populates her offline responses with common user questions
   useEffect(() => {
-    import('@/src/services/anuaCommunityCache')
-      .then(({ populateCacheFromCommunity }) => {
-        // Delay to ensure Firebase is initialized
-        setTimeout(() => {
-          populateCacheFromCommunity().catch((error) => {
-            // Silent fail - cache population is non-critical
-            if (__DEV__) {
-              console.log('[RootLayout] Anua community cache population skipped or failed (this is okay)')
-            }
-          })
-        }, 4000) // Slightly longer delay to ensure Firebase is fully ready
+    const timer = setTimeout(() => {
+      Promise.resolve().then(async () => {
+        try {
+          const { populateCacheFromCommunity } = await import("@/src/services/anuaCommunityCache")
+          setTimeout(() => populateCacheFromCommunity().catch(() => {}), 4000)
+        } catch {}
       })
-      .catch(() => {
-        // Silent fail if module doesn't load
-      })
+    }, 2000)
+    return () => clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    const handleDeepLink = async (url: string) => {
+      try {
+        const parsed = Linking.parse(url)
+        if (parsed.path === "/payment-success" && parsed.queryParams?.session_id) {
+          const sessionId = parsed.queryParams.session_id as string
+          const { verifyPayment } = await import("@/src/services/stripe")
+          const { useChakraJourneyStore } = await import("@/hooks/useChakraJourneyStore")
+          const isPaid = await verifyPayment(sessionId)
+          if (isPaid) useChakraJourneyStore.getState().grantLifetimeAccess("paid")
+        }
+      } catch (error) {
+        if (__DEV__) console.error("[RootLayout] Error handling deep link:", error)
+      }
+    }
+    const subscription = Linking.addEventListener("url", ({ url }) => handleDeepLink(url))
+    Linking.getInitialURL().then((url) => { if (url) handleDeepLink(url) })
+    return () => subscription.remove()
+  }, [])
+
+  useEffect(() => {
+    if ((fontsLoaded || fontsError) && imagesLoaded && audiosLoaded) {
+      setAssetsReady(true)
+    }
+  }, [fontsLoaded, fontsError, imagesLoaded, audiosLoaded])
+
+  // Native splash is hidden only when transitioning from hero splash to main app (in handleHeroLogoComplete).
+  // Do NOT hide it here — that caused the splash to disappear too early or never be seen.
 
   const handleHeroLogoComplete = () => {
-    // After hero logo animation completes, smoothly transition to app
+    SplashScreen.hideAsync().catch(() => {})
     setShowHeroLogo(false)
   }
 
-  // Hide native splash IMMEDIATELY on mount to show our hero logo
-  // This must happen before any other rendering
-  useEffect(() => {
-    // Hide native splash as soon as component mounts
-    // This ensures our hero logo is the primary opening screen
-    SplashScreen.hideAsync().catch(() => {
-      // If hideAsync fails, continue anyway
-    })
-  }, [])
-
-  // Assets loading is handled by the hero logo splash screen
-  // No additional action needed here - the splash screen will complete naturally
-
-  // Show hero logo splash IMMEDIATELY - this is the PRIMARY opening screen
-  // No other screens should show before this
-  // Render this FIRST, before any asset loading checks
-  if (showHeroLogo) {
+  if (Platform.OS === "web" && __DEV__) {
+    const { CaptureAll } = require("@/components/dev/CaptureAll")
     return (
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        <SplashScreenReveal onAnimationComplete={handleHeroLogoComplete} />
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
+        <CaptureAll onComplete={() => console.log("✅ Capture complete!")} />
       </View>
     )
   }
 
-  // After hero logo, show the app with smooth fade
+  if (showHeroLogo) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#000000" }}>
+        <SplashScreenReveal onAnimationComplete={handleHeroLogoComplete} assetsReady={assetsReady} />
+      </View>
+    )
+  }
+
   return (
     <ErrorBoundary>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <View style={{ flex: 1, backgroundColor: "#000000" }}>
-            <Animated.View 
-              style={{ flex: 1 }}
-              entering={FadeIn.duration(1000).easing(Easing.out(Easing.ease))}
-            >
-              <Stack>
-                <Stack.Screen name="(chakras)" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="AudioPlayer"
-                  options={{ headerShown: false, animation: "fade" }}
-                />
-                <Stack.Screen
-                  name="CommunityHalls"
-                  options={{ headerShown: false, animation: "slide" }}
-                />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-              <StatusBar style="light" translucent={Platform.OS === 'android'} />
-            </Animated.View>
-          </View>
+          <BottomSheetModalProvider>
+            <View style={{ flex: 1, backgroundColor: "#000000" }}>
+              <Animated.View style={{ flex: 1 }} entering={FadeIn.duration(1000).easing(Easing.out(Easing.ease))}>
+                <Stack>
+                  <Stack.Screen name="(chakras)" options={{ headerShown: false }} />
+                  <Stack.Screen name="AudioPlayer" options={{ headerShown: false, animation: "fade" }} />
+                  <Stack.Screen name="CommunityHalls" options={{ headerShown: false, animation: "fade" }} />
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+                <MusicRoomAudioManager />
+                <OtherOriginAudioManager />
+                <PermanentMenuBar />
+                <FloatingNavButtons />
+                <GlobalHomeButton />
+                <GlobalAnuaChat />
+                <StatusBar style="light" translucent={Platform.OS === "android"} />
+              </Animated.View>
+              <ProfileSheet />
+              {/* TribeChatModal not in codebase; add when component exists: import from "@/components/tribe/TribeChatModal" and render <TribeChatModal /> */}
+            </View>
+          </BottomSheetModalProvider>
         </GestureHandlerRootView>
       </ThemeProvider>
     </ErrorBoundary>

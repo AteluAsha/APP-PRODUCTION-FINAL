@@ -47,8 +47,8 @@
 
 ### Sunday (Day 6) - Crown Chakra
 - **Chakra Enum:** `Chakra.CROWN`
-- **Audio File:** `Day7_CrownChakraEmbodiment_SoulSchool.aac`
-- **Full Path:** `Course Audio - MASTER EMBODIMENT - 7 Chakras in 7 Days/Day7_CrownChakraEmbodiment_SoulSchool.aac`
+- **Audio File:** `Day7_CrownChakra_MasterEmbodiment_Meditation_SoulSchool.aac` (must match code in useEmbodimentAudio.ts)
+- **Full Path:** `Course Audio - MASTER EMBODIMENT - 7 Chakras in 7 Days/Day7_CrownChakra_MasterEmbodiment_Meditation_SoulSchool.aac`
 - **Status:** ✅ Verified in code
 
 ## Code Location

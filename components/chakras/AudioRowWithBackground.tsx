@@ -25,8 +25,18 @@ export const AudioRowWithBackground = ({
 
   return (
     <Pressable
-      className="w-10/12 mt-6 border-2 border-[#9D9D9D] self-center overflow-hidden active:scale-95 active:opacity-90"
-      onPress={() => {
+      style={{
+        width: "83.33%",
+        alignSelf: "center",
+        marginTop: 24,
+        borderWidth: 2,
+        borderColor: "#9D9D9D",
+        overflow: "hidden",
+      }}
+      onPress={async () => {
+        // Stop any current audio before playing new track (prevents overlap)
+        useCurrentAudioStore.getState().reset()
+        await new Promise((resolve) => setTimeout(resolve, 100))
         useCurrentAudioStore.getState().setSource(audioSource)
         useCurrentAudioStore.getState().setMetadata({
           durationMs,
@@ -36,7 +46,7 @@ export const AudioRowWithBackground = ({
         useCurrentAudioStore.getState().setPrefs({
           shouldLoop: false,
         })
-        router.push("/AudioPlayer")
+        router.replace("/AudioPlayer")
         addHapticFeedback(HapticStrength.Light)
       }}
       style={{ borderRadius: 14 }}
@@ -52,7 +62,17 @@ export const AudioRowWithBackground = ({
       >
         <BackgroundOpacity backgroundOpacity={0.55} />
         <View className="flex-row items-center w-full pl-7">
-          <View className="border-2 border-white rounded-full h-10 w-10 flex items-center justify-center">
+          <View
+            style={{
+              borderWidth: 2,
+              borderColor: "#ffffff",
+              borderRadius: 20,
+              width: 40,
+              height: 40,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <FontAwesome name="play" size={18} color="white" className="ml-1" />
           </View>
           <View className="ml-4">

@@ -1,0 +1,40 @@
+# .easignore REPLACES .gitignore when present – must include all .gitignore rules
+# See: https://docs.expo.dev/build-reference/easignore/
+
+# === From .gitignore (required – otherwise these get INCLUDED and archive bloats) ===
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+.env
+.env*.local
+*.tsbuildinfo
+app-example
+*.apk
+7-chakras-master-path/
+assets/dev-gallery/snapshots/
+
+# Pre-compression asset backup – now under android/_backups; never ship in builds
+android/_backups/
+
+# Native projects – builder generates its own iOS/Android; exclude to reduce upload size
+ios/
+android/
+
+# === Additional exclusions for smaller archive (docs, logs) ===
+*.md
+*.log
+ios_build.log

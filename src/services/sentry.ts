@@ -17,7 +17,7 @@
  * - User context tracking
  */
 
-import Constants from 'expo-constants'
+import Constants from "expo-constants"
 
 // Lazy import Sentry to avoid bundling in dev if not installed
 let Sentry: any = null
@@ -31,119 +31,139 @@ let isInitialized = false
  * - @sentry/react-native is installed
  */
 export const initializeSentry = async () => {
-    // Don't initialize in development unless explicitly enabled
-    if (__DEV__ && !Constants.expoConfig?.extra?.sentry?.enableInDev) {
-        if (__DEV__) {
-            console.log('[Sentry] Skipping initialization in development mode')
-        }
-        return
+  // Don't initialize in development unless explicitly enabled
+  if (__DEV__ && !Constants.expoConfig?.extra?.sentry?.enableInDev) {
+    if (__DEV__) {
+      console.log("[Sentry] Skipping initialization in development mode")
     }
+    return
+  }
 
-    // Check if Sentry DSN is configured
-    const sentryConfig = Constants.expoConfig?.extra?.sentry
-    if (!sentryConfig?.dsn) {
-        if (__DEV__) {
-            console.warn('[Sentry] DSN not configured. Add SENTRY_DSN to .env and sentry config to app.config.js')
-        }
-        return
+  // Check if Sentry DSN is configured
+  const sentryConfig = Constants.expoConfig?.extra?.sentry
+  if (!sentryConfig?.dsn) {
+    if (__DEV__) {
+      console.warn(
+        "[Sentry] DSN not configured. Add SENTRY_DSN to .env and sentry config to app.config.js",
+      )
     }
+    return
+  }
 
-    try {
-        // Dynamic import to avoid bundling if not installed
-        Sentry = require('@sentry/react-native')
-        
-        Sentry.init({
-            dsn: sentryConfig.dsn,
-            enableInExpoDevelopment: sentryConfig.enableInDev || false,
-            debug: __DEV__ && sentryConfig.debug,
-            environment: __DEV__ ? 'development' : 'production',
-            // Only track errors in production
-            beforeSend(event, hint) {
-                // Filter out development-only errors
-                if (__DEV__ && !sentryConfig.enableInDev) {
-                    return null
-                }
-                return event
-            },
-            // Performance monitoring (optional, can be enabled later)
-            enableAutoSessionTracking: true,
-            // Sample rate for performance (1.0 = 100%, reduce for high traffic)
-            tracesSampleRate: sentryConfig.tracesSampleRate || 0.1,
-        })
+  try {
+    // Dynamic import to avoid bundling if not installed
+    Sentry = require("@sentry/react-native")
 
-        isInitialized = true
-        
-        if (__DEV__) {
-            console.log('[Sentry] Error tracking initialized successfully')
+    Sentry.init({
+      dsn: sentryConfig.dsn,
+      enableInExpoDevelopment: sentryConfig.enableInDev || false,
+      debug: __DEV__ && sentryConfig.debug,
+      environment: __DEV__ ? "development" : "production",
+      // Only track errors in production
+      beforeSend(event: any, hint: any) {
+        // Filter out development-only errors
+        if (__DEV__ && !sentryConfig.enableInDev) {
+          return null
         }
-    } catch (error) {
-        // Sentry not installed or initialization failed
-        // Don't crash the app - just log in dev
-        if (__DEV__) {
-            console.warn('[Sentry] Failed to initialize. Install with: npx expo install @sentry/react-native', error)
-        }
+        return event
+      },
+      // Performance monitoring (optional, can be enabled later)
+      enableAutoSessionTracking: true,
+      // Sample rate for performance (1.0 = 100%, reduce for high traffic)
+      tracesSampleRate: sentryConfig.tracesSampleRate || 0.1,
+    })
+
+    isInitialized = true
+
+    if (__DEV__) {
+      console.log("[Sentry] Error tracking initialized successfully")
     }
+  } catch (error) {
+    // Sentry not installed or initialization failed
+    // Don't crash the app - just log in dev
+    if (__DEV__) {
+      console.warn(
+        "[Sentry] Failed to initialize. Install with: npx expo install @sentry/react-native",
+        error,
+      )
+    }
+  }
 }
 
 /**
  * Capture an exception manually
  * Safe to call even if Sentry isn't initialized
  */
-export const captureException = (error: Error, context?: Record<string, any>) => {
-    if (!isInitialized || !Sentry) {
-        if (__DEV__) {
-            console.error('[Sentry] Exception (not tracked):', error, context)
-        }
-        return
+export const captureException = (
+  error: Error,
+  context?: Record<string, any>,
+) => {
+  if (!isInitialized || !Sentry) {
+    if (__DEV__) {
+      // Use warn to avoid red error overlay for expected API/network issues
+      console.warn(
+        "[Sentry] Exception (not tracked):",
+        error?.message || error,
+        context,
+      )
     }
+    return
+  }
 
-    try {
-        Sentry.captureException(error, {
-            extra: context,
-        })
-    } catch (err) {
-        // Don't let Sentry errors crash the app
-        if (__DEV__) {
-            console.error('[Sentry] Failed to capture exception:', err)
-        }
+  try {
+    Sentry.captureException(error, {
+      extra: context,
+    })
+  } catch (err) {
+    // Don't let Sentry errors crash the app
+    if (__DEV__) {
+      console.error("[Sentry] Failed to capture exception:", err)
     }
+  }
 }
 
 /**
  * Capture a message manually
  * Safe to call even if Sentry isn't initialized
  */
-export const captureMessage = (message: string, level: 'info' | 'warning' | 'error' = 'info') => {
-    if (!isInitialized || !Sentry) {
-        if (__DEV__) {
-            console.log(`[Sentry] Message (not tracked): [${level}] ${message}`)
-        }
-        return
+export const captureMessage = (
+  message: string,
+  level: "info" | "warning" | "error" = "info",
+) => {
+  if (!isInitialized || !Sentry) {
+    if (__DEV__) {
+      console.log(`[Sentry] Message (not tracked): [${level}] ${message}`)
     }
+    return
+  }
 
-    try {
-        Sentry.captureMessage(message, level)
-    } catch (err) {
-        if (__DEV__) {
-            console.error('[Sentry] Failed to capture message:', err)
-        }
+  try {
+    Sentry.captureMessage(message, level)
+  } catch (err) {
+    if (__DEV__) {
+      console.error("[Sentry] Failed to capture message:", err)
     }
+  }
 }
 
 /**
  * Set user context for error tracking
  * Safe to call even if Sentry isn't initialized
  */
-export const setUser = (user: { id?: string; email?: string; username?: string }) => {
-    if (!isInitialized || !Sentry) return
+export const setUser = (user: {
+  id?: string
+  email?: string
+  username?: string
+}) => {
+  if (!isInitialized || !Sentry) return
 
-    try {
-        Sentry.setUser(user)
-    } catch (err) {
-        if (__DEV__) {
-            console.error('[Sentry] Failed to set user:', err)
-        }
+  try {
+    Sentry.setUser(user)
+  } catch (err) {
+    if (__DEV__) {
+      console.error("[Sentry] Failed to set user:", err)
     }
+  }
 }
 
 /**
@@ -151,24 +171,23 @@ export const setUser = (user: { id?: string; email?: string; username?: string }
  * Safe to call even if Sentry isn't initialized
  */
 export const addBreadcrumb = (breadcrumb: {
-    message: string
-    category?: string
-    level?: 'info' | 'warning' | 'error'
-    data?: Record<string, any>
+  message: string
+  category?: string
+  level?: "info" | "warning" | "error"
+  data?: Record<string, any>
 }) => {
-    if (!isInitialized || !Sentry) return
+  if (!isInitialized || !Sentry) return
 
-    try {
-        Sentry.addBreadcrumb(breadcrumb)
-    } catch (err) {
-        if (__DEV__) {
-            console.error('[Sentry] Failed to add breadcrumb:', err)
-        }
+  try {
+    Sentry.addBreadcrumb(breadcrumb)
+  } catch (err) {
+    if (__DEV__) {
+      console.error("[Sentry] Failed to add breadcrumb:", err)
     }
+  }
 }
 
 /**
  * Check if Sentry is initialized
  */
 export const isSentryInitialized = () => isInitialized
-

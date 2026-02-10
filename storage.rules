@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Voice Sanctuary Audio Files
+    // 7-day auto-purge via lifecycle rules (configured separately)
+    match /voice-responses/{chakraDay}/{fileName} {
+      allow read: if true; // Anyone can read approved voice responses
+      allow write: if request.resource.size < 10 * 1024 * 1024 // Max 10MB per file
+                    && request.resource.contentType.matches('audio/.*'); // Only audio files
+      allow delete: if false; // Lifecycle rules handle deletion (7-day purge)
+    }
+    
+    // Existing paths remain unchanged
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if false; // Restrict writes to specific paths above
+    }
+  }
+}

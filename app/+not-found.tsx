@@ -9,14 +9,29 @@ export default function NotFoundScreen() {
     <>
       <Stack.Screen options={{ title: "Path Not Found" }} />
       <View style={styles.container}>
-        <AppText font="instrument-regular" size="lg" className="text-center mb-4">
+        <AppText
+          font="instrument-regular"
+          size="lg"
+          className="text-center mb-4"
+        >
           This path doesn't exist in this moment.
         </AppText>
-        <AppText font="instrument-regular" size="base" className="text-center mb-8 text-white/60">
+        <AppText
+          font="instrument-regular"
+          size="base"
+          className="text-center mb-8 text-white/60"
+        >
           Perhaps you're being called back to your center.
         </AppText>
-        <Link href="/" className="bg-purple-500/20 border border-purple-400/30 py-3 px-6 rounded-lg">
-          <AppText font="instrument-medium" size="base" className="text-purple-300">
+        <Link
+          href="/"
+          className="bg-purple-500/20 border border-purple-400/30 py-3 px-6 rounded-lg"
+        >
+          <AppText
+            font="instrument-medium"
+            size="base"
+            className="text-purple-300"
+          >
             Return to Your Path
           </AppText>
         </Link>

@@ -10,7 +10,19 @@ import Animated, {
 
 const { width } = Dimensions.get("window")
 
-const RadialGradientAnimation = () => {
+/** Production-approved: circle base size and max scale so visualizer is not oversized */
+const CIRCLE_SIZE_FACTOR = 1.2
+const MAX_SCALE = 1.6
+
+const DEFAULT_COLOR = "#6366F1" // Third Eye / indigo – neutral fallback
+
+interface RadialGradientAnimationProps {
+  primaryColor?: string
+}
+
+const RadialGradientAnimation = ({
+  primaryColor = DEFAULT_COLOR,
+}: RadialGradientAnimationProps) => {
   const progress = useSharedValue(0)
 
   useEffect(() => {
@@ -30,7 +42,7 @@ const RadialGradientAnimation = () => {
       const scale = interpolate(
         progress.value,
         [0.05 + delay, 1],
-        [0, 2], // Start at scale 0, grow to scale 2
+        [0, MAX_SCALE],
         {
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",
@@ -55,18 +67,17 @@ const RadialGradientAnimation = () => {
   })
 
   return (
-    <View style={styles.gradientContainer}>
+    <View style={styles.gradientContainer} pointerEvents="box-none">
       {animatedStyles.map((style, index) => (
         <Animated.View
           key={index}
-          className={"bg-[#8e2e2e]"}
           style={[
             {
               position: "absolute",
-              width: width * 1.5, // Circle size
-              height: width * 1.5,
-              borderRadius: width * 0.75, // Make it circular
-              backgroundColor: `#8e2e2e40`, // Adjust color and transparency
+              width: width * CIRCLE_SIZE_FACTOR,
+              height: width * CIRCLE_SIZE_FACTOR,
+              borderRadius: (width * CIRCLE_SIZE_FACTOR) / 2,
+              backgroundColor: `${primaryColor}40`,
             },
             style,
           ]}

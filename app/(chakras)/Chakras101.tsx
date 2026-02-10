@@ -4,29 +4,70 @@ import ResponsiveImage from "@/components/ResponsiveImage"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { ActionBarAnimated } from "@/components/ActionBarAnimated"
 import Animated, { useAnimatedRef } from "react-native-reanimated"
+import { useRouter } from "expo-router"
+import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import { useShallow } from "zustand/react/shallow"
+import { FLOATING_NAV_SCROLL_BOTTOM_PADDING } from "@/constants/layout"
 
 const Chakras101 = () => {
   const { width } = useWindowDimensions()
   const { top } = useSafeAreaInsets()
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
+  const router = useRouter()
+
+  // Check if we're in a trial (pre-paywall) context - if so, back should go to waiting room
+  const { hasLifetimeAccess, courseStartDate, journeyStarted } =
+    useChakraJourneyStore(
+      useShallow((state) => ({
+        hasLifetimeAccess: state.hasLifetimeAccess,
+        courseStartDate: state.courseStartDate,
+        journeyStarted: state.journeyStarted,
+      })),
+    )
+
+  // If in trial mode with course start date but journey not started, navigate back to waiting room
+  // CRITICAL: Must NOT go back to WelcomeScreen (Screen 2) - must go to Waiting Room (Screen 4)
+  const handleBack = () => {
+    // If we're in trial mode with a course start date but journey hasn't started,
+    // we're definitely in the waiting room context - go back to ChakraHome
+    // ChakraHome will automatically show WaitingScreen if conditions are met
+    if (!hasLifetimeAccess && courseStartDate && !journeyStarted) {
+      // We're in waiting room - go back to ChakraHome which shows WaitingScreen
+      router.replace("/(chakras)/ChakraHome")
+    } else if (!hasLifetimeAccess && courseStartDate) {
+      // We have a course start date but journey has started - still go to ChakraHome
+      // This covers the case where they might have accessed Chakras101 from waiting room
+      router.replace("/(chakras)/ChakraHome")
+    } else {
+      // For lifetime users or other cases, use normal back navigation
+      router.back()
+    }
+  }
 
   return (
     <View style={{ flex: 1 }}>
       {/* ActionBar stays fixed at the top */}
-      <ActionBarAnimated scrollViewRef={scrollRef} scrollThreshold={100} />
+      <ActionBarAnimated
+        scrollViewRef={scrollRef}
+        scrollThreshold={100}
+        onBackPress={handleBack}
+      />
 
       {/* ScrollView wraps all content except the ActionBar */}
       <Animated.ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ marginTop: top * 2.2 }}
-        contentContainerClassName={"mx-4 pb-10"}
+        contentContainerStyle={{
+          marginTop: top * 2.2,
+          paddingHorizontal: 16,
+          paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING,
+        }}
       >
         {/* ImageBackground and other content */}
         <ImageBackground
           source={require("@/assets/images/part2bg.png")}
-          resizeMode="cover" // This will zoom in the image to fill the container
-          className="pb-8 w-full"
+          resizeMode="cover"
+          style={{ width: "100%", minHeight: 400, paddingBottom: 32 }}
         >
           <View
             style={{
@@ -35,35 +76,35 @@ const Chakras101 = () => {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.7)", // Dark overlay for dimming
+              backgroundColor: "rgba(0, 0, 0, 0.7)",
             }}
           />
-          <View className="px-4">
+          <View style={{ paddingHorizontal: 16 }}>
+            <Image
+              source={require("@/assets/images/7chakras.png")}
+              resizeMode="contain"
+              style={{ alignSelf: "center", width: 128, height: 128, marginTop: 32 }}
+            />
             <AppText
               font="instrument-italic"
               size="sm"
-              className="text-center mx-4 -mt-7"
+              style={{ textAlign: "center", marginHorizontal: 16, marginTop: 24, lineHeight: 22 }}
             >
               "The whispers of your soul echo in the chambers of your chakras;
               listen deeply, and find the healing you have always carried
               within."
             </AppText>
-            <Image
-              source={require("@/assets/images/7chakras.png")}
-              resizeMode="contain"
-              className="self-center w-32 h-32 mt-8"
-            />
             <AppText
               font="instrument-semibold"
               size="sm"
-              className="mx-4 mt-12"
+              style={{ marginHorizontal: 16, marginTop: 48 }}
             >
               What is a chakra, and why does it matter to you?
             </AppText>
             <AppText
               font="instrument-semibold-italic"
               size="sm"
-              className="text-justify mx-4 mt-4"
+              style={{ textAlign: "justify", marginHorizontal: 16, marginTop: 16, lineHeight: 22 }}
             >
               These swirling vortexes of energy, mapped along your spine,
               correlate to specific organs, emotions, and even stages of
@@ -72,7 +113,7 @@ const Chakras101 = () => {
             <AppText
               font="instrument-regular"
               size="sm"
-              className="text-justify mx-4 mt-4"
+              style={{ textAlign: "justify", marginHorizontal: 16, marginTop: 16, lineHeight: 24 }}
             >
               {"  "}Chakras are energy centers within your subtle body,
               understood as spinning wheels of light. They regulate the flow of
@@ -92,7 +133,7 @@ const Chakras101 = () => {
             <AppText
               font="instrument-regular"
               size="sm"
-              className="mx-4 mt-4 text-justify"
+              style={{ marginHorizontal: 16, marginTop: 16, textAlign: "justify", lineHeight: 24 }}
             >
               A wonderful system to integrate the 7 chakras into your life is to
               fold them into the 7 days of the week. From there you can start
@@ -109,7 +150,7 @@ const Chakras101 = () => {
         </ImageBackground>
         <ResponsiveImage
           source={require("@/assets/images/chakraman.png")}
-          className={`self-center mt-10`}
+          style={{ alignSelf: "center", marginTop: 40 }}
           width={width}
         />
       </Animated.ScrollView>

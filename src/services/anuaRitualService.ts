@@ -7,20 +7,20 @@
  * Outro Ritual: Triggered when the 'Complete Day' button is pressed
  */
 
-import { speakAsAnua, synthesizeAnuaVoice } from './elevenlabs'
-import { askAnua } from './gemini'
-import { ANUA_INTRO_RITUAL_SCRIPT } from '@/src/constants/anuaScripts'
-import { Chakra } from '@/types/chakras/Chakra'
-import { chakraContent } from '@/constants/chakras/content'
+import { speakAsAnua, synthesizeAnuaVoice } from "./elevenlabs"
+import { askAnua } from "./gemini"
+import { ANUA_INTRO_RITUAL_SCRIPT } from "@/src/constants/anuaScripts"
+import { Chakra } from "@/types/chakras/Chakra"
+import { chakraContent } from "@/constants/chakras/content"
 
 /**
  * Voice configuration for ritualistic tone
  * Stability and similarity set to 0.8 for a grounded, ritualistic tone
  */
 const RITUAL_VOICE_CONFIG = {
-    stability: 0.8,
-    similarity_boost: 0.8,
-    style: 0.6, // Slightly lower style for more measured, ritualistic delivery
+  stability: 0.8,
+  similarity_boost: 0.8,
+  style: 0.6, // Slightly lower style for more measured, ritualistic delivery
 } as const
 
 /**
@@ -32,14 +32,14 @@ const RITUAL_VOICE_CONFIG = {
  * @returns Promise that resolves when the ritual completes
  */
 export const performIntroRitual = async (): Promise<void> => {
-    try {
-        await speakAsAnua(ANUA_INTRO_RITUAL_SCRIPT, RITUAL_VOICE_CONFIG)
-    } catch (error) {
-        if (__DEV__) {
-            console.error('Error performing Intro Ritual:', error)
-        }
-        throw error
+  try {
+    await speakAsAnua(ANUA_INTRO_RITUAL_SCRIPT, RITUAL_VOICE_CONFIG)
+  } catch (error) {
+    if (__DEV__) {
+      console.error("Error performing Intro Ritual:", error)
     }
+    throw error
+  }
 }
 
 /**
@@ -56,20 +56,20 @@ export const performIntroRitual = async (): Promise<void> => {
  * @returns Promise that resolves when the ritual completes
  */
 export const performOutroRitual = async (chakra: Chakra): Promise<void> => {
-    try {
-        const content = chakraContent[chakra]
+  try {
+    const content = chakraContent[chakra]
 
-        // Build the outro ritual script
-        const outroScript = await buildOutroRitualScript(chakra, content)
+    // Build the outro ritual script
+    const outroScript = await buildOutroRitualScript(chakra, content)
 
-        // Speak the outro ritual with ritualistic voice
-        await speakAsAnua(outroScript, RITUAL_VOICE_CONFIG)
-    } catch (error) {
-        if (__DEV__) {
-            console.error('Error performing Outro Ritual:', error)
-        }
-        throw error
+    // Speak the outro ritual with ritualistic voice
+    await speakAsAnua(outroScript, RITUAL_VOICE_CONFIG)
+  } catch (error) {
+    if (__DEV__) {
+      console.error("Error performing Outro Ritual:", error)
     }
+    throw error
+  }
 }
 
 /**
@@ -78,21 +78,21 @@ export const performOutroRitual = async (chakra: Chakra): Promise<void> => {
  * Combines yoga posture, food, Hero Mantra (repeated 3x), and chakra metaphor
  */
 const buildOutroRitualScript = async (
-    chakra: Chakra,
-    content: typeof chakraContent[Chakra],
+  chakra: Chakra,
+  content: (typeof chakraContent)[Chakra],
 ): Promise<string> => {
-    // Get yoga posture
-    const yogaPose = content.yoga.pose
-    const yogaDescription = content.yoga.poseDescription
+  // Get yoga posture
+  const yogaPose = content.yoga.pose
+  const yogaDescription = `${content.yoga.body} Somatic cue: ${content.yoga.somaticCue}`
 
-    // Get food suggestion
-    const foods = content.elements.foods
+  // Get food suggestion
+  const foods = content.elements.foods
 
-    // Get Hero Mantra (Seed Mantra)
-    const heroMantra = content.pills.seedMantra.title
+  // Get Hero Mantra (Seed Mantra)
+  const heroMantra = content.pills.seedMantra.title
 
-    // Generate a simple chakra metaphor using Anua
-    const metaphorPrompt = `Generate a simple, beautiful metaphor for the ${content.header.textLine2} (${content.header.textLine3}). 
+  // Generate a simple chakra metaphor using Anua
+  const metaphorPrompt = `Generate a simple, beautiful metaphor for the ${content.header.textLine2} (${content.header.textLine3}). 
 
 This metaphor should:
 - Be simple and accessible
@@ -103,22 +103,22 @@ This metaphor should:
 
 Return ONLY the metaphor, nothing else.`
 
-    let chakraMetaphor: string
-    try {
-        chakraMetaphor = await askAnua(metaphorPrompt, {
-            temperature: 0.9,
-            maxTokens: 100,
-            enableVoice: false, // Don't speak the generation prompt
-        })
-    } catch (error) {
-        if (__DEV__) {
-            console.warn('Error generating chakra metaphor, using fallback:', error)
-        }
-        chakraMetaphor = `The ${content.header.textLine2} is like a foundation, grounding you in your authentic power.`
+  let chakraMetaphor: string
+  try {
+    chakraMetaphor = await askAnua(metaphorPrompt, {
+      temperature: 0.9,
+      maxTokens: 100,
+      enableVoice: false, // Don't speak the generation prompt
+    })
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("Error generating chakra metaphor, using fallback:", error)
     }
+    chakraMetaphor = `The ${content.header.textLine2} is like a foundation, grounding you in your authentic power.`
+  }
 
-    // Build the complete outro script
-    const script = `A moment of integration for your ${content.header.textLine2} journey.
+  // Build the complete outro script
+  const script = `A moment of integration for your ${content.header.textLine2} journey.
 
 For your body, I suggest the ${yogaPose}. ${yogaDescription}
 
@@ -130,16 +130,15 @@ ${chakraMetaphor}
 
 You have completed your ${content.header.textLine2} journey for today. Carry this wisdom with you.`
 
-    return script
+  return script
 }
 
 /**
  * React hook for using Anua Ritual Service
  */
 export const useAnuaRitual = () => {
-    return {
-        performIntroRitual,
-        performOutroRitual,
-    }
+  return {
+    performIntroRitual,
+    performOutroRitual,
+  }
 }
-

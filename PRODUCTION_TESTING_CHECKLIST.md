@@ -119,6 +119,18 @@ This document provides a comprehensive testing checklist for all iOS and Android
 - [ ] Test audio with slow network
 - [ ] Test audio with no network (error handling)
 
+### 3.3 Music Room (Frequency of Gnosis) – play/pause flow ✅
+- [x] **AudioLibrary:** X closes to ChakraHub; explicit styles ✅
+- [x] **Mini player:** Tap title → opens Frequency of Gnosis and scrolls to playing track ✅
+- [x] **Crystal bowl (1 hr):** Inline play/pause on page; mini player when leaving ✅
+- [x] **Morning meditations (Good Morning):** Open full-screen AudioPlayer; X closes ✅
+
+**Testing Required:**
+- [ ] Test all play/pause in Music: Tuning Fork, Crystal Bowl, Good Morning per chakra
+- [ ] Tap mini player title → verify scroll to correct chakra section on Frequency of Gnosis
+- [ ] From mini player: play/pause, close; from full player: X returns to ChakraHub or previous screen
+- [ ] No GO_BACK errors when closing player or mini player
+
 ---
 
 ## 4. Firebase Integration

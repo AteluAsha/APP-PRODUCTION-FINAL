@@ -39,14 +39,19 @@ export type Content = {
   yoga: {
     chakraDay: string
     pose: string
-    poseDescription: string
+    essence: string
+    body: string
+    somaticCue: string
   }
   soundBath: {
     title: string
     subtitle: string
+    helpsWith: string
+    realWorldEffect: string
     body: string
-    soundBowlAudio: AVPlaybackSource
     tuningForkAudio: AVPlaybackSource
+    /** Bundled fallback when Firebase crystal bowl is unavailable (7 × 1hr expected from Firebase) */
+    crystalBowlAudio: AVPlaybackSource
   }
   goodbye: {
     content: string
@@ -68,6 +73,10 @@ export type Content = {
       pillTitle: string
       hertz: string
       description: string
+      /** Modal title (e.g. "Root Chakra • 396 Hz") for the hertz pill pop-up */
+      modalTitle: string
+      /** Full modal body for the hertz pill pop-up */
+      modalContent: string
     }
     identityStatement: {
       pillTitle: string
@@ -84,6 +93,9 @@ export type Content = {
     title: string
     subtitle: string
     description: TextSegment[]
+    masterKey: { text: string }
+    dailyActivityTitle: string
+    dailyActivitySubline: string
     audio: {
       title: string
       author: string

@@ -11,28 +11,60 @@ interface YogaSectionProps {
 
 const YogaSection: React.FC<YogaSectionProps> = ({ chakra }) => {
   const { width: screenWidth } = useWindowDimensions()
-  const { chakraDay, pose, poseDescription } = chakraContent[chakra].yoga
+  const { chakraDay, pose, essence, body, somaticCue } =
+    chakraContent[chakra].yoga
   return (
-    <View className="justify-center items-center">
+    <View style={{ justifyContent: "center", alignItems: "center", marginBottom: 56 }}>
       <Image
         source={require("@/assets/images/yoga-logo.png")}
-        className={`w-10 h-10 object-cover self-center mb-2 z-10`}
+        style={{ width: 40, height: 40, alignSelf: "center", marginBottom: 8 }}
+        resizeMode="cover"
       />
-      <AppText font="instrument-regular" size="lg" className="mb-2">
+      <AppText font="instrument-regular" size="lg" style={{ marginBottom: 20, color: "#ffffff" }}>
         {chakraDay}{" "}
-        <AppText font="instrument-bold">
+        <AppText font="instrument-bold" style={{ color: "#ffffff" }}>
           Yoga {chakra === Chakra.HEART ? "Practice" : "Pose"}
         </AppText>
       </AppText>
-      <AppText font="instrument-regular" size="sm" className="mx-8">
-        <AppText font="instrument-bold">{pose}.</AppText> {poseDescription}
+      <AppText font="instrument-bold" size="lg" style={{ marginHorizontal: 32, marginBottom: 16, color: "#ffffff" }}>
+        {pose}.
+      </AppText>
+      <AppText
+        font="instrument-italic"
+        size="sm"
+        style={{ marginHorizontal: 32, marginBottom: 16, color: "rgba(255,255,255,0.95)" }}
+      >
+        The Essence: "{essence}"
+      </AppText>
+      <AppText
+        font="instrument-regular"
+        size="sm"
+        style={{ marginHorizontal: 32, marginBottom: 16, lineHeight: 24, color: "#ffffff" }}
+      >
+        {body}
+      </AppText>
+      <AppText
+        font="instrument-medium"
+        size="sm"
+        style={{ marginHorizontal: 32, color: "rgba(251,191,36,0.9)" }}
+      >
+        Somatic Cue: {somaticCue}
       </AppText>
       <ResponsiveImage
         source={require("@/assets/images/rootyogapose.png")}
         width={screenWidth - 60}
-        className="mt-4 rounded-xl opacity-70"
+        style={{ marginTop: 24, borderRadius: 12, opacity: 0.7 }}
       />
-      <View className="h-[1px] bg-[#8E8E8E] w-6 self-center mt-10"></View>
+      <View
+        style={{
+          height: 1,
+          backgroundColor: "#8E8E8E",
+          width: 24,
+          alignSelf: "center",
+          marginTop: 48,
+          marginBottom: 48,
+        }}
+      />
     </View>
   )
 }

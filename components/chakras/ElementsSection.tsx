@@ -14,8 +14,7 @@ const ElementsSection = ({ chakra }: { chakra: Chakra }) => {
     <ResponsiveImage
       source={elements.background}
       width={width}
-      // Remove mx-4 for full width, remove height style
-      className="flex w-full mt-6"
+      style={{ marginTop: 24 }}
     />
   )
 }

@@ -5,30 +5,30 @@
  * Acts as a guardian to maintain the sacred space of the Social Sanctuary.
  */
 
-import { askAnua, isAnuaAvailable } from './gemini'
+import { askAnua, isAnuaAvailable } from "./gemini"
 
 /**
  * Moderate a reflection message using Gemini AI
- * 
+ *
  * @param message - The reflection message to moderate
  * @returns Object with isApproved (boolean) and reason (string if rejected)
  */
 export const moderateReflection = async (
-    message: string,
+  message: string,
 ): Promise<{ isApproved: boolean; reason?: string }> => {
-    try {
-        // Check if Anua is available
-        if (!isAnuaAvailable()) {
-            // If Gemini is not available, allow the message (fail open)
-            // In production, you might want to fail closed instead
-            if (__DEV__) {
-                console.warn('Sentinel: Gemini not available, allowing message')
-            }
-            return { isApproved: true }
-        }
+  try {
+    // Check if Anua is available
+    if (!isAnuaAvailable()) {
+      // If Gemini is not available, allow the message (fail open)
+      // In production, you might want to fail closed instead
+      if (__DEV__) {
+        console.warn("Sentinel: Gemini not available, allowing message")
+      }
+      return { isApproved: true }
+    }
 
-        // Create moderation prompt
-        const moderationPrompt = `You are The Sentinel, an egoless filter for a sacred spiritual community space.
+    // Create moderation prompt
+    const moderationPrompt = `You are The Sentinel, an egoless filter for a sacred spiritual community space.
 
 Your task: Review this reflection message for the Social Sanctuary.
 
@@ -51,40 +51,41 @@ Respond ONLY with either:
 
 Do not include any other text.`
 
-        // Use a separate model instance for moderation (lower temperature for consistency)
-        const response = await askAnua(
-            moderationPrompt,
-            {
-                temperature: 0.3, // Lower temperature for more consistent moderation
-                maxTokens: 100,
-                enableVoice: false,
-            },
+    // Use a separate model instance for moderation (lower temperature for consistency)
+    const response = await askAnua(moderationPrompt, {
+      temperature: 0.3, // Lower temperature for more consistent moderation
+      maxTokens: 100,
+      enableVoice: false,
+    })
+
+    const responseText = response.trim().toUpperCase()
+
+    if (responseText.startsWith("APPROVE")) {
+      return { isApproved: true }
+    } else if (responseText.startsWith("REJECT")) {
+      // Extract reason if provided
+      const reasonMatch = responseText.match(/REJECT:\s*(.+)/i)
+      const reason = reasonMatch
+        ? reasonMatch[1].trim()
+        : "Message does not meet community guidelines"
+      return { isApproved: false, reason }
+    } else {
+      // If response is unclear, default to approval (fail open)
+      // In production, you might want to fail closed or require human review
+      if (__DEV__) {
+        console.warn(
+          "Sentinel: Unclear response, defaulting to approval:",
+          responseText,
         )
-
-        const responseText = response.trim().toUpperCase()
-
-        if (responseText.startsWith('APPROVE')) {
-            return { isApproved: true }
-        } else if (responseText.startsWith('REJECT')) {
-            // Extract reason if provided
-            const reasonMatch = responseText.match(/REJECT:\s*(.+)/i)
-            const reason = reasonMatch ? reasonMatch[1].trim() : 'Message does not meet community guidelines'
-            return { isApproved: false, reason }
-        } else {
-            // If response is unclear, default to approval (fail open)
-            // In production, you might want to fail closed or require human review
-            if (__DEV__) {
-                console.warn('Sentinel: Unclear response, defaulting to approval:', responseText)
-            }
-            return { isApproved: true }
-        }
-    } catch (error) {
-        if (__DEV__) {
-            console.error('Sentinel: Error moderating reflection:', error)
-        }
-        // On error, default to approval (fail open)
-        // In production, you might want to fail closed or require human review
-        return { isApproved: true }
+      }
+      return { isApproved: true }
     }
+  } catch (error) {
+    if (__DEV__) {
+      console.error("Sentinel: Error moderating reflection:", error)
+    }
+    // On error, default to approval (fail open)
+    // In production, you might want to fail closed or require human review
+    return { isApproved: true }
+  }
 }
-

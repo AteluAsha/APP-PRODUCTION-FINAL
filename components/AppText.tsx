@@ -85,21 +85,30 @@ interface AppTextProps extends RNTextProps, VariantProps<typeof textVariants> {
  * <AppText font="koh-santepheap">Display Text</AppText>
  * <AppText className="text-blue-500">Custom Blue Default Font</AppText>
  */
+/**
+ * Fallback text color when NativeWind does not apply (e.g. dynamic className
+ * from textVariants). Hero used "nativewind/babel"; we use css-interop/babel
+ * which does not resolve runtime class names. This ensures text is always
+ * visible without changing designs.
+ */
+const DEFAULT_TEXT_COLOR = "#ffffff"
+
 export function AppText({
   font, // Use the new font prop
   size,
   className,
+  style,
   // Removed: variant, fontFamily, weight, italic
   ...props
 }: AppTextProps) {
   return (
     <RNText
-      // Pass the font prop to tv
       className={textVariants({
         font,
         size,
         className,
       })}
+      style={[{ color: DEFAULT_TEXT_COLOR }, style]}
       {...props}
     />
   )

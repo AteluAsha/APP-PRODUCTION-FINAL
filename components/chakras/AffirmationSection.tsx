@@ -8,26 +8,49 @@ export const AffirmationSection = ({
 }) => {
   return (
     <View>
-      <View className="h-[1px] bg-[#8E8E8E] w-16 self-center mb-4"></View>
-      <View className="justify-center py-6 mx-2 rounded-3xl">
+      <View
+        style={{
+          height: 1,
+          backgroundColor: "#8E8E8E",
+          width: 64,
+          alignSelf: "center",
+          marginBottom: 16,
+        }}
+      />
+      <View
+        style={{
+          justifyContent: "center",
+          paddingVertical: 24,
+          marginHorizontal: 8,
+          borderRadius: 24,
+        }}
+      >
         <AppText
           font="cormorant-regular"
-          className="px-4 text-center mb-3 text-[22px]"
+          size="xl"
+          style={{ paddingHorizontal: 16, textAlign: "center", marginBottom: 12, fontSize: 22, color: "#ffffff" }}
         >
           {"Affirmation"}
         </AppText>
-        <View className="flex-row items-center justify-center">
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
           <AppText
             font="cormorant-italic"
             size="3xl"
-            className="px-2 text-center text-[26px]"
-            style={{ letterSpacing: -0.8 }}
+            style={{ paddingHorizontal: 8, textAlign: "center", fontSize: 26, letterSpacing: -0.8, color: "#ffffff" }}
           >
             {affirmationText}
           </AppText>
         </View>
       </View>
-      <View className="h-[1px] bg-[#8E8E8E] w-6 self-center mt-4"></View>
+      <View
+        style={{
+          height: 1,
+          backgroundColor: "#8E8E8E",
+          width: 24,
+          alignSelf: "center",
+          marginTop: 16,
+        }}
+      />
     </View>
   )
 }

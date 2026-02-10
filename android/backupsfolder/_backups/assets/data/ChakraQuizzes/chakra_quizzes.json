@@ -1,0 +1,835 @@
+[
+  {
+    "day": 1,
+    "title": "Root Chakra (Muladhara) - The Foundation",
+    "description": "Grounding, Survival, Safety, and the Right to Be Here.",
+    "dragon_guide": "Veer N'Ka'A (The Crimson Dragon)",
+    "frequency": "396 Hz",
+    "questions": [
+      {
+        "id": "root_01",
+        "question": "The Sanskrit name 'Muladhara' translates to:",
+        "options": [
+          { "text": "Root Support", "isCorrect": true, "rationale": "'Mula' means Root and 'Dhara' means Support. It is the foundation that holds up your entire energetic structure." },
+          { "text": "The Dwelling Place of the Self.", "isCorrect": false, "rationale": "This is Svadhisthana (Sacral)." },
+          { "text": "City of Jewels.", "isCorrect": false, "rationale": "This is Manipura (Solar Plexus)." },
+          { "text": "Unstruck Sound.", "isCorrect": false, "rationale": "This is Anahata (Heart)." }
+        ]
+      },
+      {
+        "id": "root_02",
+        "question": "Which Hertz frequency is used to liberate fear and ground the Root Chakra?",
+        "options": [
+          { "text": "396 Hz", "isCorrect": true, "rationale": "396 Hz vibrates at a low, dense frequency that helps turn grief into joy and liberates guilt and fear." },
+          { "text": "528 Hz, the frequency used for transformation and willpower.", "isCorrect": false, "rationale": "This is the frequency of miracles (Solar Plexus)." },
+          { "text": "417 Hz, the frequency used to undo situations and facilitate change.", "isCorrect": false, "rationale": "This is for undoing situations (Sacral)." },
+          { "text": "639 Hz, the frequency used for connection and harmony.", "isCorrect": false, "rationale": "This is for connection (Heart)." }
+        ]
+      },
+      {
+        "id": "root_03",
+        "question": "The Divine Law governing the Root Chakra is 'Generation.' What does this imply?",
+        "options": [
+          { "text": "I have the right to be here and create.", "isCorrect": true, "rationale": "Generation is about the power to manifest energy into physical form. It affirms your right to exist and take up space." },
+          { "text": "I feel therefore I am; this aligns with emotion and flow.", "isCorrect": false, "rationale": "This is a Sacral concept." },
+          { "text": "I think therefore I am; this aligns with the mind and mental body.", "isCorrect": false, "rationale": "This is a Mental concept." },
+          { "text": "I surrender to the flow; this aligns with the Water element and fluidity.", "isCorrect": false, "rationale": "This is a Water element concept." }
+        ]
+      },
+      {
+        "id": "root_04",
+        "question": "Which emotion is the primary 'Demon' that blocks the Root Chakra?",
+        "options": [
+          { "text": "Fear", "isCorrect": true, "rationale": "Fear strikes at the foundation of safety. When we are afraid for our survival, the Root shrinks and closes." },
+          { "text": "Guilt, which freezes the flow of pleasure and creativity.", "isCorrect": false, "rationale": "Guilt blocks the Sacral Chakra." },
+          { "text": "Shame, which undermines personal power and confidence.", "isCorrect": false, "rationale": "Shame blocks the Solar Plexus." },
+          { "text": "Grief, which can close the heart and restrict love.", "isCorrect": false, "rationale": "Grief blocks the Heart." }
+        ]
+      },
+      {
+        "id": "root_05",
+        "question": "The Adrenal Glands are the physical counterpart to the Root. What is their function?",
+        "options": [
+          { "text": "Fight or Flight Response", "isCorrect": true, "rationale": "They release adrenaline and cortisol to help you survive immediate danger, perfectly mirroring the Root's survival instinct." },
+          { "text": "Regulating digestion and blood sugar.", "isCorrect": false, "rationale": "That is the Pancreas." },
+          { "text": "Governing reproduction and sexual development.", "isCorrect": false, "rationale": "That is the Gonads." },
+          { "text": "Regulating metabolism and energy.", "isCorrect": false, "rationale": "That is the Thyroid." }
+        ]
+      },
+      {
+        "id": "root_06",
+        "question": "The Bija Mantra 'LAM' is chanted to:",
+        "options": [
+          { "text": "Ground energy into the pelvic floor and legs.", "isCorrect": true, "rationale": "The sound 'Lam' creates a heavy, earthy vibration that stabilizes the energetic body." },
+          { "text": "Direct energy to open the heart center.", "isCorrect": false, "rationale": "That is 'YAM'." },
+          { "text": "Direct energy to clear the throat center.", "isCorrect": false, "rationale": "That is 'HAM'." },
+          { "text": "Direct energy to awaken the third eye.", "isCorrect": false, "rationale": "That is 'OM'." }
+        ]
+      },
+      {
+        "id": "root_07",
+        "question": "Which element is the Root Chakra (Muladhara) traditionally associated with?",
+        "options": [
+          { "text": "Earth (grounding, stability, and connection to the physical body).", "isCorrect": true, "rationale": "The Root is the earth element—grounding, stability, and connection to the physical world and the body." },
+          { "text": "Water (the element of emotional flow and creativity).", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "Fire (the element of transformation and willpower).", "isCorrect": false, "rationale": "Solar Plexus." },
+          { "text": "Air (the element of breath and connection).", "isCorrect": false, "rationale": "Heart." }
+        ]
+      },
+      {
+        "id": "root_08",
+        "question": "A balanced Root Chakra manifests in the real world as:",
+        "options": [
+          { "text": "Financial and physical stability.", "isCorrect": true, "rationale": "When your root is strong, you feel safe in your home, secure in your finances, and comfortable in your body." },
+          { "text": "A strong sense of psychic intuition and inner vision.", "isCorrect": false, "rationale": "This is an upper-center trait." },
+          { "text": "Emotional volatility and difficulty regulating feelings.", "isCorrect": false, "rationale": "This is a flow imbalance." },
+          { "text": "A need to control others and dominate situations.", "isCorrect": false, "rationale": "This is a power imbalance." }
+        ]
+      },
+      {
+        "id": "root_09",
+        "question": "The Sacred Geometry of the Root is:",
+        "options": [
+          { "text": "A Downward-Pointing Triangle", "isCorrect": true, "rationale": "It represents the energy of consciousness grounding down into the earth." },
+          { "text": "A circle representing wholeness and unity.", "isCorrect": false, "rationale": "This represents wholeness (Crown)." },
+          { "text": "A crescent moon representing water and the tides.", "isCorrect": false, "rationale": "This represents water (Sacral)." },
+          { "text": "A Star of David representing the balance of spirit and matter.", "isCorrect": false, "rationale": "This represents the balance of Heart." }
+        ]
+      },
+      {
+        "id": "root_10",
+        "question": "Day 1 Activity suggests 'Earthing.' What is this?",
+        "options": [
+          { "text": "Walking barefoot on the ground.", "isCorrect": true, "rationale": "It allows for a direct exchange of electrons with the Earth, neutralizing free radicals and calming the nervous system." },
+          { "text": "Eating only root vegetables like potatoes and carrots.", "isCorrect": false, "rationale": "While root veggies are good, Earthing refers to physical contact." },
+          { "text": "Sleeping on the floor to connect with the earth.", "isCorrect": false, "rationale": "Helpful, but not the definition." },
+          { "text": "Planting a garden and tending to the soil.", "isCorrect": false, "rationale": "Good for the soul, but Earthing is specifically skin-to-earth contact." }
+        ]
+      },
+      {
+        "id": "root_11",
+        "question": "The Affirmation for the Root Chakra is:",
+        "options": [
+          { "text": "I am. I exist. I belong.", "isCorrect": true, "rationale": "This affirmation claims your right to take up space and be safe." },
+          { "text": "I feel. I flow.", "isCorrect": false, "rationale": "Sacral Affirmation." },
+          { "text": "I do. I act.", "isCorrect": false, "rationale": "Solar Plexus Affirmation." },
+          { "text": "I see.", "isCorrect": false, "rationale": "Third Eye Affirmation." }
+        ]
+      }
+    ]
+  },
+  {
+    "day": 2,
+    "title": "Sacral Chakra (Svadhisthana) - The Flow",
+    "description": "Creativity, Sexuality, Emotion, and the Sweetness of Life.",
+    "dragon_guide": "Ur'Than'Ran (The Terracotta Dragon)",
+    "frequency": "417 Hz",
+    "questions": [
+      {
+        "id": "sacral_01",
+        "question": "Svadhisthana translates to:",
+        "options": [
+          { "text": "The Dwelling Place of the Self", "isCorrect": true, "rationale": "It implies that our true self is found in the fluid movements of our feelings and desires." },
+          { "text": "Root Support.", "isCorrect": false, "rationale": "Muladhara." },
+          { "text": "City of Jewels.", "isCorrect": false, "rationale": "Manipura." },
+          { "text": "The Void (not a standard Sanskrit name for a center).", "isCorrect": false, "rationale": "Not a chakra translation." }
+        ]
+      },
+      {
+        "id": "sacral_02",
+        "question": "The Divine Law of 'Polarity' governs this chakra. What does it teach?",
+        "options": [
+          { "text": "We must embrace both light and shadow, masculine and feminine.", "isCorrect": true, "rationale": "Polarity is the dance of opposites. The Sacral Chakra finds balance by accepting the push and pull of duality." },
+          { "text": "Good always conquers evil in the end.", "isCorrect": false, "rationale": "This is a moral judgment, not an energetic law." },
+          { "text": "We should only focus on the positive and avoid the negative.", "isCorrect": false, "rationale": "This leads to repression, blocking the flow." },
+          { "text": "Everything is mind and thought creates reality.", "isCorrect": false, "rationale": "This is the Law of Mentalism." }
+        ]
+      },
+      {
+        "id": "sacral_03",
+        "question": "Which demon blocks the Sacral Chakra?",
+        "options": [
+          { "text": "Guilt", "isCorrect": true, "rationale": "Guilt says 'I shouldn't have done that' or 'I shouldn't want that,' which freezes the flow of pleasure and creativity." },
+          { "text": "Fear, which blocks our foundation and safety.", "isCorrect": false, "rationale": "Blocks the Root." },
+          { "text": "Shame, which blocks personal power.", "isCorrect": false, "rationale": "Blocks the Solar Plexus." },
+          { "text": "Grief, which can close the heart and restrict love.", "isCorrect": false, "rationale": "Blocks the Heart." }
+        ]
+      },
+      {
+        "id": "sacral_04",
+        "question": "The element associated with the Sacral Chakra is:",
+        "options": [
+          { "text": "Water", "isCorrect": true, "rationale": "Water moves, flows, and takes the shape of its container, just like our emotions." },
+          { "text": "Fire, which is associated with willpower and transformation.", "isCorrect": false, "rationale": "Solar Plexus." },
+          { "text": "Earth, which is associated with grounding and stability.", "isCorrect": false, "rationale": "Root." },
+          { "text": "Air, which is associated with breath and connection.", "isCorrect": false, "rationale": "Heart." }
+        ]
+      },
+      {
+        "id": "sacral_05",
+        "question": "Which Hertz frequency is used to 'Undo Situations' and facilitate change?",
+        "options": [
+          { "text": "417 Hz", "isCorrect": true, "rationale": "417 Hz cleanses traumatic experiences and clears destructive influences from the cells." },
+          { "text": "396 Hz, the frequency used to liberate fear and ground.", "isCorrect": false, "rationale": "Root frequency." },
+          { "text": "528 Hz, the frequency of miracles and transformation.", "isCorrect": false, "rationale": "Solar Plexus frequency." },
+          { "text": "639 Hz, the frequency used for connection and harmony.", "isCorrect": false, "rationale": "Heart frequency." }
+        ]
+      },
+      {
+        "id": "sacral_06",
+        "question": "The Bija Mantra 'VAM' vibrates which part of the body?",
+        "options": [
+          { "text": "The lower abdomen and reproductive organs.", "isCorrect": true, "rationale": "It stimulates the sacral bowl, helping to move stuck emotional energy and fluids." },
+          { "text": "The throat.", "isCorrect": false, "rationale": "That is 'HAM'." },
+          { "text": "The chest and heart center.", "isCorrect": false, "rationale": "That is 'YAM'." },
+          { "text": "The base of the spine and pelvic floor.", "isCorrect": false, "rationale": "That is 'LAM'." }
+        ]
+      },
+      {
+        "id": "sacral_07",
+        "question": "A balanced Sacral Chakra best supports which of these?",
+        "options": [
+          { "text": "Healthy creativity and emotional flow without guilt.", "isCorrect": true, "rationale": "The Sacral thrives when we allow pleasure, feeling, and creation without shame or freezing." },
+          { "text": "Rigid control over every outcome and desire.", "isCorrect": false, "rationale": "Control restricts the Sacral's natural flow." },
+          { "text": "Pure logic and the transcendence of the body.", "isCorrect": false, "rationale": "That belongs to the mind and upper chakras." },
+          { "text": "Detachment from all feeling and sensation.", "isCorrect": false, "rationale": "The Sacral is about feeling and embodiment, not detachment." }
+        ]
+      },
+      {
+        "id": "sacral_08",
+        "question": "Day 2's activity involves 'Deleting the Past.' What is the purpose of this?",
+        "options": [
+          { "text": "To remove old identities that no longer fit who you are now.", "isCorrect": true, "rationale": "By archiving old posts or photos, you signal to your psyche that you are fluid and ready to be reborn in the Now." },
+          { "text": "To hide from people and avoid being seen.", "isCorrect": false, "rationale": "It is about transformation, not hiding." },
+          { "text": "To forget mistakes and erase the past entirely.", "isCorrect": false, "rationale": "We learn from mistakes; we just don't carry the heavy energy of them." },
+          { "text": "To look mysterious and create intrigue.", "isCorrect": false, "rationale": "Not the spiritual goal." }
+        ]
+      },
+      {
+        "id": "sacral_09",
+        "question": "The physical glands associated with Svadhisthana are:",
+        "options": [
+          { "text": "The Gonads (Ovaries/Testes).", "isCorrect": true, "rationale": "They govern reproduction and sexual development, the physical manifestation of creativity." },
+          { "text": "The Adrenal glands, which support survival and grounding.", "isCorrect": false, "rationale": "Root." },
+          { "text": "The Thyroid gland, which supports metabolism and expression.", "isCorrect": false, "rationale": "Throat." },
+          { "text": "The Pineal gland, which supports intuition and light response.", "isCorrect": false, "rationale": "Crown." }
+        ]
+      },
+      {
+        "id": "sacral_10",
+        "question": "The Sacred Geometry for the Sacral Chakra is:",
+        "options": [
+          { "text": "A Crescent Moon.", "isCorrect": true, "rationale": "It symbolizes the influence of the tides, water, and the feminine lunar energy." },
+          { "text": "A square representing earth and grounding.", "isCorrect": false, "rationale": "Earth/Root." },
+          { "text": "A triangle representing fire and willpower.", "isCorrect": false, "rationale": "Fire/Solar." },
+          { "text": "A lotus, which is a general symbol but not specific to this center.", "isCorrect": false, "rationale": "General chakra symbol, but the Moon is specific to the center." }
+        ]
+      },
+      {
+        "id": "sacral_11",
+        "question": "The Affirmation for Day 2 is:",
+        "options": [
+          { "text": "I feel. I flow. I create.", "isCorrect": true, "rationale": "This affirms the permission to feel emotions and use that energy for creation." },
+          { "text": "I am. I exist. I belong.", "isCorrect": false, "rationale": "Root." },
+          { "text": "I love. I forgive.", "isCorrect": false, "rationale": "Heart." },
+          { "text": "I know. I understand.", "isCorrect": false, "rationale": "Crown." }
+        ]
+      }
+    ]
+  },
+  {
+    "day": 3,
+    "title": "Solar Plexus Chakra (Manipura) - The Fire",
+    "description": "Willpower, Accountability, Transformation, and the Triangle of Truth.",
+    "dragon_guide": "Taixuan (The Golden Dragon)",
+    "frequency": "528 Hz",
+    "questions": [
+      {
+        "id": "solar_01",
+        "question": "Manipura translates to:",
+        "options": [
+          { "text": "City of Jewels", "isCorrect": true, "rationale": "'Mani' means gem. It represents the sparkling brilliance of your personal power." },
+          { "text": "Sun Center (conceptually true, but not the literal Sanskrit translation).", "isCorrect": false, "rationale": "Conceptually true, but not the translation." },
+          { "text": "Fire House (a common misconception about Manipura).", "isCorrect": false, "rationale": "Inaccurate." },
+          { "text": "Golden Wheel (another center uses wheel imagery).", "isCorrect": false, "rationale": "Inaccurate." }
+        ]
+      },
+      {
+        "id": "solar_02",
+        "question": "The 'Triangle of Truth' requires alignment between which three things?",
+        "options": [
+          { "text": "Thoughts, Words, and Actions.", "isCorrect": true, "rationale": "When these three are aligned, you have integrity and your willpower is effective." },
+          { "text": "Mind, Body, and Spirit (the general wellness triad).", "isCorrect": false, "rationale": "General wellness triad." },
+          { "text": "Past, Present, and Future (the time triad).", "isCorrect": false, "rationale": "Time triad." },
+          { "text": "Id, Ego, and Superego (the Freudian psychological triad).", "isCorrect": false, "rationale": "Freudian triad." }
+        ]
+      },
+      {
+        "id": "solar_03",
+        "question": "Which Hertz frequency is the 'Miracle Tone' for transformation?",
+        "options": [
+          { "text": "528 Hz", "isCorrect": true, "rationale": "It repairs DNA and facilitates deep transformative healing." },
+          { "text": "417 Hz, the frequency used to undo situations.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "639 Hz, the frequency used for connection.", "isCorrect": false, "rationale": "Heart." },
+          { "text": "741 Hz, the frequency used for purification and expression.", "isCorrect": false, "rationale": "Throat." }
+        ]
+      },
+      {
+        "id": "solar_04",
+        "question": "The Law of 'Cause and Effect' teaches:",
+        "options": [
+          { "text": "Every action generates a force of reaction.", "isCorrect": true, "rationale": "We are active generators. Our choices ripple out and return to us." },
+          { "text": "We are victims of fate and cannot change our circumstances.", "isCorrect": false, "rationale": "Victimhood blocks this chakra." },
+          { "text": "We must control others to get the results we want.", "isCorrect": false, "rationale": "Control is a shadow aspect." },
+          { "text": "Everything is accidental and random.", "isCorrect": false, "rationale": "Nothing is accidental to the Solar Plexus." }
+        ]
+      },
+      {
+        "id": "solar_05",
+        "question": "The Bija Mantra 'RAM' fuels:",
+        "options": [
+          { "text": "The digestive fire and willpower.", "isCorrect": true, "rationale": "It vibrates the solar plexus, burning away inertia and doubt." },
+          { "text": "Grounding and stability.", "isCorrect": false, "rationale": "LAM." },
+          { "text": "Compassion and heart opening.", "isCorrect": false, "rationale": "YAM." },
+          { "text": "Intuition and cosmic connection.", "isCorrect": false, "rationale": "OM." }
+        ]
+      },
+      {
+        "id": "solar_06",
+        "question": "Which element is the Solar Plexus Chakra (Manipura) associated with?",
+        "options": [
+          { "text": "Fire (willpower, transformation, and digestive fire).", "isCorrect": true, "rationale": "The Solar Plexus is the fire center—willpower, transformation, and digestive fire." },
+          { "text": "Earth (the element of grounding and stability).", "isCorrect": false, "rationale": "Root." },
+          { "text": "Water (the element of emotion and flow).", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "Air (the element of breath and connection).", "isCorrect": false, "rationale": "Heart." }
+        ]
+      },
+      {
+        "id": "solar_07",
+        "question": "Physically, the Solar Plexus governs:",
+        "options": [
+          { "text": "Digestion (Pancreas, Liver, Stomach).", "isCorrect": true, "rationale": "It processes fuel for the body, just as the chakra processes life for the soul." },
+          { "text": "Respiration and the lungs.", "isCorrect": false, "rationale": "Heart." },
+          { "text": "Reproduction and the gonads.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "Thinking and higher cognition.", "isCorrect": false, "rationale": "Crown/Third Eye." }
+        ]
+      },
+      {
+        "id": "solar_08",
+        "question": "A blocked Solar Plexus manifests as:",
+        "options": [
+          { "text": "A need for control, blame, or lack of confidence.", "isCorrect": true, "rationale": "When we feel powerless, we either try to dominate others or collapse into victimhood." },
+          { "text": "Excessive crying and emotional overwhelm.", "isCorrect": false, "rationale": "Heart/Sacral." },
+          { "text": "Spacey-ness and disconnection from the body.", "isCorrect": false, "rationale": "Crown." },
+          { "text": "Hoarding and fear of scarcity.", "isCorrect": false, "rationale": "Root." }
+        ]
+      },
+      {
+        "id": "solar_09",
+        "question": "The Sacred Geometry for the Solar Plexus is:",
+        "options": [
+          { "text": "An Inverted Triangle.", "isCorrect": true, "rationale": "It represents the funneling of divine energy down into action." },
+          { "text": "A square representing earth and grounding.", "isCorrect": false, "rationale": "Root." },
+          { "text": "A circle representing wholeness and unity.", "isCorrect": false, "rationale": "Crown." },
+          { "text": "A star or hexagram representing spirit and matter.", "isCorrect": false, "rationale": "Heart." }
+        ]
+      },
+      {
+        "id": "solar_10",
+        "question": "The Affirmation for Day 3 is:",
+        "options": [
+          { "text": "Through my truth, I find my soul fire.", "isCorrect": true, "rationale": "Authenticity is the fuel for the inner fire." },
+          { "text": "I am safe. I belong.", "isCorrect": false, "rationale": "Root." },
+          { "text": "I feel. I flow.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "I see. I perceive.", "isCorrect": false, "rationale": "Third Eye." }
+        ]
+      },
+      {
+        "id": "solar_11",
+        "question": "Why is saying 'It wasn't me' damaging to the Solar Plexus?",
+        "options": [
+          { "text": "It gives away your power and creates resistance.", "isCorrect": true, "rationale": "Accountability is ownership. When you deny responsibility, you deny your ability to affect change." },
+          { "text": "It is rude and may offend the listener.", "isCorrect": false, "rationale": "True, but not the energetic reason." },
+          { "text": "It hurts the voice and expression.", "isCorrect": false, "rationale": "Inaccurate." },
+          { "text": "It lowers your vibration to 396 Hz frequency.", "isCorrect": false, "rationale": "Inaccurate." }
+        ]
+      }
+    ]
+  },
+  {
+    "day": 4,
+    "title": "Heart Chakra (Anahata) - The Bridge",
+    "description": "Unconditional Love, Rhythm, and the Union of Spirit and Matter.",
+    "dragon_guide": "Bal'Thae'Zar (The Emerald Dragon)",
+    "frequency": "639 Hz",
+    "questions": [
+      {
+        "id": "heart_01",
+        "question": "Anahata translates to:",
+        "options": [
+          { "text": "Unstruck Sound (or Unhurt)", "isCorrect": true, "rationale": "It refers to the eternal hum of the universe that is not caused by two things striking together." },
+          { "text": "Loving Center (a descriptive phrase for the heart, but not the Sanskrit translation).", "isCorrect": false, "rationale": "Descriptive, but not the name." },
+          { "text": "Purification.", "isCorrect": false, "rationale": "Vishuddha." },
+          { "text": "Thousand Petaled.", "isCorrect": false, "rationale": "Sahasrara." }
+        ]
+      },
+      {
+        "id": "heart_02",
+        "question": "The Law of 'Rhythm' teaches us:",
+        "options": [
+          { "text": "To play all the notes, from sorrow to joy.", "isCorrect": true, "rationale": "Life expands and contracts like a heartbeat. We must honor the full spectrum of feeling." },
+          { "text": "To always be happy.", "isCorrect": false, "rationale": "This is spiritual bypassing." },
+          { "text": "To control our emotions.", "isCorrect": false, "rationale": "This blocks the heart." },
+          { "text": "That time is linear.", "isCorrect": false, "rationale": "Rhythm is cyclical." }
+        ]
+      },
+      {
+        "id": "heart_03",
+        "question": "What distinguishes Soul Love from Ego Love?",
+        "options": [
+          { "text": "Soul Love is unconditional; Ego Love is transactional.", "isCorrect": true, "rationale": "Ego says 'I love you IF.' Soul says 'I love you because I am love.'" },
+          { "text": "Soul love is weaker and Ego love is stronger in the world.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Ego love is only for family while Soul love is for strangers.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Soul love has no boundaries and gives without discernment.", "isCorrect": false, "rationale": "Unconditional love can still have boundaries for behavior." }
+        ]
+      },
+      {
+        "id": "heart_04",
+        "question": "Which Hertz frequency fosters connection and harmony?",
+        "options": [
+          { "text": "639 Hz", "isCorrect": true, "rationale": "It heals relationships and reconnects fractured parts of the self." },
+          { "text": "528 Hz, the frequency of miracles used for the Solar Plexus.", "isCorrect": false, "rationale": "Solar Plexus." },
+          { "text": "741 Hz, the frequency used to purify and open expression.", "isCorrect": false, "rationale": "Throat." },
+          { "text": "852 Hz, the frequency used to awaken the Third Eye and intuition.", "isCorrect": false, "rationale": "Third Eye." }
+        ]
+      },
+      {
+        "id": "heart_05",
+        "question": "The Bija Mantra 'YAM' resonates in:",
+        "options": [
+          { "text": "The center of the chest.", "isCorrect": true, "rationale": "It vibrates the sternum and thymus, opening the heart space." },
+          { "text": "The throat and vocal cords.", "isCorrect": false, "rationale": "HAM." },
+          { "text": "The hips and lower abdomen.", "isCorrect": false, "rationale": "VAM." },
+          { "text": "The head and crown.", "isCorrect": false, "rationale": "OM." }
+        ]
+      },
+      {
+        "id": "heart_06",
+        "question": "Which gland is most closely associated with the Heart Chakra (Anahata)?",
+        "options": [
+          { "text": "The Thymus gland (immunity and the seat of higher heart energy).", "isCorrect": true, "rationale": "The thymus sits in the chest and is linked to immune function and unconditional love." },
+          { "text": "The Adrenal glands.", "isCorrect": false, "rationale": "Root." },
+          { "text": "The Gonads.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "The Thyroid gland.", "isCorrect": false, "rationale": "Throat." }
+        ]
+      },
+      {
+        "id": "heart_07",
+        "question": "The Sacred Geometry of the Heart (Hexagram) represents:",
+        "options": [
+          { "text": "The union of Spirit (upward triangle) and Matter (downward triangle).", "isCorrect": true, "rationale": "The heart is the balance point of the entire chakra system." },
+          { "text": "The four directions.", "isCorrect": false, "rationale": "Root." },
+          { "text": "The flow of water.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "Infinite oneness.", "isCorrect": false, "rationale": "Crown." }
+        ]
+      },
+      {
+        "id": "heart_08",
+        "question": "Physical symptoms of a blocked Heart include:",
+        "options": [
+          { "text": "Respiratory issues, circulatory problems, or immune weakness.", "isCorrect": true, "rationale": "The heart governs the lungs, blood, and thymus gland." },
+          { "text": "Digestive issues and stomach discomfort.", "isCorrect": false, "rationale": "Solar Plexus." },
+          { "text": "Sore throat and thyroid imbalance.", "isCorrect": false, "rationale": "Throat." },
+          { "text": "Back pain and adrenal fatigue.", "isCorrect": false, "rationale": "Root." }
+        ]
+      },
+      {
+        "id": "heart_09",
+        "question": "Which crystal is suggested for Day 4 to 'shoot love' at others?",
+        "options": [
+          { "text": "Amethyst", "isCorrect": true, "rationale": "A deep purple Amethyst is used to raise frequency and lower judgment." },
+          { "text": "Red Jasper, which supports grounding and stability.", "isCorrect": false, "rationale": "Grounding." },
+          { "text": "Citrine, which supports willpower and the Solar Plexus.", "isCorrect": false, "rationale": "Willpower." },
+          { "text": "Clear Quartz, which supports clarity and amplification of intention.", "isCorrect": false, "rationale": "Clarity." }
+        ]
+      },
+      {
+        "id": "heart_10",
+        "question": "To be fully open hearted means:",
+        "options": [
+          { "text": "Being willing to feel everything, including pain.", "isCorrect": true, "rationale": "You cannot selectively numb pain without also numbing joy." },
+          { "text": "Always smiling and showing a positive face to the world.", "isCorrect": false, "rationale": "Artificial." },
+          { "text": "Giving everyone what they want and never saying no.", "isCorrect": false, "rationale": "Lack of boundaries." },
+          { "text": "Never getting angry or expressing difficult emotions.", "isCorrect": false, "rationale": "Repression." }
+        ]
+      },
+      {
+        "id": "heart_11",
+        "question": "The Affirmation for Day 4 is:",
+        "options": [
+          { "text": "My heart is open. My love is unconditional.", "isCorrect": true, "rationale": "It sets the intention for a limitless flow of compassion." },
+          { "text": "I feel. I flow.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "I speak my truth.", "isCorrect": false, "rationale": "Throat." },
+          { "text": "I understand.", "isCorrect": false, "rationale": "Crown." }
+        ]
+      }
+    ]
+  },
+  {
+    "day": 5,
+    "title": "Throat Chakra (Vishuddha) - The Voice",
+    "description": "Authenticity, Vibration, Magic, and the Power of Sound.",
+    "dragon_guide": "E'Ok 'N (The Blue Dragon)",
+    "frequency": "741 Hz",
+    "questions": [
+      {
+        "id": "throat_01",
+        "question": "Vishuddha translates to:",
+        "options": [
+          { "text": "Especially Pure (or Purification)", "isCorrect": true, "rationale": "Truth acts as a filter, purifying the ego's distortions before they are spoken." },
+          { "text": "Great Sound (a common misconception about the Throat's Sanskrit name).", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Blue Lotus (a symbolic association but not the literal translation).", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Command Center.", "isCorrect": false, "rationale": "Ajna." }
+        ]
+      },
+      {
+        "id": "throat_02",
+        "question": "The Law of 'Vibration' states:",
+        "options": [
+          { "text": "Everything is in constant motion; words are energy that shape reality.", "isCorrect": true, "rationale": "Your voice creates a frequency that structures the ether around you." },
+          { "text": "Speak loudly to be heard so that your message carries across the room.", "isCorrect": false, "rationale": "Volume is not vibration." },
+          { "text": "Silence is the only truth and words always distort reality.", "isCorrect": false, "rationale": "Expression is also truth." },
+          { "text": "Gravity holds us down and keeps us anchored to the earth.", "isCorrect": false, "rationale": "Physics law, not energetic." }
+        ]
+      },
+      {
+        "id": "throat_03",
+        "question": "Authentic speech should originate from:",
+        "options": [
+          { "text": "The abdomen/root rising through the heart.", "isCorrect": true, "rationale": "It grounds the power of the lower chakras and filters it through love." },
+          { "text": "The head and the intellect alone.", "isCorrect": false, "rationale": "This is intellectual/egoic speech." },
+          { "text": "The throat only, without support from the body.", "isCorrect": false, "rationale": "This creates a thin, anxious voice." },
+          { "text": "Outside yourself, from what others expect you to say.", "isCorrect": false, "rationale": "Inauthentic." }
+        ]
+      },
+      {
+        "id": "throat_04",
+        "question": "Which Hertz frequency purifies the Throat?",
+        "options": [
+          { "text": "741 Hz", "isCorrect": true, "rationale": "It cleanses toxins and awakens intuition/expression." },
+          { "text": "639 Hz, the frequency used for connection and harmony.", "isCorrect": false, "rationale": "Heart." },
+          { "text": "852 Hz, the frequency used to awaken the Third Eye and intuition.", "isCorrect": false, "rationale": "Third Eye." },
+          { "text": "963 Hz, the frequency of the gods associated with the Crown.", "isCorrect": false, "rationale": "Crown." }
+        ]
+      },
+      {
+        "id": "throat_05",
+        "question": "The proper pronunciation of 'HAM' is:",
+        "options": [
+          { "text": "Haum (opening the back of the throat)", "isCorrect": true, "rationale": "This creates maximum vibration in the vocal cords." },
+          { "text": "Ham (like the food), with a flat, short vowel sound.", "isCorrect": false, "rationale": "Too flat." },
+          { "text": "Home, with the mouth only partly open.", "isCorrect": false, "rationale": "Close, but not open enough." },
+          { "text": "Hymn, with the sound held too far forward in the mouth.", "isCorrect": false, "rationale": "Too closed." }
+        ]
+      },
+      {
+        "id": "throat_06",
+        "question": "When the Throat Chakra is balanced, you are best able to:",
+        "options": [
+          { "text": "Express your truth with clarity and kindness.", "isCorrect": true, "rationale": "A clear Throat allows authentic communication that is both honest and compassionate." },
+          { "text": "Dominate conversations and control the narrative.", "isCorrect": false, "rationale": "That is a Solar Plexus shadow, not balanced Throat." },
+          { "text": "Stay silent to avoid conflict and keep the peace.", "isCorrect": false, "rationale": "That reflects a blocked or over-adapted Throat." },
+          { "text": "Speak only facts with no emotion or vulnerability.", "isCorrect": false, "rationale": "Balance includes heart and authenticity, not just logic." }
+        ]
+      },
+      {
+        "id": "throat_07",
+        "question": "Understanding the 'Koshas' helps us identify:",
+        "options": [
+          { "text": "Which layer of self (Physical, Mental, Soul) is motivating our speech.", "isCorrect": true, "rationale": "This awareness allows us to shift from ego-speech to soul-speech." },
+          { "text": "How fast to talk and the ideal pace for each conversation.", "isCorrect": false, "rationale": "Irrelevant." },
+          { "text": "How to yell effectively when we need to be heard.", "isCorrect": false, "rationale": "Irrelevant." },
+          { "text": "Grammar rules and the correct structure of sentences.", "isCorrect": false, "rationale": "Irrelevant." }
+        ]
+      },
+      {
+        "id": "throat_08",
+        "question": "The Thyroid Gland governs:",
+        "options": [
+          { "text": "Metabolism and growth.", "isCorrect": true, "rationale": "It sets the tempo for the body's energy." },
+          { "text": "Blood sugar and digestion.", "isCorrect": false, "rationale": "Pancreas." },
+          { "text": "Adrenaline and the fight-or-flight response.", "isCorrect": false, "rationale": "Adrenals." },
+          { "text": "Sleep and circadian rhythm.", "isCorrect": false, "rationale": "Pineal." }
+        ]
+      },
+      {
+        "id": "throat_09",
+        "question": "The 'Demon' of the Throat Chakra is:",
+        "options": [
+          { "text": "Lies.", "isCorrect": true, "rationale": "Lies create dissonance and clog the energetic filter." },
+          { "text": "Fear, which blocks our foundation and survival energy.", "isCorrect": false, "rationale": "Root." },
+          { "text": "Grief, which can close the heart and restrict love.", "isCorrect": false, "rationale": "Heart." },
+          { "text": "Illusion, which distorts the vision of the Third Eye.", "isCorrect": false, "rationale": "Third Eye." }
+        ]
+      },
+      {
+        "id": "throat_10",
+        "question": "The Sacred Geometry for the Throat is:",
+        "options": [
+          { "text": "A Downward-Pointing Triangle within a Circle.", "isCorrect": true, "rationale": "It represents divine inspiration descending into form/speech." },
+          { "text": "Earth Triangle, representing grounding and stability.", "isCorrect": false, "rationale": "Root." },
+          { "text": "Upward Triangle, representing fire and the Solar Plexus.", "isCorrect": false, "rationale": "Fire." },
+          { "text": "Infinite Lotus, representing the Crown and thousand petals.", "isCorrect": false, "rationale": "Crown." }
+        ]
+      },
+      {
+        "id": "throat_11",
+        "question": "The Affirmation for Day 5 is:",
+        "options": [
+          { "text": "I release the mind - and speak my truth.", "isCorrect": true, "rationale": "It affirms the power of authentic expression over mental narrative." },
+          { "text": "I am loud and my voice dominates the room.", "isCorrect": false, "rationale": "Not the goal." },
+          { "text": "I see.", "isCorrect": false, "rationale": "Third Eye." },
+          { "text": "I understand.", "isCorrect": false, "rationale": "Crown." }
+        ]
+      }
+    ]
+  },
+  {
+    "day": 6,
+    "title": "Third Eye Chakra (Ajna) - The Vision",
+    "description": "Intuition, Correspondence, Wisdom, and the Quantum Eye.",
+    "dragon_guide": "Cy'thwaete (The Indigo Dragon)",
+    "frequency": "852 Hz",
+    "questions": [
+      {
+        "id": "eye_01",
+        "question": "Ajna translates to:",
+        "options": [
+          { "text": "Command (or Perceive)", "isCorrect": true, "rationale": "It is the center of command where we direct our reality through vision." },
+          { "text": "All-Seeing (a descriptive term for vision, but not the Sanskrit translation).", "isCorrect": false, "rationale": "Descriptive, not translation." },
+          { "text": "The Void (a concept from other traditions, not the meaning of Ajna).", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Lotus of Light (symbolic imagery but not the literal translation).", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      },
+      {
+        "id": "eye_02",
+        "question": "The Law of 'Correspondence' states:",
+        "options": [
+          { "text": "As above, so below; as within, so without.", "isCorrect": true, "rationale": "Our outer reality mirrors our inner state." },
+          { "text": "What goes around comes around (the Law of Cause and Effect).", "isCorrect": false, "rationale": "Cause and Effect." },
+          { "text": "To be or not to be (a philosophical question, not an energetic law).", "isCorrect": false, "rationale": "Shakespeare." },
+          { "text": "I think therefore I am (a mind-focused statement, not Correspondence).", "isCorrect": false, "rationale": "Descartes." }
+        ]
+      },
+      {
+        "id": "eye_03",
+        "question": "The Third Eye is described as:",
+        "options": [
+          { "text": "The WiFi of the Masters.", "isCorrect": true, "rationale": "It connects us to the universal cloud of knowledge." },
+          { "text": "The Ego TV (the mind's narrow, story-driven channel).", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "The Body Radio (sensation and physical awareness only).", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "The Internet of Things (external technology, not inner vision).", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      },
+      {
+        "id": "eye_04",
+        "question": "Which Hertz frequency awakens the Third Eye?",
+        "options": [
+          { "text": "852 Hz", "isCorrect": true, "rationale": "It returns us to spiritual order and awakens intuition." },
+          { "text": "741 Hz, the frequency used to purify and open expression.", "isCorrect": false, "rationale": "Throat." },
+          { "text": "963 Hz, the frequency of the gods associated with the Crown.", "isCorrect": false, "rationale": "Crown." },
+          { "text": "432 Hz, a general healing frequency not specific to the Third Eye.", "isCorrect": false, "rationale": "General healing." }
+        ]
+      },
+      {
+        "id": "eye_05",
+        "question": "The Bija Mantra 'OM' represents:",
+        "options": [
+          { "text": "The primordial sound of creation and unity.", "isCorrect": true, "rationale": "It tunes us to the cosmic frequency." },
+          { "text": "Silence and the absence of all vibration.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "One hand clapping (a koan about paradox, not the mantra's meaning).", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Earth and the grounding element.", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      },
+      {
+        "id": "eye_06",
+        "question": "Which gland is the physical counterpart of the Third Eye Chakra (Ajna)?",
+        "options": [
+          { "text": "The Pineal gland (sometimes called the 'seat of the soul').", "isCorrect": true, "rationale": "The pineal is linked to intuition, light sensitivity, and inner vision." },
+          { "text": "The Thyroid gland.", "isCorrect": false, "rationale": "Throat." },
+          { "text": "The Adrenal glands.", "isCorrect": false, "rationale": "Root." },
+          { "text": "The Pancreas.", "isCorrect": false, "rationale": "Solar Plexus." }
+        ]
+      },
+      {
+        "id": "eye_07",
+        "question": "The 'Spirit-Mind Awakening Breath' activates the Pineal Gland using:",
+        "options": [
+          { "text": "Nitric oxide production in the nasopharynx.", "isCorrect": true, "rationale": "Nasal breathing stimulates this molecule, which signals the pineal to open." },
+          { "text": "Hyperventilation and rapid, shallow breathing.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Throat clearing and vocalization to open the voice.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Digestion and the processing of food in the gut.", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      },
+      {
+        "id": "eye_08",
+        "question": "The block of the Third Eye is:",
+        "options": [
+          { "text": "Illusion (Maya).", "isCorrect": true, "rationale": "Believing only the physical is real blinds us to the truth." },
+          { "text": "Fear, which blocks our foundation and survival energy.", "isCorrect": false, "rationale": "Root." },
+          { "text": "Guilt, which freezes the flow of pleasure and creativity.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "Grief, which can close the heart and restrict love.", "isCorrect": false, "rationale": "Heart." }
+        ]
+      },
+      {
+        "id": "eye_09",
+        "question": "A deficient Third Eye manifests as:",
+        "options": [
+          { "text": "Skepticism, rigid thinking, and inability to see the big picture.", "isCorrect": true, "rationale": "The person becomes trapped in materialism." },
+          { "text": "Hallucinations and an overactive imagination.", "isCorrect": false, "rationale": "Excessive Third Eye." },
+          { "text": "Over-emotionality and difficulty regulating feelings.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "Hoarding and fear of scarcity.", "isCorrect": false, "rationale": "Root." }
+        ]
+      },
+      {
+        "id": "eye_10",
+        "question": "The Affirmation for Day 6 is:",
+        "options": [
+          { "text": "I release the limitations of self. I open my mind to the Universe.", "isCorrect": true, "rationale": "It moves identity from the small ego to the infinite awareness." },
+          { "text": "The past.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "My voice.", "isCorrect": false, "rationale": "Throat." },
+          { "text": "My fears.", "isCorrect": false, "rationale": "Root." }
+        ]
+      },
+      {
+        "id": "eye_11",
+        "question": "The Sacred Geometry for the Third Eye is:",
+        "options": [
+          { "text": "Two Intersecting Triangles.", "isCorrect": true, "rationale": "It symbolizes the union of intuition and intellect." },
+          { "text": "A Circle, representing wholeness and unity.", "isCorrect": false, "rationale": "Crown." },
+          { "text": "A Square, representing earth and grounding.", "isCorrect": false, "rationale": "Root." },
+          { "text": "A Moon, representing water and the tides.", "isCorrect": false, "rationale": "Sacral." }
+        ]
+      }
+    ]
+  },
+  {
+    "day": 7,
+    "title": "Crown Chakra (Sahasrara) - The Knowing",
+    "description": "Connection, Mentalism, Enlightenment, and the Universal Mind.",
+    "dragon_guide": "Flec'An'Da'Cian (The White Dragon)",
+    "frequency": "963 Hz",
+    "questions": [
+      {
+        "id": "crown_01",
+        "question": "Sahasrara translates to:",
+        "options": [
+          { "text": "Thousand-Petaled Lotus", "isCorrect": true, "rationale": "It represents infinite potential and the expansion of consciousness." },
+          { "text": "Brain Nerves (a literal anatomical term, not the Sanskrit meaning).", "isCorrect": false, "rationale": "Literal, not the meaning." },
+          { "text": "Lifetimes (a concept from reincarnation, not the name).", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Big Flower (a casual description, not the actual translation).", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      },
+      {
+        "id": "crown_02",
+        "question": "The Law of 'Mentalism' states:",
+        "options": [
+          { "text": "The All is Mind; the Universe is Mental.", "isCorrect": true, "rationale": "Consciousness is the fundamental fabric of reality." },
+          { "text": "All is love.", "isCorrect": false, "rationale": "Heart." },
+          { "text": "Survival of the fittest.", "isCorrect": false, "rationale": "Root." },
+          { "text": "Energy follows attention (related, but not the Law of Mentalism).", "isCorrect": false, "rationale": "Related, but not the law." }
+        ]
+      },
+      {
+        "id": "crown_03",
+        "question": "What distinguishes 'Self Mind' from 'Soul Mind'?",
+        "options": [
+          { "text": "Self Mind focuses on separation; Soul Mind focuses on unity.", "isCorrect": true, "rationale": "The Soul Mind understands 'I am one with all'." },
+          { "text": "There is no difference; they are the same thing.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Self Mind is smarter and more logical than Soul Mind.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Soul Mind is for the dead; Self Mind is for the living.", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      },
+      {
+        "id": "crown_04",
+        "question": "Which Hertz frequency is the 'Frequency of the Gods'?",
+        "options": [
+          { "text": "963 Hz", "isCorrect": true, "rationale": "It reconnects us to the original, perfect state of Spirit." },
+          { "text": "852 Hz, the frequency used to awaken the Third Eye and intuition.", "isCorrect": false, "rationale": "Third Eye." },
+          { "text": "432 Hz, a general healing frequency not specific to the Crown.", "isCorrect": false, "rationale": "General." },
+          { "text": "528 Hz, the frequency of miracles used for the Solar Plexus.", "isCorrect": false, "rationale": "Solar." }
+        ]
+      },
+      {
+        "id": "crown_05",
+        "question": "Why 'AUM' instead of 'OM' for the Crown?",
+        "options": [
+          { "text": "It breaks into A-U-M, representing the full cycle of existence.", "isCorrect": true, "rationale": "Creation, Preservation, Dissolution. It activates the dynamic flow." },
+          { "text": "Spelling preference; both spellings mean the same thing.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "It is louder and therefore more powerful when chanted.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "It is whispered to keep the Crown energy subtle and secret.", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      },
+      {
+        "id": "crown_06",
+        "question": "The Crown Chakra (Sahasrara) is said to connect us primarily to:",
+        "options": [
+          { "text": "Universal consciousness and the divine.", "isCorrect": true, "rationale": "The Crown is the gateway to unity, spirit, and the infinite." },
+          { "text": "Material security and the right to be here.", "isCorrect": false, "rationale": "Root." },
+          { "text": "Emotional bonds and romantic love.", "isCorrect": false, "rationale": "Heart." },
+          { "text": "Personal power and achievement.", "isCorrect": false, "rationale": "Solar Plexus." }
+        ]
+      },
+      {
+        "id": "crown_07",
+        "question": "The Crown is blocked by:",
+        "options": [
+          { "text": "Attachment to the material world and ego identity.", "isCorrect": true, "rationale": "We must detach from the small self to merge with the big Self." },
+          { "text": "Money and scarcity.", "isCorrect": false, "rationale": "Root." },
+          { "text": "Sex and desire.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "Power and control.", "isCorrect": false, "rationale": "Solar." }
+        ]
+      },
+      {
+        "id": "crown_08",
+        "question": "The 'Reiki Golden Ball' meditation:",
+        "options": [
+          { "text": "Cleanses the chakras from the top down.", "isCorrect": true, "rationale": "It flushes the system with high-frequency divine light." },
+          { "text": "Builds muscle and strengthens the physical body.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Grounds energy into the earth.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Opens the hips and releases the lower body.", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      },
+      {
+        "id": "crown_09",
+        "question": "The 'Five of Light' refers to:",
+        "options": [
+          { "text": "The transpersonal chakras above the head (8th-12th).", "isCorrect": true, "rationale": "These connect us to the stars and the soul's blueprint." },
+          { "text": "Light bulbs or sources of physical light in the room.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "The five senses (sight, sound, touch, taste, smell).", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "The five fingers on each hand (hand mudras).", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      },
+      {
+        "id": "crown_10",
+        "question": "The Affirmation for Day 7 is:",
+        "options": [
+          { "text": "I am open, I am free, I am one with all.", "isCorrect": true, "rationale": "It affirms freedom from the illusion of separation." },
+          { "text": "I am safe. I belong.", "isCorrect": false, "rationale": "Root." },
+          { "text": "I speak my truth.", "isCorrect": false, "rationale": "Throat." },
+          { "text": "I feel. I flow.", "isCorrect": false, "rationale": "Sacral." }
+        ]
+      },
+      {
+        "id": "crown_11",
+        "question": "The Sacred Geometry for the Crown is:",
+        "options": [
+          { "text": "The Circle.", "isCorrect": true, "rationale": "It represents Unity, Wholeness, and the infinite cycle." },
+          { "text": "Triangle.", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Square (representing earth and grounding).", "isCorrect": false, "rationale": "Incorrect." },
+          { "text": "Cross (a symbol from other traditions, not Crown geometry).", "isCorrect": false, "rationale": "Incorrect." }
+        ]
+      }
+    ]
+  }
+]
