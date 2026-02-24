@@ -15,7 +15,6 @@ export const AudioRow = ({
   audioSource,
   authorColor = "#FFFFFF",
   isIntroAudio = false, // Optional flag to mark intro audio (embodiment meditation)
-  chakraColor, // When set, play screen uses this for gradient (e.g. master embodiment on chakra day)
 }: {
   title: string
   author: string
@@ -23,25 +22,13 @@ export const AudioRow = ({
   audioSource: AVPlaybackSource
   authorColor: string
   isIntroAudio?: boolean // Optional flag for Intro Ritual trigger
-  chakraColor?: string // Optional hex; when provided, AudioPlayer uses it for the play screen
 }) => {
   const router = useRouter()
   return (
     <Pressable
-      style={{
-        width: "83.33%",
-        alignSelf: "center",
-        marginTop: 24,
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.75)",
-        overflow: "hidden",
-        borderRadius: 18,
-        paddingVertical: 18,
-      }}
+      className="w-10/12 mt-6 border border-[#ffffffc0] self-center overflow-hidden active:scale-95 active:opacity-90"
       onPress={async () => {
-        // Stop any current audio before playing new track (prevents overlap)
-        useCurrentAudioStore.getState().reset()
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        // Set audio data in store first
         useCurrentAudioStore.getState().setSource(audioSource)
         useCurrentAudioStore.getState().setMetadata({
           durationMs,
@@ -52,33 +39,22 @@ export const AudioRow = ({
           shouldLoop: false,
           isIntroAudio: isIntroAudio, // Mark as intro audio only if explicitly set
         })
-        useCurrentAudioStore.getState().setChakraColor(chakraColor ?? null)
-
+        
         // Small delay to ensure store is set before navigation
-        await new Promise((resolve) => setTimeout(resolve, 50))
-
-        // Replace (don't push) so we never stack two AudioPlayer screens and avoid double-play
-        router.replace("/AudioPlayer")
+        await new Promise(resolve => setTimeout(resolve, 50))
+        
+        // Navigate to audio player
+        router.push("/AudioPlayer")
         addHapticFeedback(HapticStrength.Light)
       }}
+      style={{ borderRadius: 18, paddingVertical: 18 }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", paddingLeft: 32 }}>
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: "#ffffff",
-            borderRadius: 24,
-            width: 48,
-            height: 48,
-            alignItems: "center",
-            justifyContent: "center",
-            marginLeft: 4,
-          }}
-        >
-          <Ionicons name="play" size={14} color="white" />
+      <View className="flex-row items-center pl-8">
+        <View className="border border-white rounded-full h-12 w-12 flex items-center justify-center">
+          <Ionicons name="play" size={14} color="white" className="ml-1" />
         </View>
-        <View style={{ marginLeft: 24 }}>
-          <AppText font="instrument-regular" size="base" style={{ marginBottom: 4, fontSize: 18 }}>
+        <View className="ml-6">
+          <AppText font="instrument-regular" className="mb-1 text-[18px]">
             {title}
           </AppText>
           <AppText font="instrument-italic" size="sm">

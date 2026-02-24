@@ -23,7 +23,6 @@ export default function ParallaxScrollView({
   ...scrollViewProps
 }: Props) {
   const scrollOffset = useScrollViewOffset(scrollRef)
-  const h = Math.max(headerHeight, 1)
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
     return {
@@ -31,12 +30,16 @@ export default function ParallaxScrollView({
         {
           translateY: interpolate(
             scrollOffset.value,
-            [-h, 0, h],
-            [-h / 2, 0, h * 0.75],
+            [-headerHeight, 0, headerHeight],
+            [-headerHeight / 2, 0, headerHeight * 0.75],
           ),
         },
         {
-          scale: interpolate(scrollOffset.value, [-h, 0, h], [2, 1, 1]),
+          scale: interpolate(
+            scrollOffset.value,
+            [-headerHeight, 0, headerHeight],
+            [2, 1, 1],
+          ),
         },
       ],
     }
@@ -62,13 +65,11 @@ export default function ParallaxScrollView({
         <Animated.View
           style={[
             {
-              position: "absolute",
+              position: "absolute", // Position the header over the content
               top: 0,
               left: 0,
               right: 0,
-              width: "100%",
-              height: h,
-              zIndex: -1,
+              zIndex: -1, // Ensure the header is below other content
             },
             headerAnimatedStyle,
           ]}
@@ -76,11 +77,8 @@ export default function ParallaxScrollView({
           {headerImage}
         </Animated.View>
 
-        {/* Content: spacer so header (zIndex -1) is not covered; then children */}
-        <View style={{ flex: 1 }}>
-          <View style={{ width: "100%", height: h }} />
-          {children}
-        </View>
+        {/* Content */}
+        <View style={{ flex: 1 }}>{children}</View>
       </Animated.ScrollView>
     </View>
   )
