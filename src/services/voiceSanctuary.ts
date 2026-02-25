@@ -490,9 +490,8 @@ export const incrementSaveCount = async (responseId: string): Promise<void> => {
       throw new Error("Firebase is not initialized.")
     }
 
-    const { doc, updateDoc, getDoc, increment } = await import(
-      "firebase/firestore"
-    )
+    const { doc, updateDoc, getDoc, increment } =
+      await import("firebase/firestore")
     const responseRef = doc(db, "voice_sanctuary_responses", responseId)
     const responseSnap = await getDoc(responseRef)
 

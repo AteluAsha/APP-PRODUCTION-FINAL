@@ -1,9 +1,11 @@
 /**
  * Scholarship Modal
  *
- * Allows users to request a free scholarship by stating why they need it.
- * This is NOT a barter - it's a free access grant for those who need it.
- * After stating their reason, they proceed to Energy Exchange for connection options.
+ * A healing, heart-minded space for users to request free access.
+ * Soul School is operated by Project Starseed (501(c)(3)); scholarships are
+ * gifts, not barter. Honest, transparent, inviting.
+ *
+ * Uses StyleSheet (not NativeWind) for reliable rendering in Modal context.
  */
 
 import React, { useState } from "react"
@@ -15,8 +17,10 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
 } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context"
+import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
@@ -36,13 +40,9 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleContinue = () => {
-    if (!reason.trim()) {
-      return
-    }
-
+    if (!reason.trim()) return
     addHapticFeedback(HapticStrength.Medium)
     setIsSubmitting(true)
-    // Small delay for haptic feedback
     setTimeout(() => {
       onContinue(reason.trim())
       setIsSubmitting(false)
@@ -62,128 +62,321 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <SafeAreaView className="flex-1 bg-black">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1"
-        >
-          {/* Header */}
-          <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-800">
-            <View className="flex-1">
-              <AppText font="instrument-bold" size="xl" className="text-white">
-                Scholarship Request
-              </AppText>
-              <AppText
-                font="instrument-regular"
-                size="sm"
-                className="text-gray-400 mt-1"
-              >
-                Free access for those who need it
-              </AppText>
-            </View>
-            <Pressable onPress={handleClose} className="p-2">
-              <Ionicons name="close" size={28} color="white" />
-            </Pressable>
-          </View>
-
-          <ScrollView
-            className="flex-1 px-6 py-6"
-            showsVerticalScrollIndicator={false}
+      <SafeAreaProvider>
+        <View style={styles.wrapper}>
+          <LinearGradient
+            colors={[
+              "rgba(18, 24, 26, 0.99)",
+              "rgba(14, 22, 26, 0.99)",
+              "rgba(12, 20, 24, 0.99)",
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradient}
           >
-            {/* Info Section */}
-            <View className="mb-6">
-              <AppText
-                font="instrument-regular"
-                size="base"
-                className="text-white leading-6 mb-4"
+            <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.keyboardView}
               >
-                Soul School is operated by Project Starseed, an IRS-recognized
-                501(c)(3) tax-exempt organization committed to making spiritual
-                growth accessible to all.
-              </AppText>
-              <AppText
-                font="instrument-regular"
-                size="base"
-                className="text-gray-300 leading-6 mb-4"
-              >
-                We offer free scholarships to those who need them. This is not a
-                barter or exchange—it's a gift of access.
-              </AppText>
-              <AppText
-                font="instrument-medium"
-                size="base"
-                className="text-white mb-2"
-              >
-                Why do you need a scholarship?
-              </AppText>
-              <AppText
-                font="instrument-regular"
-                size="sm"
-                className="text-gray-400 mb-4"
-              >
-                Share your reason below. Your response helps us understand how
-                to best serve our community.
-              </AppText>
-            </View>
+                {/* Header */}
+                <View style={styles.header}>
+                  <View style={styles.headerTextWrap}>
+                    <View style={styles.iconWrap}>
+                      <Ionicons
+                        name="heart"
+                        size={24}
+                        color="rgba(168, 201, 154, 0.95)"
+                      />
+                    </View>
+                    <AppText
+                      font="instrument-bold"
+                      size="xl"
+                      style={styles.title}
+                    >
+                      A Sacred Invitation
+                    </AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={styles.subtitle}
+                    >
+                      Free access for those who need it
+                    </AppText>
+                  </View>
+                  <Pressable
+                    onPress={handleClose}
+                    style={styles.closeButton}
+                    hitSlop={12}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={24}
+                      color="rgba(168, 201, 154, 0.7)"
+                    />
+                  </Pressable>
+                </View>
 
-            {/* Input */}
-            <TextInput
-              value={reason}
-              onChangeText={(text) => {
-                // Sanitize input: remove potential XSS characters
-                const sanitized = text.replace(/[<>]/g, "")
-                if (sanitized.length <= 500) {
-                  setReason(sanitized)
-                }
-              }}
-              placeholder="Share your reason for requesting a scholarship..."
-              placeholderTextColor="#6b7280"
-              multiline
-              maxLength={500}
-              className="bg-gray-900/50 rounded-lg p-4 text-white border border-gray-800 min-h-[120px]"
-              style={{ textAlignVertical: "top", color: "#ffffff" }}
-            />
-            <AppText
-              font="instrument-regular"
-              size="xs"
-              className="text-gray-500 mt-2 text-right"
-            >
-              {reason.length}/500
-            </AppText>
-          </ScrollView>
+                <ScrollView
+                  style={styles.scrollView}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {/* Heart-minded copy */}
+                  <View style={styles.infoSection}>
+                    <AppText
+                      font="instrument-regular"
+                      size="base"
+                      style={styles.bodyTextAlt}
+                    >
+                      A scholarship is a gift, not an exchange. There is no
+                      expectation of anything in return. We simply want to meet
+                      you where you are.
+                    </AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={styles.hint}
+                    >
+                      Monthly Scholarship Pass with chance to reapply after the
+                      grant has ended.
+                    </AppText>
+                    <AppText
+                      font="instrument-medium"
+                      size="base"
+                      style={styles.question}
+                    >
+                      What brings you here?
+                    </AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={styles.hint}
+                    >
+                      A few words help us understand how to serve our community.
+                      Your story is held with care.
+                    </AppText>
+                  </View>
 
-          {/* Footer */}
-          <View className="border-t border-gray-800 bg-black p-6">
-            <Pressable
-              onPress={handleContinue}
-              disabled={!reason.trim() || isSubmitting}
-              className="bg-purple-700 rounded-lg p-4 flex-row items-center justify-center active:opacity-80 disabled:opacity-50"
-            >
-              <AppText
-                font="instrument-bold"
-                size="base"
-                className="text-white"
-              >
-                Continue to Energy Exchange
-              </AppText>
-              <Ionicons
-                name="arrow-forward"
-                size={20}
-                color="white"
-                style={{ marginLeft: 8 }}
-              />
-            </Pressable>
-            <AppText
-              font="instrument-regular"
-              size="xs"
-              className="text-gray-500 mt-3 text-center"
-            >
-              Next, you'll see connection options—not a barter, but ways to stay
-              connected with our community.
-            </AppText>
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+                  {/* Input */}
+                  <TextInput
+                    value={reason}
+                    onChangeText={(text) => {
+                      const sanitized = text.replace(/[<>]/g, "")
+                      if (sanitized.length <= 500) setReason(sanitized)
+                    }}
+                    placeholder="Share what feels right to share..."
+                    placeholderTextColor="rgba(168, 201, 154, 0.4)"
+                    multiline
+                    maxLength={500}
+                    style={styles.input}
+                  />
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={styles.charCount}
+                  >
+                    {reason.length}/500
+                  </AppText>
+                </ScrollView>
+
+                {/* Footer */}
+                <View style={styles.footer}>
+                  <Pressable
+                    onPress={handleContinue}
+                    disabled={!reason.trim() || isSubmitting}
+                    style={({ pressed }) => [
+                      styles.continueButtonWrap,
+                      (pressed || !reason.trim() || isSubmitting) &&
+                        styles.continueButtonDisabled,
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={
+                        reason.trim() && !isSubmitting
+                          ? [
+                              "rgba(168, 201, 154, 0.5)",
+                              "rgba(107, 142, 90, 0.45)",
+                            ]
+                          : [
+                              "rgba(168, 201, 154, 0.2)",
+                              "rgba(107, 142, 90, 0.18)",
+                            ]
+                      }
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.continueButton}
+                    >
+                      <AppText
+                        font="instrument-bold"
+                        size="base"
+                        style={styles.continueText}
+                      >
+                        Enter Energy Exchange
+                      </AppText>
+                      <Ionicons
+                        name="arrow-forward"
+                        size={18}
+                        color="rgba(255, 255, 255, 0.95)"
+                        style={styles.arrowIcon}
+                      />
+                    </LinearGradient>
+                  </Pressable>
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={styles.footerHint}
+                  >
+                    Next, you'll see simple ways to stay connected—no
+                    obligation, only invitation.
+                  </AppText>
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={styles.disclaimer}
+                  >
+                    Soul School is offered by Project Starseed, an
+                    IRS-recognized 501(c)(3) nonprofit. We believe healing
+                    belongs to everyone—and that means access without barriers.
+                  </AppText>
+                </View>
+              </KeyboardAvoidingView>
+            </SafeAreaView>
+          </LinearGradient>
+        </View>
+      </SafeAreaProvider>
     </Modal>
   )
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+  },
+  gradient: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(168, 201, 154, 0.12)",
+  },
+  headerTextWrap: {
+    flex: 1,
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(168, 201, 154, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  title: {
+    color: "rgba(255, 255, 255, 0.95)",
+  },
+  subtitle: {
+    color: "rgba(168, 201, 154, 0.8)",
+    marginTop: 4,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+  },
+  infoSection: {
+    marginBottom: 24,
+  },
+  bodyText: {
+    color: "rgba(255, 255, 255, 0.9)",
+    lineHeight: 24,
+    marginBottom: 16,
+  },
+  bodyTextAlt: {
+    color: "rgba(212, 220, 210, 0.85)",
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  question: {
+    color: "rgba(255, 255, 255, 0.95)",
+    marginBottom: 8,
+  },
+  hint: {
+    color: "rgba(168, 201, 154, 0.75)",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  input: {
+    backgroundColor: "rgba(168, 201, 154, 0.06)",
+    borderRadius: 14,
+    padding: 18,
+    color: "rgba(255, 255, 255, 0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(168, 201, 154, 0.2)",
+    minHeight: 120,
+    textAlignVertical: "top",
+    fontSize: 16,
+  },
+  charCount: {
+    color: "rgba(168, 201, 154, 0.5)",
+    marginTop: 10,
+    textAlign: "right",
+  },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(168, 201, 154, 0.1)",
+    padding: 24,
+  },
+  continueButtonWrap: {
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(168, 201, 154, 0.35)",
+  },
+  continueButtonDisabled: {
+    opacity: 0.6,
+  },
+  continueButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  continueText: {
+    color: "rgba(255, 255, 255, 0.95)",
+  },
+  arrowIcon: {
+    marginLeft: 10,
+  },
+  footerHint: {
+    color: "rgba(168, 201, 154, 0.6)",
+    marginTop: 14,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  disclaimer: {
+    color: "rgba(168, 201, 154, 0.5)",
+    marginTop: 20,
+    textAlign: "center",
+    lineHeight: 18,
+    fontSize: 11,
+  },
+})

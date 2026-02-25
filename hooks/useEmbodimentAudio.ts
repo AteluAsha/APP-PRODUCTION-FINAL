@@ -4,6 +4,7 @@ import { storage } from "@/src/services/firebase"
 import { Chakra } from "@/types/chakras/Chakra"
 import { checkRateLimit, waitForRateLimit } from "@/src/utils/rateLimiter"
 import { getLocalAudioUri } from "@/src/utils/audioDownload"
+import { FIREBASE_EMBODIMENT_FOLDER } from "@/constants/firebaseStoragePaths"
 
 /**
  * Map chakras to their embodiment audio filenames
@@ -31,7 +32,7 @@ const CHAKRA_TO_AUDIO_FILE: Record<Chakra, string | string[]> = {
   [Chakra.CROWN]: "Day7_CrownChakra_MasterEmbodiment_Meditation_SoulSchool.aac", // Sunday - Day 6
 }
 
-const STORAGE_FOLDER = "Course Audio - MASTER EMBODIMENT - 7 Chakras in 7 Days"
+const STORAGE_FOLDER = FIREBASE_EMBODIMENT_FOLDER
 
 export interface EmbodimentAudioUrls {
   partOne?: string

@@ -5,10 +5,9 @@
  */
 
 import React from "react"
-import { Pressable, Image, View, StyleSheet } from "react-native"
+import { Pressable, Image, View, StyleSheet, ActivityIndicator } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
-import { AppText } from "@/components/AppText"
 
 interface ImagePickerButtonProps {
   selectedImage: string | null
@@ -20,6 +19,8 @@ interface ImagePickerButtonProps {
 export const ImagePickerButton: React.FC<ImagePickerButtonProps> = ({
   selectedImage,
   onImageSelected,
+  isUploading = false,
+  disabled = false,
 }) => {
   const pickImage = async () => {
     try {
@@ -65,11 +66,16 @@ export const ImagePickerButton: React.FC<ImagePickerButtonProps> = ({
   }
 
   return (
-    <Pressable onPress={pickImage} style={styles.button}>
-      <Ionicons name="image-outline" size={20} color="#fff" />
-      <AppText font="instrument-regular" size="sm" className="text-white ml-2">
-        Add Image
-      </AppText>
+    <Pressable
+      onPress={pickImage}
+      style={[styles.button, (isUploading || disabled) && styles.buttonDisabled]}
+      disabled={isUploading || disabled}
+    >
+      {isUploading ? (
+        <ActivityIndicator size="small" color="#fff" />
+      ) : (
+        <Ionicons name="image-outline" size={24} color="#fff" />
+      )}
     </Pressable>
   )
 }
@@ -92,11 +98,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   button: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 8,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 8,
-    marginVertical: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 })

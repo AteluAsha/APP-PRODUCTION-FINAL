@@ -1,17 +1,20 @@
-import { View } from "react-native"
-import { Slider } from "react-native-awesome-slider"
-import {
-  useSharedValue,
-  configureReanimatedLogger,
-  ReanimatedLogLevel,
-} from "react-native-reanimated"
+/**
+ * PlayerProgressBar - Custom progress bar for AudioPlayer
+ *
+ * Replaces react-native-awesome-slider with a simple View-based implementation
+ * to avoid layout bugs (tiny bar, wrong position). Full-width, tappable, draggable.
+ */
+
+import React, { useCallback, useRef } from "react"
+import { View, Pressable, StyleSheet, LayoutChangeEvent } from "react-native"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
+import { runOnJS } from "react-native-reanimated"
 import { formatTime } from "@/utils/format"
 import { AppText } from "../AppText"
 
-configureReanimatedLogger({
-  level: ReanimatedLogLevel.warn,
-  strict: false,
-})
+const TRACK_HEIGHT = 8
+const TRACK_BG = "rgba(255,255,255,0.2)"
+const FILL_BG = "#ffffff"
 
 export const PlayerProgressBar = ({
   positionMs,
@@ -22,75 +25,105 @@ export const PlayerProgressBar = ({
   durationMs: number
   seekToPosition: (newPositionMs: number) => Promise<void>
 }) => {
-  const isSliding = useSharedValue(false)
-  const progress = useSharedValue(0)
-  const min = useSharedValue(0)
-  const max = useSharedValue(1)
-
-  // Determine if duration is valid for progress calculation
+  const trackWidthRef = useRef(0)
   const isValidDuration = durationMs > 0
+  const progress = isValidDuration
+    ? Math.min(1, Math.max(0, positionMs / durationMs))
+    : 0
 
-  // Update progress only if duration is valid and not currently sliding
-  if (isValidDuration && !isSliding.value) {
-    progress.value = positionMs / durationMs
-  } else if (!isValidDuration) {
-    // Reset progress if duration becomes invalid
-    progress.value = 0
-  }
+  const seekFromX = useCallback(
+    (x: number) => {
+      if (!isValidDuration || trackWidthRef.current <= 0) return
+      const fraction = Math.min(1, Math.max(0, x / trackWidthRef.current))
+      seekToPosition(fraction * durationMs)
+    },
+    [durationMs, isValidDuration, seekToPosition],
+  )
+
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    trackWidthRef.current = e.nativeEvent.layout.width
+  }, [])
+
+  const onPress = useCallback(
+    (e: { nativeEvent: { locationX: number } }) => {
+      seekFromX(e.nativeEvent.locationX)
+    },
+    [seekFromX],
+  )
+
+  const panGesture = Gesture.Pan().onUpdate((e) => {
+    "worklet"
+    runOnJS(seekFromX)(e.x)
+  })
 
   return (
-    <View className={`flex-row items-center mb-6 w-full`}>
-      {/* Container for the slider/static bar - occupy same space */}
-      <View className="flex-1 h-4 justify-center">
-        {isValidDuration ? (
-          <Slider
-            progress={progress}
-            minimumValue={min}
-            maximumValue={max}
-            containerStyle={{
-              height: 3,
-              borderRadius: 16,
-            }}
-            thumbWidth={0}
-            renderBubble={() => null}
-            theme={{
-              minimumTrackTintColor: "#ffffff",
-              maximumTrackTintColor: "#6b7280",
-            }}
-            onSlidingStart={() => (isSliding.value = true)}
-            onValueChange={async (value) => {
-              // Prevent seeking if duration is somehow invalid during change
-              if (!isValidDuration) return
-              await seekToPosition(value * durationMs)
-            }}
-            onSlidingComplete={async (value) => {
-              // if the user is not sliding, we should not update the position
-              if (!isSliding.value) return
-              isSliding.value = false
-
-              // Prevent seeking if duration is somehow invalid on complete
-              if (!isValidDuration) return
-              await seekToPosition(value * durationMs)
-            }}
-          />
-        ) : (
-          // Render a static bar when duration is invalid
-          <View className="h-[3px] bg-[#6b7280] rounded-full" />
-        )}
+    <View style={styles.container}>
+      <View style={styles.progressRow}>
+        <AppText font="instrument-medium" size="sm" style={styles.timeLeft}>
+          {isValidDuration ? formatTime(positionMs) : "0:00"}
+        </AppText>
+        <GestureDetector gesture={panGesture}>
+          <Pressable
+            onPress={onPress}
+            onLayout={onLayout}
+            style={styles.trackWrap}
+          >
+            <View style={[styles.track, { backgroundColor: TRACK_BG }]}>
+              <View
+                style={[
+                  styles.fill,
+                  {
+                    width: `${progress * 100}%`,
+                    backgroundColor: FILL_BG,
+                  },
+                ]}
+              />
+            </View>
+          </Pressable>
+        </GestureDetector>
+        <AppText font="instrument-medium" size="sm" style={styles.timeRight}>
+          {isValidDuration ? formatTime(durationMs) : "0:00"}
+        </AppText>
       </View>
-
-      <AppText
-        font="instrument-medium"
-        size="sm"
-        style={{
-          marginLeft: 8,
-          width: 48,
-          textAlign: "right",
-          color: "rgba(255,255,255,0.9)",
-        }}
-      >
-        {isValidDuration ? formatTime(positionMs) : "0:00"}
-      </AppText>
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    width: "100%",
+    marginBottom: 16,
+  },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+  },
+  trackWrap: {
+    flex: 1,
+    height: TRACK_HEIGHT,
+    justifyContent: "center",
+  },
+  track: {
+    width: "100%",
+    height: TRACK_HEIGHT,
+    borderRadius: TRACK_HEIGHT / 2,
+    overflow: "hidden",
+  },
+  fill: {
+    height: "100%",
+    borderRadius: TRACK_HEIGHT / 2,
+  },
+  timeLeft: {
+    width: 40,
+    textAlign: "left",
+    color: "rgba(255,255,255,0.9)",
+    marginRight: 8,
+  },
+  timeRight: {
+    width: 40,
+    textAlign: "right",
+    color: "rgba(255,255,255,0.9)",
+    marginLeft: 8,
+  },
+})

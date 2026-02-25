@@ -12,9 +12,8 @@
  */
 export async function getCachedAudioUrl(key: string): Promise<string | null> {
   try {
-    const { default: AsyncStorage } = await import(
-      "@react-native-async-storage/async-storage"
-    )
+    const { default: AsyncStorage } =
+      await import("@react-native-async-storage/async-storage")
     const cached = await AsyncStorage.getItem(`audio_cache_${key}`)
     return cached
   } catch (error) {
@@ -38,9 +37,8 @@ export async function setCachedAudioUrl(
   url: string,
 ): Promise<void> {
   try {
-    const { default: AsyncStorage } = await import(
-      "@react-native-async-storage/async-storage"
-    )
+    const { default: AsyncStorage } =
+      await import("@react-native-async-storage/async-storage")
     await AsyncStorage.setItem(`audio_cache_${key}`, url)
 
     if (__DEV__) {
@@ -60,9 +58,8 @@ export async function setCachedAudioUrl(
  */
 export async function clearCachedAudioUrl(key: string): Promise<void> {
   try {
-    const { default: AsyncStorage } = await import(
-      "@react-native-async-storage/async-storage"
-    )
+    const { default: AsyncStorage } =
+      await import("@react-native-async-storage/async-storage")
     await AsyncStorage.removeItem(`audio_cache_${key}`)
 
     if (__DEV__) {
@@ -81,9 +78,8 @@ export async function clearCachedAudioUrl(key: string): Promise<void> {
  */
 export async function clearAllCachedAudioUrls(): Promise<void> {
   try {
-    const { default: AsyncStorage } = await import(
-      "@react-native-async-storage/async-storage"
-    )
+    const { default: AsyncStorage } =
+      await import("@react-native-async-storage/async-storage")
     const keys = await AsyncStorage.getAllKeys()
     const audioCacheKeys = keys.filter((key) => key.startsWith("audio_cache_"))
 

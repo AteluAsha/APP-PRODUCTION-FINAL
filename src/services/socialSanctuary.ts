@@ -4,11 +4,20 @@
  * Manages the Social Sanctuary feature - a shared space where users can
  * read and leave reflections for each chakra day, creating unity through
  * shared frequency and experience.
+ *
+ * SAFETY (Anua monitor): The feed is moderated by Anua (The Sentinel) before
+ * any reflection is written. Callers must run moderateReflection(message) before
+ * addReflection(); only approved content is stored in Firestore. So the feed
+ * and Firestore stay in sync: everything in social_sanctuary has passed Anua.
  */
 
 import {
   collection,
   addDoc,
+  doc,
+  getDoc,
+  updateDoc,
+  runTransaction,
   query,
   where,
   orderBy,
@@ -16,6 +25,10 @@ import {
   getDocs,
   Timestamp,
   onSnapshot,
+  arrayUnion,
+  arrayRemove,
+  increment,
+  serverTimestamp,
   type Unsubscribe,
 } from "firebase/firestore"
 import { db } from "./firebase"
@@ -23,12 +36,18 @@ import { checkRateLimit, waitForRateLimit } from "@/src/utils/rateLimiter"
 import { robustApiCall, API_TIMEOUTS } from "@/src/utils/apiHelpers"
 import { captureException } from "@/src/services/sentry"
 
-/**
- * Generate a unique user ID for anonymous users
- * In a production app, this would come from authentication
- * For now, we'll use a device-based identifier stored in AsyncStorage
- */
-import AsyncStorage from "@react-native-async-storage/async-storage"
+import { getUserId } from "./userId"
+
+const SANCTUARY_USER_DATA_COLLECTION = "sanctuary_user_data"
+
+export interface SanctuaryUserData {
+  hiddenReflectionIds: string[]
+  minusPopupShownCount: number
+  totalLessReceived?: number
+  sanctuaryBlockedAt?: Date | null
+  /** User IDs this user follows in Social Sanctuary (hero their comments in feed) */
+  followedUserIds?: string[]
+}
 
 export interface SanctuaryReflection {
   id?: string // Document ID from Firestore
@@ -37,6 +56,7 @@ export interface SanctuaryReflection {
   message: string
   timestamp: Date
   isAnonymous: boolean
+  imageUrl?: string // Optional image URL (Firebase Storage download URL)
   likes?: number // Optional likes count for future implementation
   parentId?: string // ID of parent comment (for nested replies)
   replyCount?: number // Number of replies to this comment
@@ -45,31 +65,175 @@ export interface SanctuaryReflection {
     neutral: number
     less: number
   }
+  /** Current user's reaction (set when loading with currentUserId) */
+  myReaction?: "more" | "neutral" | "less"
 }
 
-export const getUserId = async (): Promise<string> => {
-  // TODO: Replace with actual user authentication ID
-  // For now, use a simple device-based identifier
-  // In production, this should come from Clerk or your auth system
-  const storedUserId = await AsyncStorage.getItem("sanctuary_user_id")
+export { getUserId }
 
-  // If no stored ID, generate one and store it
-  if (!storedUserId) {
-    const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    await AsyncStorage.setItem("sanctuary_user_id", newUserId)
-    return newUserId
+/**
+ * Get sanctuary user data (hidden refs, popup count, block status)
+ */
+export const getSanctuaryUserData = async (
+  userId: string,
+): Promise<SanctuaryUserData | null> => {
+  try {
+    if (!db) return null
+    const ref = doc(db, SANCTUARY_USER_DATA_COLLECTION, userId)
+    const snap = await getDoc(ref)
+    if (!snap.exists()) {
+      return {
+        hiddenReflectionIds: [],
+        minusPopupShownCount: 0,
+        followedUserIds: [],
+      }
+    }
+    const data = snap.data()
+    const blockedAt = data.sanctuaryBlockedAt
+    return {
+      hiddenReflectionIds: Array.isArray(data.hiddenReflectionIds)
+        ? data.hiddenReflectionIds
+        : [],
+      minusPopupShownCount: typeof data.minusPopupShownCount === "number" ? data.minusPopupShownCount : 0,
+      totalLessReceived: typeof data.totalLessReceived === "number" ? data.totalLessReceived : 0,
+      sanctuaryBlockedAt: blockedAt?.toDate ? blockedAt.toDate() : blockedAt ?? null,
+      followedUserIds: Array.isArray(data.followedUserIds) ? data.followedUserIds : [],
+    }
+  } catch (err) {
+    if (__DEV__) console.warn("getSanctuaryUserData error:", err)
+    return null
   }
+}
 
-  return storedUserId
+/**
+ * Add a reflection ID to the user's hidden list (remove from my feed)
+ */
+export const addHiddenReflection = async (
+  userId: string,
+  reflectionId: string,
+): Promise<void> => {
+  try {
+    if (!db) return
+    const ref = doc(db, SANCTUARY_USER_DATA_COLLECTION, userId)
+    const snap = await getDoc(ref)
+    if (snap.exists()) {
+      await updateDoc(ref, {
+        hiddenReflectionIds: arrayUnion(reflectionId),
+      })
+    } else {
+      const { setDoc } = await import("firebase/firestore")
+      await setDoc(ref, {
+        hiddenReflectionIds: [reflectionId],
+        minusPopupShownCount: 0,
+      })
+    }
+  } catch (err) {
+    if (__DEV__) console.warn("addHiddenReflection error:", err)
+    throw err
+  }
+}
+
+/**
+ * Add a user to the current user's follow list (hero their comments in feed)
+ */
+export const followUserInSanctuary = async (
+  currentUserId: string,
+  targetUserId: string,
+): Promise<void> => {
+  try {
+    if (!db || currentUserId === targetUserId) return
+    const ref = doc(db, SANCTUARY_USER_DATA_COLLECTION, currentUserId)
+    const snap = await getDoc(ref)
+    if (snap.exists()) {
+      await updateDoc(ref, {
+        followedUserIds: arrayUnion(targetUserId),
+      })
+    } else {
+      const { setDoc } = await import("firebase/firestore")
+      await setDoc(ref, {
+        hiddenReflectionIds: [],
+        minusPopupShownCount: 0,
+        followedUserIds: [targetUserId],
+      })
+    }
+  } catch (err) {
+    if (__DEV__) console.warn("followUserInSanctuary error:", err)
+    throw err
+  }
+}
+
+/**
+ * Remove a user from the current user's follow list
+ */
+export const unfollowUserInSanctuary = async (
+  currentUserId: string,
+  targetUserId: string,
+): Promise<void> => {
+  try {
+    if (!db) return
+    const ref = doc(db, SANCTUARY_USER_DATA_COLLECTION, currentUserId)
+    const snap = await getDoc(ref)
+    if (!snap.exists()) return
+    await updateDoc(ref, {
+      followedUserIds: arrayRemove(targetUserId),
+    })
+  } catch (err) {
+    if (__DEV__) console.warn("unfollowUserInSanctuary error:", err)
+    throw err
+  }
+}
+
+/**
+ * Increment how many times we've shown the "clean from community?" popup (cap at 3)
+ */
+export const incrementMinusPopupShown = async (userId: string): Promise<void> => {
+  try {
+    if (!db) return
+    const ref = doc(db, SANCTUARY_USER_DATA_COLLECTION, userId)
+    const snap = await getDoc(ref)
+    const current = snap.exists() ? (snap.data().minusPopupShownCount ?? 0) : 0
+    const next = Math.min(3, current + 1)
+    if (snap.exists()) {
+      await updateDoc(ref, { minusPopupShownCount: next })
+    } else {
+      const { setDoc } = await import("firebase/firestore")
+      await setDoc(ref, {
+        hiddenReflectionIds: [],
+        minusPopupShownCount: next,
+      })
+    }
+  } catch (err) {
+    if (__DEV__) console.warn("incrementMinusPopupShown error:", err)
+  }
+}
+
+/**
+ * Check if user is blocked from Social Sanctuary (30 minus received)
+ */
+export const isUserBlockedFromSanctuary = async (
+  userId: string,
+): Promise<boolean> => {
+  try {
+    if (!db) return false
+    const ref = doc(db, SANCTUARY_USER_DATA_COLLECTION, userId)
+    const snap = await getDoc(ref)
+    if (!snap.exists()) return false
+    const data = snap.data()
+    return data.sanctuaryBlockedAt != null
+  } catch (err) {
+    if (__DEV__) console.warn("isUserBlockedFromSanctuary error:", err)
+    return false
+  }
 }
 
 /**
  * Add a reflection to the Social Sanctuary
  *
  * @param chakraDay - The chakra day (0-6, Monday-Sunday)
- * @param message - The reflection message
+ * @param message - The reflection message (can be empty if imageUrl is provided)
  * @param isAnonymous - Whether the reflection should be anonymous
  * @param parentId - Optional parent comment ID for nested replies
+ * @param imageUrl - Optional Firebase Storage download URL for attached image
  * @returns The created reflection document ID
  */
 export const addReflection = async (
@@ -77,6 +241,7 @@ export const addReflection = async (
   message: string,
   isAnonymous: boolean = false,
   parentId?: string,
+  imageUrl?: string,
 ): Promise<string> => {
   try {
     // Check if Firebase is initialized
@@ -93,14 +258,14 @@ export const addReflection = async (
 
     const userId = await getUserId()
     // Sanitize message: remove potential XSS characters and limit length
-    // Firestore will store this safely, but we sanitize on input for extra security
-    const sanitizedMessage = message
+    const sanitizedMessage = (message || "")
       .trim()
-      .replace(/[<>]/g, "") // Remove angle brackets to prevent HTML injection
-      .substring(0, 500) // Enforce max length on server side too
+      .replace(/[<>]/g, "")
+      .substring(0, 500)
 
-    if (!sanitizedMessage || sanitizedMessage.length === 0) {
-      throw new Error("Message cannot be empty")
+    // Require at least message or image
+    if (!sanitizedMessage && !imageUrl) {
+      throw new Error("Message or image is required")
     }
 
     const reflection: Omit<SanctuaryReflection, "id"> = {
@@ -110,6 +275,7 @@ export const addReflection = async (
       timestamp: new Date(),
       isAnonymous,
       parentId: parentId || undefined,
+      imageUrl: imageUrl || undefined,
     }
 
     const docRef = await addDoc(collection(db, "social_sanctuary"), {
@@ -152,11 +318,13 @@ export const addReflection = async (
  *
  * @param chakraDay - The chakra day (0-6, Monday-Sunday)
  * @param limitCount - Maximum number of reflections to retrieve (default: 50)
+ * @param currentUserId - If provided, each reflection will include myReaction from Firestore
  * @returns Array of reflections for that day, ordered by most recent first
  */
 export const getReflectionsForDay = async (
   chakraDay: number,
   limitCount: number = 50,
+  currentUserId?: string,
 ): Promise<SanctuaryReflection[]> => {
   try {
     // Check if Firebase is initialized
@@ -199,30 +367,41 @@ export const getReflectionsForDay = async (
     )
     const reflections: SanctuaryReflection[] = []
 
-    querySnapshot.forEach((doc) => {
+    querySnapshot.forEach((docSnap) => {
       try {
-        const data = doc.data()
-        // Validate required fields exist and filter for top-level comments only
-        if (data && data.message && data.timestamp && !data.parentId) {
-          reflections.push({
-            id: doc.id,
-            userId: data.userId || "unknown",
-            chakraDay: data.chakraDay ?? chakraDay,
-            message: data.message,
-            timestamp: data.timestamp?.toDate
-              ? data.timestamp.toDate()
-              : new Date(data.timestamp),
-            isAnonymous: data.isAnonymous ?? true,
-            parentId: data.parentId || undefined,
-            replyCount: data.replyCount || 0,
-            likes: data.likes || 0,
+        const data = docSnap.data()
+        // Skip globally removed reflections; filter top-level only
+        if (data?.removedAt) return
+        if (!data || (!data.message && !data.imageUrl) || !data.timestamp || data.parentId) return
+        reflections.push({
+          id: docSnap.id,
+          userId: data.userId || "unknown",
+          chakraDay: data.chakraDay ?? chakraDay,
+          message: data.message || "",
+          timestamp: data.timestamp?.toDate
+            ? data.timestamp.toDate()
+            : new Date(data.timestamp),
+          isAnonymous: data.isAnonymous ?? true,
+          parentId: data.parentId || undefined,
+          replyCount: data.replyCount || 0,
+          likes: data.likes || 0,
+          imageUrl: data.imageUrl || undefined,
+            reactions: data.reactions
+              ? {
+                  more: data.reactions.more ?? 0,
+                  neutral: data.reactions.neutral ?? 0,
+                  less: data.reactions.less ?? 0,
+                }
+              : { more: 0, neutral: 0, less: 0 },
+            myReaction:
+              currentUserId && data.reactionsByUser?.[currentUserId]
+                ? data.reactionsByUser[currentUserId]
+                : undefined,
           })
-        }
       } catch (docError) {
         if (__DEV__) {
           console.warn("Error processing reflection document:", docError)
         }
-        // Skip invalid documents but continue processing others
       }
     })
 
@@ -337,17 +516,18 @@ export const getTopReflections = async (
       try {
         const data = doc.data()
         // Validate required fields exist
-        if (data && data.message && data.timestamp) {
+        if (data && (data.message || data.imageUrl) && data.timestamp) {
           reflections.push({
             id: doc.id,
             userId: data.userId || "unknown",
             chakraDay: data.chakraDay ?? chakraDay,
-            message: data.message,
+            message: data.message || "",
             timestamp: data.timestamp?.toDate
               ? data.timestamp.toDate()
               : new Date(data.timestamp),
             isAnonymous: data.isAnonymous ?? true,
             likes: data.likes || 0,
+            imageUrl: data.imageUrl || undefined,
           })
         }
       } catch (docError) {
@@ -411,11 +591,12 @@ export const getTopReflections = async (
  *
  * @param chakraDay - The chakra day (0-6, Monday-Sunday)
  * @param callback - Function to call when reflections change
- * @returns Unsubscribe function
+ * @param currentUserId - If provided, each reflection will include myReaction
  */
 export const subscribeToReflections = (
   chakraDay: number,
   callback: (reflections: SanctuaryReflection[]) => void,
+  currentUserId?: string,
 ): Unsubscribe | null => {
   try {
     // Check if Firebase is initialized
@@ -443,30 +624,40 @@ export const subscribeToReflections = (
       (querySnapshot) => {
         const reflections: SanctuaryReflection[] = []
 
-        querySnapshot.forEach((doc) => {
+        querySnapshot.forEach((docSnap) => {
           try {
-            const data = doc.data()
-            // Validate required fields exist and filter for top-level comments only
-            if (data && data.message && data.timestamp && !data.parentId) {
-              reflections.push({
-                id: doc.id,
-                userId: data.userId || "unknown",
-                chakraDay: data.chakraDay ?? chakraDay,
-                message: data.message,
-                timestamp: data.timestamp?.toDate
-                  ? data.timestamp.toDate()
-                  : new Date(data.timestamp),
-                isAnonymous: data.isAnonymous ?? true,
-                parentId: data.parentId || undefined,
-                replyCount: data.replyCount || 0,
-                likes: data.likes || 0,
-              })
-            }
+            const data = docSnap.data()
+            if (data?.removedAt) return
+            if (!data || (!data.message && !data.imageUrl) || !data.timestamp || data.parentId) return
+            reflections.push({
+              id: docSnap.id,
+              userId: data.userId || "unknown",
+              chakraDay: data.chakraDay ?? chakraDay,
+              message: data.message || "",
+              timestamp: data.timestamp?.toDate
+                ? data.timestamp.toDate()
+                : new Date(data.timestamp),
+              isAnonymous: data.isAnonymous ?? true,
+              parentId: data.parentId || undefined,
+              replyCount: data.replyCount || 0,
+              likes: data.likes || 0,
+              imageUrl: data.imageUrl || undefined,
+              reactions: data.reactions
+                ? {
+                    more: data.reactions.more ?? 0,
+                    neutral: data.reactions.neutral ?? 0,
+                    less: data.reactions.less ?? 0,
+                  }
+                : { more: 0, neutral: 0, less: 0 },
+              myReaction:
+                currentUserId && data.reactionsByUser?.[currentUserId]
+                  ? data.reactionsByUser[currentUserId]
+                  : undefined,
+            })
           } catch (docError) {
             if (__DEV__) {
               console.warn("Error processing reflection document:", docError)
             }
-            // Skip invalid documents but continue processing others
           }
         })
 
@@ -498,21 +689,94 @@ export const subscribeToReflections = (
  * @returns Array of replies, ordered by most recent first
  */
 /**
- * React to a comment (like/reaction)
- * Placeholder for future implementation
+ * React to a comment (more / neutral / less). Persists in Firestore.
+ * Self-governance: at 10 "less" on a reflection it's removed for everyone;
+ * at 30 "less" received by an author they're blocked from Sanctuary.
  */
 export const reactToComment = async (
   reflectionId: string,
   reactionType: "more" | "neutral" | "less",
   previousReaction?: "more" | "neutral" | "less",
 ): Promise<void> => {
-  // TODO: Implement reaction system
-  // For now, this is a placeholder that does nothing
-  // Future: Store reactions in Firestore and update reflection document
-  if (__DEV__) {
-    console.log(
-      `[reactToComment] Placeholder: ${reactionType} on ${reflectionId}`,
-    )
+  try {
+    if (!db) return
+    const currentUserId = await getUserId()
+
+    await runTransaction(db, async (transaction) => {
+      const reflectionRef = doc(db, "social_sanctuary", reflectionId)
+      const reflectionSnap = await transaction.get(reflectionRef)
+      if (!reflectionSnap.exists()) return
+
+      const data = reflectionSnap.data()
+      const authorId = data.userId || "unknown"
+      const reactions = {
+        more: data.reactions?.more ?? 0,
+        neutral: data.reactions?.neutral ?? 0,
+        less: data.reactions?.less ?? 0,
+      }
+      const reactionsByUser: Record<string, "more" | "neutral" | "less"> =
+        { ...(data.reactionsByUser || {}) }
+
+      const prev = previousReaction ?? reactionsByUser[currentUserId]
+      const next = reactionType
+
+      // If toggling off (same reaction again), clear
+      const newReaction =
+        prev === next ? undefined : next
+      if (newReaction) {
+        reactionsByUser[currentUserId] = newReaction
+      } else {
+        delete reactionsByUser[currentUserId]
+      }
+
+      // Adjust counts: remove previous, add new
+      if (prev === "more") reactions.more = Math.max(0, reactions.more - 1)
+      else if (prev === "neutral") reactions.neutral = Math.max(0, reactions.neutral - 1)
+      else if (prev === "less") reactions.less = Math.max(0, reactions.less - 1)
+      if (newReaction === "more") reactions.more += 1
+      else if (newReaction === "neutral") reactions.neutral += 1
+      else if (newReaction === "less") reactions.less += 1
+
+      const addedLess = newReaction === "less" && prev !== "less"
+      const removedLess = prev === "less" && newReaction !== "less"
+
+      transaction.update(reflectionRef, {
+        reactions: { more: reactions.more, neutral: reactions.neutral, less: reactions.less },
+        reactionsByUser,
+        ...(reactions.less >= 10 ? { removedAt: serverTimestamp() } : {}),
+      })
+
+      // Update author's totalLessReceived (for 30 = block)
+      if (authorId && authorId !== "unknown" && (addedLess || removedLess)) {
+        const authorRef = doc(db, SANCTUARY_USER_DATA_COLLECTION, authorId)
+        const authorSnap = await transaction.get(authorRef)
+        const currentTotal = authorSnap.exists()
+          ? (authorSnap.data().totalLessReceived ?? 0)
+          : 0
+        const delta = addedLess ? 1 : -1
+        const newTotal = Math.max(0, currentTotal + delta)
+
+        const authorUpdates: Record<string, unknown> = {
+          totalLessReceived: newTotal,
+        }
+        if (newTotal >= 30) {
+          authorUpdates.sanctuaryBlockedAt = serverTimestamp()
+        }
+
+        if (authorSnap.exists()) {
+          transaction.update(authorRef, authorUpdates)
+        } else {
+          transaction.set(authorRef, {
+            hiddenReflectionIds: [],
+            minusPopupShownCount: 0,
+            ...authorUpdates,
+          })
+        }
+      }
+    })
+  } catch (err) {
+    if (__DEV__) console.error("reactToComment error:", err)
+    throw err
   }
 }
 
@@ -543,12 +807,12 @@ export const getReplies = async (
     querySnapshot.forEach((doc) => {
       try {
         const data = doc.data()
-        if (data && data.message && data.timestamp) {
+        if (data && (data.message || data.imageUrl) && data.timestamp) {
           replies.push({
             id: doc.id,
             userId: data.userId || "unknown",
             chakraDay: data.chakraDay ?? 0,
-            message: data.message,
+            message: data.message || "",
             timestamp: data.timestamp?.toDate
               ? data.timestamp.toDate()
               : new Date(data.timestamp),
@@ -556,6 +820,7 @@ export const getReplies = async (
             parentId: data.parentId || undefined,
             replyCount: data.replyCount || 0,
             likes: data.likes || 0,
+            imageUrl: data.imageUrl || undefined,
           })
         }
       } catch (docError) {

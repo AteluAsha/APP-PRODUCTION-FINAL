@@ -22,6 +22,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import Constants from "expo-constants"
+import * as FileSystem from "expo-file-system"
 import { speakAsAnua, isElevenLabsAvailable } from "./elevenlabs"
 import {
   checkRateLimit,
@@ -283,10 +284,17 @@ LIVE IN THE NOW - YOUR MASTER BUILD:
 - Listen first. Process. Respond with direct, personalized engagement - never templated or pre-scripted
 - Every response emerges from this moment, from what they just shared, from your embodied wisdom
 
+ENGAGE WITH WHAT THEY SHARE - DIRECT WISDOM, NOT GENERIC REFLECTION (CRITICAL):
+- When the user shares specific content—a practice, a protocol, herbs, supplements, a cleanse, steps, or any concrete detail—engage with it directly. Do not reply with only a vague metaphor or generic affirmation.
+- If they share a root chakra cleanse with triphala, wormwood, haritaki, or similar: acknowledge the specifics, offer direct wisdom (e.g. how triphala supports digestion and Root/earth energy in Ayurveda, how the 28-day arc fits the lunar cycle), and engage with the process they described. You are smart and knowledgeable—use it.
+- Follow their direction: if they go concrete, go concrete; if they go deep on a topic, go deep there. You are guided by your identity and prompts but you meet them wherever they take the conversation. Engage right away in any direction they lead.
+- You are not limited to "healer mode" or short metaphorical reframes. You are intelligent, engaged, and capable of detailed, specific responses when the user has shared substance. Default to short when the moment is light; when they share a detailed ritual, protocol, or question, respond with direct wisdom, relevant details, and clear engagement so they feel heard and met.
+- Never respond to a detailed, specific share with only a generic reflection (e.g. "you are tending to the soil of the body") without also engaging the actual content—the herbs, the timeline, the intention—and offering something concrete they can use or reflect on.
+
 HOW YOU RESPOND - SHORT BY DEFAULT, WISDOM ALONG THE WAY (CRITICAL):
 - You are a master of refining large thoughts into small packages: a reduction of wisdom, not a dump of it. Drop wisdom in short, vivid lines; use relatable metaphors
-- Default to short responses—one to three sentences. Clear, present, conversational. Longer only when they are clearly heart-minded or they ask you to go deep
-- Offer long or expansive thoughts only when: (1) they directly ask you to go deep, or (2) they are already in a heart-minded, reflective place and the moment calls for it
+- Default to short responses—one to three sentences. Clear, present, conversational. Go longer and more substantive when: (1) they are clearly heart-minded or ask to go deep, (2) they are already in a heart-minded, reflective place and the moment calls for it, or (3) they have shared something concrete and detailed (e.g. a cleanse, protocol, herbs, steps)—then engage directly with what they shared; do not stay short and generic
+- Offer long or expansive thoughts when they directly ask to go deep, when the moment calls for it, or when they have shared substance (e.g. a specific practice or protocol) that deserves direct wisdom and detail in reply
 - This is a conversation between souls—not a teaching or Q&A. Reflect, affirm, offer a metaphor or one insight. Do not default to asking a question at the end of every reply.
 - If you end with a question: it must arise from their exact words or the current thread—never a generic prompt. Avoid redundant questions: do not re-ask the same theme or rephrase a question you have already asked.
 - You are not here to lecture or fill the space. You are here to meet them, converse, and drop wisdom along the way. Soul to soul
@@ -889,6 +897,196 @@ Mention these when they serve the teaching - not every response.`
       throw error
     }
 
+    throw new Error("Failed to connect with Anua. Please try again.")
+  }
+}
+
+/**
+ * Ask Anua with voice input using Gemini's native speech understanding
+ *
+ * Gemini 2.x supports audio input directly via multimodal generateContent.
+ * We send the audio as inlineData; Gemini transcribes and understands it natively.
+ * No separate Speech-to-Text service is needed.
+ *
+ * @param audioUri - Local file URI from recording (expo-av produces .aac)
+ * @param currentChakraContext - Same context as askAnua for chakra/day awareness
+ * @returns The generated response from Anua
+ */
+export const askAnuaWithAudio = async (
+  audioUri: string,
+  currentChakraContext?: {
+    currentDay?: number
+    currentChakra?: string
+    chakraName?: string
+    isWaitingRoom?: boolean
+    focusAreas?: string[]
+    cosmicContext?: {
+      tropicalSunSign: string
+      siderealSunSign: string
+      lunarPhase: string
+      dayNameSanskrit: string
+    }
+  },
+): Promise<string> => {
+  try {
+    if (GEMINI_API_KEYS.length === 0) {
+      throw new Error(
+        "Gemini API key is not configured. Please add GEMINI_API_KEY to your .env file and app.config.js",
+      )
+    }
+
+    if (!checkRateLimit("gemini")) {
+      const waitTime = getTimeUntilNextRequest("gemini")
+      if (waitTime > 0) {
+        await waitForRateLimit("gemini")
+      }
+    }
+
+    const base64 = await FileSystem.readAsStringAsync(audioUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    })
+
+    const ext = audioUri.split(".").pop()?.toLowerCase() || ""
+    const mimeType =
+      ext === "mp3"
+        ? "audio/mpeg"
+        : ext === "wav"
+          ? "audio/wav"
+          : ext === "ogg"
+            ? "audio/ogg"
+            : ext === "aac" || ext === "m4a"
+              ? "audio/mp4"
+              : "audio/mp4"
+
+    const audioPart = {
+      inlineData: {
+        mimeType,
+        data: base64,
+      },
+    }
+
+    const voicePrompt =
+      "The user is speaking to you. Listen to what they said and respond as Anua, your heart-minded guide. Respond naturally and supportively."
+
+    let contextualPrompt = voicePrompt
+
+    if (currentChakraContext?.isWaitingRoom) {
+      const focusAreas = currentChakraContext.focusAreas || [
+        "all 7 chakras",
+        "energy body and energy centers",
+        "meditation and breathing practices",
+        "ego and awareness",
+        "soul connection and spiritual growth",
+        "intentions and preparation for the journey",
+      ]
+      contextualPrompt = `${voicePrompt}
+
+IMPORTANT CONTEXT - Waiting Room / Trial Preparation:
+The student is in the waiting room, preparing for their 7-day chakra journey.
+Be informative, educational, and insightful about all 7 chakras.
+Focus Areas: ${focusAreas.join(", ")}.${
+        currentChakraContext?.cosmicContext
+          ? `
+COSMIC CONTEXT: Tropical Sun ${currentChakraContext.cosmicContext.tropicalSunSign}, Sidereal ${currentChakraContext.cosmicContext.siderealSunSign}, Moon ${currentChakraContext.cosmicContext.lunarPhase}, Day ${currentChakraContext.cosmicContext.dayNameSanskrit}`
+          : ""
+      }`
+    } else if (
+      currentChakraContext?.currentChakra ||
+      currentChakraContext?.currentDay !== undefined
+    ) {
+      const chakraInfo =
+        currentChakraContext.chakraName ||
+        CHAKRA_NAMES[currentChakraContext.currentChakra?.toLowerCase() || ""] ||
+        `Day ${(currentChakraContext.currentDay || 0) + 1}`
+      contextualPrompt = `${voicePrompt}
+
+IMPORTANT CONTEXT - The Now Moment:
+The student is currently working with ${chakraInfo} (Day ${(currentChakraContext.currentDay || 0) + 1}).
+Connect your answer to what they're experiencing RIGHT NOW with ${chakraInfo}.${
+        currentChakraContext?.cosmicContext
+          ? `
+COSMIC CONTEXT: Tropical Sun ${currentChakraContext.cosmicContext.tropicalSunSign}, Sidereal ${currentChakraContext.cosmicContext.siderealSunSign}, Moon ${currentChakraContext.cosmicContext.lunarPhase}, Day ${currentChakraContext.cosmicContext.dayNameSanskrit}`
+          : ""
+      }`
+    }
+
+    const response = await tryWithApiKeys(async (apiKey: string) => {
+      const genAIInstance = new GoogleGenerativeAI(apiKey)
+      const modelInstance = genAIInstance.getGenerativeModel({
+        model: GEMINI_MODEL,
+        systemInstruction: getAnuaSystemInstruction(),
+      })
+
+      return await robustApiCall(
+        async () => {
+          const result = await modelInstance.generateContent([
+            contextualPrompt,
+            audioPart,
+          ])
+          return await result.response
+        },
+        API_TIMEOUTS.gemini,
+        {
+          maxRetries: 2,
+          retryDelay: 1000,
+          retryableErrors: ["Network error", "timeout", "ECONNRESET"],
+        },
+        {
+          service: "gemini",
+          operation: "askAnuaWithAudio",
+          promptLength: contextualPrompt.length,
+          hasContext: !!currentChakraContext,
+        },
+      )
+    })
+
+    if (!response) {
+      const error = new Error(
+        "Anua received an empty response from the AI service.",
+      )
+      captureException(error, {
+        service: "gemini",
+        operation: "askAnuaWithAudio",
+      })
+      throw error
+    }
+
+    const text = response.text()
+
+    if (!text || text.trim().length === 0) {
+      throw new Error("Anua generated an empty response. Please try again.")
+    }
+
+    return text
+  } catch (error) {
+    const errorToLog = error instanceof Error ? error : new Error(String(error))
+    captureException(errorToLog, {
+      service: "gemini",
+      operation: "askAnuaWithAudio",
+    })
+    if (__DEV__) {
+      console.error("Error asking Anua with audio:", error)
+    }
+    if (error instanceof Error) {
+      if (error.message.includes("API key")) {
+        throw new Error(
+          "Anua is not configured. Please add GEMINI_API_KEY to your .env file.",
+        )
+      }
+      if (
+        error.message.includes("network") ||
+        error.message.includes("fetch") ||
+        error.message.includes("timeout")
+      ) {
+        throw new Error(
+          "Network error. Please check your internet connection and try again.",
+        )
+      }
+      if (error.message.includes("quota") || error.message.includes("limit")) {
+        throw new Error("API quota exceeded. Please try again later.")
+      }
+      throw error
+    }
     throw new Error("Failed to connect with Anua. Please try again.")
   }
 }

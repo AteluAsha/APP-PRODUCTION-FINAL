@@ -18,11 +18,6 @@
     "expo-env.d.ts",
     "nativewind-env.d.ts"
   ],
-  "exclude": [
-    "node_modules",
-    ".expo",
-    "dist",
-    "7-chakras-master-path"
-  ],
+  "exclude": ["node_modules", ".expo", "dist", "7-chakras-master-path"],
   "files": ["globals.d.ts"]
 }

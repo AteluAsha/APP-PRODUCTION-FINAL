@@ -32,6 +32,7 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient"
 import { useMemo } from "react"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
 import { useShallow } from "zustand/react/shallow"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { getContextChakraDayFromRoute } from "@/utils/notesContextChakra"
@@ -122,6 +123,8 @@ export const PermanentMenuBar: React.FC = () => {
   const hasLifetimeAccess = useChakraJourneyStore(
     useShallow((state) => state.hasLifetimeAccess),
   )
+  const source = useCurrentAudioStore((s) => s.source)
+  const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
 
   // Determine if we're on a home/landing screen where menu should be hidden by default
   // NOTE: All hooks must run unconditionally (Rules of Hooks) - no early return before hooks
@@ -296,8 +299,8 @@ export const PermanentMenuBar: React.FC = () => {
   }
 
   // Hide menu bar completely if user doesn't have lifetime access (APP_2 only)
-  // Must be AFTER all hooks to satisfy Rules of Hooks
-  if (!hasLifetimeAccess) {
+  // Exception: trial shows mini player when Sound Healing crystal bowl is playing (other origin)
+  if (!hasLifetimeAccess && !(source && audioOrigin === "other")) {
     return null
   }
 
@@ -335,13 +338,22 @@ export const PermanentMenuBar: React.FC = () => {
     return null
   }
 
-  // Hide menu bar on paywall (CommitmentGate, DevPaywall) and Tribe Chat (has its own header)
+  // Hide menu bar on paywall (CommitmentGate, DevPaywall), Tribe Chat (has its own header),
+  // AudioPlayer (distraction-free embodiment listening), and Social Sanctuary (input box at bottom)
   if (
     pathname?.includes("CommitmentGate") ||
     pathname?.includes("DevPaywall") ||
-    pathname?.includes("TribeChat")
+    pathname?.includes("TribeChat") ||
+    pathname?.includes("AudioPlayer") ||
+    pathname?.includes("CommunityHalls") ||
+    segments.includes("AudioPlayer")
   ) {
     return null
+  }
+
+  // Trial with crystal bowl (other): only mini player, no menu items
+  if (!hasLifetimeAccess) {
+    return <MenuBarMiniPlayer />
   }
 
   return (
@@ -681,7 +693,9 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
               <Ionicons
                 name="chatbubble-ellipses"
                 size={20}
-                color={item.isActive ? item.gradient[0] : "rgba(135, 174, 115, 0.9)"}
+                color={
+                  item.isActive ? item.gradient[0] : "rgba(135, 174, 115, 0.9)"
+                }
               />
             ) : item.iconComponent === "tree" ? (
               <TreeIcon
@@ -732,7 +746,11 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
           style={[
             animatedLabelStyle,
             isVertical && { marginTop: 4 },
-            { alignSelf: "stretch", alignItems: "center", justifyContent: "center" },
+            {
+              alignSelf: "stretch",
+              alignItems: "center",
+              justifyContent: "center",
+            },
           ]}
         >
           <AppText

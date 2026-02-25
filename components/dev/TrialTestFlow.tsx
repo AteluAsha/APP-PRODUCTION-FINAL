@@ -15,8 +15,9 @@ import React from "react"
 import { View, Pressable, StyleSheet } from "react-native"
 import { useRouter } from "expo-router"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { getCurrentWeekStartDateISO } from "@/utils/date"
+import { getCurrentWeekStartDateISO, getLocalDateISO } from "@/utils/date"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 
@@ -47,7 +48,17 @@ export const TrialTestFlow: React.FC<TrialTestFlowProps> = ({
     hasLifetimeAccess,
     grantLifetimeAccess,
     markDayParticipated,
+    resetOnboarding,
   } = useChakraJourneyStore()
+  const { resetForTesting } = useFirstLaunchStore()
+
+  // Reset onboarding: clear all state so user sees WelcomeScreen → DateSelection → Begin flow
+  const handleResetOnboarding = () => {
+    addHapticFeedback(HapticStrength.Medium)
+    resetOnboarding()
+    resetForTesting()
+    router.replace("/(chakras)/WelcomeScreen")
+  }
 
   // Red: navigate to standalone DevPaywall for testing (avoids ChakraHome useEffect fighting it)
   const handleOpenPaywall = () => {
@@ -58,7 +69,7 @@ export const TrialTestFlow: React.FC<TrialTestFlowProps> = ({
   // Green: bypass waiting room and land on trial ChakraHome (walk through trial)
   const handleStartDay1 = () => {
     addHapticFeedback(HapticStrength.Medium)
-    const today = new Date().toISOString().split("T")[0]
+    const today = getLocalDateISO()
     const currentWeekStart = getCurrentWeekStartDateISO()
 
     // Set initial dates
@@ -104,9 +115,20 @@ export const TrialTestFlow: React.FC<TrialTestFlowProps> = ({
   }
 
   return (
-    <View style={[styles.container, { top: Math.max(insets.top, 8) + 8 }]}>
+    <View style={[styles.container, { top: Math.max(insets.top, 8) + 8 + 52 }]}>
       {/* Tiny icon-only buttons in vertical stack */}
       <View style={styles.buttonStack}>
+        {/* Reset onboarding: see full Welcome → DateSelection → Begin flow */}
+        <Pressable
+          onPress={handleResetOnboarding}
+          style={[styles.tinyButton, styles.resetOnboardingButton]}
+        >
+          <Ionicons
+            name="arrow-undo"
+            size={12}
+            color="rgba(255, 200, 100, 0.95)"
+          />
+        </Pressable>
         {/* Red: Open paywall for testing */}
         <Pressable
           onPress={handleOpenPaywall}
@@ -135,11 +157,7 @@ export const TrialTestFlow: React.FC<TrialTestFlowProps> = ({
             onPress={handleGoToLifetimeHome}
             style={[styles.tinyButton, styles.lifetimeButton]}
           >
-            <Ionicons
-              name="home"
-              size={12}
-              color="rgba(147, 51, 234, 0.9)"
-            />
+            <Ionicons name="home" size={12} color="rgba(147, 51, 234, 0.9)" />
           </Pressable>
         )}
 
@@ -194,6 +212,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+  },
+  resetOnboardingButton: {
+    borderColor: "rgba(255, 200, 100, 0.6)",
   },
   resetButton: {
     borderColor: "rgba(255, 107, 107, 0.4)",

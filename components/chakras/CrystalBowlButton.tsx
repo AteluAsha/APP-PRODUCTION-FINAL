@@ -15,6 +15,8 @@ interface CrystalBowlButtonProps {
   className?: string
   onPress: () => void | Promise<void>
   title: string
+  /** Hz value to display below title (e.g. "396 Hz") */
+  subtitle?: string
   isLoading?: boolean
   audioId?: string
   firebaseUrl?: string | null
@@ -22,24 +24,53 @@ interface CrystalBowlButtonProps {
   variant?: "default" | "layered"
   /** Show heart icon next to label (e.g. for day/chakra) */
   showHeart?: boolean
+  /** When true, show pause icon; otherwise play icon. Clearer UX than music note. */
+  isPlaying?: boolean
+  /** Optional content to render on the right (e.g. Drop In button) */
+  rightContent?: React.ReactNode
+  /** When playing, show progress slider. Position in ms. */
+  positionMs?: number
+  /** Duration in ms (e.g. metadata.durationMs). Required with positionMs to show slider. */
+  durationMs?: number
+  /** Called when user seeks (slider value change). */
+  onSeek?: (positionMs: number) => void
 }
 
 const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
   className = "",
   onPress,
   title,
+  subtitle,
   isLoading = false,
   audioId,
   firebaseUrl,
   firebasePath,
   variant = "default",
   showHeart = false,
+  isPlaying = false,
+  rightContent,
+  positionMs = 0,
+  durationMs = 0,
+  onSeek,
 }) => {
   const isLayered = variant === "layered"
-  const label = title === "Crystal Bowl" ? "Crystal Bowl" : title
+  const label = title
+  const showProgress =
+    isPlaying && durationMs > 0 && positionMs >= 0
+  const progressFraction =
+    durationMs > 0 ? Math.min(1, Math.max(0, positionMs / durationMs)) : 0
 
   const content = (
-    <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 24, paddingVertical: 8, paddingRight: 24 }}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        marginLeft: 24,
+        paddingVertical: 8,
+        paddingRight: rightContent ? 8 : 24,
+        flex: 1,
+      }}
+    >
       <View
         style={{
           borderRadius: 9999,
@@ -49,34 +80,58 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
           justifyContent: "center",
           flexShrink: 0,
           borderWidth: 1,
-          borderColor: isLayered ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.82)",
+          borderColor: isLayered
+            ? "rgba(255,255,255,0.2)"
+            : "rgba(255,255,255,0.82)",
           backgroundColor: isLayered ? "rgba(0,0,0,0.3)" : undefined,
         }}
       >
         {isLoading ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <Ionicons name="musical-notes" size={16} color="#FFFFFF" />
-        )}
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 16, flex: 1, flexWrap: "wrap" }}>
-        <AppText
-          font="koh-santepheap"
-          size="sm"
-          numberOfLines={1}
-          style={{ letterSpacing: 1, fontSize: 14, color: "#ffffff" }}
-        >
-          {isLoading ? "Preparing..." : label}
-        </AppText>
-        {showHeart && !isLoading && (
           <Ionicons
-            name="heart"
-            size={14}
-            color="rgba(255,255,255,0.9)"
-            style={{ marginLeft: 6 }}
+            name={isPlaying ? "pause" : "play"}
+            size={18}
+            color="#FFFFFF"
           />
         )}
       </View>
+      <View style={{ flexDirection: "column", marginLeft: 16, flex: 1 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <AppText
+            font="koh-santepheap"
+            size="sm"
+            numberOfLines={1}
+            style={{ letterSpacing: 1, fontSize: 14, color: "#ffffff" }}
+          >
+            {isLoading ? "Preparing..." : label}
+          </AppText>
+          {showHeart && !isLoading && (
+            <Ionicons
+              name="heart"
+              size={14}
+              color="rgba(255,255,255,0.9)"
+              style={{ marginLeft: 6 }}
+            />
+          )}
+        </View>
+        {subtitle && !isLoading && (
+          <AppText
+            font="instrument-regular"
+            size="xs"
+            style={{ color: "rgba(255,255,255,0.8)", marginTop: 2 }}
+          >
+            {subtitle}
+          </AppText>
+        )}
+      </View>
+      {rightContent != null ? <View>{rightContent}</View> : null}
     </View>
   )
 
@@ -130,6 +185,27 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
             pointerEvents="none"
           />
           {content}
+          {showProgress && (
+            <View
+              style={{
+                marginTop: 10,
+                marginHorizontal: 24,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: "rgba(255,255,255,0.2)",
+                overflow: "hidden",
+              }}
+            >
+              <View
+                style={{
+                  width: `${progressFraction * 100}%`,
+                  height: "100%",
+                  borderRadius: 2,
+                  backgroundColor: "rgba(251,191,36,0.9)",
+                }}
+              />
+            </View>
+          )}
         </LinearGradient>
       </Pressable>
     )
@@ -150,6 +226,27 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
       disabled={isLoading}
     >
       {content}
+      {showProgress && (
+        <View
+          style={{
+            marginTop: 10,
+            marginHorizontal: 24,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: "rgba(255,255,255,0.2)",
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              width: `${progressFraction * 100}%`,
+              height: "100%",
+              borderRadius: 2,
+              backgroundColor: "rgba(251,191,36,0.9)",
+            }}
+          />
+        </View>
+      )}
     </Pressable>
   )
 }

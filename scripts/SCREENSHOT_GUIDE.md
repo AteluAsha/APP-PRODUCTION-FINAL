@@ -7,6 +7,7 @@ Since the Dev Gallery uses React Native navigation (which doesn't work well with
 ### Using Browser Developer Tools
 
 1. **Start the web server:**
+
    ```bash
    npx expo start --web
    ```
@@ -23,6 +24,7 @@ Since the Dev Gallery uses React Native navigation (which doesn't work well with
 ### Using Browser Extension (Recommended)
 
 Install a screenshot extension like:
+
 - **Full Page Screen Capture** (Chrome/Edge)
 - **Awesome Screenshot** (Chrome/Firefox/Edge)
 - **Nimbus Screenshot** (All browsers)
@@ -37,6 +39,7 @@ Install a screenshot extension like:
 ## Screenshot List
 
 ### Trial 1: Chakra Days
+
 - Trial1-Root-Chakra.jpg
 - Trial1-Sacral-Chakra.jpg
 - Trial1-Solar-Plexus-Chakra.jpg
@@ -46,6 +49,7 @@ Install a screenshot extension like:
 - Trial1-Crown-Chakra.jpg
 
 ### Trial 2: Chakra Days
+
 - Trial2-Root-Chakra.jpg
 - Trial2-Sacral-Chakra.jpg
 - Trial2-Solar-Plexus-Chakra.jpg
@@ -55,12 +59,14 @@ Install a screenshot extension like:
 - Trial2-Crown-Chakra.jpg
 
 ### Thresholds & Gates
+
 - Welcome-Modal.jpg
 - Waiting-Room.jpg
 - Goodbye-Modal.jpg
 - Commitment-Gate-Paywall.jpg
 
 ### Post-Paywall
+
 - ChakraHub-Home.jpg
 - Community-Halls.jpg
 

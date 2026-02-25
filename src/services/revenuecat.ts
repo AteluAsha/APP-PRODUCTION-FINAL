@@ -20,27 +20,39 @@
 
 import Purchases, {
   CustomerInfo,
+  LOG_LEVEL,
   PurchasesOffering,
   PurchasesPackage,
   PurchasesStoreProduct,
 } from "react-native-purchases"
 import { Platform } from "react-native"
 import Constants from "expo-constants"
+import {
+  REVENUECAT_PUBLIC_SDK_KEY_ANDROID,
+  REVENUECAT_PUBLIC_SDK_KEY_IOS,
+  REVENUECAT_APP_NAME,
+} from "@/src/core/config/revenueCatConfig"
 
-// Get RevenueCat API Key from environment variables via expo-constants
+// Get RevenueCat API Key: env first, then Soul School config (by platform)
 const getRevenueCatApiKey = (): string | null => {
   try {
-    const apiKey = Constants.expoConfig?.extra?.revenuecat?.apiKey
-    if (!apiKey || apiKey === "") {
-      return null
+    const fromEnv = Constants.expoConfig?.extra?.revenuecat?.apiKey
+    if (fromEnv && fromEnv !== "") {
+      return fromEnv
     }
-    return apiKey
+    if (Platform.OS === "android") {
+      return REVENUECAT_PUBLIC_SDK_KEY_ANDROID || null
+    }
+    if (Platform.OS === "ios" && REVENUECAT_PUBLIC_SDK_KEY_IOS) {
+      return REVENUECAT_PUBLIC_SDK_KEY_IOS
+    }
+    return null
   } catch {
     return null
   }
 }
 
-// RevenueCat API Key (from environment variables) - may be null if not configured
+// RevenueCat API Key - may be null if not configured
 const REVENUECAT_API_KEY = getRevenueCatApiKey()
 
 // Entitlement identifier
@@ -59,6 +71,11 @@ export const isRevenueCatAvailable = (): boolean => {
 export const PRODUCT_IDS = {
   YEARLY: "yearly",
   LIFETIME: "lifetime",
+  // Energy exchange contributions (Project Starseed 501(c)(3))
+  CONTRIBUTION_7: "contribution_7",
+  CONTRIBUTION_11: "contribution_11",
+  CONTRIBUTION_22: "contribution_22",
+  CONTRIBUTION_55: "contribution_55",
 } as const
 
 export type ProductId = (typeof PRODUCT_IDS)[keyof typeof PRODUCT_IDS]
@@ -72,15 +89,6 @@ let isInitialized = false
  * Automatically links purchases to user ID
  */
 export const initializeRevenueCat = async (userId?: string): Promise<void> => {
-  // TEMPORARILY DISABLED: Disable RevenueCat connection to App Store
-  // TODO: Re-enable when App Store Connect configuration is ready
-  if (__DEV__) {
-    console.log(
-      "[RevenueCat] Temporarily disabled - not connecting to App Store",
-    )
-  }
-  return
-
   try {
     if (!REVENUECAT_API_KEY) {
       if (__DEV__) {
@@ -118,6 +126,37 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
 
     // At this point, apiKey is guaranteed to be string (after type guard check)
     const validApiKey: string = apiKey as string
+
+    // Custom log handler: downgrade "no products/offerings" errors to warn so they don't
+    // show the red console error overlay during development. Safe to ignore until production.
+    Purchases.setLogHandler((level, message) => {
+      const isOfferingsConfigError =
+        level === LOG_LEVEL.ERROR &&
+        (message.includes("no products") ||
+          message.includes("offerings") ||
+          message.includes("safely ignore") ||
+          message.includes("configuration"))
+      if (isOfferingsConfigError && __DEV__) {
+        console.warn("[RevenueCat]", message)
+        return
+      }
+      switch (level) {
+        case LOG_LEVEL.DEBUG:
+          console.debug("[RevenueCat]", message)
+          break
+        case LOG_LEVEL.INFO:
+          console.info("[RevenueCat]", message)
+          break
+        case LOG_LEVEL.WARN:
+          console.warn("[RevenueCat]", message)
+          break
+        case LOG_LEVEL.ERROR:
+          console.error("[RevenueCat]", message)
+          break
+        default:
+          console.log("[RevenueCat]", message)
+      }
+    })
 
     if (Platform.OS === "ios") {
       await Purchases.configure({ apiKey: validApiKey })
@@ -165,7 +204,7 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
     // These attributes may appear in payment flows and customer communications
     try {
       await Purchases.setAttributes({
-        app_name: "Soul School",
+        app_name: REVENUECAT_APP_NAME,
         app_theme: "healing",
         app_vibe: "heart_minded",
       })
@@ -185,11 +224,62 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
     if (__DEV__) {
       console.log("RevenueCat initialized successfully")
     }
+
+    // Sync purchase status to journey store – ensures hasLifetimeAccess matches RevenueCat
+    // (handles reinstall, device change, or store corruption)
+    try {
+      const hasEntitlement = await hasActiveEntitlement()
+      if (hasEntitlement) {
+        const { useChakraJourneyStore } =
+          await import("@/hooks/useChakraJourneyStore")
+        useChakraJourneyStore.getState().grantLifetimeAccess("paid")
+      }
+    } catch (syncErr) {
+      if (__DEV__) {
+        console.warn("[RevenueCat] Sync to store failed:", syncErr)
+      }
+    }
   } catch (error) {
     if (__DEV__) {
       console.error("Failed to initialize RevenueCat:", error)
     }
     // Don't throw - allow app to continue without RevenueCat
+  }
+}
+
+/**
+ * Log out the current RevenueCat user. Resets to a new anonymous user on the device.
+ * Use when user deletes account / starts over so next launch has no entitlement.
+ */
+export async function logOut(): Promise<void> {
+  if (!isInitialized) return
+  try {
+    await Purchases.logOut()
+    if (__DEV__) {
+      console.log("[RevenueCat] Logged out; device will get new anonymous user on next identify.")
+    }
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[RevenueCat] logOut failed:", error)
+    }
+  }
+}
+
+/**
+ * Link a new user ID to RevenueCat (e.g. after "Request new Soul School ID").
+ * No-op if RevenueCat is not configured or not initialized.
+ */
+export async function linkUserId(userId: string): Promise<void> {
+  try {
+    if (!REVENUECAT_API_KEY || !isInitialized) return
+    await Purchases.logIn(userId)
+    if (__DEV__) {
+      console.log("[RevenueCat] User ID linked:", userId)
+    }
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[RevenueCat] linkUserId failed:", error)
+    }
   }
 }
 

@@ -24,8 +24,11 @@ import {
   getDeviceContacts,
   type ContactInfo,
 } from "@/src/services/contactSync"
-import { generateInviteMessage, generateReferralLink } from "@/utils/invite"
-import { openSystemShare } from "@/utils/shareDestinations"
+import {
+  generateInviteMessage,
+  generateReferralLink,
+  openSystemShare,
+} from "@/utils/shareDestinations"
 import { ShareDestinationPicker } from "@/components/sharing/ShareDestinationPicker"
 
 export interface FindFriendsModalProps {
@@ -39,7 +42,15 @@ export function FindFriendsModal({
   onClose,
   startDate,
 }: FindFriendsModalProps) {
-  const [status, setStatus] = useState<"idle" | "requesting" | "loading" | "ready" | "denied" | "unavailable" | "error">("idle")
+  const [status, setStatus] = useState<
+    | "idle"
+    | "requesting"
+    | "loading"
+    | "ready"
+    | "denied"
+    | "unavailable"
+    | "error"
+  >("idle")
   const [contacts, setContacts] = useState<ContactInfo[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showCopied, setShowCopied] = useState(false)
@@ -142,89 +153,198 @@ export function FindFriendsModal({
               <AppText font="instrument-bold" size="lg" style={styles.title}>
                 Find friends
               </AppText>
-              <Pressable onPress={handleClose} hitSlop={12} style={styles.closeBtn}>
-                <Ionicons name="close" size={26} color="rgba(255,255,255,0.8)" />
+              <Pressable
+                onPress={handleClose}
+                hitSlop={12}
+                style={styles.closeBtn}
+              >
+                <Ionicons
+                  name="close"
+                  size={26}
+                  color="rgba(255,255,255,0.8)"
+                />
               </Pressable>
             </View>
 
             {status === "requesting" || status === "loading" ? (
               <View style={styles.centered}>
-                <ActivityIndicator size="large" color="rgba(135, 174, 115, 0.9)" />
-                <AppText font="instrument-regular" size="sm" style={styles.hint}>
-                  {status === "requesting" ? "Checking permission…" : "Loading contacts…"}
+                <ActivityIndicator
+                  size="large"
+                  color="rgba(135, 174, 115, 0.9)"
+                />
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={styles.hint}
+                >
+                  {status === "requesting"
+                    ? "Checking permission…"
+                    : "Loading contacts…"}
                 </AppText>
               </View>
             ) : status === "unavailable" ? (
               <View style={styles.shareFallback}>
-                <AppText font="instrument-regular" size="base" style={styles.fallbackLead}>
-                  Share your invite via Messages, WhatsApp, Instagram, or any app.
+                <AppText
+                  font="instrument-regular"
+                  size="base"
+                  style={styles.fallbackLead}
+                >
+                  Share your invite via Messages, WhatsApp, Instagram, or any
+                  app.
                 </AppText>
-                <Pressable onPress={handleCopyLink} disabled={showCopied} style={styles.primaryBtn}>
+                <Pressable
+                  onPress={handleCopyLink}
+                  disabled={showCopied}
+                  style={styles.primaryBtn}
+                >
                   <LinearGradient
-                    colors={["rgba(135, 174, 115, 0.28)", "rgba(135, 174, 115, 0.18)", "rgba(6, 182, 212, 0.08)"]}
+                    colors={[
+                      "rgba(135, 174, 115, 0.28)",
+                      "rgba(135, 174, 115, 0.18)",
+                      "rgba(6, 182, 212, 0.08)",
+                    ]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.primaryBtnInner}
                   >
                     {showCopied ? (
-                      <AppText font="instrument-medium" size="base" style={styles.primaryBtnText}>Link copied!</AppText>
+                      <AppText
+                        font="instrument-medium"
+                        size="base"
+                        style={styles.primaryBtnText}
+                      >
+                        Link copied!
+                      </AppText>
                     ) : (
                       <>
-                        <Ionicons name="copy-outline" size={20} color="#B8D4A8" style={{ marginRight: 8 }} />
-                        <AppText font="instrument-medium" size="base" style={styles.primaryBtnText}>Copy link</AppText>
+                        <Ionicons
+                          name="copy-outline"
+                          size={20}
+                          color="#B8D4A8"
+                          style={{ marginRight: 8 }}
+                        />
+                        <AppText
+                          font="instrument-medium"
+                          size="base"
+                          style={styles.primaryBtnText}
+                        >
+                          Copy link
+                        </AppText>
                       </>
                     )}
                   </LinearGradient>
                 </Pressable>
-                <Pressable onPress={handleSystemShare} style={styles.secondaryBtn}>
+                <Pressable
+                  onPress={handleSystemShare}
+                  style={styles.secondaryBtn}
+                >
                   <LinearGradient
-                    colors={["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)", "rgba(6, 182, 212, 0.04)"]}
+                    colors={[
+                      "rgba(255,255,255,0.1)",
+                      "rgba(255,255,255,0.05)",
+                      "rgba(6, 182, 212, 0.04)",
+                    ]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.secondaryBtnInner}
                   >
-                    <Ionicons name="share-outline" size={18} color="rgba(255,255,255,0.9)" style={{ marginRight: 8 }} />
-                    <AppText font="instrument-regular" size="sm" style={styles.secondaryBtnText}>
+                    <Ionicons
+                      name="share-outline"
+                      size={18}
+                      color="rgba(255,255,255,0.9)"
+                      style={{ marginRight: 8 }}
+                    />
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={styles.secondaryBtnText}
+                    >
                       Share to Messages, WhatsApp, Instagram…
                     </AppText>
                   </LinearGradient>
                 </Pressable>
-                <Pressable onPress={handleOpenBackupPicker} style={styles.backupLink}>
-                  <AppText font="instrument-regular" size="xs" style={styles.backupLinkText}>
+                <Pressable
+                  onPress={handleOpenBackupPicker}
+                  style={styles.backupLink}
+                >
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={styles.backupLinkText}
+                  >
                     Copy link or choose app
                   </AppText>
                 </Pressable>
               </View>
             ) : status === "denied" ? (
               <View style={styles.centered}>
-                <Ionicons name="people-outline" size={48} color="rgba(135, 174, 115, 0.5)" />
-                <AppText font="instrument-regular" size="base" style={styles.deniedText}>
-                  Contacts access was denied. You can invite friends by sharing the link below or from Add to Room.
+                <Ionicons
+                  name="people-outline"
+                  size={48}
+                  color="rgba(135, 174, 115, 0.5)"
+                />
+                <AppText
+                  font="instrument-regular"
+                  size="base"
+                  style={styles.deniedText}
+                >
+                  Contacts access was denied. You can invite friends by sharing
+                  the link below or from Add to Room.
                 </AppText>
-                <Pressable onPress={handleSystemShare} style={[styles.secondaryBtn, { marginTop: 16 }]}>
+                <Pressable
+                  onPress={handleSystemShare}
+                  style={[styles.secondaryBtn, { marginTop: 16 }]}
+                >
                   <LinearGradient
-                    colors={["rgba(255,255,255,0.1)", "rgba(6, 182, 212, 0.04)"]}
+                    colors={[
+                      "rgba(255,255,255,0.1)",
+                      "rgba(6, 182, 212, 0.04)",
+                    ]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.secondaryBtnInner}
                   >
-                    <AppText font="instrument-regular" size="sm" style={styles.secondaryBtnText}>Share to Messages, WhatsApp…</AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={styles.secondaryBtnText}
+                    >
+                      Share to Messages, WhatsApp…
+                    </AppText>
                   </LinearGradient>
                 </Pressable>
-                <Pressable onPress={handleOpenBackupPicker} style={styles.backupLink}>
-                  <AppText font="instrument-regular" size="xs" style={styles.backupLinkText}>Copy link or choose app</AppText>
+                <Pressable
+                  onPress={handleOpenBackupPicker}
+                  style={styles.backupLink}
+                >
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={styles.backupLinkText}
+                  >
+                    Copy link or choose app
+                  </AppText>
                 </Pressable>
               </View>
             ) : status === "error" ? (
               <View style={styles.centered}>
-                <AppText font="instrument-regular" size="sm" style={styles.errorText}>
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={styles.errorText}
+                >
                   {errorMessage}
                 </AppText>
               </View>
             ) : status === "ready" ? (
               <>
-                <AppText font="instrument-regular" size="sm" style={styles.subtitle}>
-                  Invite your contacts to Soul School. They can join you in the room once they have the app.
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={styles.subtitle}
+                >
+                  Invite your contacts to Soul School. They can join you in the
+                  room once they have the app.
                 </AppText>
                 <ScrollView
                   style={styles.list}
@@ -233,7 +353,11 @@ export function FindFriendsModal({
                   keyboardShouldPersistTaps="handled"
                 >
                   {contacts.length === 0 ? (
-                    <AppText font="instrument-regular" size="sm" style={styles.emptyText}>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={styles.emptyText}
+                    >
                       No contacts with phone or email found.
                     </AppText>
                   ) : (
@@ -241,26 +365,54 @@ export function FindFriendsModal({
                       <Pressable
                         key={contact.id}
                         onPress={handleSystemShare}
-                        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                        style={({ pressed }) => [
+                          styles.row,
+                          pressed && styles.rowPressed,
+                        ]}
                       >
                         <View style={styles.avatar}>
-                          <Ionicons name="person" size={20} color="rgba(168, 201, 154, 0.8)" />
+                          <Ionicons
+                            name="person"
+                            size={20}
+                            color="rgba(168, 201, 154, 0.8)"
+                          />
                         </View>
-                        <AppText font="instrument-medium" size="sm" style={styles.rowName} numberOfLines={1}>
+                        <AppText
+                          font="instrument-medium"
+                          size="sm"
+                          style={styles.rowName}
+                          numberOfLines={1}
+                        >
                           {contact.displayName}
                         </AppText>
-                        <Ionicons name="share-outline" size={20} color="rgba(135, 174, 115, 0.9)" />
+                        <Ionicons
+                          name="share-outline"
+                          size={20}
+                          color="rgba(135, 174, 115, 0.9)"
+                        />
                       </Pressable>
                     ))
                   )}
                 </ScrollView>
                 {contacts.length > 100 && (
-                  <AppText font="instrument-regular" size="xs" style={styles.cappedHint}>
-                    Showing first 100. Use search in your messages to invite others.
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={styles.cappedHint}
+                  >
+                    Showing first 100. Use search in your messages to invite
+                    others.
                   </AppText>
                 )}
-                <Pressable onPress={handleOpenBackupPicker} style={styles.backupLink}>
-                  <AppText font="instrument-regular" size="xs" style={styles.backupLinkText}>
+                <Pressable
+                  onPress={handleOpenBackupPicker}
+                  style={styles.backupLink}
+                >
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={styles.backupLinkText}
+                  >
                     Copy link or choose app
                   </AppText>
                 </Pressable>

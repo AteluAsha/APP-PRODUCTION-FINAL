@@ -1,6 +1,20 @@
 {
   "indexes": [
     {
+      "collectionGroup": "social_sanctuary",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "chakraDay",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "voice_sanctuary_responses",
       "queryScope": "COLLECTION",
       "fields": [

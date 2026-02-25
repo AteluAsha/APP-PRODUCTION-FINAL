@@ -20,7 +20,9 @@ export interface ContactInfo {
 let contactsModule: typeof import("expo-contacts") | null = null
 let contactsModuleLoaded: boolean | null = null
 
-async function getContactsModule(): Promise<typeof import("expo-contacts") | null> {
+async function getContactsModule(): Promise<
+  typeof import("expo-contacts") | null
+> {
   if (contactsModuleLoaded === true && contactsModule) return contactsModule
   if (contactsModuleLoaded === false) return null
   try {
@@ -29,7 +31,10 @@ async function getContactsModule(): Promise<typeof import("expo-contacts") | nul
     return contactsModule
   } catch (e) {
     if (__DEV__) {
-      console.warn("[contactSync] expo-contacts not available (native module missing or error):", e)
+      console.warn(
+        "[contactSync] expo-contacts not available (native module missing or error):",
+        e,
+      )
     }
     contactsModuleLoaded = false
     return null
@@ -66,7 +71,9 @@ export async function requestContactsPermission(): Promise<boolean> {
 /**
  * Check if we already have contacts permission (without prompting).
  */
-export async function getContactsPermissionStatus(): Promise<"granted" | "denied" | "undetermined"> {
+export async function getContactsPermissionStatus(): Promise<
+  "granted" | "denied" | "undetermined"
+> {
   const Contacts = await getContactsModule()
   if (!Contacts) return "undetermined"
   try {
@@ -101,8 +108,12 @@ export async function getDeviceContacts(): Promise<ContactInfo[]> {
     })
 
     return data.map((c) => {
-      const name = (c.name ?? [c.firstName, c.lastName].filter(Boolean).join(" ")) || "Unknown"
-      const phoneNumbers = (c.phoneNumbers ?? []).map((p) => p.number ?? p.digits ?? "").filter(Boolean)
+      const name =
+        (c.name ?? [c.firstName, c.lastName].filter(Boolean).join(" ")) ||
+        "Unknown"
+      const phoneNumbers = (c.phoneNumbers ?? [])
+        .map((p) => p.number ?? p.digits ?? "")
+        .filter(Boolean)
       const emails = (c.emails ?? []).map((e) => e.email ?? "").filter(Boolean)
       return {
         id: c.id ?? "",
@@ -133,6 +144,8 @@ export function normalizePhoneNumber(phone: string): string {
  * Stub: match device contacts against app users (hashed phone/email).
  * Returns empty until backend/Firestore user hashes exist.
  */
-export async function findFriendsOnApp(_contacts: ContactInfo[]): Promise<{ id: string; displayName: string; profilePicUrl?: string }[]> {
+export async function findFriendsOnApp(
+  _contacts: ContactInfo[],
+): Promise<{ id: string; displayName: string; profilePicUrl?: string }[]> {
   return []
 }

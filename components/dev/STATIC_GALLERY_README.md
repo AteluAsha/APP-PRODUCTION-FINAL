@@ -51,10 +51,11 @@ The `SnapshotUtility.tsx` file documents the intended API. The actual capture me
 ## Quiet Mode Status
 
 All live component rendering is **DISABLED**:
+
 - ✅ StorybookShell.tsx → returns null
 - ✅ SafeRoomWrapper.tsx → bypasses navigation
 - ✅ DevGalleryTrigger.tsx → returns null
-- ✅ app/_layout.tsx → no dev imports
+- ✅ app/\_layout.tsx → no dev imports
 
 The web preview shows the normal app only. No errors. No live injection.
 

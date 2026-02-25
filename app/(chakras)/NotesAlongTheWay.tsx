@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
 import { LinearGradient } from "expo-linear-gradient"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { ActionBar } from "@/components/ActionBar"
 import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
@@ -142,7 +143,11 @@ export default function NotesAlongTheWay() {
         >
           Notes Along the Way
         </AppText>
-        <AppText font="instrument-regular" size="sm" style={{ color: "rgba(255,255,255,0.7)" }}>
+        <AppText
+          font="instrument-regular"
+          size="sm"
+          style={{ color: "rgba(255,255,255,0.7)" }}
+        >
           {notesCount === 0
             ? "Your reflections will appear here"
             : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
@@ -224,7 +229,12 @@ export default function NotesAlongTheWay() {
             <AppText
               font="instrument-regular"
               size="base"
-              style={{ color: "rgba(255,255,255,0.8)", marginTop: 24, textAlign: "center", paddingHorizontal: 24 }}
+              style={{
+                color: "rgba(255,255,255,0.8)",
+                marginTop: 24,
+                textAlign: "center",
+                paddingHorizontal: 24,
+              }}
             >
               {selectedChakraDay === "all"
                 ? "Your journey notes will appear here"
@@ -233,7 +243,12 @@ export default function NotesAlongTheWay() {
             <AppText
               font="instrument-regular"
               size="sm"
-              style={{ color: "rgba(255,255,255,0.6)", marginTop: 12, textAlign: "center", paddingHorizontal: 24 }}
+              style={{
+                color: "rgba(255,255,255,0.6)",
+                marginTop: 12,
+                textAlign: "center",
+                paddingHorizontal: 24,
+              }}
             >
               Reflect on your journey as you progress through each chakra
             </AppText>
@@ -271,14 +286,20 @@ export default function NotesAlongTheWay() {
                         <AppText
                           font="instrument-regular"
                           size="xs"
-                          style={{ color: "rgba(255,255,255,0.5)", marginBottom: 8 }}
+                          style={{
+                            color: "rgba(255,255,255,0.5)",
+                            marginBottom: 8,
+                          }}
                         >
                           {formatDate(note.createdAt)}
                         </AppText>
                         <AppText
                           font="instrument-regular"
                           size="base"
-                          style={{ color: "rgba(255,255,255,0.9)", lineHeight: 24 }}
+                          style={{
+                            color: "rgba(255,255,255,0.9)",
+                            lineHeight: 24,
+                          }}
                         >
                           {note.content}
                         </AppText>
@@ -386,7 +407,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 40 + SCROLL_BREATHING_BOTTOM_PADDING,
   },
   daySection: {
     marginBottom: 24,

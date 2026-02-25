@@ -3,16 +3,11 @@
  *
  * Spotify-like audio library with all sound healing content organized by chakra.
  * Accessible via Music menu bar button in lifetime mode.
+ * No autoplay: playback only on user tap. One track at a time app-wide.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from "react"
-import {
-  View,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-  ImageBackground,
-} from "react-native"
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { View, ScrollView, ImageBackground, Pressable } from "react-native"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { ActionBar } from "@/components/ActionBar"
@@ -26,7 +21,7 @@ import {
 } from "@/hooks/useCurrentAudioStore"
 import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
-import { FLOATING_NAV_SCROLL_BOTTOM_PADDING } from "@/constants/layout"
+import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import {
   useCrystalBowlAudio,
@@ -42,6 +37,10 @@ import {
   getEmbodimentAudioId,
 } from "@/hooks/useEmbodimentAudio"
 import {
+  useAncestralWisdomAudio,
+  getHeadToHeartAudioId,
+} from "@/hooks/useAncestralWisdomAudio"
+import {
   downloadAndCacheAudio,
   downloadAndCacheAudioResumable,
 } from "@/src/utils/audioDownload"
@@ -52,6 +51,8 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { CHAKRA_NAMES } from "@/constants/chakras/chakraConstants"
+import { AudioTrackRow } from "@/components/chakras/AudioTrackRow"
+import { DropInButton } from "@/components/chakras/DropInButton"
 
 const CHAKRA_ORDER: Chakra[] = [
   Chakra.ROOT,
@@ -73,20 +74,74 @@ const CHAKRA_COLORS: Record<Chakra, string> = {
   [Chakra.CROWN]: "#9333EA",
 }
 
+/** Descriptive text for each frequency banner (hero title, keywords, subline). */
+const FREQUENCY_BANNER_CONTENT: Record<
+  Chakra,
+  { hero: string; keywords: string; clears: string; brings: string }
+> = {
+  [Chakra.ROOT]: {
+    hero: "SEPARATION",
+    keywords: "Grounding • Security • Release",
+    clears: "Guilt, fear, and ancestral trauma",
+    brings: "Belonging and solid foundations",
+  },
+  [Chakra.SACRAL]: {
+    hero: "INADEQUACY",
+    keywords: "Flow • Change • Creativity",
+    clears: "Emotional blocks and stagnant energy",
+    brings: "Adaptability and transformation",
+  },
+  [Chakra.SOLAR_PLEXUS]: {
+    hero: "POWERLESSNESS",
+    keywords: "Transformation • DNA • Power",
+    clears: "Self-doubt and the performance ego",
+    brings: "Inner authority and cellular repair",
+  },
+  [Chakra.HEART]: {
+    hero: "ABANDONMENT",
+    keywords: "Connection • Unity • Repair",
+    clears: "Friction in relationships and isolation",
+    brings: "Compassion and the \"We\" mind",
+  },
+  [Chakra.THROAT]: {
+    hero: "SUPPRESSION",
+    keywords: "Expression • Clarity • Truth",
+    clears: "Toxic communication and self-deception",
+    brings: "Authentic resonance and boundaries",
+  },
+  [Chakra.THIRD_EYE]: {
+    hero: "ILLUSION",
+    keywords: "Intuition • Vision • Order",
+    clears: "Mental noise and the thinking ego",
+    brings: "Spiritual clarity and inner knowing",
+  },
+  [Chakra.CROWN]: {
+    hero: "OBLIVION",
+    keywords: "Divinity • Oneness • Light",
+    clears: "The feeling of being \"cut off\" from Source",
+    brings: "Connection to the All and pure awareness",
+  },
+}
+
 const AudioLibrary = () => {
   const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
   const currentTrackKey = useCurrentAudioStore((s) => s.currentTrackKey)
+  const pendingTrackKey = useCurrentAudioStore((s) => s.pendingTrackKey)
   const isPlaying = useCurrentAudioStore((s) => s.isPlaying)
   const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
   const setPlaying = useCurrentAudioStore((s) => s.setPlaying)
+  const setPendingTrackKey = useCurrentAudioStore((s) => s.setPendingTrackKey)
   const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set())
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false)
   const [preparingPlaybackId, setPreparingPlaybackId] = useState<string | null>(
     null,
   )
   const scrollRef = useRef<ScrollView>(null)
   const sectionYRef = useRef<Record<string, number>>({})
-  const { scrollTo: scrollToParam } = useLocalSearchParams<{ scrollTo?: string }>()
+  const { scrollTo: scrollToParam } = useLocalSearchParams<{
+    scrollTo?: string
+  }>()
 
   // APP2 only: redirect trial users
   const router = useRouter()
@@ -138,6 +193,14 @@ const AudioLibrary = () => {
   const embodimentThirdEye = useEmbodimentAudio(Chakra.THIRD_EYE)
   const embodimentCrown = useEmbodimentAudio(Chakra.CROWN)
 
+  const ancestralRoot = useAncestralWisdomAudio(Chakra.ROOT)
+  const ancestralSacral = useAncestralWisdomAudio(Chakra.SACRAL)
+  const ancestralSolar = useAncestralWisdomAudio(Chakra.SOLAR_PLEXUS)
+  const ancestralHeart = useAncestralWisdomAudio(Chakra.HEART)
+  const ancestralThroat = useAncestralWisdomAudio(Chakra.THROAT)
+  const ancestralThirdEye = useAncestralWisdomAudio(Chakra.THIRD_EYE)
+  const ancestralCrown = useAncestralWisdomAudio(Chakra.CROWN)
+
   const crystalBowlByChakra: Record<
     Chakra,
     ReturnType<typeof useCrystalBowlAudio>
@@ -177,6 +240,19 @@ const AudioLibrary = () => {
     [Chakra.CROWN]: embodimentCrown,
   }
 
+  const ancestralByChakra: Record<
+    Chakra,
+    ReturnType<typeof useAncestralWisdomAudio>
+  > = {
+    [Chakra.ROOT]: ancestralRoot,
+    [Chakra.SACRAL]: ancestralSacral,
+    [Chakra.SOLAR_PLEXUS]: ancestralSolar,
+    [Chakra.HEART]: ancestralHeart,
+    [Chakra.THROAT]: ancestralThroat,
+    [Chakra.THIRD_EYE]: ancestralThirdEye,
+    [Chakra.CROWN]: ancestralCrown,
+  }
+
   const playWithPlaylist = useCallback(
     async (chakra: Chakra, startIndex: number) => {
       const trackKey = `${chakra}_${startIndex}`
@@ -204,6 +280,7 @@ const AudioLibrary = () => {
       const items: PlaylistItem[] = []
 
       const tuningForkId = `tuning_fork_${chakra}_${getTuningForkFileName(chakra)}`
+      // Hero tuning fork only: do not use bundled fallback in Audio Library
       if (tuningFork.localUri || tuningFork.url) {
         const tfSource = await prepareLongAudioForPlay({
           url: tuningFork.url,
@@ -228,7 +305,9 @@ const AudioLibrary = () => {
       // Crystal Bowl: download to local cache first for smooth playback (no streaming glitches)
       const crystalBowlId = `crystal_bowl_${chakra}_${getCrystalBowlFileName(chakra)}`
       const hasCrystalBowl =
-        crystalBowl.localUri || crystalBowl.url || soundBathContent.crystalBowlAudio
+        crystalBowl.localUri ||
+        crystalBowl.url ||
+        soundBathContent.crystalBowlAudio
       if (hasCrystalBowl) {
         try {
           const cbSource = await prepareCrystalBowlForPlay({
@@ -257,7 +336,13 @@ const AudioLibrary = () => {
         }
       }
 
-      if (isThirdEye && (embodimentPartOneSource || embodiment.partOne || embodiment.partTwo)) {
+      if (
+        isThirdEye &&
+        (embodiment.localUriPartOne ||
+          embodiment.partOne ||
+          embodiment.localUriPartTwo ||
+          embodiment.partTwo)
+      ) {
         const part1Id = getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")
         const part2Id = getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")
         if (embodiment.partOne || embodiment.localUriPartOne) {
@@ -319,8 +404,6 @@ const AudioLibrary = () => {
       if (startIndex < 0 || startIndex >= items.length) return
       const [current, ...rest] = items.slice(startIndex)
       const trackKey = `${chakra}_${startIndex}`
-      useCurrentAudioStore.getState().reset()
-      await new Promise((resolve) => setTimeout(resolve, 100))
       useCurrentAudioStore
         .getState()
         .setSourceWithPlaylist(current, rest, trackKey)
@@ -342,11 +425,216 @@ const AudioLibrary = () => {
       if (isActive) {
         setPlaying(!isPlaying)
       } else {
-        playWithPlaylist(chakra, startIndex)
+        setPendingTrackKey(trackKey)
+        setPlaying(true)
+        playWithPlaylist(chakra, startIndex).catch(() => {
+          useCurrentAudioStore.getState().setPendingTrackKey(null)
+          useCurrentAudioStore.getState().setPlaying(false)
+        })
       }
     },
-    [audioOrigin, currentTrackKey, isPlaying, setPlaying, playWithPlaylist],
+    [
+      audioOrigin,
+      currentTrackKey,
+      isPlaying,
+      setPlaying,
+      setPendingTrackKey,
+      playWithPlaylist,
+    ],
   )
+
+  const handlePlayEmbodimentFullPlayer = useCallback(
+    async (chakra: Chakra, part: "single" | "part1" | "part2") => {
+      const content = chakraContent[chakra]
+      const embodiment = embodimentByChakra[chakra]
+      const hertz = getTuningForkHertz(chakra)
+      const preparingId = `embodiment_${chakra}_${part}`
+      setPreparingPlaybackId(preparingId)
+      useCurrentAudioStore.getState().setPendingTrackKey("embodiment")
+      useCurrentAudioStore.getState().setPlaying(true)
+      try {
+        let src: AVPlaybackSource
+        let title: string
+        let durationMs: number
+        let author: string
+
+        if (
+          part === "part1" &&
+          (embodiment.localUriPartOne || embodiment.partOne)
+        ) {
+          const part1Id = getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")
+          src = await prepareLongAudioForPlay({
+            url: embodiment.partOne ?? null,
+            localUri: embodiment.localUriPartOne ?? null,
+            audioId: part1Id,
+            fallback: { uri: embodiment.partOne ?? "" },
+          })
+          title = content.audioIntro.title
+          durationMs = content.audioIntro.durationMs
+          author = `${content.audioIntro.author} · ${hertz} Hz`
+        } else if (
+          part === "part2" &&
+          (embodiment.localUriPartTwo || embodiment.partTwo)
+        ) {
+          const part2Id = getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")
+          src = await prepareLongAudioForPlay({
+            url: embodiment.partTwo ?? null,
+            localUri: embodiment.localUriPartTwo ?? null,
+            audioId: part2Id,
+            fallback: { uri: embodiment.partTwo ?? "" },
+          })
+          title = "Part Two: Somatic Healing"
+          durationMs = 1257000
+          author = `${content.audioIntro.author} · ${hertz} Hz`
+        } else if (
+          part === "single" &&
+          (embodiment.localUri || embodiment.single)
+        ) {
+          const embodimentId = getEmbodimentAudioId(chakra)
+          src = await prepareLongAudioForPlay({
+            url: embodiment.single ?? null,
+            localUri: embodiment.localUri ?? null,
+            audioId: embodimentId,
+            fallback: {
+              uri: embodiment.single ?? embodiment.partOne ?? "",
+            },
+          })
+          title = content.audioIntro.title
+          durationMs =
+            chakra === Chakra.CROWN ? 2684000 : content.audioIntro.durationMs
+          author = `${content.audioIntro.author} · ${hertz} Hz`
+        } else {
+          useCurrentAudioStore.getState().setPendingTrackKey(null)
+          useCurrentAudioStore.getState().setPlaying(false)
+          return
+        }
+
+        useCurrentAudioStore.getState().setSource(src, "full-player")
+        useCurrentAudioStore.getState().setMetadata({
+          durationMs,
+          title,
+          author,
+        })
+        useCurrentAudioStore.getState().setPrefs({
+          shouldLoop: false,
+          isIntroAudio: true,
+        })
+        useCurrentAudioStore.getState().setChakraColor(CHAKRA_COLORS[chakra])
+        const { AUDIO_READY_DELAY_MS } =
+          await import("@/hooks/useCurrentAudioStore")
+        await new Promise((r) => setTimeout(r, AUDIO_READY_DELAY_MS))
+        router.push("/AudioPlayer")
+        addHapticFeedback(HapticStrength.Light)
+      } catch (_) {
+        useCurrentAudioStore.getState().setPendingTrackKey(null)
+        useCurrentAudioStore.getState().setPlaying(false)
+      } finally {
+        setPreparingPlaybackId(null)
+      }
+    },
+    [embodimentByChakra, router],
+  )
+
+  const handlePlayHeadToHeartFullPlayer = useCallback(
+    async (chakra: Chakra) => {
+      const ancestral = ancestralByChakra[chakra]
+      const content = chakraContent[chakra].headtoheart
+      if (!ancestral.source) return
+      useCurrentAudioStore.getState().setPendingTrackKey("headtoheart")
+      useCurrentAudioStore.getState().setPlaying(true)
+      useCurrentAudioStore.getState().setSource(ancestral.source, "full-player")
+      useCurrentAudioStore.getState().setMetadata({
+        durationMs: content.audio.duration,
+        title: content.audio.title,
+        author: `with ${content.audio.author}`,
+      })
+      useCurrentAudioStore.getState().setPrefs({
+        shouldLoop: false,
+        isIntroAudio: false, // Head to Heart is not the embodiment intro; only ChakraTemplate uses isIntroAudio for intro ritual
+      })
+      useCurrentAudioStore.getState().setChakraColor(CHAKRA_COLORS[chakra])
+      const { AUDIO_READY_DELAY_MS } =
+        await import("@/hooks/useCurrentAudioStore")
+      await new Promise((r) => setTimeout(r, AUDIO_READY_DELAY_MS))
+      router.push("/AudioPlayer")
+      addHapticFeedback(HapticStrength.Light)
+    },
+    [ancestralByChakra, router],
+  )
+
+  /** All downloadable tracks for "download all" (same as per-chakra rows) */
+  const downloadAllTasks = useMemo(() => {
+    const tasks: { url: string; audioId: string; isCrystalBowl: boolean }[] = []
+    CHAKRA_ORDER.forEach((chakra) => {
+      const content = chakraContent[chakra]
+      const crystalBowl = crystalBowlByChakra[chakra]
+      const tuningFork = tuningForkByChakra[chakra]
+      const embodiment = embodimentByChakra[chakra]
+      const isThirdEye = chakra === Chakra.THIRD_EYE
+      const embodimentRemoteUrl = embodiment.single || embodiment.partOne
+
+      const tuningForkId = `tuning_fork_${chakra}_${getTuningForkFileName(chakra)}`
+      if (tuningFork.url) {
+        tasks.push({ url: tuningFork.url, audioId: tuningForkId, isCrystalBowl: false })
+      }
+      const crystalBowlId = `crystal_bowl_${chakra}_${getCrystalBowlFileName(chakra)}`
+      if (crystalBowl.url) {
+        tasks.push({ url: crystalBowl.url, audioId: crystalBowlId, isCrystalBowl: true })
+      }
+      if (isThirdEye && (embodiment.partOne || embodiment.partTwo)) {
+        const embodimentId = getEmbodimentAudioId(chakra)
+        const embodimentPartTwoId = getEmbodimentAudioId(chakra, "part2")
+        if (embodiment.partOne) {
+          tasks.push({ url: embodiment.partOne, audioId: embodimentId, isCrystalBowl: false })
+        }
+        if (embodiment.partTwo) {
+          tasks.push({ url: embodiment.partTwo, audioId: embodimentPartTwoId, isCrystalBowl: false })
+        }
+      } else if (embodimentRemoteUrl) {
+        tasks.push({
+          url: embodimentRemoteUrl,
+          audioId: getEmbodimentAudioId(chakra),
+          isCrystalBowl: false,
+        })
+      }
+      const ancestral = ancestralByChakra[chakra]
+      if (ancestral.url) {
+        tasks.push({
+          url: ancestral.url,
+          audioId: getHeadToHeartAudioId(chakra),
+          isCrystalBowl: false,
+        })
+      }
+    })
+    return tasks
+  }, [
+    crystalBowlByChakra,
+    tuningForkByChakra,
+    embodimentByChakra,
+    ancestralByChakra,
+  ])
+
+  const handleDownloadAll = useCallback(async () => {
+    if (isDownloadingAll || downloadingId) return
+    const toDownload = downloadAllTasks.filter((t) => !downloadedIds.has(t.audioId))
+    if (toDownload.length === 0) return
+    addHapticFeedback(HapticStrength.Light)
+    setIsDownloadingAll(true)
+    try {
+      for (const { url, audioId, isCrystalBowl } of toDownload) {
+        try {
+          await (isCrystalBowl
+            ? downloadAndCacheAudioResumable(url, audioId)
+            : downloadAndCacheAudio(url, audioId))
+          setDownloadedIds((prev) => new Set(prev).add(audioId))
+        } catch (e) {
+          if (__DEV__) console.warn("[AudioLibrary] Download all: failed for", audioId, e)
+        }
+      }
+    } finally {
+      setIsDownloadingAll(false)
+    }
+  }, [downloadAllTasks, downloadedIds, isDownloadingAll, downloadingId])
 
   const handleDownload = useCallback(
     async (url: string, audioId: string) => {
@@ -368,152 +656,8 @@ const AudioLibrary = () => {
     [downloadingId],
   )
 
+  // APP1 (trial) never sees Music Room; redirect above sends them to ChakraHome. Only APP2 can set audioOrigin "music-room".
   if (!hasLifetimeAccess) return null
-
-  const AudioTrackRow = ({
-    title,
-    subtitle,
-    hertz,
-    durationLabel,
-    isLoading,
-    isConnected,
-    disabledWhenUnconnected = false,
-    onPlay,
-    onDownload,
-    audioId,
-    url,
-    localUri,
-    canDownload,
-    isActiveTrack = false,
-  }: {
-    title: string
-    subtitle: string
-    hertz?: string
-    durationLabel: string
-    isLoading: boolean
-    isConnected: boolean
-    disabledWhenUnconnected?: boolean
-    onPlay: () => void
-    onDownload?: () => void
-    audioId?: string
-    url?: string | null
-    localUri?: string | null
-    canDownload?: boolean
-    isActiveTrack?: boolean
-  }) => {
-    const isDownloaded = audioId
-      ? localUri || downloadedIds.has(audioId)
-      : false
-    const isDownloading = audioId && downloadingId === audioId
-    const showPause = isActiveTrack && isPlaying
-
-    return (
-      <Pressable
-        onPress={onPlay}
-        disabled={isLoading || (disabledWhenUnconnected && !isConnected)}
-        style={({ pressed }) => [
-          {
-            flexDirection: "row",
-            alignItems: "center",
-            paddingVertical: 12,
-            paddingHorizontal: 16,
-            borderRadius: 12,
-            marginBottom: 8,
-            backgroundColor: "rgba(255,255,255,0.06)",
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.08)",
-          },
-          pressed && { opacity: 0.8 },
-        ]}
-      >
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: "rgba(255,255,255,0.1)",
-            alignItems: "center",
-            justifyContent: "center",
-            marginRight: 16,
-          }}
-        >
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons
-              name={showPause ? "pause" : "play"}
-              size={20}
-              color="#fff"
-            />
-          )}
-        </View>
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 2,
-            }}
-          >
-            <AppText
-              font="cormorant-regular"
-              size="sm"
-              numberOfLines={1}
-              style={{ color: "#ffffff", fontSize: 15 }}
-            >
-              {title}
-            </AppText>
-            {hertz && (
-              <View
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.12)",
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderRadius: 6,
-                }}
-              >
-                <AppText
-                  font="cormorant-regular"
-                  size="xs"
-                  style={{ color: "#ffffff", fontSize: 12 }}
-                >
-                  {hertz} Hz
-                </AppText>
-              </View>
-            )}
-          </View>
-          <AppText
-            font="cormorant-italic"
-            size="xs"
-            numberOfLines={1}
-            style={{ color: "rgba(255,255,255,0.75)", fontSize: 13 }}
-          >
-            {durationLabel}
-          </AppText>
-        </View>
-        {((canDownload && url) || localUri) && (
-          <Pressable
-            onPress={() => onDownload?.()}
-            disabled={isDownloading || !!localUri}
-            style={{ padding: 8 }}
-          >
-            {isDownloading ? (
-              <ActivityIndicator size="small" color="#87AE73" />
-            ) : isDownloaded || localUri ? (
-              <Ionicons name="checkmark-circle" size={22} color="#87AE73" />
-            ) : (
-              <Ionicons
-                name="cloud-download-outline"
-                size={22}
-                color="rgba(255,255,255,0.7)"
-              />
-            )}
-          </Pressable>
-        )}
-      </Pressable>
-    )
-  }
 
   const handleClose = () => {
     addHapticFeedback(HapticStrength.Light)
@@ -522,11 +666,16 @@ const AudioLibrary = () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
-      <ActionBar useXButton={true} xButtonPosition="left" onXPress={handleClose} />
+      <ActionBar
+        useXButton={true}
+        xButtonPosition="left"
+        onXPress={handleClose}
+      />
       <ImageBackground
         source={require("@/assets/images/soundhealingbg.png")}
         resizeMode="cover"
         style={{ flex: 1 }}
+        imageStyle={{ alignSelf: "center" }}
       >
         <BackgroundOpacity
           topGradientHeight={60}
@@ -537,11 +686,10 @@ const AudioLibrary = () => {
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING,
+            paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
             paddingHorizontal: 16,
           }}
         >
-          <View>
           <View style={{ paddingTop: 64, paddingBottom: 24 }}>
             <AppText
               font="cormorant-regular"
@@ -566,8 +714,38 @@ const AudioLibrary = () => {
                 fontSize: 15,
               }}
             >
-              Where sound meets soul. Download for your journey.
+              Where sound meets soul.
             </AppText>
+            <Pressable
+              onPress={handleDownloadAll}
+              disabled={isDownloadingAll || downloadingId !== null}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 8,
+                gap: 6,
+                opacity: pressed ? 0.7 : 1,
+              })}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons
+                name="cloud-download-outline"
+                size={14}
+                color="rgba(255,255,255,0.6)"
+              />
+              <AppText
+                font="cormorant-italic"
+                size="xs"
+                style={{
+                  color: "rgba(255,255,255,0.6)",
+                  textAlign: "center",
+                  fontSize: 12,
+                }}
+              >
+                {isDownloadingAll ? "Downloading…" : "Download for offline listening"}
+              </AppText>
+            </Pressable>
           </View>
 
           {CHAKRA_ORDER.map((chakra, index) => {
@@ -583,9 +761,7 @@ const AudioLibrary = () => {
             const crystalBowlConnected = !!(
               crystalBowl.url || crystalBowl.localUri
             )
-            const tuningForkConnected = !!(
-              tuningFork.url || tuningFork.localUri
-            )
+            const tuningForkConnected = !!(tuningFork.url || tuningFork.localUri)
             const isThirdEye = chakra === Chakra.THIRD_EYE
             const embodimentPartOneSource =
               embodiment.localUriPartOne || embodiment.partOne
@@ -608,46 +784,111 @@ const AudioLibrary = () => {
                   sectionYRef.current[chakra] = e.nativeEvent.layout.y
                 }}
               >
-                <LinearGradient
-                  colors={[`${CHAKRA_COLORS[chakra]}35`, "transparent"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
+                <View
                   style={{
-                    paddingVertical: 14,
-                    paddingHorizontal: 16,
-                    borderRadius: 12,
+                    marginHorizontal: -16,
                     marginBottom: 12,
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.1)",
+                    overflow: "hidden",
                   }}
                 >
-                  <View
+                  <LinearGradient
+                    colors={[
+                      `${CHAKRA_COLORS[chakra]}35`,
+                      `${CHAKRA_COLORS[chakra]}18`,
+                      "transparent",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={{
-                      flexDirection: "row",
-                      alignItems: "baseline",
-                      justifyContent: "space-between",
+                      paddingVertical: 14,
+                      paddingHorizontal: 20,
+                      borderTopWidth: 1,
+                      borderBottomWidth: 1,
+                      borderColor: "rgba(255,255,255,0.08)",
                     }}
                   >
-                    <AppText
-                      font="cormorant-regular"
-                      size="base"
-                      style={{ color: "#ffffff", fontSize: 17 }}
-                    >
-                      {chakraName} Chakra
-                    </AppText>
-                    <AppText
-                      font="cormorant-regular"
-                      size="xl"
+                    <View
                       style={{
-                        color: "#ffffff",
-                        letterSpacing: 1,
-                        fontSize: 18,
+                        flexDirection: "row",
+                        alignItems: "baseline",
+                        justifyContent: "space-between",
                       }}
                     >
-                      {hertz} Hz
-                    </AppText>
-                  </View>
-                </LinearGradient>
+                      <AppText
+                        font="cormorant-regular"
+                        size="base"
+                        style={{ color: "#ffffff", fontSize: 17 }}
+                      >
+                        {chakraName} Chakra
+                      </AppText>
+                      <AppText
+                        font="cormorant-regular"
+                        size="xl"
+                        style={{
+                          color: "#ffffff",
+                          letterSpacing: 1,
+                          fontSize: 18,
+                        }}
+                      >
+                        {hertz} Hz
+                      </AppText>
+                    </View>
+                  </LinearGradient>
+                </View>
+
+                {/* Frequency banner: hero in Cormorant Garamond Italic; keywords and Clears/Brings in unchanged from original */}
+                {(() => {
+                  const bannerContent = FREQUENCY_BANNER_CONTENT[chakra]
+                  return (
+                    <View
+                      style={{
+                        paddingHorizontal: 20,
+                        paddingTop: 16,
+                        paddingBottom: 20,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <AppText
+                        font="cormorant-italic"
+                        style={{
+                          fontFamily: "CormorantGaramondItalic",
+                          fontWeight: "400",
+                          fontSize: 17,
+                          color: "#ffffff",
+                          textAlign: "center",
+                          letterSpacing: 1,
+                          marginBottom: 10,
+                        }}
+                      >
+                        {bannerContent.hero}
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        style={{
+                          fontSize: 15,
+                          color: "rgba(255,255,255,0.95)",
+                          textAlign: "center",
+                          marginBottom: 12,
+                        }}
+                      >
+                        {bannerContent.keywords}
+                      </AppText>
+                      <AppText
+                        font="cormorant-italic"
+                        style={{
+                          fontSize: 13,
+                          color: "rgba(255,255,255,0.72)",
+                          textAlign: "center",
+                          lineHeight: 20,
+                        }}
+                      >
+                        Clears: {bannerContent.clears}
+                        {"\n"}
+                        Brings in: {bannerContent.brings}
+                      </AppText>
+                    </View>
+                  )
+                })()}
 
                 <AudioTrackRow
                   title="Tuning Fork"
@@ -657,7 +898,13 @@ const AudioLibrary = () => {
                   isLoading={tuningFork.isLoading}
                   isConnected={tuningForkConnected}
                   disabledWhenUnconnected={true}
-                  isActiveTrack={currentTrackKey === `${chakra}_0`}
+                  isActiveTrack={
+                    currentTrackKey === `${chakra}_0` ||
+                    pendingTrackKey === `${chakra}_0`
+                  }
+                  isPlaying={isPlaying}
+                  downloadedIds={downloadedIds}
+                  downloadingId={downloadingId}
                   onPlay={() =>
                     handleRowPress(
                       `${chakra}_0`,
@@ -676,6 +923,13 @@ const AudioLibrary = () => {
                   canDownload={true}
                 />
 
+                <View style={{ alignItems: "center", marginBottom: 8 }}>
+                  <DropInButton
+                    audioUri={tuningFork.localUri ?? tuningFork.url ?? null}
+                    disabled={tuningFork.isLoading}
+                    compact
+                  />
+                </View>
                 <AudioTrackRow
                   title="Crystal Bowl SOUND BATH"
                   subtitle="1 hour"
@@ -686,7 +940,13 @@ const AudioLibrary = () => {
                     preparingPlaybackId === `${chakra}_1`
                   }
                   isConnected={crystalBowlConnected}
-                  isActiveTrack={currentTrackKey === `${chakra}_1`}
+                  isActiveTrack={
+                    currentTrackKey === `${chakra}_1` ||
+                    pendingTrackKey === `${chakra}_1`
+                  }
+                  isPlaying={isPlaying}
+                  downloadedIds={downloadedIds}
+                  downloadingId={downloadingId}
                   onPlay={() =>
                     handleRowPress(
                       `${chakra}_1`,
@@ -715,17 +975,17 @@ const AudioLibrary = () => {
                       title={content.audioIntro.title}
                       subtitle={`with ${content.audioIntro.author} · ~${Math.round(content.audioIntro.durationMs / 60000)} min`}
                       durationLabel={`with ${content.audioIntro.author} · ~29 min`}
-                      isLoading={embodiment.isLoading}
+                      isLoading={
+                        embodiment.isLoading ||
+                        preparingPlaybackId === `embodiment_${chakra}_part1`
+                      }
                       isConnected={embodimentPartOneConnected}
                       disabledWhenUnconnected={true}
-                      isActiveTrack={currentTrackKey === `${chakra}_2`}
+                      isPlaying={isPlaying}
+                      downloadedIds={downloadedIds}
+                      downloadingId={downloadingId}
                       onPlay={() =>
-                        handleRowPress(
-                          `${chakra}_2`,
-                          chakra,
-                          2,
-                          !!embodimentPartOneSource,
-                        )
+                        handlePlayEmbodimentFullPlayer(chakra, "part1")
                       }
                       onDownload={() =>
                         embodiment.partOne &&
@@ -740,17 +1000,17 @@ const AudioLibrary = () => {
                       title="Part Two: Somatic Healing"
                       subtitle={`with ${content.audioIntro.author} · ~21 min`}
                       durationLabel={`with ${content.audioIntro.author} · ~21 min`}
-                      isLoading={embodiment.isLoading}
+                      isLoading={
+                        embodiment.isLoading ||
+                        preparingPlaybackId === `embodiment_${chakra}_part2`
+                      }
                       isConnected={embodimentPartTwoConnected}
                       disabledWhenUnconnected={true}
-                      isActiveTrack={currentTrackKey === `${chakra}_3`}
+                      isPlaying={isPlaying}
+                      downloadedIds={downloadedIds}
+                      downloadingId={downloadingId}
                       onPlay={() =>
-                        handleRowPress(
-                          `${chakra}_3`,
-                          chakra,
-                          3,
-                          !!embodimentPartTwoSource,
-                        )
+                        handlePlayEmbodimentFullPlayer(chakra, "part2")
                       }
                       onDownload={() =>
                         embodiment.partTwo &&
@@ -767,17 +1027,17 @@ const AudioLibrary = () => {
                     title={content.audioIntro.title}
                     subtitle={`with ${content.audioIntro.author} · ~${Math.round(content.audioIntro.durationMs / 60000)} min`}
                     durationLabel={`with ${content.audioIntro.author} · ~${Math.round(content.audioIntro.durationMs / 60000)} min`}
-                    isLoading={embodiment.isLoading}
+                    isLoading={
+                      embodiment.isLoading ||
+                      preparingPlaybackId === `embodiment_${chakra}_single`
+                    }
                     isConnected={embodimentConnected}
                     disabledWhenUnconnected={true}
-                    isActiveTrack={currentTrackKey === `${chakra}_2`}
+                    isPlaying={isPlaying}
+                    downloadedIds={downloadedIds}
+                    downloadingId={downloadingId}
                     onPlay={() =>
-                      handleRowPress(
-                        `${chakra}_2`,
-                        chakra,
-                        2,
-                        !!embodimentPlaybackSource,
-                      )
+                      handlePlayEmbodimentFullPlayer(chakra, "single")
                     }
                     onDownload={() =>
                       embodimentRemoteUrl &&
@@ -789,10 +1049,47 @@ const AudioLibrary = () => {
                     canDownload={!!embodimentRemoteUrl}
                   />
                 )}
+
+                <>
+                  <AppText
+                    font="cormorant-regular"
+                    size="sm"
+                    style={{
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: 13,
+                      marginTop: 16,
+                      marginBottom: 8,
+                      marginLeft: 4,
+                    }}
+                  >
+                    Head to Heart
+                  </AppText>
+                  <AudioTrackRow
+                    title={content.headtoheart.audio.title}
+                    subtitle={`with ${content.headtoheart.audio.author}`}
+                    durationLabel={`with ${content.headtoheart.audio.author} · ~${Math.round(content.headtoheart.audio.duration / 60000)} min`}
+                    isLoading={ancestralByChakra[chakra].isLoading}
+                    isConnected={!!ancestralByChakra[chakra].source}
+                    disabledWhenUnconnected={true}
+                    isPlaying={isPlaying}
+                    downloadedIds={downloadedIds}
+                    downloadingId={downloadingId}
+                    onPlay={() => handlePlayHeadToHeartFullPlayer(chakra)}
+                    onDownload={() => {
+                      const url = ancestralByChakra[chakra].url
+                      if (url) {
+                        handleDownload(url, getHeadToHeartAudioId(chakra))
+                      }
+                    }}
+                    audioId={getHeadToHeartAudioId(chakra)}
+                    url={ancestralByChakra[chakra].url ?? undefined}
+                    localUri={ancestralByChakra[chakra].localUri ?? undefined}
+                    canDownload={!!ancestralByChakra[chakra].url}
+                  />
+                </>
               </View>
             )
           })}
-          </View>
         </ScrollView>
       </ImageBackground>
     </SafeAreaView>

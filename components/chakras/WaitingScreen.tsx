@@ -4,9 +4,17 @@
  * A healing, mysterious countdown experience with subtle power.
  * Dark, clean, engaging design using chakra imagery for depth and presence.
  *
- * UPDATED: Layout fixes applied - Ask a Friend below date, For Deepest Embodiment below countdown
- * UPDATED: Cyan border and headset icon styling for For Deepest Embodiment
- * UPDATED: Spacing improvements and back button added
+ * LOCKED: Hero styling on this page must not be changed: opening date line
+ * ("I will open on Monday, March 16"), countdown (DAYS/HOURS/MINS/SECS),
+ * and the "For Deepest Embodiment" card are fixed. Do not alter layout or
+ * styling of these elements.
+ *
+ * Friends invited list: Only on Tribe screen, not here. Build Your Tribe
+ * button opens invite modal; invited list is not shown on waiting room.
+ *
+ * Product note (lifetime → trial course → lifetime trial waiting room): When
+ * the user has friends, the button should shift to Tribe Chat and load with
+ * their friends and conversations instead of showing Build Your Tribe.
  */
 
 import React from "react"
@@ -21,6 +29,7 @@ import {
 } from "@/utils/date"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { formatCountdown } from "@/utils/format"
+import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import Animated, {
@@ -47,12 +56,18 @@ import {
   getAudioPreloadStarted,
   setAudioPreloadStarted,
 } from "@/src/utils/audioPreloadGuard"
+import {
+  hasNotificationPermission,
+  requestNotificationPermissions,
+  scheduleJourneyReminders,
+} from "@/src/services/journeyNotifications"
+import { CommunicationReminderModal } from "@/components/chakras/CommunicationReminderModal"
 
-// Countdown clock dimensions - sized to fit four segments (D/H/M/S) on small screens
-const COUNTDOWN_BOX_SIZE = 52
+// Countdown clock dimensions - larger for presence, softer feminine design
+const COUNTDOWN_BOX_SIZE = 64
 const COUNTDOWN_BOX_GAP = 6
-const COUNTDOWN_BOX_RADIUS = 10
-const COUNTDOWN_LABEL_MARGIN = 6
+const COUNTDOWN_BOX_RADIUS = 12
+const COUNTDOWN_LABEL_MARGIN = 4
 
 // Chakra images for mysterious background effect
 const CHAKRA_IMAGES = [
@@ -123,8 +138,37 @@ export const WaitingScreen = ({
     seconds: "00",
   })
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showCommunicationModal, setShowCommunicationModal] = useState(false)
   const currentDay = getCurrentDayOfWeek()
   const chakraName = getChakraName(currentDay)
+
+  // Gentle reminders: show 60s after entering waiting room if permission not yet granted (somatic, non-demanding)
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined
+    const run = async () => {
+      if (await hasNotificationPermission()) return
+      t = setTimeout(() => setShowCommunicationModal(true), 60000)
+    }
+    run()
+    return () => {
+      if (t) clearTimeout(t)
+    }
+  }, [])
+
+  const handleCommunicationAllow = async () => {
+    const granted = await requestNotificationPermissions()
+    if (granted && courseStartDate) {
+      scheduleJourneyReminders(courseStartDate).catch((err) => {
+        if (__DEV__)
+          console.warn("[WaitingScreen] Failed to schedule reminders:", err)
+      })
+    }
+    setShowCommunicationModal(false)
+  }
+
+  const handleCommunicationNotNow = () => {
+    setShowCommunicationModal(false)
+  }
 
   // Auto-start preload of first ~3 min of all audio when user reaches waiting room (once per device)
   useEffect(() => {
@@ -303,7 +347,11 @@ export const WaitingScreen = ({
               <AppText
                 font="instrument-medium"
                 size="sm"
-                style={{ color: "rgba(255,255,255,0.95)", textAlign: "center", letterSpacing: 0.3 }}
+                style={{
+                  color: "rgba(255,255,255,0.95)",
+                  textAlign: "center",
+                  letterSpacing: 0.3,
+                }}
               >
                 Exit course mode
               </AppText>
@@ -312,7 +360,7 @@ export const WaitingScreen = ({
         </View>
       )}
 
-      {/* Trial: fixed bottom block - Deepest Embodiment + Build Your Tribe + icon bar (larger icons) */}
+      {/* Trial: fixed bottom block - Deepest Embodiment + Build Your Tribe + icon bar. When user has friends (future), show Tribe Chat instead. */}
       {!hasLifetimeAccess && (
         <View
           style={{
@@ -320,51 +368,69 @@ export const WaitingScreen = ({
             bottom: 0,
             left: 0,
             right: 0,
-            paddingBottom: Math.max(insets.bottom, 4) + 28,
+            paddingBottom: Math.max(insets.bottom, 4) + 20,
             zIndex: 10001,
           }}
         >
-          {/* Deepest Embodiment + Build Your Tribe - raised a little, larger font for readability */}
-          <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+          {/* Deepest Embodiment + Build Your Tribe - compact, slightly narrower/smaller */}
+          <View style={{ paddingHorizontal: 28, paddingBottom: 16 }}>
             <View
               style={{
                 width: "100%",
-                borderRadius: 12,
-                paddingVertical: 16,
-                paddingHorizontal: 16,
+                borderRadius: 8,
+                paddingVertical: 8,
+                paddingHorizontal: 10,
                 backgroundColor: "rgba(0, 0, 0, 0.4)",
-                borderWidth: 1.5,
-                borderColor: "rgba(6, 182, 212, 0.6)",
-                shadowColor: "rgba(6, 182, 212, 0.3)",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.5,
-                shadowRadius: 8,
-                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: "rgba(6, 182, 212, 0.5)",
+                shadowColor: "rgba(6, 182, 212, 0.2)",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.4,
+                shadowRadius: 6,
+                marginBottom: 12,
               }}
             >
-              <View style={{ alignItems: "center", width: "100%", minWidth: 0 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+              <View
+                style={{ alignItems: "center", width: "100%", minWidth: 0 }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 3,
+                  }}
+                >
                   <Ionicons
                     name="headset"
-                    size={20}
+                    size={14}
                     color="rgba(6, 182, 212, 0.8)"
-                    style={{ marginRight: 6 }}
+                    style={{ marginRight: 4 }}
                   />
                   <AppText
                     font="instrument-medium"
-                    size="sm"
-                    style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
+                    size="xs"
+                    style={{
+                      color: "rgba(255,255,255,0.9)",
+                      textAlign: "center",
+                    }}
                   >
                     For Deepest Embodiment
                   </AppText>
                 </View>
                 <AppText
                   font="instrument-regular"
-                  size="sm"
-                  style={{ color: "rgba(255,255,255,0.85)", lineHeight: 24, fontStyle: "italic", textAlign: "center" }}
+                  size="xs"
+                  style={{
+                    color: "rgba(255,255,255,0.85)",
+                    lineHeight: 18,
+                    fontStyle: "italic",
+                    textAlign: "center",
+                  }}
                 >
-                  This course is most embodied when you can awake 1 hour before
-                  your day, and sit with your earphones in bliss.
+                  This course is designed for somatic gnosis that works best when
+                  you awaken 1 hour before your day and sit with your earphones
+                  and remove all distractions.
                 </AppText>
               </View>
             </View>
@@ -373,8 +439,8 @@ export const WaitingScreen = ({
                 <Pressable
                   onPress={handleInviteFriend}
                   style={{
-                    marginBottom: 20,
-                    borderRadius: 12,
+                    marginBottom: 12,
+                    borderRadius: 8,
                     overflow: "hidden",
                     borderWidth: 1,
                     borderColor: "rgba(135, 174, 115, 0.45)",
@@ -389,7 +455,7 @@ export const WaitingScreen = ({
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={{
-                      padding: 12,
+                      padding: 8,
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "center",
@@ -397,83 +463,59 @@ export const WaitingScreen = ({
                   >
                     <Ionicons
                       name="person-add"
-                      size={18}
+                      size={14}
                       color="rgba(135, 174, 115, 0.95)"
-                      style={{ marginRight: 6 }}
+                      style={{ marginRight: 5 }}
                     />
                     <AppText
                       font="instrument-regular"
                       size="sm"
-                      style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
+                      style={{
+                        color: "rgba(255,255,255,0.9)",
+                        textAlign: "center",
+                      }}
                     >
                       Build Your Tribe
                     </AppText>
                   </LinearGradient>
                 </Pressable>
-                {invitedFriends.length > 0 && (
-                  <View style={{ marginBottom: 12, paddingHorizontal: 8 }}>
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={{ color: "rgba(255,255,255,0.6)", marginBottom: 6, textAlign: "center" }}
-                    >
-                      Friends invited:
-                    </AppText>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
-                      {invitedFriends.map((friend, index) => (
-                        <View
-                          key={index}
-                          style={{
-                            backgroundColor: "rgba(135, 174, 115, 0.15)",
-                            borderWidth: 1,
-                            borderColor: "rgba(135, 174, 115, 0.3)",
-                            borderRadius: 10,
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
-                          }}
-                        >
-                          <AppText
-                            font="instrument-regular"
-                            size="xs"
-                            style={{ color: "rgba(255,255,255,0.8)" }}
-                          >
-                            {friend}
-                          </AppText>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
               </>
             )}
           </View>
-          {/* Menu bar: Preview, Chakras 101, Tribe, Anua – same icon size and label line */}
+          {/* Menu bar: Preview, Chakras 101, Tribe, Anua – compact, aligned, pushed down */}
           <View
             style={{
               flexDirection: "row",
-              justifyContent: "space-between",
+              justifyContent: "center",
               alignItems: "flex-end",
               paddingHorizontal: 16,
-              gap: 8,
+              gap: 20,
+              marginTop: 12,
             }}
           >
             {onPreviewPress && (
-              <View style={{ alignItems: "center", minWidth: 52 }}>
+              <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
                 <AppText
                   font="instrument-regular"
                   size="xs"
-                  style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 6, height: 18 }}
+                  style={{
+                    color: "rgba(255,255,255,0.7)",
+                    textAlign: "center",
+                    marginBottom: 4,
+                    fontSize: 10,
+                    height: 14,
+                  }}
                   numberOfLines={1}
                 >
                   Preview
                 </AppText>
                 <Pressable
                   onPress={onPreviewPress}
-                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 26,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
                     backgroundColor: "rgba(0, 0, 0, 0.6)",
                     justifyContent: "center",
                     alignItems: "center",
@@ -481,30 +523,38 @@ export const WaitingScreen = ({
                   accessibilityLabel="Preview Course"
                 >
                   <Image
-                    source={chakraContent[Chakra.SOLAR_PLEXUS].chakraHeaderImage}
-                    style={{ width: 40, height: 40, opacity: 0.95 }}
+                    source={
+                      chakraContent[Chakra.SOLAR_PLEXUS].chakraHeaderImage
+                    }
+                    style={{ width: 32, height: 32, opacity: 0.95 }}
                     resizeMode="contain"
                   />
                 </Pressable>
               </View>
             )}
             {onLearnAboutChakrasPress && (
-              <View style={{ alignItems: "center", minWidth: 52 }}>
+              <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
                 <AppText
                   font="instrument-regular"
                   size="xs"
-                  style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 6, height: 18 }}
+                  style={{
+                    color: "rgba(255,255,255,0.7)",
+                    textAlign: "center",
+                    marginBottom: 4,
+                    fontSize: 10,
+                    height: 14,
+                  }}
                   numberOfLines={1}
                 >
                   Chakras 101
                 </AppText>
                 <Pressable
                   onPress={onLearnAboutChakrasPress}
-                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 26,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
                     backgroundColor: "rgba(0, 0, 0, 0.6)",
                     justifyContent: "center",
                     alignItems: "center",
@@ -513,17 +563,23 @@ export const WaitingScreen = ({
                 >
                   <Image
                     source={require("@/assets/images/7chakras.png")}
-                    style={{ width: 40, height: 40, opacity: 0.95 }}
+                    style={{ width: 32, height: 32, opacity: 0.95 }}
                     resizeMode="contain"
                   />
                 </Pressable>
               </View>
             )}
-            <View style={{ alignItems: "center", minWidth: 52 }}>
+            <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
               <AppText
                 font="instrument-regular"
                 size="xs"
-                style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 6, height: 18 }}
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  textAlign: "center",
+                  marginBottom: 4,
+                  fontSize: 10,
+                  height: 14,
+                }}
                 numberOfLines={1}
               >
                 tribe
@@ -533,59 +589,65 @@ export const WaitingScreen = ({
                   addHapticFeedback(HapticStrength.Light)
                   router.push("/(chakras)/TribeChat")
                 }}
-                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
                   backgroundColor: "rgba(0, 0, 0, 0.7)",
                   borderWidth: 1,
                   borderColor: "rgba(135, 174, 115, 0.5)",
                   justifyContent: "center",
                   alignItems: "center",
                   shadowColor: "#87AE73",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 6,
+                  elevation: 6,
                 }}
               >
                 <Ionicons
                   name="chatbubble-ellipses"
-                  size={28}
+                  size={22}
                   color="rgba(135, 174, 115, 0.95)"
                 />
               </Pressable>
             </View>
-            <View style={{ alignItems: "center", minWidth: 52 }}>
+            <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
               <AppText
                 font="instrument-regular"
                 size="xs"
-                style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 6, height: 18 }}
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  textAlign: "center",
+                  marginBottom: 4,
+                  fontSize: 10,
+                  height: 14,
+                }}
                 numberOfLines={1}
               >
                 Anua
               </AppText>
               <Pressable
                 onPress={handleAnuaPress}
-                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
                   overflow: "hidden",
                   justifyContent: "center",
                   alignItems: "center",
                   shadowColor: "#9D4EDD",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 12,
-                  elevation: 10,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 8,
+                  elevation: 8,
                 }}
               >
                 <Image
                   source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
-                  style={{ width: 40, height: 40, borderRadius: 20 }}
+                  style={{ width: 32, height: 32, borderRadius: 16 }}
                   resizeMode="cover"
                 />
               </Pressable>
@@ -646,12 +708,11 @@ export const WaitingScreen = ({
           paddingTop: Math.max(insets.top, 16) + (hasLifetimeAccess ? 20 : 20),
           paddingBottom:
             Math.max(insets.bottom, 4) +
-            (hasLifetimeAccess
-              ? Math.max(insets.bottom, 16) + 60
-              : 340), // Trial: space for fixed bottom block (Deepest Embodiment + Build Your Tribe + icon bar)
+            (hasLifetimeAccess ? Math.max(insets.bottom, 16) + 60 : 290) +
+            SCROLL_BREATHING_BOTTOM_PADDING, // Trial: space for fixed bottom block (compact)
           ...(hasLifetimeAccess
             ? { justifyContent: "space-between" }
-            : { justifyContent: "center" }), // Trial: center clock on page
+            : { flexDirection: "column" }), // Trial: top section + centered clock block
         }}
         showsVerticalScrollIndicator={false}
         style={{ zIndex: 1 }}
@@ -671,48 +732,61 @@ export const WaitingScreen = ({
               <AppText
                 font="instrument-bold"
                 size="xl"
-                style={{ textAlign: "center", marginBottom: 12, color: "#ffffff" }}
+                style={{
+                  textAlign: "center",
+                  marginBottom: 12,
+                  color: "#ffffff",
+                }}
               >
                 Your 7 Day Journey Begins
               </AppText>
               <AppText
                 font="instrument-regular"
                 size="base"
-                style={{ textAlign: "center", color: "rgba(255,255,255,0.85)", marginBottom: 20 }}
+                style={{
+                  textAlign: "center",
+                  color: "rgba(255,255,255,0.85)",
+                  marginBottom: 20,
+                }}
               >
                 I will open on {formattedDate}
               </AppText>
             </View>
 
-            {/* Countdown - centered hero; box evenly centered on clock; fits on screen */}
+            {/* Countdown - larger, bold numbers, softer feminine design */}
             {!(completedTrialCourses === 2 && !hasLifetimeAccess) && (
               <View
                 style={{
                   width: "100%",
                   maxWidth: 384,
                   alignItems: "center",
-                  paddingVertical: 16,
-                  paddingHorizontal: 12,
-                  borderRadius: 16,
+                  paddingVertical: 20,
+                  paddingHorizontal: 16,
+                  borderRadius: 20,
                   borderWidth: 1,
-                  borderColor: "rgba(6, 182, 212, 0.35)",
-                  backgroundColor: "rgba(0, 0, 0, 0.25)",
-                  shadowColor: "rgba(6, 182, 212, 0.25)",
+                  borderColor: "rgba(212, 165, 116, 0.25)",
+                  backgroundColor: "rgba(0, 0, 0, 0.2)",
+                  shadowColor: "rgba(168, 201, 154, 0.15)",
                   shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.8,
-                  shadowRadius: 16,
-                  elevation: 8,
+                  shadowOpacity: 0.5,
+                  shadowRadius: 20,
+                  elevation: 6,
                 }}
               >
                 <View
-                  style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: COUNTDOWN_BOX_GAP }}
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: COUNTDOWN_BOX_GAP,
+                  }}
                 >
                   <View style={{ alignItems: "center" }}>
                     <LinearGradient
                       colors={[
-                        "rgba(255, 255, 255, 0.14)",
-                        "rgba(6, 182, 212, 0.12)",
-                        "rgba(147, 51, 234, 0.08)",
+                        "rgba(255, 255, 255, 0.12)",
+                        "rgba(212, 165, 116, 0.08)",
+                        "rgba(168, 201, 154, 0.06)",
                       ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -724,17 +798,17 @@ export const WaitingScreen = ({
                         alignItems: "center",
                         marginBottom: COUNTDOWN_LABEL_MARGIN,
                         borderWidth: 1,
-                        borderColor: "rgba(6, 182, 212, 0.45)",
-                        shadowColor: "rgba(6, 182, 212, 0.4)",
+                        borderColor: "rgba(212, 165, 116, 0.2)",
+                        shadowColor: "rgba(168, 201, 154, 0.15)",
                         shadowOffset: { width: 0, height: 0 },
-                        shadowOpacity: 0.6,
+                        shadowOpacity: 0.3,
                         shadowRadius: 8,
-                        elevation: 6,
+                        elevation: 4,
                       }}
                     >
                       <AppText
                         font="instrument-bold"
-                        size="2xl"
+                        size="3xl"
                         style={{ color: "#ffffff" }}
                       >
                         {timeLeft.days}
@@ -743,7 +817,7 @@ export const WaitingScreen = ({
                     <AppText
                       font="instrument-regular"
                       size="xs"
-                      style={{ color: "rgba(255,255,255,0.5)" }}
+                      style={{ color: "rgba(255,255,255,0.55)" }}
                     >
                       DAYS
                     </AppText>
@@ -751,16 +825,16 @@ export const WaitingScreen = ({
                   <AppText
                     font="instrument-bold"
                     size="2xl"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
+                    style={{ color: "rgba(255,255,255,0.35)" }}
                   >
                     :
                   </AppText>
                   <View style={{ alignItems: "center" }}>
                     <LinearGradient
                       colors={[
-                        "rgba(255, 255, 255, 0.14)",
-                        "rgba(6, 182, 212, 0.12)",
-                        "rgba(147, 51, 234, 0.08)",
+                        "rgba(255, 255, 255, 0.12)",
+                        "rgba(212, 165, 116, 0.08)",
+                        "rgba(168, 201, 154, 0.06)",
                       ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -772,17 +846,17 @@ export const WaitingScreen = ({
                         alignItems: "center",
                         marginBottom: COUNTDOWN_LABEL_MARGIN,
                         borderWidth: 1,
-                        borderColor: "rgba(6, 182, 212, 0.45)",
-                        shadowColor: "rgba(6, 182, 212, 0.4)",
+                        borderColor: "rgba(212, 165, 116, 0.2)",
+                        shadowColor: "rgba(168, 201, 154, 0.15)",
                         shadowOffset: { width: 0, height: 0 },
-                        shadowOpacity: 0.6,
+                        shadowOpacity: 0.3,
                         shadowRadius: 8,
-                        elevation: 6,
+                        elevation: 4,
                       }}
                     >
                       <AppText
                         font="instrument-bold"
-                        size="2xl"
+                        size="3xl"
                         style={{ color: "#ffffff" }}
                       >
                         {timeLeft.hours}
@@ -791,7 +865,7 @@ export const WaitingScreen = ({
                     <AppText
                       font="instrument-regular"
                       size="xs"
-                      style={{ color: "rgba(255,255,255,0.5)" }}
+                      style={{ color: "rgba(255,255,255,0.55)" }}
                     >
                       HOURS
                     </AppText>
@@ -799,16 +873,16 @@ export const WaitingScreen = ({
                   <AppText
                     font="instrument-bold"
                     size="2xl"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
+                    style={{ color: "rgba(255,255,255,0.35)" }}
                   >
                     :
                   </AppText>
                   <View style={{ alignItems: "center" }}>
                     <LinearGradient
                       colors={[
-                        "rgba(255, 255, 255, 0.14)",
-                        "rgba(6, 182, 212, 0.12)",
-                        "rgba(147, 51, 234, 0.08)",
+                        "rgba(255, 255, 255, 0.12)",
+                        "rgba(212, 165, 116, 0.08)",
+                        "rgba(168, 201, 154, 0.06)",
                       ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -820,17 +894,17 @@ export const WaitingScreen = ({
                         alignItems: "center",
                         marginBottom: COUNTDOWN_LABEL_MARGIN,
                         borderWidth: 1,
-                        borderColor: "rgba(6, 182, 212, 0.45)",
-                        shadowColor: "rgba(6, 182, 212, 0.4)",
+                        borderColor: "rgba(212, 165, 116, 0.2)",
+                        shadowColor: "rgba(168, 201, 154, 0.15)",
                         shadowOffset: { width: 0, height: 0 },
-                        shadowOpacity: 0.6,
+                        shadowOpacity: 0.3,
                         shadowRadius: 8,
-                        elevation: 6,
+                        elevation: 4,
                       }}
                     >
                       <AppText
                         font="instrument-bold"
-                        size="2xl"
+                        size="3xl"
                         style={{ color: "#ffffff" }}
                       >
                         {timeLeft.minutes}
@@ -839,7 +913,7 @@ export const WaitingScreen = ({
                     <AppText
                       font="instrument-regular"
                       size="xs"
-                      style={{ color: "rgba(255,255,255,0.5)" }}
+                      style={{ color: "rgba(255,255,255,0.55)" }}
                     >
                       MINS
                     </AppText>
@@ -847,16 +921,16 @@ export const WaitingScreen = ({
                   <AppText
                     font="instrument-bold"
                     size="2xl"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
+                    style={{ color: "rgba(255,255,255,0.35)" }}
                   >
                     :
                   </AppText>
                   <View style={{ alignItems: "center" }}>
                     <LinearGradient
                       colors={[
-                        "rgba(255, 255, 255, 0.14)",
-                        "rgba(6, 182, 212, 0.12)",
-                        "rgba(147, 51, 234, 0.08)",
+                        "rgba(255, 255, 255, 0.12)",
+                        "rgba(212, 165, 116, 0.08)",
+                        "rgba(168, 201, 154, 0.06)",
                       ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -868,17 +942,17 @@ export const WaitingScreen = ({
                         alignItems: "center",
                         marginBottom: COUNTDOWN_LABEL_MARGIN,
                         borderWidth: 1,
-                        borderColor: "rgba(6, 182, 212, 0.45)",
-                        shadowColor: "rgba(6, 182, 212, 0.4)",
+                        borderColor: "rgba(212, 165, 116, 0.2)",
+                        shadowColor: "rgba(168, 201, 154, 0.15)",
                         shadowOffset: { width: 0, height: 0 },
-                        shadowOpacity: 0.6,
+                        shadowOpacity: 0.3,
                         shadowRadius: 8,
-                        elevation: 6,
+                        elevation: 4,
                       }}
                     >
                       <AppText
                         font="instrument-bold"
-                        size="2xl"
+                        size="3xl"
                         style={{ color: "#ffffff" }}
                       >
                         {timeLeft.seconds}
@@ -887,7 +961,7 @@ export const WaitingScreen = ({
                     <AppText
                       font="instrument-regular"
                       size="xs"
-                      style={{ color: "rgba(255,255,255,0.5)" }}
+                      style={{ color: "rgba(255,255,255,0.55)" }}
                     >
                       SECS
                     </AppText>
@@ -896,36 +970,56 @@ export const WaitingScreen = ({
               </View>
             )}
 
-            {/* Bottom section - blue box and invite */}
-            <View style={{ width: "100%", maxWidth: 384, alignItems: "center" }}>
-              <View style={{ width: "100%", paddingHorizontal: 16, marginBottom: 24 }}>
+            {/* Bottom section - compact For Deepest Embodiment and invite */}
+            <View
+              style={{ width: "100%", maxWidth: 384, alignItems: "center" }}
+            >
+              <View
+                style={{
+                  width: "100%",
+                  paddingHorizontal: 16,
+                  marginBottom: 20,
+                }}
+              >
                 <View
                   style={{
                     width: "100%",
-                    borderRadius: 12,
-                    paddingVertical: 16,
-                    paddingHorizontal: 20,
+                    borderRadius: 10,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
                     backgroundColor: "rgba(0, 0, 0, 0.4)",
-                    borderWidth: 1.5,
-                    borderColor: "rgba(6, 182, 212, 0.6)",
-                    shadowColor: "rgba(6, 182, 212, 0.3)",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.5,
-                    shadowRadius: 8,
+                    borderWidth: 1,
+                    borderColor: "rgba(6, 182, 212, 0.5)",
+                    shadowColor: "rgba(6, 182, 212, 0.2)",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 6,
                   }}
                 >
-                  <View style={{ alignItems: "center", width: "100%", minWidth: 0 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+                  <View
+                    style={{ alignItems: "center", width: "100%", minWidth: 0 }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 4,
+                      }}
+                    >
                       <Ionicons
                         name="headset"
-                        size={20}
+                        size={16}
                         color="rgba(6, 182, 212, 0.8)"
-                        style={{ marginRight: 8 }}
+                        style={{ marginRight: 6 }}
                       />
                       <AppText
                         font="instrument-medium"
-                        size="sm"
-                        style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
+                        size="xs"
+                        style={{
+                          color: "rgba(255,255,255,0.9)",
+                          textAlign: "center",
+                        }}
                       >
                         For Deepest Embodiment
                       </AppText>
@@ -934,10 +1028,16 @@ export const WaitingScreen = ({
                       <AppText
                         font="instrument-regular"
                         size="xs"
-                        style={{ color: "rgba(255,255,255,0.85)", lineHeight: 20, fontStyle: "italic", textAlign: "center" }}
+                        style={{
+                          color: "rgba(255,255,255,0.85)",
+                          lineHeight: 18,
+                          fontStyle: "italic",
+                          textAlign: "center",
+                        }}
                       >
-                        This course is most embodied when you can awake 1 hour
-                        before your day, and sit with your earphones in bliss.
+                        This course is designed for somatic gnosis that works best when
+                        you awaken 1 hour before your day and sit with your
+                        earphones and remove all distractions.
                       </AppText>
                     </View>
                   </View>
@@ -978,318 +1078,320 @@ export const WaitingScreen = ({
                       <AppText
                         font="instrument-regular"
                         size="sm"
-                        style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
-                        style={{ color: "rgba(255,255,255,0.9)" }}
+                        style={{
+                          color: "rgba(255,255,255,0.9)",
+                          textAlign: "center",
+                        }}
                       >
                         Build Your Tribe
                       </AppText>
                     </LinearGradient>
                   </Pressable>
-                  {invitedFriends.length > 0 && (
-                    <View style={{ marginTop: 12, paddingHorizontal: 8 }}>
-                      <AppText
-                        font="instrument-regular"
-                        size="xs"
-                        style={{ color: "rgba(255,255,255,0.6)", marginBottom: 8, textAlign: "center" }}
-                        style={{ color: "rgba(255,255,255,0.6)" }}
-                      >
-                        Friends invited:
-                      </AppText>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
-                        {invitedFriends.map((friend, index) => (
-                          <View
-                            key={index}
-                            style={{
-                              backgroundColor: "rgba(135, 174, 115, 0.15)",
-                              borderWidth: 1,
-                              borderColor: "rgba(135, 174, 115, 0.3)",
-                              borderRadius: 12,
-                              paddingHorizontal: 10,
-                              paddingVertical: 6,
-                            }}
-                          >
-                            <AppText
-                              font="instrument-regular"
-                              size="xs"
-                              style={{ color: "rgba(255,255,255,0.8)" }}
-                              style={{ color: "rgba(255,255,255,0.8)" }}
-                            >
-                              {friend}
-                            </AppText>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
                 </View>
               )}
             </View>
           </>
         ) : (
           <>
-        {/* Central chakra symbol - smaller and more refined */}
-        <View style={{ marginBottom: 24 }}>
-          <Image
-            source={require("@/assets/images/7chakras.png")}
-            style={{ width: 80, height: 80, opacity: 0.9 }}
-            resizeMode="contain"
-          />
-        </View>
-
-        {/* Main content - App1 */}
-        <View style={{ alignItems: "center", marginBottom: 24, maxWidth: 384 }}>
-          <AppText
-            font="instrument-bold"
-            size="xl"
-            style={{ textAlign: "center", marginBottom: 12, color: "#ffffff" }}
-          >
-            Your 7 Day Journey Begins
-          </AppText>
-
-          {/* Each day unlocks - prominent above countdown box */}
-          <AppText
-            font="instrument-regular"
-            size="sm"
-            style={{ textAlign: "center", color: "rgba(255,255,255,0.7)", marginBottom: 24, paddingHorizontal: 16 }}
-          >
-            Each day of the week unlocks a new chakra, guiding you from your
-            foundation to your crown.
-          </AppText>
-
-          {/* Date + Countdown in one box - same style; clock box lowered from title */}
-          {!(completedTrialCourses === 2) && (
+            {/* Top section - icon, title, description - toward top */}
             <View
-              style={{ width: "100%", alignItems: "center" }}
-              style={{
-                marginTop: 16,
-                paddingVertical: 16,
-                paddingHorizontal: 12,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: "rgba(6, 182, 212, 0.35)",
-                backgroundColor: "rgba(0, 0, 0, 0.25)",
-                shadowColor: "rgba(6, 182, 212, 0.25)",
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.8,
-                shadowRadius: 16,
-                elevation: 8,
-                maxWidth: "100%",
-              }}
+              style={{ alignItems: "center", maxWidth: 384, marginBottom: 16 }}
             >
+              <View style={{ marginBottom: 24 }}>
+                <Image
+                  source={require("@/assets/images/7chakras.png")}
+                  style={{ width: 80, height: 80, opacity: 0.9 }}
+                  resizeMode="contain"
+                />
+              </View>
               <AppText
                 font="instrument-bold"
-                size="base"
-                style={{ textAlign: "center", marginBottom: 24 }}
-                style={{ color: "rgba(6, 182, 212, 0.95)" }}
+                size="xl"
+                style={{
+                  textAlign: "center",
+                  marginBottom: 12,
+                  color: "#ffffff",
+                }}
               >
-                I will open on {formattedDate}
+                Your 7 Day Journey Begins
               </AppText>
-              <View
-                style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: COUNTDOWN_BOX_GAP }}
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{
+                  textAlign: "center",
+                  color: "rgba(255,255,255,0.7)",
+                  paddingHorizontal: 16,
+                }}
               >
-                {/* Days */}
-                <View style={{ alignItems: "center" }}>
-                  <LinearGradient
-                    colors={[
-                      "rgba(255, 255, 255, 0.14)",
-                      "rgba(6, 182, 212, 0.12)",
-                      "rgba(147, 51, 234, 0.08)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      width: COUNTDOWN_BOX_SIZE,
-                      height: COUNTDOWN_BOX_SIZE,
-                      borderRadius: COUNTDOWN_BOX_RADIUS,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: COUNTDOWN_LABEL_MARGIN,
-                      borderWidth: 1,
-                      borderColor: "rgba(6, 182, 212, 0.45)",
-                      shadowColor: "rgba(6, 182, 212, 0.4)",
-                      shadowOffset: { width: 0, height: 0 },
-                      shadowOpacity: 0.6,
-                      shadowRadius: 8,
-                      elevation: 6,
-                    }}
-                  >
-                    <AppText
-                      font="instrument-bold"
-                      size="2xl"
-                      style={{ color: "#ffffff" }}
-                    >
-                      {timeLeft.days}
-                    </AppText>
-                  </LinearGradient>
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={{ color: "rgba(255,255,255,0.5)" }}
-                  >
-                    DAYS
-                  </AppText>
-                </View>
-
-                <AppText
-                  font="instrument-bold"
-                  size="2xl"
-                  style={{ color: "rgba(255,255,255,0.4)" }}
-                >
-                  :
-                </AppText>
-
-                {/* Hours */}
-                <View style={{ alignItems: "center" }}>
-                  <LinearGradient
-                    colors={[
-                      "rgba(255, 255, 255, 0.14)",
-                      "rgba(6, 182, 212, 0.12)",
-                      "rgba(147, 51, 234, 0.08)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      width: COUNTDOWN_BOX_SIZE,
-                      height: COUNTDOWN_BOX_SIZE,
-                      borderRadius: COUNTDOWN_BOX_RADIUS,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: COUNTDOWN_LABEL_MARGIN,
-                      borderWidth: 1,
-                      borderColor: "rgba(6, 182, 212, 0.45)",
-                      shadowColor: "rgba(6, 182, 212, 0.4)",
-                      shadowOffset: { width: 0, height: 0 },
-                      shadowOpacity: 0.6,
-                      shadowRadius: 8,
-                      elevation: 6,
-                    }}
-                  >
-                    <AppText
-                      font="instrument-bold"
-                      size="2xl"
-                      style={{ color: "#ffffff" }}
-                    >
-                      {timeLeft.hours}
-                    </AppText>
-                  </LinearGradient>
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={{ color: "rgba(255,255,255,0.5)" }}
-                  >
-                    HOURS
-                  </AppText>
-                </View>
-
-                <AppText
-                  font="instrument-bold"
-                  size="2xl"
-                  style={{ color: "rgba(255,255,255,0.4)" }}
-                >
-                  :
-                </AppText>
-
-                {/* Minutes */}
-                <View style={{ alignItems: "center" }}>
-                  <LinearGradient
-                    colors={[
-                      "rgba(255, 255, 255, 0.14)",
-                      "rgba(6, 182, 212, 0.12)",
-                      "rgba(147, 51, 234, 0.08)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      width: COUNTDOWN_BOX_SIZE,
-                      height: COUNTDOWN_BOX_SIZE,
-                      borderRadius: COUNTDOWN_BOX_RADIUS,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: COUNTDOWN_LABEL_MARGIN,
-                      borderWidth: 1,
-                      borderColor: "rgba(6, 182, 212, 0.45)",
-                      shadowColor: "rgba(6, 182, 212, 0.4)",
-                      shadowOffset: { width: 0, height: 0 },
-                      shadowOpacity: 0.6,
-                      shadowRadius: 8,
-                      elevation: 6,
-                    }}
-                  >
-                    <AppText
-                      font="instrument-bold"
-                      size="2xl"
-                      style={{ color: "#ffffff" }}
-                    >
-                      {timeLeft.minutes}
-                    </AppText>
-                  </LinearGradient>
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={{ color: "rgba(255,255,255,0.5)" }}
-                  >
-                    MINS
-                  </AppText>
-                </View>
-
-                <AppText
-                  font="instrument-bold"
-                  size="2xl"
-                  style={{ color: "rgba(255,255,255,0.4)" }}
-                >
-                  :
-                </AppText>
-
-                {/* Seconds */}
-                <View style={{ alignItems: "center" }}>
-                  <LinearGradient
-                    colors={[
-                      "rgba(255, 255, 255, 0.14)",
-                      "rgba(6, 182, 212, 0.12)",
-                      "rgba(147, 51, 234, 0.08)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      width: COUNTDOWN_BOX_SIZE,
-                      height: COUNTDOWN_BOX_SIZE,
-                      borderRadius: COUNTDOWN_BOX_RADIUS,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: COUNTDOWN_LABEL_MARGIN,
-                      borderWidth: 1,
-                      borderColor: "rgba(6, 182, 212, 0.45)",
-                      shadowColor: "rgba(6, 182, 212, 0.4)",
-                      shadowOffset: { width: 0, height: 0 },
-                      shadowOpacity: 0.6,
-                      shadowRadius: 8,
-                      elevation: 6,
-                    }}
-                  >
-                    <AppText
-                      font="instrument-bold"
-                      size="2xl"
-                      style={{ color: "#ffffff" }}
-                    >
-                      {timeLeft.seconds}
-                    </AppText>
-                  </LinearGradient>
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={{ color: "rgba(255,255,255,0.5)" }}
-                  >
-                    SECS
-                  </AppText>
-                </View>
-              </View>
+                Each day of the week unlocks a new chakra, guiding you from your
+                foundation to your crown.
+              </AppText>
             </View>
-          )}
 
-          {/* Deepest Embodiment + Build Your Tribe moved to fixed bottom block above icon bar */}
-        </View>
+            {/* Center block - I will open + clock - stays centered */}
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                maxWidth: 384,
+                width: "100%",
+              }}
+            >
+              {/* Date text - centered, clear spacing above countdown */}
+              {!(completedTrialCourses === 2) && (
+                <View
+                  style={{
+                    width: "100%",
+                    alignItems: "center",
+                    marginBottom: 20,
+                  }}
+                >
+                  <AppText
+                    font="instrument-bold"
+                    size="base"
+                    style={{
+                      textAlign: "center",
+                      color: "rgba(6, 182, 212, 0.95)",
+                    }}
+                  >
+                    I will open on {formattedDate}
+                  </AppText>
+                </View>
+              )}
 
-        {/* Action buttons (Preview Course, Chakras 101) moved to trial waiting room menu bar - single row with Tribe + Anua */}
+              {/* Countdown box - larger, bold numbers, softer feminine design */}
+              {!(completedTrialCourses === 2) && (
+                <View
+                  style={{
+                    width: "100%",
+                    alignItems: "center",
+                    paddingVertical: 20,
+                    paddingHorizontal: 16,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: "rgba(212, 165, 116, 0.22)",
+                    backgroundColor: "rgba(0, 0, 0, 0.2)",
+                    shadowColor: "rgba(168, 201, 154, 0.12)",
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.5,
+                    shadowRadius: 20,
+                    elevation: 6,
+                    maxWidth: "100%",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      gap: COUNTDOWN_BOX_GAP,
+                    }}
+                  >
+                    {/* Days */}
+                    <View style={{ alignItems: "center" }}>
+                      <LinearGradient
+                        colors={[
+                          "rgba(255, 255, 255, 0.12)",
+                          "rgba(212, 165, 116, 0.08)",
+                          "rgba(168, 201, 154, 0.06)",
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                          width: COUNTDOWN_BOX_SIZE,
+                          height: COUNTDOWN_BOX_SIZE,
+                          borderRadius: COUNTDOWN_BOX_RADIUS,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          marginBottom: COUNTDOWN_LABEL_MARGIN,
+                          borderWidth: 1,
+                          borderColor: "rgba(212, 165, 116, 0.2)",
+                          shadowColor: "rgba(168, 201, 154, 0.15)",
+                          shadowOffset: { width: 0, height: 0 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 8,
+                          elevation: 4,
+                        }}
+                      >
+                        <AppText
+                          font="instrument-bold"
+                          size="3xl"
+                          style={{ color: "#ffffff" }}
+                        >
+                          {timeLeft.days}
+                        </AppText>
+                      </LinearGradient>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={{ color: "rgba(255,255,255,0.5)" }}
+                      >
+                        DAYS
+                      </AppText>
+                    </View>
+
+                    <AppText
+                      font="instrument-bold"
+                      size="2xl"
+                      style={{ color: "rgba(255,255,255,0.4)" }}
+                    >
+                      :
+                    </AppText>
+
+                    {/* Hours */}
+                    <View style={{ alignItems: "center" }}>
+                      <LinearGradient
+                        colors={[
+                          "rgba(255, 255, 255, 0.12)",
+                          "rgba(212, 165, 116, 0.08)",
+                          "rgba(168, 201, 154, 0.06)",
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                          width: COUNTDOWN_BOX_SIZE,
+                          height: COUNTDOWN_BOX_SIZE,
+                          borderRadius: COUNTDOWN_BOX_RADIUS,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          marginBottom: COUNTDOWN_LABEL_MARGIN,
+                          borderWidth: 1,
+                          borderColor: "rgba(212, 165, 116, 0.2)",
+                          shadowColor: "rgba(168, 201, 154, 0.15)",
+                          shadowOffset: { width: 0, height: 0 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 8,
+                          elevation: 4,
+                        }}
+                      >
+                        <AppText
+                          font="instrument-bold"
+                          size="3xl"
+                          style={{ color: "#ffffff" }}
+                        >
+                          {timeLeft.hours}
+                        </AppText>
+                      </LinearGradient>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={{ color: "rgba(255,255,255,0.5)" }}
+                      >
+                        HOURS
+                      </AppText>
+                    </View>
+
+                    <AppText
+                      font="instrument-bold"
+                      size="2xl"
+                      style={{ color: "rgba(255,255,255,0.4)" }}
+                    >
+                      :
+                    </AppText>
+
+                    {/* Minutes */}
+                    <View style={{ alignItems: "center" }}>
+                      <LinearGradient
+                        colors={[
+                          "rgba(255, 255, 255, 0.12)",
+                          "rgba(212, 165, 116, 0.08)",
+                          "rgba(168, 201, 154, 0.06)",
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                          width: COUNTDOWN_BOX_SIZE,
+                          height: COUNTDOWN_BOX_SIZE,
+                          borderRadius: COUNTDOWN_BOX_RADIUS,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          marginBottom: COUNTDOWN_LABEL_MARGIN,
+                          borderWidth: 1,
+                          borderColor: "rgba(212, 165, 116, 0.2)",
+                          shadowColor: "rgba(168, 201, 154, 0.15)",
+                          shadowOffset: { width: 0, height: 0 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 8,
+                          elevation: 4,
+                        }}
+                      >
+                        <AppText
+                          font="instrument-bold"
+                          size="3xl"
+                          style={{ color: "#ffffff" }}
+                        >
+                          {timeLeft.minutes}
+                        </AppText>
+                      </LinearGradient>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={{ color: "rgba(255,255,255,0.5)" }}
+                      >
+                        MINS
+                      </AppText>
+                    </View>
+
+                    <AppText
+                      font="instrument-bold"
+                      size="2xl"
+                      style={{ color: "rgba(255,255,255,0.4)" }}
+                    >
+                      :
+                    </AppText>
+
+                    {/* Seconds */}
+                    <View style={{ alignItems: "center" }}>
+                      <LinearGradient
+                        colors={[
+                          "rgba(255, 255, 255, 0.12)",
+                          "rgba(212, 165, 116, 0.08)",
+                          "rgba(168, 201, 154, 0.06)",
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                          width: COUNTDOWN_BOX_SIZE,
+                          height: COUNTDOWN_BOX_SIZE,
+                          borderRadius: COUNTDOWN_BOX_RADIUS,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          marginBottom: COUNTDOWN_LABEL_MARGIN,
+                          borderWidth: 1,
+                          borderColor: "rgba(212, 165, 116, 0.2)",
+                          shadowColor: "rgba(168, 201, 154, 0.15)",
+                          shadowOffset: { width: 0, height: 0 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 8,
+                          elevation: 4,
+                        }}
+                      >
+                        <AppText
+                          font="instrument-bold"
+                          size="3xl"
+                          style={{ color: "#ffffff" }}
+                        >
+                          {timeLeft.seconds}
+                        </AppText>
+                      </LinearGradient>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={{ color: "rgba(255,255,255,0.5)" }}
+                      >
+                        SECS
+                      </AppText>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Deepest Embodiment + Build Your Tribe moved to fixed bottom block above icon bar */}
+            </View>
+
+            {/* Action buttons (Preview Course, Chakras 101) moved to trial waiting room menu bar - single row with Tribe + Anua */}
           </>
         )}
       </ScrollView>
@@ -1304,6 +1406,13 @@ export const WaitingScreen = ({
           const friendLabel = `Friend ${invitedFriends.length + 1}`
           addInvitedFriend(friendLabel)
         }}
+      />
+
+      {/* Gentle reminders: shown 60s after entering waiting room if permission not yet granted */}
+      <CommunicationReminderModal
+        visible={showCommunicationModal}
+        onAllow={handleCommunicationAllow}
+        onNotNow={handleCommunicationNotNow}
       />
 
       {/* Dev Test Flow Tools - Only in dev mode */}

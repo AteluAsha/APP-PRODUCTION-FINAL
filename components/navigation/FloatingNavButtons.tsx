@@ -259,6 +259,7 @@ export const FloatingNavButtons = () => {
             }, 200)
           }}
           isLimitedMode={shouldUseLimitedMode}
+          showShareWithCommunity={false}
           onShowCommunityPreview={(type) => {
             // Close sanctuary modal first
             setIsSanctuaryModalVisible(false)

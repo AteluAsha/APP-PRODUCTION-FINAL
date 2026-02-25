@@ -179,14 +179,6 @@ export const CaptureAll: React.FC<CaptureAllProps> = ({ onComplete }) => {
       }
 
       if (currentScreen.type === "threshold") {
-        if (currentScreen.id === "threshold-welcome") {
-          const { WelcomeModal } = require("@/components/chakras/WelcomeModal")
-          return (
-            <View style={{ flex: 1, backgroundColor: "#000" }}>
-              <WelcomeModal {...currentScreen.props} />
-            </View>
-          )
-        }
         if (currentScreen.id === "threshold-waiting") {
           const {
             WaitingScreen,
@@ -234,6 +226,85 @@ export const CaptureAll: React.FC<CaptureAllProps> = ({ onComplete }) => {
               </GestureHandlerRootView>
             </SafeAreaProvider>
           )
+        }
+      }
+
+      if (currentScreen.type === "entry") {
+        const wrap = (C: React.ComponentType<any>) => (
+          <ErrorBoundary>
+            <SafeAreaProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <BottomSheetModalProvider>
+                  <C {...currentScreen.props} />
+                </BottomSheetModalProvider>
+              </GestureHandlerRootView>
+            </SafeAreaProvider>
+          </ErrorBoundary>
+        )
+        if (currentScreen.id === "entry-welcome") {
+          const WelcomeScreen = require("@/app/(chakras)/WelcomeScreen").default
+          return wrap(WelcomeScreen)
+        }
+        if (currentScreen.id === "entry-date-selection") {
+          const DateSelection = require("@/app/(chakras)/DateSelection").default
+          return wrap(DateSelection)
+        }
+        if (currentScreen.id === "entry-chakra-home") {
+          const ChakraHome = require("@/app/(chakras)/ChakraHome").default
+          return wrap(ChakraHome)
+        }
+      }
+
+      if (currentScreen.type === "lifetime") {
+        const wrap = (C: React.ComponentType<any>) => (
+          <ErrorBoundary>
+            <SafeAreaProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <BottomSheetModalProvider>
+                  <C {...currentScreen.props} />
+                </BottomSheetModalProvider>
+              </GestureHandlerRootView>
+            </SafeAreaProvider>
+          </ErrorBoundary>
+        )
+        if (currentScreen.id === "lifetime-audio-player") {
+          const AudioPlayer = require("@/app/AudioPlayer").default
+          return wrap(AudioPlayer)
+        }
+        if (currentScreen.id === "lifetime-audio-library") {
+          const AudioLibrary = require("@/app/(chakras)/AudioLibrary").default
+          return wrap(AudioLibrary)
+        }
+        if (currentScreen.id === "lifetime-sound-bath") {
+          const SoundBath = require("@/app/(chakras)/SoundBath").default
+          return wrap(SoundBath)
+        }
+        if (currentScreen.id === "lifetime-head-to-heart") {
+          const HeadToHeart = require("@/app/(chakras)/HeadToHeart").default
+          return wrap(HeadToHeart)
+        }
+        if (currentScreen.id === "lifetime-chakras101") {
+          const Chakras101 = require("@/app/(chakras)/Chakras101").default
+          return wrap(Chakras101)
+        }
+        if (currentScreen.id === "lifetime-energy-exchange") {
+          const EnergyExchange =
+            require("@/app/(chakras)/EnergyExchange").default
+          return wrap(EnergyExchange)
+        }
+        if (currentScreen.id === "lifetime-gallery") {
+          const GalleryOfGnosis =
+            require("@/app/(chakras)/GalleryOfGnosis").default
+          return wrap(GalleryOfGnosis)
+        }
+        if (currentScreen.id === "lifetime-notes") {
+          const NotesAlongTheWay =
+            require("@/app/(chakras)/NotesAlongTheWay").default
+          return wrap(NotesAlongTheWay)
+        }
+        if (currentScreen.id === "lifetime-dev-paywall") {
+          const DevPaywall = require("@/app/(chakras)/DevPaywall").default
+          return wrap(DevPaywall)
         }
       }
     } catch (error) {

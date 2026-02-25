@@ -27,6 +27,9 @@ export function OtherOriginAudioManager() {
   const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
   const isPlayingFromStore = useCurrentAudioStore((s) => s.isPlaying)
   const setPlaying = useCurrentAudioStore((s) => s.setPlaying)
+  const setPositionMs = useCurrentAudioStore((s) => s.setPositionMs)
+  const seekToMs = useCurrentAudioStore((s) => s.seekToMs)
+  const setSeekTo = useCurrentAudioStore((s) => s.setSeekTo)
 
   const isOnAudioPlayer = pathname?.includes("AudioPlayer") ?? false
   const lastIsPlayingRef = useRef(false)
@@ -35,8 +38,9 @@ export function OtherOriginAudioManager() {
     (status: AVPlaybackStatus) => {
       if (!status.isLoaded) return
       setPlaying(status.isPlaying)
+      setPositionMs(status.positionMillis ?? 0)
     },
-    [setPlaying],
+    [setPlaying, setPositionMs],
   )
 
   const initAndPlay = useCallback(async () => {
@@ -60,6 +64,7 @@ export function OtherOriginAudioManager() {
         { shouldPlay: true, isLooping: pref.shouldLoop ?? true },
         onPlaybackStatusUpdate,
       )
+      await sound.setProgressUpdateIntervalAsync(500)
       await sound.setIsLoopingAsync(pref.shouldLoop ?? true)
       await sound.setVolumeAsync(1)
 
@@ -103,6 +108,20 @@ export function OtherOriginAudioManager() {
     })
   }, [isOnAudioPlayer, source, prefs, audioOrigin, initAndPlay, unloadTrack])
 
+  // Seek when seekToMs is set (crystal bowl slider)
+  useEffect(() => {
+    if (seekToMs == null || audioOrigin !== "other") return
+    const ref = otherOriginTrackRef.current
+    if (!ref) {
+      setSeekTo(null)
+      return
+    }
+    ref.sound
+      .setPositionAsync(seekToMs)
+      .then(() => setSeekTo(null))
+      .catch(() => setSeekTo(null))
+  }, [seekToMs, audioOrigin, setSeekTo])
+
   // Sync play/pause from store (mini player or crystal bowl button)
   useEffect(() => {
     if (isOnAudioPlayer || audioOrigin !== "other") return
@@ -118,7 +137,8 @@ export function OtherOriginAudioManager() {
           await ref.sound.pauseAsync()
         }
       } catch (e) {
-        if (__DEV__) console.warn("[OtherOriginAudioManager] Play/pause sync error:", e)
+        if (__DEV__)
+          console.warn("[OtherOriginAudioManager] Play/pause sync error:", e)
       }
     }
     apply()

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
-import { View, Image, ImageSourcePropType } from "react-native"
+import { View, Image, ImageSourcePropType, Dimensions } from "react-native"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import Animated, {
   useSharedValue,
@@ -13,10 +13,18 @@ import { Content } from "@/types/chakras/Content"
 const MIN_SCALE = 1
 const MAX_SCALE = 4
 
+/** Card uses ~98% * 1.07 (~105%) of screen width, capped at 99.5% for edge spacing */
+const CARD_MAX_WIDTH = Math.min(
+  Dimensions.get("window").width * 0.98 * 1.07,
+  Dimensions.get("window").width * 0.995,
+)
+
 interface ChakraCardProps {
   chakra: Chakra
   content: Content
   isActive: boolean
+  /** When true, title is hidden (e.g. Gallery shows it in header) */
+  hideTitle?: boolean
 }
 
 const CHAKRA_NAMES: Record<Chakra, string> = {
@@ -33,6 +41,7 @@ export const ChakraCard: React.FC<ChakraCardProps> = ({
   chakra,
   content,
   isActive,
+  hideTitle = false,
 }) => {
   const elements = content?.elements
   const imageSource = elements?.background
@@ -85,31 +94,34 @@ export const ChakraCard: React.FC<ChakraCardProps> = ({
 
   return (
     <View
-      className="w-full items-center justify-center"
       style={{
+        width: "100%",
         flex: 1,
-        justifyContent: "center",
+        justifyContent: hideTitle ? "flex-start" : "center",
         alignItems: "center",
-        paddingVertical: 8,
-        marginTop: -48,
+        paddingVertical: hideTitle ? 0 : 12,
+        paddingHorizontal: hideTitle ? 0 : 8,
         overflow: "visible",
       }}
     >
-      {/* Title above the card */}
-      <AppText
-        font="instrument-regular"
-        size="lg"
-        className="text-white/85 text-center"
-        style={{
-          letterSpacing: 1,
-          textShadowColor: "rgba(168, 201, 154, 0.2)",
-          textShadowOffset: { width: 0, height: 1 },
-          textShadowRadius: 6,
-          marginBottom: 12,
-        }}
-      >
-        {CHAKRA_NAMES[chakra]}
-      </AppText>
+      {!hideTitle && (
+        <AppText
+          font="instrument-semibold"
+          size="lg"
+          style={{
+            color: "rgba(255,255,255,0.9)",
+            textAlign: "center",
+            letterSpacing: 1,
+            textShadowColor: "rgba(168, 201, 154, 0.2)",
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 6,
+            marginBottom: 28,
+            zIndex: 10,
+          }}
+        >
+          {CHAKRA_NAMES[chakra]}
+        </AppText>
+      )}
 
       {/* Card Image - Pinch to zoom */}
       <GestureDetector gesture={pinchGesture}>
@@ -118,22 +130,24 @@ export const ChakraCard: React.FC<ChakraCardProps> = ({
             animatedCardStyle,
             {
               width: "100%",
-              maxWidth: 420,
+              maxWidth: CARD_MAX_WIDTH,
               alignItems: "center",
               justifyContent: "center",
             },
           ]}
         >
           <View
-            className="rounded-3xl overflow-hidden bg-black/50"
             style={{
+              borderRadius: 24,
+              overflow: "hidden",
+              backgroundColor: "rgba(0,0,0,0.5)",
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
               elevation: 8,
               width: "100%",
-              maxWidth: 420,
+              maxWidth: CARD_MAX_WIDTH,
               aspectRatio: 3 / 4,
             }}
           >

@@ -30,8 +30,10 @@ function getShortTitle(metadata: { title: string; author: string }): string {
   const text = `${metadata.title} ${metadata.author}`
   const hzMatch = text.match(/(\d{3})\s*Hz/i)
   const hz = hzMatch ? hzMatch[1] : ""
-  if (metadata.title.includes("Tuning Fork")) return hz ? `Tuning - ${hz} Hz` : "Tuning Fork"
-  if (metadata.title.includes("Crystal Bowl")) return hz ? `Crystal - ${hz} Hz` : "Crystal Bowl"
+  if (metadata.title.includes("Tuning Fork"))
+    return hz ? `Tuning - ${hz} Hz` : "Tuning Fork"
+  if (metadata.title.includes("Crystal Bowl"))
+    return hz ? `Crystal - ${hz} Hz` : "Crystal Bowl"
   if (
     metadata.title.includes("Part One") ||
     metadata.title.includes("Part Two")
@@ -44,10 +46,12 @@ function getShortTitle(metadata: { title: string; author: string }): string {
     metadata.title.includes("Ajna")
   ) {
     if (hz) return `Meditation - ${hz} Hz`
-    const short = metadata.title.replace(/^Good Morning\s*/i, "").replace(/\s*!$/, "") || "Meditation"
+    const short =
+      metadata.title.replace(/^Good Morning\s*/i, "").replace(/\s*!$/, "") ||
+      "Meditation"
     return short.length > 18 ? `${short.slice(0, 15)}…` : short
   }
-  return hz ? `Meditation - ${hz} Hz` : (metadata.title.slice(0, 18) || "Playing")
+  return hz ? `Meditation - ${hz} Hz` : metadata.title.slice(0, 18) || "Playing"
 }
 
 export function MenuBarMiniPlayer() {
@@ -56,6 +60,7 @@ export function MenuBarMiniPlayer() {
   const router = useRouter()
   const source = useCurrentAudioStore((s) => s.source)
   const metadata = useCurrentAudioStore((s) => s.metadata)
+  const prefs = useCurrentAudioStore((s) => s.prefs)
   const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
   const currentTrackKey = useCurrentAudioStore((s) => s.currentTrackKey)
   const isPlaying = useCurrentAudioStore((s) => s.isPlaying)
@@ -78,8 +83,13 @@ export function MenuBarMiniPlayer() {
     audioOrigin === "music-room" &&
     !isOnAudioLibrary
   )
-  const shouldShowOther =
-    !!(source && metadata && audioOrigin === "other" && !isOnAudioPlayer)
+  const shouldShowOther = !!(
+    source &&
+    metadata &&
+    audioOrigin === "other" &&
+    !isOnAudioPlayer &&
+    !prefs?.isIntroAudio
+  )
   const shouldShow = shouldShowMusicRoom || shouldShowOther
 
   const baseLeft = isVerticalLayoutScreen ? 78 : 16
@@ -184,9 +194,7 @@ export function MenuBarMiniPlayer() {
             }}
             style={styles.titleTouchable}
             accessibilityLabel={
-              audioOrigin === "other"
-                ? "Open full player"
-                : "Go to Music Room"
+              audioOrigin === "other" ? "Open full player" : "Go to Music Room"
             }
             accessibilityHint={
               audioOrigin === "other"

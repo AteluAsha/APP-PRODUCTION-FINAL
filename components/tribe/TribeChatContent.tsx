@@ -22,11 +22,13 @@ import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { useTribeChat, type TribeMessage } from "@/hooks/useTribeChat"
 import { useTribeFriends } from "@/hooks/useTribeFriends"
+import { useTribeInvitesToMe } from "@/hooks/useTribeInvitesToMe"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { TribeRoomInviteModal } from "@/components/tribe/TribeRoomInviteModal"
 import { TribeFriendsMenu } from "@/components/tribe/TribeFriendsMenu"
 import { FindFriendsModal } from "@/components/tribe/FindFriendsModal"
+import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
 import { formatDate } from "@/utils/date"
 import type { TribeFriend } from "@/types/tribe"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
@@ -37,26 +39,51 @@ const SENDER_NAME = "Guest"
 
 function getSenderGradient(senderName: string): [string, string] {
   const n = senderName.toLowerCase()
-  if (n === "system") return ["rgba(212, 165, 116, 0.95)", "rgba(180, 140, 100, 0.9)"]
-  if (n === SENDER_NAME.toLowerCase() || n === "guest") return ["rgba(135, 174, 115, 0.95)", "rgba(107, 142, 90, 0.9)"]
-  if (n.includes("a")) return ["rgba(180, 140, 100, 0.95)", "rgba(150, 115, 85, 0.9)"]
-  if (n.includes("e")) return ["rgba(212, 165, 116, 0.95)", "rgba(168, 130, 95, 0.9)"]
-  if (n.includes("i")) return ["rgba(168, 201, 154, 0.95)", "rgba(135, 174, 115, 0.9)"]
+  if (n === "system")
+    return ["rgba(212, 165, 116, 0.95)", "rgba(180, 140, 100, 0.9)"]
+  if (n === SENDER_NAME.toLowerCase() || n === "guest")
+    return ["rgba(135, 174, 115, 0.95)", "rgba(107, 142, 90, 0.9)"]
+  if (n.includes("a"))
+    return ["rgba(180, 140, 100, 0.95)", "rgba(150, 115, 85, 0.9)"]
+  if (n.includes("e"))
+    return ["rgba(212, 165, 116, 0.95)", "rgba(168, 130, 95, 0.9)"]
+  if (n.includes("i"))
+    return ["rgba(168, 201, 154, 0.95)", "rgba(135, 174, 115, 0.9)"]
   return ["rgba(135, 174, 115, 0.95)", "rgba(107, 142, 90, 0.9)"]
 }
 
-function MessageRow({ item, isPrimaryUser }: { item: TribeMessage; isPrimaryUser: boolean }) {
+function MessageRow({
+  item,
+  isPrimaryUser,
+}: {
+  item: TribeMessage
+  isPrimaryUser: boolean
+}) {
   const [c1, c2] = getSenderGradient(item.senderName)
   return (
-    <View style={[styles.messageRow, isPrimaryUser ? styles.messageRowRight : styles.messageRowLeft]}>
-      <View style={[styles.messageBubble, isPrimaryUser ? styles.messageBubbleRight : styles.messageBubbleLeft]}>
+    <View
+      style={[
+        styles.messageRow,
+        isPrimaryUser ? styles.messageRowRight : styles.messageRowLeft,
+      ]}
+    >
+      <View
+        style={[
+          styles.messageBubble,
+          isPrimaryUser ? styles.messageBubbleRight : styles.messageBubbleLeft,
+        ]}
+      >
         <LinearGradient
           colors={[c1, c2]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.senderNameWrap}
         >
-          <AppText font="instrument-semibold" size="xs" style={styles.senderText}>
+          <AppText
+            font="instrument-semibold"
+            size="xs"
+            style={styles.senderText}
+          >
             {item.senderName}
           </AppText>
         </LinearGradient>
@@ -73,26 +100,33 @@ export interface TribeChatContentProps {
   enabled?: boolean
 }
 
-export function TribeChatContent({ onClose, enabled = true }: TribeChatContentProps) {
+export function TribeChatContent({
+  onClose,
+  enabled = true,
+}: TribeChatContentProps) {
   const courseStartDate = useChakraJourneyStore((s) => s.courseStartDate)
   const invitedFriends = useChakraJourneyStore((s) => s.invitedFriends)
   const addInvitedFriend = useChakraJourneyStore((s) => s.addInvitedFriend)
   const roomId = "global-trial-tribe"
-  const { messages, sendMessage, loading, error } = useTribeChat(roomId, enabled)
-  const { connected: firestoreConnected, pending: firestorePending } = useTribeFriends(roomId, enabled)
+  const { messages, sendMessage, loading, error } = useTribeChat(
+    roomId,
+    enabled,
+  )
+  const { connected: firestoreConnected, pending: firestorePending } =
+    useTribeFriends(roomId, enabled)
+  const {
+    pendingInvites,
+    accept: acceptTribeInvite,
+    decline: declineTribeInvite,
+  } = useTribeInvitesToMe(enabled)
   const presenceDisplayName = usePresenceStore((s) => s.displayName)
+  const presenceAvatarUrl = usePresenceStore((s) => s.profileImageUri)
   const [inputText, setInputText] = useState("")
   const [sending, setSending] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showFriendsMenu, setShowFriendsMenu] = useState(false)
   const [showFindFriendsModal, setShowFindFriendsModal] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
-
-  useEffect(() => {
-    if (showChat && messages.length > 0) {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)
-    }
-  }, [showChat, messages.length])
 
   const formattedDate = useMemo(() => {
     if (!courseStartDate) return undefined
@@ -103,18 +137,32 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
   const hasConnectedFriend = useMemo(
     () =>
       messages.some(
-        (m) => m.senderName !== SENDER_NAME && m.senderName.toLowerCase() !== "system",
+        (m) =>
+          m.senderName !== SENDER_NAME &&
+          m.senderName.toLowerCase() !== "system",
       ),
     [messages],
   )
-  const showDescription = !hasInvited && !hasConnectedFriend
-  const showPending = hasInvited && !hasConnectedFriend
+  const hasPendingInvitesToMe = pendingInvites.length > 0
+  const showDescription =
+    !hasInvited && !hasConnectedFriend && !hasPendingInvitesToMe
+  const showPending = hasInvited && !hasConnectedFriend && !hasPendingInvitesToMe
   const showChat = hasConnectedFriend
+
+  useEffect(() => {
+    if (showChat && messages.length > 0) {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)
+    }
+  }, [showChat, messages.length])
 
   const connectedList: TribeFriend[] = useMemo(() => {
     const fromMessages = new Set(
       messages
-        .filter((m) => m.senderName !== SENDER_NAME && m.senderName.toLowerCase() !== "system")
+        .filter(
+          (m) =>
+            m.senderName !== SENDER_NAME &&
+            m.senderName.toLowerCase() !== "system",
+        )
         .map((m) => m.senderName),
     )
     const fromMsgList: TribeFriend[] = Array.from(fromMessages).map((name) => ({
@@ -162,7 +210,10 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea} edges={["top", "bottom", "left", "right"]}>
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={["top", "bottom", "left", "right"]}
+      >
         <ImageBackground
           source={require("@/assets/images/root.png")}
           style={styles.bgImage}
@@ -182,14 +233,30 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
           >
             <View style={styles.headerBar}>
               <View style={styles.headerLeft}>
-                <Pressable onPress={onClose} hitSlop={12} style={styles.backBtn}>
-                  <Ionicons name="close" size={26} color="rgba(255,255,255,0.9)" />
+                <Pressable
+                  onPress={onClose}
+                  hitSlop={12}
+                  style={styles.backBtn}
+                >
+                  <Ionicons
+                    name="close"
+                    size={26}
+                    color="rgba(255,255,255,0.9)"
+                  />
                 </Pressable>
                 <View style={styles.titleStack}>
-                  <AppText font="instrument-bold" size="2xl" style={styles.titleTribe}>
+                  <AppText
+                    font="instrument-bold"
+                    size="2xl"
+                    style={styles.titleTribe}
+                  >
                     Tribe
                   </AppText>
-                  <AppText font="instrument-regular" size="sm" style={styles.titleChat}>
+                  <AppText
+                    font="instrument-regular"
+                    size="sm"
+                    style={styles.titleChat}
+                  >
                     chat
                   </AppText>
                 </View>
@@ -198,21 +265,39 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
                 <Pressable
                   onPress={() => {
                     addHapticFeedback(HapticStrength.Light)
-                    setShowFriendsMenu(true)
+                    useProfileSheetStore.getState().open()
                   }}
                   hitSlop={12}
                   style={styles.menuBtnWrap}
                 >
-                  <Ionicons name="menu" size={24} color="rgba(255,255,255,0.9)" />
+                  <Ionicons
+                    name="menu"
+                    size={24}
+                    color="rgba(255,255,255,0.9)"
+                  />
                 </Pressable>
-                <Pressable onPress={handleInvitePress} hitSlop={12} style={styles.addBtnWrap}>
+                <Pressable
+                  onPress={() => {
+                    addHapticFeedback(HapticStrength.Light)
+                    setShowFriendsMenu(true)
+                  }}
+                  hitSlop={12}
+                  style={styles.addBtnWrap}
+                >
                   <LinearGradient
-                    colors={["rgba(135, 174, 115, 0.35)", "rgba(6, 182, 212, 0.2)"]}
+                    colors={[
+                      "rgba(135, 174, 115, 0.35)",
+                      "rgba(6, 182, 212, 0.2)",
+                    ]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.addBtnGradient}
                   >
-                    <Ionicons name="people-outline" size={22} color="rgba(255,255,255,0.95)" />
+                    <Ionicons
+                      name="people-outline"
+                      size={22}
+                      color="rgba(255,255,255,0.95)"
+                    />
                   </LinearGradient>
                 </Pressable>
               </View>
@@ -223,22 +308,174 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
               behavior={Platform.OS === "ios" ? "padding" : undefined}
               keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
             >
+              {hasPendingInvitesToMe && (
+                <ScrollView
+                  style={styles.emptyScroll}
+                  contentContainerStyle={styles.emptyContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <AppText
+                    font="instrument-bold"
+                    size="xl"
+                    style={styles.descriptionTitle}
+                  >
+                    Pending invites
+                  </AppText>
+                  <AppText
+                    font="instrument-regular"
+                    size="base"
+                    style={styles.descriptionBody}
+                  >
+                    Someone invited you to their tribe. Create the connection to
+                    join and chat together.
+                  </AppText>
+                  {pendingInvites.map((inv) => (
+                    <View
+                      key={inv.id}
+                      style={{
+                        marginTop: 16,
+                        padding: 16,
+                        borderRadius: 12,
+                        backgroundColor: "rgba(135, 174, 115, 0.12)",
+                        borderWidth: 1,
+                        borderColor: "rgba(135, 174, 115, 0.25)",
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginBottom: 12,
+                          gap: 10,
+                        }}
+                      >
+                        {inv.fromAvatarUrl ? (
+                          <Image
+                            source={{ uri: inv.fromAvatarUrl }}
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              backgroundColor: "rgba(255,255,255,0.08)",
+                            }}
+                          />
+                        ) : (
+                          <View
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              backgroundColor: "rgba(255,255,255,0.1)",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Ionicons
+                              name="person"
+                              size={20}
+                              color="rgba(255,255,255,0.5)"
+                            />
+                          </View>
+                        )}
+                        <AppText
+                          font="instrument-medium"
+                          size="base"
+                          style={{ color: "#fff", flex: 1 }}
+                        >
+                          {inv.fromDisplayName} invited you to their tribe
+                        </AppText>
+                      </View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 10,
+                        }}
+                      >
+                        <Pressable
+                          onPress={async () => {
+                            addHapticFeedback(HapticStrength.Medium)
+                            const res = await acceptTribeInvite(
+                              inv.id,
+                              presenceDisplayName || "Soul",
+                              presenceAvatarUrl ?? undefined,
+                            )
+                            if (!res.ok && __DEV__)
+                              console.warn("[TribeChat] accept invite:", res.error)
+                          }}
+                          style={({ pressed }) => ({
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 10,
+                            backgroundColor: "rgba(135, 174, 115, 0.35)",
+                            alignItems: "center",
+                            opacity: pressed ? 0.9 : 1,
+                          })}
+                        >
+                          <AppText
+                            font="instrument-semibold"
+                            size="sm"
+                            style={{ color: "#B8D4A8" }}
+                          >
+                            Create the Connection
+                          </AppText>
+                        </Pressable>
+                        <Pressable
+                          onPress={async () => {
+                            addHapticFeedback(HapticStrength.Light)
+                            await declineTribeInvite(inv.id)
+                          }}
+                          style={({ pressed }) => ({
+                            paddingVertical: 12,
+                            paddingHorizontal: 16,
+                            borderRadius: 10,
+                            backgroundColor: "rgba(255,255,255,0.08)",
+                            justifyContent: "center",
+                            opacity: pressed ? 0.9 : 1,
+                          })}
+                        >
+                          <AppText
+                            font="instrument-regular"
+                            size="sm"
+                            style={{ color: "rgba(255,255,255,0.7)" }}
+                          >
+                            Decline
+                          </AppText>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+
               {showDescription && (
                 <ScrollView
                   style={styles.emptyScroll}
                   contentContainerStyle={styles.emptyContent}
                   showsVerticalScrollIndicator={false}
                 >
-                  <AppText font="instrument-bold" size="xl" style={styles.descriptionTitle}>
+                  <AppText
+                    font="instrument-bold"
+                    size="xl"
+                    style={styles.descriptionTitle}
+                  >
                     The Shared Experience
                   </AppText>
-                  <AppText font="instrument-regular" size="base" style={styles.descriptionBody}>
-                    Connect with friends on the same 7-day journey. Share insights, hold space for
-                    each other, and grow together.
+                  <AppText
+                    font="instrument-regular"
+                    size="base"
+                    style={styles.descriptionBody}
+                  >
+                    Connect with friends on the same 7-day journey. Share
+                    insights, hold space for each other, and grow together.
                   </AppText>
                   {error && (
-                    <AppText font="instrument-regular" size="sm" style={styles.errorText}>
-                      We&apos;re having trouble connecting. You can still invite friends!
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={styles.errorText}
+                    >
+                      We&apos;re having trouble connecting. You can still invite
+                      friends!
                     </AppText>
                   )}
                   <LinearGradient
@@ -254,7 +491,10 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
                   />
                   <Pressable
                     onPress={handleInvitePress}
-                    style={({ pressed }) => [styles.inviteBtnWrap, pressed && styles.inviteBtnPressed]}
+                    style={({ pressed }) => [
+                      styles.inviteBtnWrap,
+                      pressed && styles.inviteBtnPressed,
+                    ]}
                   >
                     <LinearGradient
                       colors={[
@@ -272,7 +512,11 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
                         color="rgba(255,255,255,0.95)"
                         style={{ marginRight: 8 }}
                       />
-                      <AppText font="instrument-semibold" size="base" style={styles.inviteBtnText}>
+                      <AppText
+                        font="instrument-semibold"
+                        size="base"
+                        style={styles.inviteBtnText}
+                      >
                         Invite a Friend
                       </AppText>
                     </LinearGradient>
@@ -286,12 +530,20 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
                   contentContainerStyle={styles.emptyContent}
                   showsVerticalScrollIndicator={false}
                 >
-                  <AppText font="instrument-bold" size="xl" style={styles.descriptionTitle}>
+                  <AppText
+                    font="instrument-bold"
+                    size="xl"
+                    style={styles.descriptionTitle}
+                  >
                     The Shared Experience
                   </AppText>
-                  <AppText font="instrument-regular" size="base" style={styles.descriptionBody}>
-                    Your invite is pending. When your friend joins Soul School, you&apos;ll see them
-                    here and can start chatting.
+                  <AppText
+                    font="instrument-regular"
+                    size="base"
+                    style={styles.descriptionBody}
+                  >
+                    Your invite is pending. When your friend joins Soul School,
+                    you&apos;ll see them here and can start chatting.
                   </AppText>
                   <LinearGradient
                     colors={[
@@ -306,7 +558,10 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
                   />
                   <Pressable
                     onPress={handleInvitePress}
-                    style={({ pressed }) => [styles.inviteBtnWrap, pressed && styles.inviteBtnPressed]}
+                    style={({ pressed }) => [
+                      styles.inviteBtnWrap,
+                      pressed && styles.inviteBtnPressed,
+                    ]}
                   >
                     <LinearGradient
                       colors={[
@@ -318,8 +573,17 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
                       end={{ x: 1, y: 1 }}
                       style={styles.inviteBtn}
                     >
-                      <Ionicons name="add" size={20} color="rgba(255,255,255,0.9)" style={{ marginRight: 8 }} />
-                      <AppText font="instrument-medium" size="sm" style={styles.inviteBtnText}>
+                      <Ionicons
+                        name="add"
+                        size={20}
+                        color="rgba(255,255,255,0.9)"
+                        style={{ marginRight: 8 }}
+                      />
+                      <AppText
+                        font="instrument-medium"
+                        size="sm"
+                        style={styles.inviteBtnText}
+                      >
                         Invite Another
                       </AppText>
                     </LinearGradient>
@@ -333,10 +597,16 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
                   style={styles.messageScroll}
                   contentContainerStyle={styles.listContent}
                   showsVerticalScrollIndicator={false}
-                  onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+                  onContentSizeChange={() =>
+                    scrollRef.current?.scrollToEnd({ animated: false })
+                  }
                 >
                   {loading ? (
-                    <AppText font="instrument-regular" size="sm" style={styles.loadingText}>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={styles.loadingText}
+                    >
                       Loading…
                     </AppText>
                   ) : (
@@ -376,7 +646,11 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
                     ]}
                   >
                     {sending ? (
-                      <AppText font="instrument-semibold" size="sm" style={styles.sendBtnText}>
+                      <AppText
+                        font="instrument-semibold"
+                        size="sm"
+                        style={styles.sendBtnText}
+                      >
                         …
                       </AppText>
                     ) : (
@@ -400,13 +674,24 @@ export function TribeChatContent({ onClose, enabled = true }: TribeChatContentPr
                     ]}
                   >
                     <LinearGradient
-                      colors={["rgba(135, 174, 115, 0.2)", "rgba(6, 182, 212, 0.08)"]}
+                      colors={[
+                        "rgba(135, 174, 115, 0.2)",
+                        "rgba(6, 182, 212, 0.08)",
+                      ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.footerAddBtn}
                     >
-                      <Ionicons name="people-outline" size={20} color="rgba(168, 201, 154, 0.95)" />
-                      <AppText font="instrument-medium" size="sm" style={styles.footerAddText}>
+                      <Ionicons
+                        name="people-outline"
+                        size={20}
+                        color="rgba(168, 201, 154, 0.95)"
+                      />
+                      <AppText
+                        font="instrument-medium"
+                        size="sm"
+                        style={styles.footerAddText}
+                      >
                         Add someone & invite to connect
                       </AppText>
                     </LinearGradient>
@@ -507,9 +792,22 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: "center",
   },
-  colorLines: { height: 3, marginVertical: 20, borderRadius: 2, overflow: "hidden" },
-  errorText: { color: "rgba(251, 191, 36, 0.95)", lineHeight: 22, marginBottom: 20 },
-  loadingText: { color: "rgba(255, 255, 255, 0.5)", textAlign: "center", paddingVertical: 24 },
+  colorLines: {
+    height: 3,
+    marginVertical: 20,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  errorText: {
+    color: "rgba(251, 191, 36, 0.95)",
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  loadingText: {
+    color: "rgba(255, 255, 255, 0.5)",
+    textAlign: "center",
+    paddingVertical: 24,
+  },
   inviteBtnWrap: {
     borderRadius: 16,
     overflow: "hidden",

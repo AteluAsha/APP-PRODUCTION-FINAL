@@ -4,10 +4,7 @@
  * A minimalist visual audit environment with index-based navigation.
  * Provides Previous/Next arrow controls to cycle through all screens sequentially.
  *
- * To Remove:
- * 1. Delete this file
- * 2. Remove import from DevGalleryTrigger.tsx
- * 3. Done - zero impact on production code
+ * To remove: delete this file and any imports. Zero impact on production code.
  *
  * Design:
  * - Floating navigation arrows (mid-left, mid-right)
@@ -218,16 +215,11 @@ export const StorybookShell: React.FC<StorybookShellProps> = ({
 
       if (currentScreen.type === "threshold") {
         if (currentScreen.thresholdName === "welcome") {
-          const { WelcomeModal } = require("@/components/chakras/WelcomeModal")
-          const { getCurrentDayOfWeek } = require("@/utils/date")
           return (
-            <View style={styles.modalWrapper}>
-              <WelcomeModal
-                isVisible={true}
-                onClose={() => {}}
-                onBeginJourney={() => {}}
-                currentDayOfWeek={getCurrentDayOfWeek()}
-              />
+            <View style={[styles.modalWrapper, { justifyContent: "center" }]}>
+              <AppText font="instrument-regular" size="sm" style={{ color: "rgba(255,255,255,0.7)" }}>
+                Welcome (path selection) – see entry WelcomeScreen
+              </AppText>
             </View>
           )
         }

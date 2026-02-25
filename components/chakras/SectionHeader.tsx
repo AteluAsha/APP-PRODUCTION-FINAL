@@ -18,7 +18,12 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
       <AppText
         font="koh-santepheap"
         size="sm"
-        style={{ textAlign: "center", marginBottom: 12, letterSpacing: 4, color: "#ffffff" }}
+        style={{
+          textAlign: "center",
+          marginBottom: 12,
+          letterSpacing: 4,
+          color: "#ffffff",
+        }}
       >
         {subtitle}
       </AppText>
@@ -33,7 +38,12 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
         <AppText
           font="koh-santepheap"
           size="base"
-          style={{ textAlign: "center", marginTop: 16, marginHorizontal: 64, color: "#ffffff" }}
+          style={{
+            textAlign: "center",
+            marginTop: 16,
+            marginHorizontal: 64,
+            color: "#ffffff",
+          }}
         >
           {description}
         </AppText>

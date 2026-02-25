@@ -15,34 +15,52 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { PRODUCT_IDS } from "@/src/services/revenuecat"
+import { PRODUCT_IDS, ENTITLEMENT_ID } from "@/src/services/revenuecat"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { Ionicons } from "@expo/vector-icons"
 import { ScholarshipModal } from "./ScholarshipModal"
 import { useRouter } from "expo-router"
 import { AccessGrantedModal } from "./AccessGrantedModal"
 import * as Linking from "expo-linking"
+import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { getUserId } from "@/src/services/userId"
+import { logScholarshipRequest } from "@/src/services/scholarshipAudit"
 
 interface CommitmentGateProps {
   onComplete: () => void
+  /** Dev only: when provided, shows back arrow to dismiss paywall */
+  onBack?: () => void
+  /** When true (Trial 1 complete), show "Continue to trial number 2" link */
+  showContinueToTrial2?: boolean
+  /** Called when user taps "Continue to trial number 2" */
+  onContinueToTrial2?: () => void
+  /** Optional: when provided, "Continue Journey" in AccessGranted modal calls this instead of onComplete (e.g. Paywall route uses router.back()) */
+  onContinueJourney?: () => void
 }
 
 type AccessOption = "annual" | "scholarship"
 
 export const CommitmentGate: React.FC<CommitmentGateProps> = ({
   onComplete,
+  onBack,
+  showContinueToTrial2 = false,
+  onContinueToTrial2,
+  onContinueJourney,
 }) => {
   const [selectedOption, setSelectedOption] = useState<AccessOption>("annual")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [purchaseError, setPurchaseError] = useState<string | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
   const [showScholarshipModal, setShowScholarshipModal] = useState(false)
   const [showAccessGranted, setShowAccessGranted] = useState(false)
   const {
     purchase,
+    restore,
     getProductPackage,
     isLoading: revenueCatLoading,
   } = useRevenueCat()
@@ -53,6 +71,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
     (state) => state.hasEverCompletedChakra,
   )
   const router = useRouter()
+  const insets = useSafeAreaInsets()
 
   const yearlyPackage = getProductPackage(PRODUCT_IDS.YEARLY)
 
@@ -79,15 +98,24 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
       // Purchase annual subscription via RevenueCat
       setIsProcessing(true)
       try {
+        setPurchaseError(null)
         await purchase(PRODUCT_IDS.YEARLY)
         // grantLifetimeAccess is automatically called by useRevenueCat hook
         // Show celebration modal - onComplete called when user dismisses modal
         setShowAccessGranted(true)
-      } catch (error) {
+      } catch (error: any) {
         if (__DEV__) {
           console.error("Error processing purchase:", error)
         }
-        // Error handling - user can try again
+        const msg = error?.message || ""
+        if (msg.toLowerCase().includes("cancelled")) {
+          setPurchaseError(null)
+        } else {
+          setPurchaseError(
+            msg ||
+              "Purchase failed. Please try again or use Restore Purchases.",
+          )
+        }
       } finally {
         setIsProcessing(false)
       }
@@ -97,12 +125,44 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
     }
   }
 
+  const handleRestore = async () => {
+    if (isProcessing) return
+    setIsProcessing(true)
+    setPurchaseError(null)
+    setRestoreError(null)
+    try {
+      const info = await restore()
+      const hasEntitlement = info?.entitlements?.active?.[ENTITLEMENT_ID]
+      if (hasEntitlement) {
+        setShowAccessGranted(true)
+      } else {
+        setRestoreError(
+          "No purchases found. If you bought on another device, sign in with the same Apple ID and try again.",
+        )
+      }
+    } catch (err: any) {
+      const msg = err?.message || "Restore failed"
+      setRestoreError(
+        msg.toLowerCase().includes("cancelled")
+          ? null
+          : "Restore failed. Please check your connection and try again.",
+      )
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   const handleScholarshipContinue = (reason: string) => {
+    // Log for 501(c)(3) audit (fire-and-forget; does not block grant)
+    getUserId()
+      .then((userId) => logScholarshipRequest(userId, reason))
+      .catch(() => {})
     // Grant lifetime access immediately (it's free, not a barter)
     grantLifetimeAccess("scholarship")
     setShowScholarshipModal(false)
-    // Show celebration modal - onComplete called when user dismisses modal
-    setShowAccessGranted(true)
+    // Close paywall and navigate to Energy Exchange (not AccessGrantedModal)
+    onComplete()
+    router.replace("/(chakras)/EnergyExchange")
   }
 
   const formatPrice = (priceString: string): string => {
@@ -118,402 +178,502 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      {onBack ? (
+        <Pressable
+          onPress={() => {
+            addHapticFeedback(HapticStrength.Light)
+            onBack()
+          }}
+          style={[styles.backButton, { top: Math.max(insets.top, 16) + 8 }]}
+          hitSlop={12}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+        >
+          <Ionicons name="arrow-back" size={28} color="rgba(255,255,255,0.9)" />
+        </Pressable>
+      ) : null}
       <LinearGradient
         colors={["#000000", "#000000"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.backgroundGradient}
       >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header Logo */}
-        <View style={styles.logoContainer}>
-          <Image
-            source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
-
-        {/* Title Section */}
-        <View style={styles.titleContainer}>
-          <AppText font="instrument-bold" size="3xl" style={styles.titleText}>
-            Your Path Awaits
-          </AppText>
-          <AppText font="instrument-regular" size="lg" style={styles.subtitle}>
-            All Paths Open to You
-          </AppText>
-        </View>
-
-        {/* Features List - depth and gradient */}
-        <View style={styles.featuresCardWrap}>
-          <LinearGradient
-            colors={[
-              "rgba(28, 32, 38, 0.95)",
-              "rgba(24, 28, 34, 0.95)",
-              "rgba(20, 28, 36, 0.95)",
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.featuresCard}
-          >
-          <View style={styles.featureItem}>
-            <View style={styles.checkmarkContainer}>
-              <Ionicons name="checkmark" size={16} color="#6B8E5A" />
-            </View>
-            <AppText
-              font="instrument-regular"
-              size="base"
-              style={styles.featureText}
-            >
-              Access to all sacred teachings
-            </AppText>
-          </View>
-          <View style={styles.featureItem}>
-            <View style={styles.checkmarkContainer}>
-              <Ionicons name="checkmark" size={16} color="#6B8E5A" />
-            </View>
-            <AppText
-              font="instrument-regular"
-              size="base"
-              style={styles.featureText}
-            >
-              Guided meditation library
-            </AppText>
-          </View>
-          <View style={styles.featureItem}>
-            <View style={styles.checkmarkContainer}>
-              <Ionicons name="checkmark" size={16} color="#6B8E5A" />
-            </View>
-            <AppText
-              font="instrument-regular"
-              size="base"
-              style={styles.featureText}
-            >
-              Social Sanctuary Access
-            </AppText>
-          </View>
-          </LinearGradient>
-        </View>
-
-        {/* Access Options */}
-        <View style={styles.optionsContainer}>
-          {/* Annual Access Card - depth and gradient */}
-          <Pressable
-            onPress={() => {
-              setSelectedOption("annual")
-              addHapticFeedback(HapticStrength.Light)
-            }}
-            style={[
-              styles.optionCardWrap,
-              selectedOption === "annual" && styles.optionCardSelectedWrap,
-            ]}
-          >
-            <LinearGradient
-              colors={
-                selectedOption === "annual"
-                  ? [
-                      "rgba(168, 201, 154, 0.18)",
-                      "rgba(212, 165, 116, 0.12)",
-                      "rgba(6, 182, 212, 0.06)",
-                    ]
-                  : [
-                      "rgba(28, 32, 38, 0.95)",
-                      "rgba(24, 28, 34, 0.95)",
-                    ]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[
-                styles.optionCard,
-                selectedOption === "annual" && styles.optionCardSelected,
-              ]}
-            >
-            <View style={styles.optionContent}>
-              <View style={styles.optionLeft}>
-                <View style={[styles.optionIcon, styles.crownIcon]}>
-                  <Ionicons name="diamond" size={20} color="#ffffff" />
-                </View>
-                <View style={styles.optionTextContainer}>
-                  <AppText
-                    font="instrument-bold"
-                    size="lg"
-                    style={styles.optionTitle}
-                  >
-                    Complete Sacred Path
-                  </AppText>
-                  <AppText
-                    font="instrument-regular"
-                    size="sm"
-                    style={styles.optionSubtitle}
-                  >
-                    Unlimited access to all teachings
-                  </AppText>
-                  <View style={styles.priceContainer}>
-                    <AppText
-                      font="instrument-bold"
-                      size="2xl"
-                      style={styles.priceText}
-                    >
-                      {yearlyPackage
-                        ? formatPrice(yearlyPackage.product.priceString)
-                        : "$7"}
-                    </AppText>
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={styles.pricePeriod}
-                    >
-                      /year
-                    </AppText>
-                  </View>
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={styles.priceDescription}
-                  >
-                    Open the full course with universal access
-                  </AppText>
-                </View>
-              </View>
-              <View style={styles.radioButton}>
-                {selectedOption === "annual" && (
-                  <View style={styles.radioButtonSelected} />
-                )}
-              </View>
-            </View>
-            </LinearGradient>
-          </Pressable>
-
-          {/* Scholarship Card - depth and gradient */}
-          <Pressable
-            onPress={() => {
-              setSelectedOption("scholarship")
-              addHapticFeedback(HapticStrength.Light)
-            }}
-            style={[
-              styles.optionCardWrap,
-              selectedOption === "scholarship" && styles.optionCardSelectedWrap,
-            ]}
-          >
-            <LinearGradient
-              colors={
-                selectedOption === "scholarship"
-                  ? [
-                      "rgba(168, 201, 154, 0.18)",
-                      "rgba(212, 165, 116, 0.12)",
-                      "rgba(6, 182, 212, 0.06)",
-                    ]
-                  : [
-                      "rgba(28, 32, 38, 0.95)",
-                      "rgba(24, 28, 34, 0.95)",
-                    ]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[
-                styles.optionCard,
-                selectedOption === "scholarship" && styles.optionCardSelected,
-              ]}
-            >
-            <View style={styles.optionContent}>
-              <View style={styles.optionLeft}>
-                <View style={[styles.optionIcon, styles.starIcon]}>
-                  <Ionicons name="star" size={20} color="#ffffff" />
-                </View>
-                <View style={styles.optionTextContainer}>
-                  <AppText
-                    font="instrument-bold"
-                    size="lg"
-                    style={styles.optionTitle}
-                  >
-                    Scholarship
-                  </AppText>
-                  <AppText
-                    font="instrument-regular"
-                    size="sm"
-                    style={styles.scholarshipSubtitle}
-                  >
-                    Energy exchange
-                  </AppText>
-                  <View style={styles.priceContainer}>
-                    <AppText
-                      font="instrument-bold"
-                      size="2xl"
-                      style={styles.priceText}
-                    >
-                      Free
-                    </AppText>
-                  </View>
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={styles.priceDescription}
-                  >
-                    Realizing that WE are the value.
-                  </AppText>
-                </View>
-              </View>
-              <View style={styles.radioButton}>
-                {selectedOption === "scholarship" && (
-                  <View style={styles.radioButtonSelected} />
-                )}
-              </View>
-            </View>
-            </LinearGradient>
-          </Pressable>
-        </View>
-
-        {/* Begin Your Journey Button */}
-        <Pressable
-          onPress={handleBeginJourney}
-          disabled={isProcessing || revenueCatLoading}
-          style={styles.beginButton}
-          accessibilityLabel="Enter Your Sacred Space"
-          accessibilityHint="Complete purchase to access all teachings"
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <LinearGradient
-            colors={[
-              "rgba(168, 201, 154, 0.9)",
-              "rgba(107, 142, 90, 0.95)",
-              "rgba(212, 165, 116, 0.6)",
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.beginButtonGradient}
-          >
-            {isProcessing ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <AppText
-                font="instrument-bold"
-                size="lg"
-                style={styles.beginButtonText}
-              >
-                Enter Your Sacred Space
-              </AppText>
-            )}
-          </LinearGradient>
-        </Pressable>
+          {/* Header Logo */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
 
-        {/* Footer Guarantee Text */}
-        <View style={styles.footerContainer}>
-          <AppText
-            font="instrument-regular"
-            size="xs"
-            style={styles.footerText}
-          >
-            ✨ Your journey, your pace • Sacred space always available ✨
-          </AppText>
-          <AppText
-            font="instrument-regular"
-            size="xs"
-            style={[styles.footerText, { marginTop: 8 }]}
-          >
-            Soul School is operated by Project Starseed, an IRS-recognized
-            501(c)(3) tax-exempt organization. All donations are tax-deductible.
-          </AppText>
-
-          {/* Privacy Policy & Terms Links - App Store Compliance */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: 8,
-              marginTop: 12,
-            }}
-          >
-            <Pressable
-              onPress={() => {
-                Linking.openURL("https://soulschool.app/privacy").catch(
-                  (error) => {
-                    if (__DEV__) {
-                      console.error("Error opening privacy policy:", error)
-                    }
-                  },
-                )
-              }}
-            >
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                style={[styles.footerText, styles.linkText]}
-              >
-                Privacy Policy
-              </AppText>
-            </Pressable>
+          {/* Title Section */}
+          <View style={styles.titleContainer}>
+            <AppText font="instrument-bold" size="lg" style={styles.titleText}>
+              Your Path Awaits
+            </AppText>
             <AppText
               font="instrument-regular"
               size="xs"
-              style={[styles.footerText, { opacity: 0.4 }]}
+              style={styles.subtitle}
             >
-              •
+              All Paths Open to You
             </AppText>
+          </View>
+
+          {/* Features List - depth and gradient */}
+          <View style={styles.featuresCardWrap}>
+            <LinearGradient
+              colors={[
+                "rgba(28, 32, 38, 0.95)",
+                "rgba(24, 28, 34, 0.95)",
+                "rgba(20, 28, 36, 0.95)",
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.featuresCard}
+            >
+              <View style={styles.featureItem}>
+                <View style={styles.checkmarkContainer}>
+                  <Ionicons name="checkmark" size={12} color="#6B8E5A" />
+                </View>
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={styles.featureText}
+                >
+                  Access to all sacred teachings
+                </AppText>
+              </View>
+              <View style={styles.featureItem}>
+                <View style={styles.checkmarkContainer}>
+                  <Ionicons name="checkmark" size={12} color="#6B8E5A" />
+                </View>
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={styles.featureText}
+                >
+                  Guided meditation library
+                </AppText>
+              </View>
+              <View style={styles.featureItem}>
+                <View style={styles.checkmarkContainer}>
+                  <Ionicons name="checkmark" size={12} color="#6B8E5A" />
+                </View>
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={styles.featureText}
+                >
+                  Social Sanctuary Access
+                </AppText>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* Access Options */}
+          <View style={styles.optionsContainer}>
+            {/* Annual Access Card - depth and gradient */}
             <Pressable
               onPress={() => {
-                Linking.openURL("https://soulschool.app/terms").catch(
-                  (error) => {
-                    if (__DEV__) {
-                      console.error("Error opening terms of service:", error)
-                    }
-                  },
-                )
+                setSelectedOption("annual")
+                setPurchaseError(null)
+                setRestoreError(null)
+                addHapticFeedback(HapticStrength.Light)
               }}
+              style={[
+                styles.optionCardWrap,
+                selectedOption === "annual" && styles.optionCardSelectedWrap,
+              ]}
             >
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                style={[styles.footerText, styles.linkText]}
+              <LinearGradient
+                colors={
+                  selectedOption === "annual"
+                    ? [
+                        "rgba(168, 201, 154, 0.18)",
+                        "rgba(212, 165, 116, 0.12)",
+                        "rgba(6, 182, 212, 0.06)",
+                      ]
+                    : ["rgba(28, 32, 38, 0.95)", "rgba(24, 28, 34, 0.95)"]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.optionCard,
+                  selectedOption === "annual" && styles.optionCardSelected,
+                ]}
               >
-                Terms of Service
-              </AppText>
+                <View style={styles.optionContent}>
+                  <View style={styles.optionLeft}>
+                    <View style={[styles.optionIcon, styles.crownIcon]}>
+                      <Ionicons name="diamond" size={16} color="#ffffff" />
+                    </View>
+                    <View style={styles.optionTextContainer}>
+                      <AppText
+                        font="instrument-semibold"
+                        size="sm"
+                        style={styles.optionTitle}
+                      >
+                        Complete Sacred Path
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="sm"
+                        style={styles.optionSubtitle}
+                      >
+                        Unlimited access to all teachings
+                      </AppText>
+                      <View style={styles.priceContainer}>
+                        <AppText
+                          font="instrument-bold"
+                          size="lg"
+                          style={styles.priceText}
+                        >
+                          {yearlyPackage
+                            ? formatPrice(yearlyPackage.product.priceString)
+                            : "$7"}
+                        </AppText>
+                        <AppText
+                          font="instrument-regular"
+                          size="sm"
+                          style={styles.pricePeriod}
+                        >
+                          /year
+                        </AppText>
+                      </View>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={styles.priceDescription}
+                      >
+                        Open the full course with universal access
+                      </AppText>
+                    </View>
+                  </View>
+                  <View style={styles.radioButton}>
+                    {selectedOption === "annual" && (
+                      <View style={styles.radioButtonSelected} />
+                    )}
+                  </View>
+                </View>
+              </LinearGradient>
+            </Pressable>
+
+            {/* Scholarship Card - depth and gradient */}
+            <Pressable
+              onPress={() => {
+                setSelectedOption("scholarship")
+                setPurchaseError(null)
+                setRestoreError(null)
+                addHapticFeedback(HapticStrength.Light)
+              }}
+              style={[
+                styles.optionCardWrap,
+                selectedOption === "scholarship" &&
+                  styles.optionCardSelectedWrap,
+              ]}
+            >
+              <LinearGradient
+                colors={
+                  selectedOption === "scholarship"
+                    ? [
+                        "rgba(168, 201, 154, 0.18)",
+                        "rgba(212, 165, 116, 0.12)",
+                        "rgba(6, 182, 212, 0.06)",
+                      ]
+                    : ["rgba(28, 32, 38, 0.95)", "rgba(24, 28, 34, 0.95)"]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.optionCard,
+                  selectedOption === "scholarship" && styles.optionCardSelected,
+                ]}
+              >
+                <View style={styles.optionContent}>
+                  <View style={styles.optionLeft}>
+                    <View style={[styles.optionIcon, styles.starIcon]}>
+                      <Ionicons name="star" size={16} color="#ffffff" />
+                    </View>
+                    <View style={styles.optionTextContainer}>
+                      <AppText
+                        font="instrument-semibold"
+                        size="sm"
+                        style={styles.optionTitle}
+                      >
+                        Monthly Course Pass
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={styles.scholarshipSubtitle}
+                      >
+                        Monthly Scholarship Pass with chance to reapply after
+                        the grant has ended.
+                      </AppText>
+                      <View style={styles.priceContainer}>
+                        <AppText
+                          font="instrument-bold"
+                          size="lg"
+                          style={styles.priceText}
+                        >
+                          Free
+                        </AppText>
+                      </View>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={styles.priceDescription}
+                      >
+                        Realizing that WE are the value.
+                      </AppText>
+                    </View>
+                  </View>
+                  <View style={styles.radioButton}>
+                    {selectedOption === "scholarship" && (
+                      <View style={styles.radioButtonSelected} />
+                    )}
+                  </View>
+                </View>
+              </LinearGradient>
             </Pressable>
           </View>
-          {/* Support Contact - App Store Compliance */}
+
+          {/* Restore Error Banner */}
+          {restoreError && (
+            <View
+              style={{
+                backgroundColor: "rgba(239, 68, 68, 0.2)",
+                borderWidth: 1,
+                borderColor: "rgba(239, 68, 68, 0.5)",
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 16,
+              }}
+            >
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{ color: "#fca5a5", textAlign: "center" }}
+              >
+                {restoreError}
+              </AppText>
+            </View>
+          )}
+
+          {/* Purchase Error Banner */}
+          {purchaseError && (
+            <View
+              style={{
+                backgroundColor: "rgba(239, 68, 68, 0.2)",
+                borderWidth: 1,
+                borderColor: "rgba(239, 68, 68, 0.5)",
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 16,
+              }}
+            >
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{ color: "#fca5a5", textAlign: "center" }}
+              >
+                {purchaseError}
+              </AppText>
+            </View>
+          )}
+
+          {/* Begin Your Journey Button */}
           <Pressable
-            onPress={() => {
-              Linking.openURL(
-                "mailto:support@soulschool.app?subject=Support Request",
-              ).catch((error) => {
-                if (__DEV__) {
-                  console.error("Error opening support email:", error)
-                }
-              })
-            }}
-            style={{ marginTop: 8 }}
+            onPress={handleBeginJourney}
+            disabled={isProcessing || revenueCatLoading}
+            style={styles.beginButton}
+            accessibilityLabel="Enter Your Sacred Space"
+            accessibilityHint="Complete purchase to access all teachings"
           >
+            <LinearGradient
+              colors={[
+                "rgba(168, 201, 154, 0.9)",
+                "rgba(107, 142, 90, 0.95)",
+                "rgba(212, 165, 116, 0.6)",
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.beginButtonGradient}
+            >
+              {isProcessing ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <AppText
+                  font="instrument-semibold"
+                  size="sm"
+                  style={styles.beginButtonText}
+                >
+                  Enter Your Sacred Space
+                </AppText>
+              )}
+            </LinearGradient>
+          </Pressable>
+
+          {/* Footer Guarantee Text */}
+          <View style={styles.footerContainer}>
             <AppText
               font="instrument-regular"
               size="xs"
-              style={[styles.footerText, styles.linkText, { opacity: 0.5 }]}
+              style={[styles.footerText, { opacity: 0.8 }]}
             >
-              Contact Support
+              Your journey, your pace · Sacred space always available
             </AppText>
-          </Pressable>
+            <AppText
+              font="instrument-regular"
+              size="xs"
+              style={[styles.footerText, { marginTop: 8, opacity: 0.5 }]}
+            >
+              Soul School is operated by Project Starseed, an IRS-recognized
+              501(c)(3) tax-exempt organization. All donations are
+              tax-deductible.
+            </AppText>
 
-          {/* Subtle Donation Footer Link - Ready but not activated */}
-          {false && ( // Feature flag - set to true when ready to activate
+            <Pressable
+              onPress={handleRestore}
+              disabled={isProcessing || revenueCatLoading}
+              style={{ marginTop: 12 }}
+            >
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={[styles.footerText, styles.linkText]}
+              >
+                Restore Purchases
+              </AppText>
+            </Pressable>
+
+            {showContinueToTrial2 && onContinueToTrial2 && (
+              <Pressable
+                onPress={() => {
+                  addHapticFeedback(HapticStrength.Light)
+                  onContinueToTrial2()
+                }}
+                style={{ marginTop: 8 }}
+              >
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={[
+                    styles.footerText,
+                    { color: "rgba(168, 201, 154, 0.9)", opacity: 0.9 },
+                  ]}
+                >
+                  Continue to trial number 2
+                </AppText>
+              </Pressable>
+            )}
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 6,
+                marginTop: 8,
+              }}
+            >
+              <Pressable
+                onPress={() => {
+                  Linking.openURL("https://soulschool.app/privacy").catch(
+                    (error) => {
+                      if (__DEV__) {
+                        console.error("Error opening privacy policy:", error)
+                      }
+                    },
+                  )
+                }}
+              >
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={[styles.footerText, styles.linkText]}
+                >
+                  Privacy Policy
+                </AppText>
+              </Pressable>
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={[styles.footerText, { opacity: 0.4 }]}
+              >
+                •
+              </AppText>
+              <Pressable
+                onPress={() => {
+                  Linking.openURL("https://soulschool.app/terms").catch(
+                    (error) => {
+                      if (__DEV__) {
+                        console.error("Error opening terms of service:", error)
+                      }
+                    },
+                  )
+                }}
+              >
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={[styles.footerText, styles.linkText]}
+                >
+                  Terms of Service
+                </AppText>
+              </Pressable>
+            </View>
+            {/* Support Contact - App Store Compliance */}
             <Pressable
               onPress={() => {
-                router.push("/(chakras)/Donate")
-                addHapticFeedback(HapticStrength.Light)
+                Linking.openURL(
+                  "mailto:support@soulschool.app?subject=Support Request",
+                ).catch((error) => {
+                  if (__DEV__) {
+                    console.error("Error opening support email:", error)
+                  }
+                })
               }}
               style={{ marginTop: 8 }}
             >
               <AppText
                 font="instrument-regular"
                 size="xs"
-                style={[styles.footerText, { color: "#A8C99A", opacity: 0.7 }]}
+                style={[styles.footerText, styles.linkText]}
               >
-                Support our mission
+                Contact Support
               </AppText>
             </Pressable>
-          )}
-        </View>
-      </ScrollView>
+
+            {/* Subtle Donation Footer Link - Ready but not activated */}
+            {false && ( // Feature flag - set to true when ready to activate
+              <Pressable
+                onPress={() => {
+                  router.push("/(chakras)/Contribute")
+                  addHapticFeedback(HapticStrength.Light)
+                }}
+                style={{ marginTop: 8 }}
+              >
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={[
+                    styles.footerText,
+                    { color: "#A8C99A", opacity: 0.7 },
+                  ]}
+                >
+                  Support our mission
+                </AppText>
+              </Pressable>
+            )}
+          </View>
+        </ScrollView>
       </LinearGradient>
 
       {/* Scholarship Modal */}
@@ -532,11 +692,15 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
         }}
         onGoToHub={() => {
           onComplete()
-          router.push("/(chakras)/ChakraHub")
+          router.replace("/(chakras)/ChakraHub")
         }}
         onContinueJourney={() => {
-          onComplete()
-          router.push("/(chakras)/ChakraHome")
+          setShowAccessGranted(false)
+          if (onContinueJourney) {
+            onContinueJourney()
+          } else {
+            onComplete()
+          }
         }}
       />
     </SafeAreaView>
@@ -548,95 +712,103 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000000",
   },
+  backButton: {
+    position: "absolute",
+    left: 16,
+    zIndex: 1000,
+    padding: 8,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderRadius: 20,
+  },
   backgroundGradient: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
+    paddingTop: 12,
+    paddingBottom: 32 + SCROLL_BREATHING_BOTTOM_PADDING,
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 32,
-    marginTop: 20,
+    marginBottom: 20,
+    marginTop: 12,
   },
   logo: {
     width: 200,
-    height: 200,
+    height: 100,
   },
   titleContainer: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 16,
   },
   titleText: {
     color: "#ffffff",
   },
   subtitle: {
     color: "#d1d5db",
-    marginTop: 4,
+    marginTop: 2,
   },
   featuresCardWrap: {
-    marginBottom: 24,
-    borderRadius: 16,
+    marginBottom: 16,
+    borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(168, 201, 154, 0.25)",
-    shadowColor: "rgba(6, 182, 212, 0.15)",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
+    borderColor: "rgba(168, 201, 154, 0.15)",
+    shadowColor: "rgba(6, 182, 212, 0.1)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   featuresCard: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 0,
   },
   featureItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 8,
   },
   checkmarkContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#A8C99A", // Light sage - earth tone
+    width: 18,
+    height: 18,
+    borderRadius: 10,
+    backgroundColor: "#A8C99A",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 10,
   },
   featureText: {
     color: "#d1d5db",
     flex: 1,
   },
   optionsContainer: {
-    gap: 16,
-    marginBottom: 32,
+    gap: 10,
+    marginBottom: 20,
   },
   optionCardWrap: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(168, 201, 154, 0.2)",
-    shadowColor: "rgba(168, 201, 154, 0.1)",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
+    borderColor: "rgba(168, 201, 154, 0.12)",
+    shadowColor: "rgba(168, 201, 154, 0.08)",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
     elevation: 4,
   },
   optionCardSelectedWrap: {
-    borderColor: "rgba(168, 201, 154, 0.5)",
-    borderWidth: 2,
-    shadowColor: "rgba(168, 201, 154, 0.25)",
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 6,
+    borderColor: "rgba(168, 201, 154, 0.45)",
+    borderWidth: 1.5,
+    shadowColor: "rgba(168, 201, 154, 0.2)",
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 5,
   },
   optionCard: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 0,
   },
   optionCardSelected: {
@@ -653,12 +825,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionIcon: {
-    width: 40,
-    height: 40,
+    width: 26,
+    height: 26,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: 10,
   },
   crownIcon: {
     backgroundColor: "#D4A574", // Warm earth tone
@@ -671,15 +843,15 @@ const styles = StyleSheet.create({
   },
   optionTitle: {
     color: "#ffffff",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   optionSubtitle: {
-    color: "#A8C99A", // Light sage - earth tone
-    marginBottom: 8,
+    color: "rgba(168, 201, 154, 0.9)",
+    marginBottom: 4,
   },
   scholarshipSubtitle: {
-    color: "#D4A574", // Warm earth tone
-    marginBottom: 8,
+    color: "rgba(212, 165, 116, 0.9)",
+    marginBottom: 4,
   },
   priceContainer: {
     flexDirection: "row",
@@ -694,13 +866,13 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   priceDescription: {
-    color: "#9ca3af",
-    marginTop: 4,
+    color: "rgba(156, 163, 175, 0.85)",
+    marginTop: 2,
   },
   radioButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     borderColor: "#A8C99A", // Light sage - earth tone
     justifyContent: "center",
@@ -708,9 +880,9 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   radioButtonSelected: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: "#A8C99A", // Light sage - earth tone
   },
   galleryButton: {
@@ -734,18 +906,18 @@ const styles = StyleSheet.create({
   beginButton: {
     borderRadius: 16,
     overflow: "hidden",
-    marginBottom: 24,
+    marginBottom: 0,
     borderWidth: 1,
-    borderColor: "rgba(168, 201, 154, 0.4)",
-    shadowColor: "rgba(168, 201, 154, 0.4)",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 10,
+    borderColor: "rgba(168, 201, 154, 0.35)",
+    shadowColor: "rgba(168, 201, 154, 0.25)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   beginButtonGradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 32,
+    paddingVertical: 16,
+    paddingHorizontal: 28,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -754,14 +926,21 @@ const styles = StyleSheet.create({
   },
   footerContainer: {
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    marginTop: 48,
+    paddingTop: 32,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(168, 201, 154, 0.08)",
   },
   footerText: {
-    color: "#9ca3af",
+    color: "rgba(156, 163, 175, 0.9)",
     textAlign: "center",
+    fontSize: 11,
+    lineHeight: 15,
   },
   linkText: {
-    color: "#A8C99A", // Sage green to match earth tones
+    color: "rgba(168, 201, 154, 0.85)",
     textDecorationLine: "underline",
+    fontSize: 11,
   },
 })

@@ -16,9 +16,10 @@ const Part2Section = ({ chakra }: { chakra: Chakra }) => {
       style={{
         flex: 1,
         borderRadius: 24,
+        overflow: "hidden",
         paddingBottom: 32,
         paddingTop: 32,
-        marginTop: 16,
+        marginTop: 32,
         alignItems: "center",
       }}
     >
@@ -28,7 +29,14 @@ const Part2Section = ({ chakra }: { chakra: Chakra }) => {
         bottomGradientHeight={30}
       />
 
-      <View style={{ flex: 1, paddingHorizontal: 40, marginTop: 24, marginBottom: 8 }}>
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: 40,
+          marginTop: 24,
+          marginBottom: 8,
+        }}
+      >
         <SectionHeader subtitle={"— PART II —"} title={"GOING WITHIN"} />
         <TextButtonSection
           heading="HEAD TO HEART"

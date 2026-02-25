@@ -11,8 +11,11 @@ import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { generateReferralLink, generateInviteMessage } from "@/utils/invite"
-import { openSystemShare } from "@/utils/shareDestinations"
+import {
+  generateReferralLink,
+  generateInviteMessage,
+  openSystemShare,
+} from "@/utils/shareDestinations"
 import { ShareDestinationPicker } from "@/components/sharing/ShareDestinationPicker"
 
 const HERO_ICON = require("@/assets/images/ChakraWheel_ONBLACK_300DPI.png")

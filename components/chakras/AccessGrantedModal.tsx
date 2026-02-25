@@ -1,8 +1,9 @@
 /**
  * Access Granted Modal
  *
- * Celebration modal shown after successful payment or scholarship grant.
- * Welcomes user to their full sacred space and offers navigation to ChakraHub.
+ * Celebration modal shown after successful payment or restore (not scholarship).
+ * Scholarship path goes to Energy Exchange instead. Welcomes user to their
+ * full sacred space and offers navigation to ChakraHub.
  */
 
 import React from "react"
@@ -69,9 +70,9 @@ export const AccessGrantedModal: React.FC<AccessGrantedModalProps> = ({
         <Animated.View style={animatedStyle} className="w-[90%] max-w-md">
           <LinearGradient
             colors={[
-              "rgba(157, 78, 221, 0.95)",
-              "rgba(123, 44, 191, 0.9)",
-              "rgba(106, 27, 154, 0.85)",
+              "rgba(18, 24, 26, 0.98)",
+              "rgba(14, 22, 26, 0.98)",
+              "rgba(12, 20, 24, 0.98)",
             ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -79,7 +80,7 @@ export const AccessGrantedModal: React.FC<AccessGrantedModalProps> = ({
               borderRadius: 24,
               padding: 32,
               borderWidth: 2,
-              borderColor: "#FFD700",
+              borderColor: "rgba(168, 201, 154, 0.35)",
               alignItems: "center",
             }}
           >
@@ -93,12 +94,16 @@ export const AccessGrantedModal: React.FC<AccessGrantedModalProps> = ({
                 width: 32,
                 height: 32,
                 borderRadius: 16,
-                backgroundColor: "rgba(255,255,255,0.1)",
+                backgroundColor: "rgba(168, 201, 154, 0.15)",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="close" size={20} color="#FFFFFF" />
+              <Ionicons
+                name="close"
+                size={20}
+                color="rgba(168, 201, 154, 0.9)"
+              />
             </Pressable>
 
             {/* Celebration Icon */}
@@ -140,7 +145,10 @@ export const AccessGrantedModal: React.FC<AccessGrantedModalProps> = ({
                 className="active:opacity-80"
               >
                 <LinearGradient
-                  colors={["#FFD700", "#FFA500"]}
+                  colors={[
+                    "rgba(168, 201, 154, 0.5)",
+                    "rgba(107, 142, 90, 0.45)",
+                  ]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={{
@@ -152,7 +160,7 @@ export const AccessGrantedModal: React.FC<AccessGrantedModalProps> = ({
                   <AppText
                     font="instrument-bold"
                     size="lg"
-                    className="text-black"
+                    className="text-white"
                   >
                     Enter Your Sacred Space
                   </AppText>
@@ -172,7 +180,7 @@ export const AccessGrantedModal: React.FC<AccessGrantedModalProps> = ({
                     borderRadius: 16,
                     padding: 16,
                     borderWidth: 2,
-                    borderColor: "#FFFFFF",
+                    borderColor: "rgba(168, 201, 154, 0.4)",
                     alignItems: "center",
                   }}
                 >

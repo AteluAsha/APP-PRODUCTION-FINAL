@@ -1,15 +1,15 @@
 /**
  * Date Confirmation Modal
  *
- * Confirmation modal for selected start date with option to invite a friend
+ * Confirms the selected start date. Two buttons with gradient fill and fallback
+ * backgroundColor so the box is always visible. Gradient adds depth and softens into the space.
  */
 
-import React, { useState } from "react"
-import { Modal, View, Pressable } from "react-native"
+import React from "react"
+import { Modal, View, Pressable, useWindowDimensions, StyleSheet } from "react-native"
+import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { formatDate } from "@/utils/date"
-import { LinearGradient } from "expo-linear-gradient"
-import { Ionicons } from "@expo/vector-icons"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 
 interface DateConfirmationModalProps {
@@ -17,8 +17,8 @@ interface DateConfirmationModalProps {
   selectedDateISO: string | null
   onConfirm: () => void
   onCancel: () => void
-  /** 1 = first trial, 2 = second trial (button label) */
   offeringNumber?: 1 | 2
+  isCourseMode?: boolean
 }
 
 export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
@@ -27,12 +27,26 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
   onConfirm,
   onCancel,
   offeringNumber = 1,
+  isCourseMode = false,
 }) => {
+  const { width: screenWidth } = useWindowDimensions()
   if (!selectedDateISO) return null
 
-  const dateStr = selectedDateISO
-    ? formatDate(new Date(selectedDateISO + "T00:00:00"))
-    : ""
+  const cardWidth = Math.min(screenWidth - 48, 320)
+  const dateStr = formatDate(new Date(selectedDateISO + "T00:00:00"))
+  const confirmLabel = isCourseMode
+    ? "Confirm start date"
+    : offeringNumber === 2
+      ? "Confirm 2nd offering"
+      : "Confirm 1st offering"
+
+  const buttonBorder = "rgba(135, 174, 115, 0.7)"
+  const buttonFallbackBg = "rgba(135, 174, 115, 0.35)"
+  const buttonGradientColors = [
+    "rgba(168, 201, 154, 0.5)",
+    "rgba(135, 174, 115, 0.35)",
+    "rgba(100, 130, 90, 0.2)",
+  ] as const
 
   return (
     <Modal
@@ -40,30 +54,26 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
       transparent
       animationType="fade"
       onRequestClose={onCancel}
-      statusBarTranslucent={true}
+      statusBarTranslucent
     >
       <View
         style={{
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "rgba(0, 0, 0, 0.85)",
+          backgroundColor: "rgba(0,0,0,0.85)",
+          paddingHorizontal: 24,
         }}
       >
-        <LinearGradient
-          colors={["rgba(0, 0, 0, 0.95)", "rgba(10, 10, 10, 0.95)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           style={{
-            borderRadius: 16,
+            width: cardWidth,
             padding: 24,
-            marginHorizontal: 16,
+            borderRadius: 16,
             borderWidth: 1,
-            borderColor: "rgba(135, 174, 115, 0.3)",
-            shadowColor: "rgba(6, 182, 212, 0.4)",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.6,
-            shadowRadius: 16,
+            borderColor: "rgba(135, 174, 115, 0.4)",
+            backgroundColor: "rgba(20, 20, 20, 0.98)",
+            alignItems: "center",
           }}
         >
           <AppText
@@ -73,70 +83,126 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
               color: "#ffffff",
               marginBottom: 16,
               textAlign: "center",
-              textShadowColor: "rgba(135, 174, 115, 0.4)",
-              textShadowOffset: { width: 0, height: 2 },
-              textShadowRadius: 6,
             }}
           >
             Confirm Start Date
           </AppText>
-          <AppText
-            font="instrument-regular"
-            size="base"
-            style={{ color: "rgba(255,255,255,0.9)", marginBottom: 8, textAlign: "center" }}
-          >
-            Your journey will begin on {dateStr}
-          </AppText>
-          <AppText
-            font="instrument-regular"
-            size="sm"
-            style={{ color: "rgba(255,255,255,0.7)", marginBottom: 16, textAlign: "center", fontStyle: "italic" }}
-          >
-            Two free trials of the course, as a gift. Use them wisely.
-          </AppText>
 
-          <View style={{ flexDirection: "row", gap: 16 }}>
-            <Pressable
-              onPress={onCancel}
+          <View style={{ alignItems: "center", marginBottom: isCourseMode ? 16 : 8 }}>
+            <AppText
+              font="instrument-regular"
+              size="base"
+              style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
+            >
+              Your journey will begin on{" "}
+            </AppText>
+            <AppText
+              font="instrument-bold"
+              size="xl"
               style={{
-                flex: 1,
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderRadius: 12,
-                backgroundColor: "rgba(0, 0, 0, 0.4)",
-                borderWidth: 1,
-                borderColor: "rgba(135, 174, 115, 0.3)",
+                color: "rgba(168, 201, 154, 1)",
+                textAlign: "center",
+                marginTop: 4,
               }}
             >
-              <AppText font="instrument-medium" size="base" style={{ color: "rgba(255,255,255,0.8)", textAlign: "center" }}>
-                Change
-              </AppText>
-            </Pressable>
-            <Pressable
-              onPress={onConfirm}
-              style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, overflow: "hidden" }}
+              {dateStr}
+            </AppText>
+          </View>
+
+          {!isCourseMode && (
+            <AppText
+              font="instrument-regular"
+              size="sm"
+              style={{
+                color: "rgba(255,255,255,0.7)",
+                marginBottom: 16,
+                textAlign: "center",
+                fontStyle: "italic",
+              }}
             >
-              <LinearGradient
-                colors={["rgba(135, 174, 115, 0.4)", "rgba(6, 182, 212, 0.4)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+              Two free trials of the course, as a gift. Use them wisely.
+            </AppText>
+          )}
+
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 12,
+              marginTop: 8,
+              width: "100%",
+              justifyContent: "center",
+              alignItems: "stretch",
+            }}
+          >
+            <Pressable
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Light)
+                onCancel()
+              }}
+              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+            >
+              <View
                 style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
+                  backgroundColor: buttonFallbackBg,
+                  borderWidth: 1.5,
+                  borderColor: buttonBorder,
                   borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "rgba(135, 174, 115, 0.5)",
+                  paddingVertical: 14,
+                  paddingHorizontal: 24,
+                  minHeight: 50,
+                  minWidth: 100,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  overflow: "hidden",
                 }}
-              />
-              <AppText font="instrument-bold" size="base" style={{ color: "#ffffff", textAlign: "center", zIndex: 10 }}>
-                {offeringNumber === 2 ? "Confirm 2nd offering" : "Confirm 1st offering"}
-              </AppText>
+              >
+                <LinearGradient
+                  colors={[...buttonGradientColors]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
+                />
+                <AppText font="instrument-medium" size="base" style={{ color: "#ffffff" }}>
+                  Change
+                </AppText>
+              </View>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Light)
+                onConfirm()
+              }}
+              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+            >
+              <View
+                style={{
+                  backgroundColor: buttonFallbackBg,
+                  borderWidth: 1.5,
+                  borderColor: buttonBorder,
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  paddingHorizontal: 24,
+                  minHeight: 50,
+                  minWidth: 100,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  overflow: "hidden",
+                }}
+              >
+                <LinearGradient
+                  colors={[...buttonGradientColors]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
+                />
+                <AppText font="instrument-semibold" size="base" style={{ color: "#ffffff" }} numberOfLines={1}>
+                  {confirmLabel}
+                </AppText>
+              </View>
             </Pressable>
           </View>
-        </LinearGradient>
+        </View>
       </View>
     </Modal>
   )

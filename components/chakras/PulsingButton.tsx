@@ -19,17 +19,22 @@ const PulsingButton = ({
   onPress,
   className,
   small = false,
+  smallDivisor,
 }: {
   source: ImageSourcePropType
   isAnimating: boolean
   onPress: () => void
   className?: string
   small?: boolean
+  /** When small is true, use this divisor for size (smaller = larger balls). e.g. 7.8 for lifetime hub. */
+  smallDivisor?: number
 }) => {
   const insets = useSafeAreaInsets()
   const screenHeight = Dimensions.get("window").height
   const availableHeight = screenHeight - insets.top
-  const iconWidth = small ? availableHeight / 9.5 : availableHeight / 8.5
+  const iconWidth = small
+    ? availableHeight / (smallDivisor ?? 9.5)
+    : availableHeight / 8.5
 
   // Shared values for animation
   const scale = useSharedValue(1)

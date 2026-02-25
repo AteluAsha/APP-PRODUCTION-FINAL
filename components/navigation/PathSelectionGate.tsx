@@ -28,6 +28,7 @@ export function PathSelectionGate() {
     pathname === "/(chakras)" ||
     pathname === "/(chakras)/" ||
     pathname === "/(chakras)/index" ||
+    pathname === "/(chakras)/WelcomeScreen" ||
     pathname === "/" ||
     (typeof pathname === "string" &&
       pathname.startsWith("/(chakras)") &&
@@ -54,11 +55,11 @@ export function PathSelectionGate() {
           right: 0,
           height: 220 + insets.bottom,
           paddingBottom: insets.bottom,
+          zIndex: Z_INDEX,
+          elevation: Z_INDEX,
         },
       ]}
       pointerEvents="box-none"
-      zIndex={Z_INDEX}
-      elevation={Z_INDEX}
     >
       <Pressable
         onPress={onEnterPath}
@@ -79,8 +80,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   hitArea: {
-    width: 280,
-    height: 120,
-    borderRadius: 60,
+    width: 260,
+    height: 200,
+    borderRadius: 130,
   },
 })

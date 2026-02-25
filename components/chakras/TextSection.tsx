@@ -12,17 +12,23 @@ export const TextSection = ({
   return (
     <View style={{ marginVertical: 16 }}>
       <AppText
-        font="instrument-semibold"
+        font="instrument-bold"
         size="xs"
-        style={{ marginHorizontal: 32, marginBottom: 4, fontSize: 13, letterSpacing: 0.5, color: "#ffffff" }}
+        style={{
+          letterSpacing: 0.5,
+          color: "#ffffff",
+          marginHorizontal: 32,
+          marginBottom: 4,
+          fontSize: 13,
+        }}
       >
         {title}
       </AppText>
       <CollapsibleText
         text={content}
         linesToTruncate={3}
-        textClassName="leading-snug"
-        containerClassName="mx-4"
+        containerStyle={{ marginHorizontal: 16 }}
+        textStyle={{ lineHeight: 22, color: "#ffffff" }}
       />
     </View>
   )

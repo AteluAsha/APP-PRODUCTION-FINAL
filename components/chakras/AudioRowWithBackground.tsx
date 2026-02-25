@@ -14,12 +14,16 @@ export const AudioRowWithBackground = ({
   durationMs,
   audioSource,
   authorColor = "#FFFFFF",
+  isIntroAudio = false,
+  chakraColor,
 }: {
   title: string
   author: string
   durationMs: number
   audioSource: AVPlaybackSource
   authorColor: string
+  isIntroAudio?: boolean
+  chakraColor?: string
 }) => {
   const router = useRouter()
 
@@ -31,13 +35,14 @@ export const AudioRowWithBackground = ({
         marginTop: 24,
         borderWidth: 2,
         borderColor: "#9D9D9D",
+        borderRadius: 14,
         overflow: "hidden",
       }}
       onPress={async () => {
-        // Stop any current audio before playing new track (prevents overlap)
-        useCurrentAudioStore.getState().reset()
-        await new Promise((resolve) => setTimeout(resolve, 100))
-        useCurrentAudioStore.getState().setSource(audioSource)
+        useCurrentAudioStore.getState().setPendingTrackKey("full-player-row")
+        useCurrentAudioStore.getState().setPlaying(true)
+        // setSource internally resets and delays; wait so store has source when AudioPlayer mounts
+        useCurrentAudioStore.getState().setSource(audioSource, "full-player")
         useCurrentAudioStore.getState().setMetadata({
           durationMs,
           title,
@@ -45,23 +50,37 @@ export const AudioRowWithBackground = ({
         })
         useCurrentAudioStore.getState().setPrefs({
           shouldLoop: false,
+          isIntroAudio,
         })
-        router.replace("/AudioPlayer")
+        if (chakraColor) {
+          useCurrentAudioStore.getState().setChakraColor(chakraColor)
+        }
+        const { AUDIO_READY_DELAY_MS } =
+          await import("@/hooks/useCurrentAudioStore")
+        await new Promise((r) => setTimeout(r, AUDIO_READY_DELAY_MS))
+        router.push("/AudioPlayer")
         addHapticFeedback(HapticStrength.Light)
       }}
-      style={{ borderRadius: 14 }}
     >
       <ImageBackground
         source={require("@/assets/images/colorbar.png")}
         style={{
-          height: 72, // Keep the height fixed while allowing width overflow
+          height: 72,
+          width: "100%",
           justifyContent: "center",
-          alignItems: "center",
+          alignItems: "flex-start",
         }}
         imageStyle={{ resizeMode: "cover" }}
       >
         <BackgroundOpacity backgroundOpacity={0.55} />
-        <View className="flex-row items-center w-full pl-7">
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            width: "100%",
+            paddingLeft: 28,
+          }}
+        >
           <View
             style={{
               borderWidth: 2,
@@ -73,10 +92,18 @@ export const AudioRowWithBackground = ({
               justifyContent: "center",
             }}
           >
-            <FontAwesome name="play" size={18} color="white" className="ml-1" />
+            <FontAwesome
+              name="play"
+              size={18}
+              color="white"
+              style={{ marginLeft: 4 }}
+            />
           </View>
-          <View className="ml-4">
-            <AppText font="instrument-medium" className="mb-0.5">
+          <View style={{ marginLeft: 16 }}>
+            <AppText
+              font="instrument-medium"
+              style={{ marginBottom: 2, color: "#ffffff" }}
+            >
               {title}
             </AppText>
             <AppText font="instrument-italic" size="sm">

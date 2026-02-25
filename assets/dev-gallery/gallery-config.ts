@@ -20,7 +20,7 @@ import { Chakra } from "@/types/chakras/Chakra"
 export interface ScreenEntry {
   id: string
   label: string
-  type: "trial1" | "trial2" | "threshold" | "sanctuary"
+  type: "trial1" | "trial2" | "threshold" | "sanctuary" | "lifetime" | "entry"
   componentPath: string
   props?: Record<string, any>
   expectedFileName: string // For saved snapshot
@@ -143,20 +143,7 @@ export const GALLERY_SCREENS: ScreenEntry[] = [
     expectedFileName: "trial2-crown-day7.png",
   },
 
-  // THRESHOLDS: Welcome, Waiting, Goodbye, Commitment Gate
-  {
-    id: "threshold-welcome",
-    label: "Threshold: Welcome Modal",
-    type: "threshold",
-    componentPath: "@/components/chakras/WelcomeModal",
-    props: {
-      isVisible: true,
-      onClose: () => {},
-      onBeginJourney: () => {},
-      currentDayOfWeek: 0, // Monday
-    },
-    expectedFileName: "threshold-welcome.png",
-  },
+  // THRESHOLDS: Waiting, Goodbye, Commitment Gate (Welcome/path selection is entry-welcome / WelcomeScreen)
   {
     id: "threshold-waiting",
     label: "Threshold: Waiting Screen",
@@ -207,6 +194,106 @@ export const GALLERY_SCREENS: ScreenEntry[] = [
     props: {},
     expectedFileName: "sanctuary-community.png",
   },
+
+  // ENTRY: Path selection, date selection, trial home
+  {
+    id: "entry-welcome",
+    label: "Entry: WelcomeScreen (Path Selection)",
+    type: "entry",
+    componentPath: "@/app/(chakras)/WelcomeScreen",
+    props: {},
+    expectedFileName: "entry-welcome-path-selection.png",
+  },
+  {
+    id: "entry-date-selection",
+    label: "Entry: DateSelection",
+    type: "entry",
+    componentPath: "@/app/(chakras)/DateSelection",
+    props: {},
+    expectedFileName: "entry-date-selection.png",
+  },
+  {
+    id: "entry-chakra-home",
+    label: "Entry: ChakraHome (Trial Home)",
+    type: "entry",
+    componentPath: "@/app/(chakras)/ChakraHome",
+    props: {},
+    expectedFileName: "entry-chakra-home-trial.png",
+  },
+
+  // LIFETIME: Additional screens
+  {
+    id: "lifetime-audio-player",
+    label: "Lifetime: AudioPlayer",
+    type: "lifetime",
+    componentPath: "@/app/AudioPlayer",
+    props: {},
+    expectedFileName: "lifetime-audio-player.png",
+  },
+  {
+    id: "lifetime-audio-library",
+    label: "Lifetime: AudioLibrary",
+    type: "lifetime",
+    componentPath: "@/app/(chakras)/AudioLibrary",
+    props: {},
+    expectedFileName: "lifetime-audio-library.png",
+  },
+  {
+    id: "lifetime-sound-bath",
+    label: "Lifetime: SoundBath",
+    type: "lifetime",
+    componentPath: "@/app/(chakras)/SoundBath",
+    props: {},
+    expectedFileName: "lifetime-sound-bath.png",
+  },
+  {
+    id: "lifetime-head-to-heart",
+    label: "Lifetime: HeadToHeart",
+    type: "lifetime",
+    componentPath: "@/app/(chakras)/HeadToHeart",
+    props: {},
+    expectedFileName: "lifetime-head-to-heart.png",
+  },
+  {
+    id: "lifetime-chakras101",
+    label: "Lifetime: Chakras101",
+    type: "lifetime",
+    componentPath: "@/app/(chakras)/Chakras101",
+    props: {},
+    expectedFileName: "lifetime-chakras101.png",
+  },
+  {
+    id: "lifetime-energy-exchange",
+    label: "Lifetime: EnergyExchange",
+    type: "lifetime",
+    componentPath: "@/app/(chakras)/EnergyExchange",
+    props: {},
+    expectedFileName: "lifetime-energy-exchange.png",
+  },
+  {
+    id: "lifetime-gallery",
+    label: "Lifetime: GalleryOfGnosis",
+    type: "lifetime",
+    componentPath: "@/app/(chakras)/GalleryOfGnosis",
+    props: {},
+    expectedFileName: "lifetime-gallery-of-gnosis.png",
+  },
+  {
+    id: "lifetime-notes",
+    label: "Lifetime: NotesAlongTheWay",
+    type: "lifetime",
+    componentPath: "@/app/(chakras)/NotesAlongTheWay",
+    props: {},
+    expectedFileName: "lifetime-notes-along-the-way.png",
+  },
+  {
+    id: "lifetime-dev-paywall",
+    label: "Dev: DevPaywall (CommitmentGate)",
+    type: "lifetime",
+    componentPath: "@/app/(chakras)/DevPaywall",
+    props: {},
+    expectedFileName: "dev-paywall-commitment-gate.png",
+  },
 ]
 
-export const TOTAL_SCREENS = GALLERY_SCREENS.length // Should be 20
+export const TOTAL_SCREENS = GALLERY_SCREENS.length

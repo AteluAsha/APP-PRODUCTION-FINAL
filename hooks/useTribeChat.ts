@@ -78,7 +78,9 @@ export function useTribeChat(
           if (__DEV__) {
             console.warn("[useTribeChat] onSnapshot error:", err)
           }
-          setError(err instanceof Error ? err.message : "Failed to load messages")
+          setError(
+            err instanceof Error ? err.message : "Failed to load messages",
+          )
           setLoading(false)
         },
       )
@@ -98,11 +100,9 @@ export function useTribeChat(
       text: string,
       senderName: string = "Guest",
     ): Promise<{ ok: boolean; error?: string }> => {
-      if (!db)
-        return { ok: false, error: "Firebase not configured" }
+      if (!db) return { ok: false, error: "Firebase not configured" }
       const trimmed = text.trim()
-      if (!trimmed)
-        return { ok: false, error: "Message cannot be empty" }
+      if (!trimmed) return { ok: false, error: "Message cannot be empty" }
 
       try {
         const messagesRef = collection(db, "tribes", tribeId, "messages")

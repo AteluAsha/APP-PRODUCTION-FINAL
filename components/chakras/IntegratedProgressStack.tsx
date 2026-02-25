@@ -31,6 +31,7 @@ import {
   getChakraImage,
   getChakraColor,
 } from "@/constants/chakras/chakraConstants"
+import { TRIAL_HOME_ROOT_CHAKRA } from "@/constants/layout"
 
 interface IntegratedProgressStackProps {
   currentDay: number
@@ -126,16 +127,8 @@ export const IntegratedProgressStack = ({
   // Find current chakra data
   const currentChakraData = chakraData.find(({ day }) => day === currentDay)
 
-  // APP_1 (Trial): LOCKED POSITION - Root chakra at bottom of frame, just above Anua button
-  // This is the hero position - the spine of the entire app - MUST REMAIN CONSISTENT
-  // Anua button: bottom = Math.max(insets.bottom, 4) + 8 (~12px), height ~62px (text + avatar)
-  // Top of Anua button: ~74px from bottom
-  // Chakra ball diameter: ~80px, so radius ~40px
-  // Root chakra bottom should be ~10px above Anua button top = 84px from bottom
-  // Root chakra center = 84 + 40 = 124px from bottom
-  // But paddingBottom positions the container, so we need: 124px - (ball visual offset)
-  // LOCKED: 90px positions root chakra just above Anua button
-  const bottomPadding = 90 // LOCKED: Root chakra positioned just above Anua button
+  // APP_1 (Trial): Root chakra position LOCKED via constants/layout.ts (TRIAL_HOME_ROOT_CHAKRA)
+  const bottomPadding = TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING
 
   return (
     <View style={{ flex: 1 }}>
@@ -250,13 +243,23 @@ export const IntegratedProgressStack = ({
                       marginBottom: 12, // Space between title and ball
                     }}
                   >
-                    {/* Title format: "Weekday – Chakra Day" – xs so it fits on all days */}
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap", maxWidth: "100%" }}>
+                    {/* Chakra ball homescreen title: Cormorant font, full brightness to match white font */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexWrap: "wrap",
+                        maxWidth: "100%",
+                      }}
+                    >
                       <AppText
-                        font="instrument-bold"
+                        font="cormorant-regular"
                         size="xs"
                         numberOfLines={1}
                         style={{
+                          fontFamily: "CormorantGaramond",
+                          fontWeight: "600",
                           color: "#ffffff",
                           textShadowColor: "rgba(0, 0, 0, 0.8)",
                           textShadowOffset: { width: 0, height: 1 },
@@ -266,17 +269,19 @@ export const IntegratedProgressStack = ({
                         {dayName}
                       </AppText>
                       <AppText
-                        font="instrument-regular"
+                        font="cormorant-regular"
                         size="xs"
                         numberOfLines={1}
                         style={{
+                          fontFamily: "CormorantGaramond",
                           color: "#ffffff",
                           textShadowColor: "rgba(0, 0, 0, 0.8)",
                           textShadowOffset: { width: 0, height: 1 },
                           textShadowRadius: 4,
                         }}
                       >
-                        {" "}– {chakraName} Day
+                        {" "}
+                        – {chakraName} Day
                       </AppText>
                     </View>
                   </View>
@@ -295,13 +300,24 @@ export const IntegratedProgressStack = ({
                       marginBottom: 12, // Space between title and ball
                     }}
                   >
-                    {/* Teaser title: "Weekday – Chakra Day" – xs to fit */}
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap", opacity: 0.6, maxWidth: "100%" }}>
+                    {/* Teaser title: Cormorant font, full brightness (opacity on container for dimmed effect) */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexWrap: "wrap",
+                        opacity: 0.6,
+                        maxWidth: "100%",
+                      }}
+                    >
                       <AppText
-                        font="instrument-bold"
+                        font="cormorant-regular"
                         size="xs"
                         numberOfLines={1}
                         style={{
+                          fontFamily: "CormorantGaramond",
+                          fontWeight: "600",
                           color: "#ffffff",
                           textShadowColor: "rgba(0, 0, 0, 0.8)",
                           textShadowOffset: { width: 0, height: 1 },
@@ -311,17 +327,19 @@ export const IntegratedProgressStack = ({
                         {getDayName(chakraDay)}
                       </AppText>
                       <AppText
-                        font="instrument-regular"
+                        font="cormorant-regular"
                         size="xs"
                         numberOfLines={1}
                         style={{
+                          fontFamily: "CormorantGaramond",
                           color: "#ffffff",
                           textShadowColor: "rgba(0, 0, 0, 0.8)",
                           textShadowOffset: { width: 0, height: 1 },
                           textShadowRadius: 4,
                         }}
                       >
-                        {" "}– {getChakraName(chakraDay)} Day
+                        {" "}
+                        – {getChakraName(chakraDay)} Day
                       </AppText>
                     </View>
                   </View>

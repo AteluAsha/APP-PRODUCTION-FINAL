@@ -9,6 +9,10 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
 import { CHAKRA_TO_DAY } from "@/utils/chakraMapping"
+import {
+  CHAKRA_NAMES,
+  getChakraColor,
+} from "@/constants/chakras/chakraConstants"
 
 /**
  * Gallery of Gnosis - Chakra Cards Carousel
@@ -83,31 +87,66 @@ export default function GalleryOfGnosis() {
 
   if (unlockedChakras.length === 0) {
     return (
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "#0f1210" }}
+        edges={["top", "left", "right"]}
+      >
         <ActionBar onBackPress={handleBack} />
-        <View className="flex-1 items-center justify-center px-8">
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 32,
+          }}
+        >
           <AppText
-            font="instrument-regular"
+            font="cormorant-regular"
             size="2xl"
-            className="text-center mb-4"
+            style={{
+              color: "rgba(255,255,255,0.95)",
+              textAlign: "center",
+              marginBottom: 24,
+              letterSpacing: 1.2,
+            }}
           >
             Gallery of Gnosis
           </AppText>
+          <View
+            style={{
+              width: 48,
+              height: 1,
+              backgroundColor: "rgba(255,255,255,0.25)",
+              marginBottom: 28,
+            }}
+          />
           <AppText
-            font="instrument-regular"
-            size="lg"
-            className="text-center text-gray-400"
+            font="cormorant-italic"
+            style={{
+              fontFamily: "CormorantGaramondItalic",
+              fontSize: 22,
+              lineHeight: 34,
+              color: "rgba(255,255,255,0.9)",
+              textAlign: "center",
+              marginBottom: 20,
+              paddingHorizontal: 8,
+            }}
           >
-            As you complete each day's journey, beautiful chakra cards will
-            appear here as gifts from your practice.
+            Your gallery is a sacred space. As you complete each day's journey, a
+            chakra card will appear here—a gift from your practice and a gentle
+            reminder of the ground you've covered.
           </AppText>
           <AppText
-            font="instrument-regular"
+            font="cormorant-regular"
             size="base"
-            className="text-center text-gray-500 mt-4"
+            style={{
+              color: "rgba(255,255,255,0.7)",
+              textAlign: "center",
+              lineHeight: 26,
+              paddingHorizontal: 8,
+            }}
           >
-            Each day you complete, a new card will appear here as a spiritual
-            reward.
+            There is no rush. When you're ready, your first card will be waiting.
           </AppText>
         </View>
       </SafeAreaView>
@@ -118,23 +157,59 @@ export default function GalleryOfGnosis() {
     <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
       <ActionBar onBackPress={handleBack} />
       <View style={{ flex: 1, backgroundColor: "#000" }}>
-        <View className="items-center py-2">
+        <View
+          style={{
+            alignItems: "center",
+            paddingTop: 12,
+            paddingBottom: 6,
+            paddingHorizontal: 16,
+          }}
+        >
           <AppText
-            font="instrument-regular"
-            size="xl"
-            className="mb-0.5 text-white/90"
-            style={{ letterSpacing: 0.8 }}
+            font="cormorant-italic"
+            size="3xl"
+            style={{
+              color: "rgba(255,255,255,0.98)",
+              letterSpacing: 2,
+              marginBottom: 8,
+              textShadowColor: "rgba(168, 201, 154, 0.5)",
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 12,
+            }}
           >
             Gallery of Gnosis
           </AppText>
           <AppText
             font="instrument-regular"
             size="xs"
-            className="text-white/70"
-            style={{ letterSpacing: 0.5 }}
+            style={{
+              color: "rgba(168, 201, 154, 0.85)",
+              letterSpacing: 1.5,
+              marginBottom: 8,
+              textShadowColor: "rgba(168, 201, 154, 0.2)",
+              textShadowOffset: { width: 0, height: 0 },
+              textShadowRadius: 6,
+            }}
           >
             {currentIndex + 1} of {unlockedChakras.length}
           </AppText>
+          {unlockedChakras[currentIndex] && (
+            <AppText
+              font="instrument-semibold"
+              size="lg"
+              style={{
+                color: getChakraColor(
+                  CHAKRA_TO_DAY[unlockedChakras[currentIndex]],
+                ),
+                letterSpacing: 1,
+                textShadowColor: "rgba(0,0,0,0.5)",
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 4,
+              }}
+            >
+              {`${CHAKRA_NAMES[CHAKRA_TO_DAY[unlockedChakras[currentIndex]]]} Chakra`}
+            </AppText>
+          )}
         </View>
 
         <View style={{ flex: 1 }} onLayout={onLayout}>
@@ -147,7 +222,11 @@ export default function GalleryOfGnosis() {
             onScroll={handleScroll}
             scrollEventThrottle={16}
             style={{ flex: 1 }}
-            contentContainerStyle={{ flexGrow: 1 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              alignItems: "flex-start",
+              paddingTop: 12,
+            }}
           >
             {unlockedChakras.map((chakra, index) => {
               const content = chakraContent[chakra]
@@ -156,10 +235,11 @@ export default function GalleryOfGnosis() {
                   key={chakra}
                   style={{
                     width: itemWidth,
-                    minHeight: 480,
+                    flex: 1,
+                    alignSelf: "stretch",
                     alignItems: "center",
-                    justifyContent: "center",
-                    paddingHorizontal: 12,
+                    justifyContent: "flex-start",
+                    paddingHorizontal: 0,
                     overflow: "visible",
                   }}
                 >
@@ -167,6 +247,7 @@ export default function GalleryOfGnosis() {
                     chakra={chakra}
                     content={content}
                     isActive={index === currentIndex}
+                    hideTitle
                   />
                 </View>
               )

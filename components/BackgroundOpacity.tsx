@@ -15,9 +15,10 @@ const BackgroundOpacity = ({
 }: BackgroundOpacityProps) => {
   return (
     <>
-      {/* Top Gradient */}
+      {/* Top Gradient — pointerEvents box-none so overlays never block button taps */}
       {topGradientHeight > 0 && (
         <LinearGradient
+          pointerEvents="box-none"
           colors={["#000000", "transparent"]}
           style={{
             position: "absolute",
@@ -31,6 +32,7 @@ const BackgroundOpacity = ({
       {/* Bottom Gradient */}
       {bottomGradientHeight > 0 && (
         <LinearGradient
+          pointerEvents="box-none"
           colors={["transparent", "#000000"]}
           style={{
             position: "absolute",
@@ -41,8 +43,9 @@ const BackgroundOpacity = ({
         />
       )}
 
-      {/* Background Opacity Overlay */}
+      {/* Background Opacity Overlay — box-none so taps pass through to buttons */}
       <View
+        pointerEvents="box-none"
         style={{
           position: "absolute",
           top: 0,

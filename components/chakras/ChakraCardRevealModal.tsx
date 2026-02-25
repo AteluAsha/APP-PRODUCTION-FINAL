@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback } from "react"
 import { View, Modal, Pressable, Dimensions } from "react-native"
+import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import Animated, {
@@ -96,10 +97,10 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
 
   const handleViewInGallery = useCallback(() => {
     handleClose()
-    // Small delay for smooth modal transition
+    // Delay for modal to fully dismiss before navigation (avoids glitch screen)
     setTimeout(() => {
-      router.push("/(chakras)/GalleryOfGnosis")
-    }, 300)
+      router.replace("/(chakras)/GalleryOfGnosis" as const)
+    }, 550)
   }, [handleClose, router])
 
   return (
@@ -108,38 +109,49 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
       transparent
       animationType="none"
       onRequestClose={handleClose}
+      statusBarTranslucent
     >
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        <View className="flex-1 bg-black/95">
-          <ActionBar useXButton={true} onXPress={handleClose} />
-
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
           <View
-            className="flex-1 items-center px-4"
             style={{
-              justifyContent: "space-between",
-              paddingTop: insets.top + 32,
-              paddingBottom: 24,
+              flex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.95)",
             }}
           >
-            {/* Title block: lower so it doesn't run off screen on any device */}
-            <Animated.View
-              style={[
-                giftStyle,
-                {
-                  width: "100%",
-                  paddingTop: 24,
-                  paddingBottom: 16,
-                  zIndex: 1,
-                },
-              ]}
+            <ActionBar useXButton={true} onXPress={handleClose} />
+
+            <View
+              style={{
+                flex: 1,
+                alignItems: "center",
+                paddingHorizontal: 16,
+                justifyContent: "space-between",
+                paddingTop: insets.top + 32,
+                paddingBottom: 24,
+              }}
             >
-              <View className="items-center">
+              {/* Title block: lower so it doesn't run off screen on any device */}
+              <Animated.View
+                style={[
+                  giftStyle,
+                  {
+                    width: "100%",
+                    paddingTop: 24,
+                    paddingBottom: 16,
+                    zIndex: 1,
+                    alignItems: "center",
+                  },
+                ]}
+              >
                 <AppText
                   font="instrument-regular"
                   size="xl"
-                  className="text-white/90 mb-2 text-center"
                   style={{
                     letterSpacing: 1,
+                    color: "rgba(255,255,255,0.9)",
+                    marginBottom: 8,
+                    textAlign: "center",
                     textShadowColor: "rgba(168, 201, 154, 0.3)",
                     textShadowOffset: { width: 0, height: 1 },
                     textShadowRadius: 8,
@@ -150,9 +162,10 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
                 <AppText
                   font="instrument-regular"
                   size="base"
-                  className="text-white/75 text-center"
                   style={{
                     letterSpacing: 0.8,
+                    color: "rgba(255,255,255,0.75)",
+                    textAlign: "center",
                     textShadowColor: "rgba(168, 201, 154, 0.2)",
                     textShadowOffset: { width: 0, height: 1 },
                     textShadowRadius: 6,
@@ -160,133 +173,157 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
                 >
                   You've unlocked a Chakra Card!
                 </AppText>
-              </View>
-            </Animated.View>
+              </Animated.View>
 
-            {/* Card reveal - CENTERED with maximum size while maintaining spacing */}
-            <Animated.View
-              style={[
-                cardStyle,
-                {
-                  width: "100%",
-                  maxWidth: 420,
-                  flex: 1,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  paddingVertical: 20,
-                },
-              ]}
-            >
-              <View
-                className="w-full items-center justify-center"
-                style={{ flex: 1 }}
+              {/* Card reveal - CENTERED with maximum size while maintaining spacing */}
+              <Animated.View
+                style={[
+                  cardStyle,
+                  {
+                    width: "100%",
+                    maxWidth: 420,
+                    flex: 1,
+                    minHeight: 200,
+                    maxHeight: 400,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    paddingVertical: 20,
+                  },
+                ]}
               >
-                <ChakraCard chakra={chakra} content={content} isActive={true} />
-              </View>
-            </Animated.View>
-
-            {/* Action buttons - positioned at bottom with redesigned purple button */}
-            <View className="flex-row gap-4 w-full justify-center pb-4">
-              <Pressable
-                onPress={handleClose}
-                className="px-6 py-3 border border-white/30 rounded-full active:opacity-70"
-              >
-                <AppText
-                  font="instrument-regular"
-                  size="base"
-                  className="text-white/85"
+                <View
                   style={{
-                    textShadowColor: "rgba(0, 0, 0, 0.5)",
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 4,
+                    width: "100%",
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  Close
-                </AppText>
-              </Pressable>
-              <Pressable
-                onPress={handleViewInGallery}
-                className="active:opacity-80"
+                  <ChakraCard
+                    chakra={chakra}
+                    content={content}
+                    isActive={true}
+                  />
+                </View>
+              </Animated.View>
+
+              {/* Action buttons - positioned at bottom */}
+              <View
                 style={{
-                  borderRadius: 24,
-                  overflow: "hidden",
-                  shadowColor: "rgba(168, 201, 154, 0.4)",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.6,
-                  shadowRadius: 12,
-                  elevation: 6,
+                  flexDirection: "row",
+                  width: "100%",
+                  justifyContent: "center",
+                  paddingBottom: 16,
+                  gap: 16,
                 }}
               >
-                <LinearGradient
-                  colors={[
-                    "rgba(0, 0, 0, 0.6)",
-                    "rgba(139, 115, 85, 0.25)",
-                    "rgba(168, 201, 154, 0.15)",
-                    "rgba(0, 0, 0, 0.5)",
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  locations={[0, 0.3, 0.7, 1]}
+                <Pressable
+                  onPress={handleClose}
                   style={{
-                    borderRadius: 24,
-                    paddingVertical: 14,
-                    paddingHorizontal: 28,
+                    paddingHorizontal: 24,
+                    paddingVertical: 12,
                     borderWidth: 1,
-                    borderColor: "rgba(168, 201, 154, 0.3)",
-                    backgroundColor: "rgba(0, 0, 0, 0.4)",
-                    overflow: "hidden",
+                    borderColor: "rgba(255,255,255,0.3)",
+                    borderRadius: 9999,
                   }}
                 >
-                  {/* Subtle gradient light overlay */}
-                  <LinearGradient
-                    colors={[
-                      "rgba(255, 255, 255, 0.1)",
-                      "rgba(168, 201, 154, 0.08)",
-                      "transparent",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      borderRadius: 24,
-                    }}
-                  />
-                  {/* Subtle inner glow hint */}
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: "40%",
-                      left: "25%",
-                      right: "25%",
-                      height: "20%",
-                      backgroundColor: "rgba(168, 201, 154, 0.2)",
-                      borderRadius: 12,
-                      opacity: 0.5,
-                    }}
-                  />
                   <AppText
-                    font="instrument-medium"
+                    font="instrument-regular"
                     size="base"
-                    className="text-white/95 relative z-10"
                     style={{
-                      letterSpacing: 0.8,
-                      textShadowColor: "rgba(168, 201, 154, 0.5)",
+                      color: "rgba(255,255,255,0.85)",
+                      textShadowColor: "rgba(0, 0, 0, 0.5)",
                       textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 8,
+                      textShadowRadius: 4,
                     }}
                   >
-                    View in Gallery
+                    Close
                   </AppText>
-                </LinearGradient>
-              </Pressable>
+                </Pressable>
+                <Pressable
+                  onPress={handleViewInGallery}
+                  style={{
+                    borderRadius: 24,
+                    overflow: "hidden",
+                    shadowColor: "rgba(168, 201, 154, 0.4)",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.6,
+                    shadowRadius: 12,
+                    elevation: 6,
+                  }}
+                >
+                  <LinearGradient
+                    colors={[
+                      "rgba(0, 0, 0, 0.6)",
+                      "rgba(139, 115, 85, 0.25)",
+                      "rgba(168, 201, 154, 0.15)",
+                      "rgba(0, 0, 0, 0.5)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    locations={[0, 0.3, 0.7, 1]}
+                    style={{
+                      borderRadius: 24,
+                      paddingVertical: 14,
+                      paddingHorizontal: 28,
+                      borderWidth: 1,
+                      borderColor: "rgba(168, 201, 154, 0.3)",
+                      backgroundColor: "rgba(0, 0, 0, 0.4)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Subtle gradient light overlay */}
+                    <LinearGradient
+                      colors={[
+                        "rgba(255, 255, 255, 0.1)",
+                        "rgba(168, 201, 154, 0.08)",
+                        "transparent",
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        borderRadius: 24,
+                      }}
+                    />
+                    {/* Subtle inner glow hint */}
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: "40%",
+                        left: "25%",
+                        right: "25%",
+                        height: "20%",
+                        backgroundColor: "rgba(168, 201, 154, 0.2)",
+                        borderRadius: 12,
+                        opacity: 0.5,
+                      }}
+                    />
+                    <AppText
+                      font="instrument-medium"
+                      size="base"
+                      style={{
+                        color: "rgba(255,255,255,0.95)",
+                        zIndex: 10,
+                        letterSpacing: 0.8,
+                        textShadowColor: "rgba(168, 201, 154, 0.5)",
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 8,
+                      }}
+                    >
+                      View in Gallery
+                    </AppText>
+                  </LinearGradient>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </GestureHandlerRootView>
     </Modal>
   )
 }

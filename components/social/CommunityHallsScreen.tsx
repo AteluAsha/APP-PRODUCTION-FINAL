@@ -1,6 +1,11 @@
 /**
  * Social Sanctuary (Community Halls) Screen
  *
+ * TYPOGRAPHY: Comment/reflection body and input use normal site font (instrument-regular) for readability.
+ * - Title "Social Sanctuary": CormorantGaramond (regular), letterSpacing 1.2
+ * - Reflection body & author byline: instrument-regular
+ * - Input "Share your reflection..." and reply input: instrument-regular
+ *
  * ARCHITECTURE: "Two Apps in One"
  * - APP_1 (Trial): Available when journey starts (first Monday opens)
  * - APP_2 (Lifetime): Always available
@@ -20,8 +25,20 @@ import {
   Platform,
   Image,
   Alert,
+  Modal,
+  Linking,
+  RefreshControl,
 } from "react-native"
-import Animated, { FadeIn, FadeOut, Easing } from "react-native-reanimated"
+import Animated, {
+  FadeIn,
+  FadeOut,
+  Easing,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  cancelAnimation,
+} from "react-native-reanimated"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -33,7 +50,14 @@ import {
   addReflection,
   subscribeToReflections,
   reactToComment,
+  getSanctuaryUserData,
+  addHiddenReflection,
+  incrementMinusPopupShown,
+  isUserBlockedFromSanctuary,
+  followUserInSanctuary,
+  unfollowUserInSanctuary,
   type SanctuaryReflection,
+  type SanctuaryUserData,
 } from "@/src/services/socialSanctuary"
 import { uploadCommentImage } from "@/src/services/imageUpload"
 import { getUserId } from "@/src/services/socialSanctuary"
@@ -41,7 +65,6 @@ import { moderateReflection } from "@/src/services/sentinel"
 import { ImagePickerButton } from "./ImagePickerButton"
 import { chakraContent } from "@/constants/chakras/content"
 import { DAY_TO_CHAKRA } from "@/utils/chakraMapping"
-import { BottomSheetModal } from "@gorhom/bottom-sheet"
 import {
   DAY_NAMES,
   CHAKRA_NAMES,
@@ -52,11 +75,12 @@ import {
 } from "@/constants/chakras/chakraConstants"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { ReflectionDiaryModal } from "./ReflectionDiaryModal"
 import { getUserProfile, type UserProfile } from "@/src/services/profileService"
+import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { LinearGradient } from "expo-linear-gradient"
 import { ShareAppModal } from "@/components/sharing/ShareAppModal"
 import { ENABLE_QR_CODE_SHARING } from "@/constants/sharing"
+import { ProfilePreviewModal } from "@/components/profile/ProfilePreviewModal"
 
 // Chakra colors for day selector tabs - Softer, calmer borders and glows
 const CHAKRA_COLORS = [
@@ -111,6 +135,35 @@ const CHAKRA_COLORS = [
   }, // Crown - White light, violet and silver (subtle)
 ]
 
+// Test/demo data: deterministic names, countries, and avatar URLs when profile is missing (for visual testing)
+const TEST_NAMES = [
+  "Jordan", "Sam", "Riley", "Morgan", "Quinn", "Alex", "Casey", "River",
+  "Sage", "Phoenix", "Blake", "Avery", "Skyler", "Emery", "Finley", "Reese",
+]
+const TEST_COUNTRIES = [
+  "USA", "Canada", "UK", "Australia", "Ireland", "New Zealand", "Germany", "Spain",
+  "Japan", "Brazil", "Mexico", "India", "Netherlands", "Sweden", "Italy", "France",
+]
+function hashUserId(userId: string): number {
+  let h = 0
+  for (let i = 0; i < userId.length; i++) {
+    h = (h << 5) - h + userId.charCodeAt(i)
+    h |= 0
+  }
+  return Math.abs(h)
+}
+function getTestProfileForUser(userId: string): {
+  displayName: string
+  location: string
+  avatarUrl: string
+} {
+  const h = hashUserId(userId)
+  const name = TEST_NAMES[h % TEST_NAMES.length]
+  const country = TEST_COUNTRIES[(h >> 4) % TEST_COUNTRIES.length]
+  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=128&background=87AE6F&color=fff`
+  return { displayName: name, location: country, avatarUrl }
+}
+
 // Earth tone colors for holistic, safe feeling - more transparent and alive
 const EARTH_COLORS = {
   background: "#000000", // Pure black
@@ -160,16 +213,16 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
   const isAnonymous = false
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
-  const reflectionDiaryRef = useRef<BottomSheetModal>(null)
-  const [selectedReflection, setSelectedReflection] = useState<{
-    id: string
-    chakraDay: number
-    chakraName: string
-  } | null>(null)
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>(
     {},
   )
   const [showShareModal, setShowShareModal] = useState(false)
+  const [profilePreview, setProfilePreview] = useState<{
+    userId: string
+    displayName?: string
+    avatarUrl?: string
+    location?: string
+  } | null>(null)
 
   // Reaction system state - tracks user's reaction to each comment
   const [commentReactions, setCommentReactions] = useState<
@@ -182,38 +235,80 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
   } | null>(null) // Store which reaction was clicked for tooltip
   const [isReacting, setIsReacting] = useState<Record<string, boolean>>({}) // Track loading state per comment
 
-  // Load comments for selected day
+  // Self-governance: blocked from Sanctuary (30 minus received)
+  const [isBlocked, setIsBlocked] = useState<boolean | null>(null)
+  // Sanctuary user data: hidden refs, popup count, followed list
+  const [sanctuaryUserData, setSanctuaryUserData] = useState<SanctuaryUserData | null>(null)
+  // Current user id (for follow button and hiding follow on own comments)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  // When set, show "Should we clean this from our community space, little shepherd?" modal for this comment
+  const [shepherdModalReflectionId, setShepherdModalReflectionId] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const refreshRotation = useSharedValue(0)
   useEffect(() => {
+    if (refreshing) {
+      refreshRotation.value = withRepeat(
+        withTiming(1, { duration: 1000, easing: Easing.linear }),
+        -1,
+      )
+    } else {
+      cancelAnimation(refreshRotation)
+      refreshRotation.value = 0
+    }
+  }, [refreshing])
+  const refreshIconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${refreshRotation.value * 360}deg` }],
+  }))
+
+  // On mount: check if user is blocked from Sanctuary (self-governance)
+  useEffect(() => {
+    let cancelled = false
+    getUserId()
+      .then((userId) => isUserBlockedFromSanctuary(userId))
+      .then((blocked) => {
+        if (!cancelled) setIsBlocked(blocked)
+      })
+      .catch(() => {
+        if (!cancelled) setIsBlocked(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Load comments for selected day (with currentUserId for myReaction and hidden filter)
+  useEffect(() => {
+    if (isBlocked === true) return
     loadComments()
 
     // If no comments exist, populate placeholders (dev mode only)
     if (__DEV__) {
-      setTimeout(async () => {
+      const t = setTimeout(async () => {
         try {
-          // Dynamically import to avoid blocking
-          const { populatePlaceholders } = await import(
-            "@/src/services/communityPlaceholders"
-          )
+          const { populatePlaceholders } =
+            await import("@/src/services/communityPlaceholders")
           await populatePlaceholders()
-          // Reload comments after populating
           await loadComments()
-        } catch (error) {
+        } catch {
           // Silent fail
         }
       }, 1000)
+      return () => clearTimeout(t)
     }
-  }, [selectedDay])
+  }, [selectedDay, isBlocked])
 
-  const loadComments = async () => {
-    setIsLoading(true)
+  const loadComments = async (silent?: boolean) => {
+    if (!silent) setIsLoading(true)
     try {
+      const uid = await getUserId().catch(() => undefined)
+      if (uid) setCurrentUserId(uid)
       let loadedComments: CommentWithReplies[] = []
 
       if (selectedDay === "global") {
-        // Load from all days
         for (let day = 0; day < 7; day++) {
           try {
-            const dayComments = await getReflectionsForDay(day, 50)
+            const dayComments = await getReflectionsForDay(day, 50, uid)
             loadedComments.push(
               ...dayComments.map((c) => ({
                 ...c,
@@ -231,7 +326,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
           (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
         )
       } else {
-        const dayComments = await getReflectionsForDay(selectedDay, 50)
+        const dayComments = await getReflectionsForDay(selectedDay, 50, uid)
         loadedComments = dayComments.map((c) => ({
           ...c,
           replies: [],
@@ -239,7 +334,41 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
         }))
       }
 
+      // Self-governance: filter out reflections this user has hidden
+      const userData = uid ? await getSanctuaryUserData(uid) : null
+      if (userData?.hiddenReflectionIds?.length) {
+        const hiddenSet = new Set(userData.hiddenReflectionIds)
+        loadedComments = loadedComments.filter((c) => !c.id || !hiddenSet.has(c.id))
+      }
+      setSanctuaryUserData(userData ?? null)
+
+      // Somatic feed: followed first, then people you've hearted (more), then rest; all by time
+      const followedSet = new Set(userData?.followedUserIds ?? [])
+      const heartedUserIds = new Set(
+        loadedComments.filter((c) => c.myReaction === "more").map((c) => c.userId),
+      )
+      loadedComments.sort((a, b) => {
+        const aFollowed = followedSet.has(a.userId)
+        const bFollowed = followedSet.has(b.userId)
+        if (aFollowed && !bFollowed) return -1
+        if (!aFollowed && bFollowed) return 1
+        const aHearted = heartedUserIds.has(a.userId)
+        const bHearted = heartedUserIds.has(b.userId)
+        if (aHearted && !bHearted) return -1
+        if (!aHearted && bHearted) return 1
+        return b.timestamp.getTime() - a.timestamp.getTime()
+      })
+
       setComments(loadedComments)
+
+      // Seed reaction state from Firestore myReaction
+      setCommentReactions((prev) => {
+        const next = { ...prev }
+        loadedComments.forEach((c) => {
+          if (c.id && c.myReaction) next[c.id] = c.myReaction
+        })
+        return next
+      })
 
       // Load profile images for all unique user IDs
       const uniqueUserIds = new Set(loadedComments.map((c) => c.userId))
@@ -262,15 +391,41 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
           profileMap[result.userId] = result.profile
         }
       })
+      // Merge current user's presence (name, photo, location) so "me" shows correctly
+      try {
+        const presence = usePresenceStore.getState()
+        if (uid) {
+          const existing = profileMap[uid]
+          profileMap[uid] = {
+            id: uid,
+            displayName: presence.displayName ?? existing?.displayName,
+            avatarUrl: presence.profileImageUri ?? existing?.avatarUrl,
+            location: presence.location ?? existing?.location,
+            createdAt: existing?.createdAt ?? new Date(),
+            updatedAt: existing?.updatedAt ?? new Date(),
+          }
+        }
+      } catch {
+        // ignore
+      }
       setUserProfiles(profileMap)
     } catch (err) {
       if (__DEV__) {
         console.error("Error loading comments:", err)
       }
     } finally {
-      setIsLoading(false)
+      if (!silent) setIsLoading(false)
     }
   }
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await loadComments(true)
+    } finally {
+      setRefreshing(false)
+    }
+  }, [])
 
   const loadReplies = async (commentId: string) => {
     setComments((prev) =>
@@ -281,6 +436,36 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
 
     try {
       const replies = await getReplies(commentId)
+      const replyUserIds = [...new Set(replies.map((r) => r.userId))]
+      const currentProfiles = await Promise.all(
+        replyUserIds.map(async (userId) => {
+          try {
+            const profile = await getUserProfile(userId)
+            return profile ? { userId, profile } : null
+          } catch {
+            return null
+          }
+        }),
+      )
+      const merge: Record<string, UserProfile> = {}
+      currentProfiles.forEach((r) => {
+        if (r) merge[r.userId] = r.profile
+      })
+      const currentUserId = await getUserId().catch(() => null)
+      const presence = currentUserId ? usePresenceStore.getState() : null
+      if (currentUserId && presence) {
+        merge[currentUserId] = {
+          ...merge[currentUserId],
+          id: currentUserId,
+          displayName: presence.displayName ?? merge[currentUserId]?.displayName,
+          avatarUrl: presence.profileImageUri ?? merge[currentUserId]?.avatarUrl,
+          location: presence.location ?? merge[currentUserId]?.location,
+          createdAt: merge[currentUserId]?.createdAt ?? new Date(),
+          updatedAt: merge[currentUserId]?.updatedAt ?? new Date(),
+        }
+      }
+      setUserProfiles((prev) => ({ ...prev, ...merge }))
+
       setComments((prev) =>
         prev.map((c) =>
           c.id === commentId
@@ -326,21 +511,40 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
   }
 
   const handleSubmit = async () => {
-    if (!message.trim()) return
+    const hasText = message.trim().length > 0
+    const hasImage = !!selectedImage
+    if (!hasText && !hasImage) return
 
     setIsSubmitting(true)
     try {
-      // Moderate the message
-      const moderation = await moderateReflection(message.trim())
+      // Anua monitor (Sentinel): every feed comment is moderated before Firestore
+      const textToModerate = hasText ? message.trim() : "[Image shared with no caption]"
+      const moderation = await moderateReflection(textToModerate)
       if (!moderation.isApproved) {
         setIsSubmitting(false)
+        Alert.alert(
+          "Reflection not posted",
+          moderation.reason ?? "This doesn't meet our community guidelines. Please revise and try again from the heart.",
+        )
         return
       }
 
+      let imageUrl: string | undefined
+      if (hasImage && selectedImage) {
+        setIsUploadingImage(true)
+        try {
+          const userId = await getUserId()
+          imageUrl = await uploadCommentImage(selectedImage, userId)
+        } finally {
+          setIsUploadingImage(false)
+        }
+      }
+
       const chakraDay = selectedDay === "global" ? 0 : selectedDay
-      await addReflection(chakraDay, message.trim(), isAnonymous)
+      await addReflection(chakraDay, message.trim(), isAnonymous, undefined, imageUrl)
       setMessage("")
-      await loadComments() // Reload to show new comment
+      setSelectedImage(null)
+      await loadComments()
     } catch (err) {
       if (__DEV__) {
         console.error("Error submitting comment:", err)
@@ -355,9 +559,14 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
 
     setIsSubmitting(true)
     try {
+      // Anua monitor (Sentinel): replies are moderated before Firestore
       const moderation = await moderateReflection(replyMessage.trim())
       if (!moderation.isApproved) {
         setIsSubmitting(false)
+        Alert.alert(
+          "Reply not posted",
+          moderation.reason ?? "This doesn't meet our community guidelines. Please revise and try again from the heart.",
+        )
         return
       }
 
@@ -390,6 +599,15 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
     return date.toLocaleDateString()
   }
 
+  // All (global) uses white-violet light; individual days use their chakra color
+  const ALL_FRAME = {
+    text: "#E8E0F5",
+    glow: "#E6DCFF",
+    frame: "rgba(240, 235, 255, 0.12)",
+  }
+  const borderChakraColor =
+    selectedDay === "global" ? ALL_FRAME : CHAKRA_COLORS[selectedDay]
+
   const CommentItem = ({
     comment,
     level = 0,
@@ -404,7 +622,14 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
     const chakra = DAY_TO_CHAKRA[comment.chakraDay]
     const chakraColor = CHAKRA_COLORS[comment.chakraDay]
     const chakraName = CHAKRA_NAMES[comment.chakraDay]
-    const userProfile = userProfiles[comment.userId]
+    // Always have a display profile: Firestore when available, else deterministic fallback (works in dev and iOS production when profiles fail to load)
+    const fallbackProfile = getTestProfileForUser(comment.userId ?? "")
+    const fromStore = userProfiles[comment.userId ?? ""]
+    const displayProfile = {
+      displayName: fromStore?.displayName ?? fallbackProfile.displayName,
+      avatarUrl: fromStore?.avatarUrl ?? fallbackProfile.avatarUrl,
+      location: fromStore?.location ?? fallbackProfile.location,
+    }
 
     // Use selected day's chakra color for theme (when viewing global, use comment's own chakra color)
     const themeChakraColor =
@@ -417,16 +642,6 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
     // Get current user's reaction for this comment
     const currentUserReaction = comment.id ? commentReactions[comment.id] : null
     const reactions = comment.reactions || { more: 0, neutral: 0, less: 0 }
-
-    const handleFeatherPress = () => {
-      setSelectedReflection({
-        id: comment.id || "",
-        chakraDay: comment.chakraDay,
-        chakraName: chakraName,
-      })
-      reflectionDiaryRef.current?.present()
-      addHapticFeedback(HapticStrength.Light)
-    }
 
     const handleReaction = async (
       reactionType: "more" | "neutral" | "less",
@@ -499,6 +714,13 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
             newReaction,
             previousReaction || undefined,
           )
+          // Self-governance: show "little shepherd" modal on first 3 minus clicks
+          if (
+            newReaction === "less" &&
+            (sanctuaryUserData?.minusPopupShownCount ?? 0) < 3
+          ) {
+            setShepherdModalReflectionId(comment.id ?? null)
+          }
         } else {
           // Removing reaction
           await reactToComment(comment.id, reactionType, reactionType)
@@ -622,37 +844,40 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
             >
               {formatTimestamp(comment.timestamp)}
             </AppText>
-            {/* Feather icon for personal diary */}
-            <Pressable
-              onPress={handleFeatherPress}
-              style={{
-                padding: 4,
-                borderRadius: 8,
-                backgroundColor: "rgba(255, 255, 255, 0.03)",
-              }}
-            >
-              <Ionicons
-                name="leaf-outline"
-                size={14}
-                color="rgba(255, 255, 255, 0.4)"
-              />
-            </Pressable>
           </View>
 
-          {/* Comment Message - Hero Text - Large and Clear */}
-          <AppText
-            font="cormorant-regular"
-            style={{
-              color: "rgba(255, 255, 255, 0.98)",
-              fontSize: 16,
-              lineHeight: 26,
-              marginBottom: 10,
-            }}
-          >
-            {comment.message}
-          </AppText>
+          {/* Reflection body - smaller, softer for easier reading */}
+          {comment.message.length > 0 && (
+            <AppText
+              font="instrument-regular"
+              style={{
+                color: "rgba(255, 255, 255, 0.82)",
+                fontSize: 14,
+                lineHeight: 22,
+                marginBottom: 10,
+              }}
+            >
+              {comment.message}
+            </AppText>
+          )}
+          {/* Reflection image - loaded from Firebase Storage */}
+          {comment.imageUrl ? (
+            <View style={{ marginBottom: 10, borderRadius: 12, overflow: "hidden", maxWidth: "100%" }}>
+              <Image
+                source={{ uri: comment.imageUrl }}
+                style={{
+                  width: "100%",
+                  maxWidth: 280,
+                  aspectRatio: 4 / 3,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.06)",
+                }}
+                resizeMode="cover"
+              />
+            </View>
+          ) : null}
 
-          {/* Commenter Name and Reply Button - Same Line */}
+          {/* Commenter: avatar + name & location (or "Soul" when anonymous) */}
           <View
             style={{
               flexDirection: "row",
@@ -661,60 +886,230 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
               marginBottom: 8,
             }}
           >
-            <AppText
-              font="instrument-regular"
-              style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: 12 }}
-            >
-              {userProfile?.displayName || "Soul"}
-            </AppText>
-            <Pressable
-              onPress={() => {
-                if (replyingTo === comment.id) {
-                  setReplyingTo(null)
-                  setReplyMessage("")
-                } else {
-                  setReplyingTo(comment.id || null)
-                }
-                addHapticFeedback(HapticStrength.Light)
-              }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                paddingVertical: 4,
-                paddingHorizontal: 8,
-                borderRadius: 6,
-                backgroundColor:
-                  replyingTo === comment.id
-                    ? `${themeChakraColor.text}20`
-                    : "rgba(255, 255, 255, 0.05)",
-              }}
-            >
-              <Ionicons
-                name={
-                  replyingTo === comment.id ? "close" : "chatbubble-outline"
-                }
-                size={12}
-                color={
-                  replyingTo === comment.id
-                    ? themeChakraColor.text
-                    : "rgba(255, 255, 255, 0.6)"
-                }
-              />
-              <AppText
-                font="instrument-regular"
-                style={{
-                  color:
-                    replyingTo === comment.id
-                      ? themeChakraColor.text
-                      : "rgba(255, 255, 255, 0.6)",
-                  fontSize: 11,
-                }}
-              >
-                {replyingTo === comment.id ? "Cancel" : "Reply"}
-              </AppText>
-            </Pressable>
-          </View>
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 10 }}>
+              {/* Profile image - tappable to open preview (invite to tribe) */}
+              {comment.isAnonymous ? (
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="person" size={16} color="rgba(255, 255, 255, 0.4)" />
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => {
+                    if (comment.userId) {
+                      addHapticFeedback(HapticStrength.Light)
+                      setProfilePreview({
+                        userId: comment.userId,
+                        displayName: displayProfile.displayName,
+                        avatarUrl: displayProfile.avatarUrl,
+                        location: displayProfile.location,
+                      })
+                    }
+                  }}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                  hitSlop={8}
+                >
+                  {displayProfile.avatarUrl ? (
+                    <Image
+                      source={{
+                        uri: displayProfile.avatarUrl,
+                      }}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: "rgba(255, 255, 255, 0.08)",
+                      }}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: "rgba(255, 255, 255, 0.1)",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons name="person" size={16} color="rgba(255, 255, 255, 0.4)" />
+                    </View>
+                  )}
+                </Pressable>
+              )}
+              <View style={{ flex: 1 }}>
+                <AppText
+                  font="instrument-regular"
+                  style={{
+                    color: "rgba(255, 255, 255, 0.65)",
+                    fontSize: 13,
+                  }}
+                >
+                  {comment.isAnonymous
+                    ? "Soul"
+                    : displayProfile.displayName}
+                </AppText>
+                {!comment.isAnonymous ? (
+                  <AppText
+                    font="instrument-regular"
+                    style={{
+                      color: "rgba(255, 255, 255, 0.45)",
+                      fontSize: 11,
+                      marginTop: 1,
+                    }}
+                  >
+                    {displayProfile.location}
+                  </AppText>
+                ) : null}
+              </View>
+              {/* Reply (left) and Follow / plus (right); plus lights up cyan when following */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Pressable
+                  onPress={() => {
+                    if (replyingTo === comment.id) {
+                      setReplyingTo(null)
+                      setReplyMessage("")
+                    } else {
+                      setReplyingTo(comment.id || null)
+                    }
+                    addHapticFeedback(HapticStrength.Light)
+                  }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    paddingVertical: 4,
+                    paddingHorizontal: 8,
+                    borderRadius: 6,
+                    backgroundColor:
+                      replyingTo === comment.id
+                        ? `${themeChakraColor.text}20`
+                        : "rgba(255, 255, 255, 0.05)",
+                  }}
+                >
+                  <Ionicons
+                    name={
+                      replyingTo === comment.id ? "close" : "chatbubble-outline"
+                    }
+                    size={12}
+                    color={
+                      replyingTo === comment.id
+                        ? themeChakraColor.text
+                        : "rgba(255, 255, 255, 0.6)"
+                    }
+                  />
+                  <AppText
+                    font="instrument-regular"
+                    style={{
+                      color:
+                        replyingTo === comment.id
+                          ? themeChakraColor.text
+                          : "rgba(255, 255, 255, 0.6)",
+                      fontSize: 11,
+                    }}
+                  >
+                    {replyingTo === comment.id ? "Cancel" : "Reply"}
+                  </AppText>
+                </Pressable>
+                {!comment.isAnonymous &&
+                  comment.userId &&
+                  currentUserId &&
+                  comment.userId !== currentUserId && (
+                    <Pressable
+                      onPress={async () => {
+                        addHapticFeedback(HapticStrength.Light)
+                        const targetId = comment.userId!
+                        const followed = sanctuaryUserData?.followedUserIds?.includes(targetId)
+                        try {
+                          if (followed) {
+                            await unfollowUserInSanctuary(currentUserId, targetId)
+                            setSanctuaryUserData((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    followedUserIds: (prev.followedUserIds ?? []).filter(
+                                      (id) => id !== targetId,
+                                    ),
+                                  }
+                                : prev,
+                            )
+                          } else {
+                            await followUserInSanctuary(currentUserId, targetId)
+                            setSanctuaryUserData((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    followedUserIds: [...(prev.followedUserIds ?? []), targetId],
+                                  }
+                                : prev,
+                            )
+                          }
+                          setComments((prev) => {
+                            const followedSet = new Set(
+                              followed
+                                ? (sanctuaryUserData?.followedUserIds ?? []).filter((id) => id !== targetId)
+                                : [...(sanctuaryUserData?.followedUserIds ?? []), targetId],
+                            )
+                            const heartedSet = new Set(
+                              prev.filter((c) => commentReactions[c.id!] === "more").map((c) => c.userId),
+                            )
+                            return [...prev].sort((a, b) => {
+                              const aF = followedSet.has(a.userId)
+                              const bF = followedSet.has(b.userId)
+                              if (aF && !bF) return -1
+                              if (!aF && bF) return 1
+                              const aH = heartedSet.has(a.userId)
+                              const bH = heartedSet.has(b.userId)
+                              if (aH && !bH) return -1
+                              if (!aH && bH) return 1
+                              return b.timestamp.getTime() - a.timestamp.getTime()
+                            })
+                          })
+                        } catch (e) {
+                          if (__DEV__) console.warn("Follow toggle error:", e)
+                        }
+                      }}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
+                          ? "rgba(6, 182, 212, 0.25)"
+                          : "rgba(255, 255, 255, 0.08)",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderWidth: 1,
+                        borderColor: sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
+                          ? "rgba(6, 182, 212, 0.6)"
+                          : "rgba(255, 255, 255, 0.15)",
+                      }}
+                      accessibilityLabel={
+                        sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
+                          ? "Unfollow"
+                          : "Follow to see more from this person"
+                      }
+                    >
+                      <Ionicons
+                        name="add"
+                        size={16}
+                        color={
+                          sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
+                            ? "#06B6D4"
+                            : "rgba(255, 255, 255, 0.6)"
+                        }
+                      />
+                    </Pressable>
+                  )}
+              </View>
+            </View>
 
           {/* Reaction Buttons - Heart (More), Equals (Neutral), Minus (Less) */}
           <View
@@ -819,49 +1214,48 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
               )}
             </Pressable>
 
-            {/* Minus - Less of this energy */}
+            {/* Minus - Remove this comment from your feed (no counter, just icon) */}
             <Pressable
-              onPress={() => handleReaction("less")}
-              disabled={isSubmitting || isReacting[comment.id || ""]}
+              onPress={async () => {
+                if (!comment.id) return
+                addHapticFeedback(HapticStrength.Light)
+                try {
+                  const uid = currentUserId ?? (await getUserId().catch(() => null))
+                  if (uid) {
+                    await addHiddenReflection(uid, comment.id)
+                    setComments((prev) => prev.filter((c) => c.id !== comment.id))
+                    setSanctuaryUserData((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            hiddenReflectionIds: [...(prev.hiddenReflectionIds || []), comment.id!],
+                          }
+                        : prev,
+                    )
+                    if ((sanctuaryUserData?.minusPopupShownCount ?? 0) < 3) {
+                      setShepherdModalReflectionId(comment.id)
+                    }
+                  }
+                } catch (e) {
+                  if (__DEV__) console.warn("Minus (hide) error:", e)
+                }
+              }}
+              disabled={isSubmitting}
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
                 paddingVertical: 4,
                 paddingHorizontal: 8,
                 borderRadius: 6,
-                backgroundColor:
-                  currentUserReaction === "less"
-                    ? "rgba(107, 114, 128, 0.2)"
-                    : "rgba(255, 255, 255, 0.05)",
-                borderWidth: currentUserReaction === "less" ? 1 : 0,
+                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                borderWidth: 0,
                 borderColor: "rgba(107, 114, 128, 0.4)",
-                opacity: isReacting[comment.id || ""] ? 0.6 : 1,
               }}
+              accessibilityLabel="Remove from your feed"
             >
               <Ionicons
                 name="remove"
                 size={14}
-                color={
-                  currentUserReaction === "less"
-                    ? "#6B7280"
-                    : "rgba(255, 255, 255, 0.5)"
-                }
+                color="rgba(255, 255, 255, 0.5)"
               />
-              {reactions.less > 0 && (
-                <AppText
-                  font="instrument-regular"
-                  style={{
-                    color:
-                      currentUserReaction === "less"
-                        ? "#6B7280"
-                        : "rgba(255, 255, 255, 0.5)",
-                    fontSize: 11,
-                  }}
-                >
-                  {reactions.less}
-                </AppText>
-              )}
             </Pressable>
 
             {/* Tooltip on first interaction - Fixed to show based on clicked reaction, not current state */}
@@ -899,7 +1293,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                   {showReactionTooltip?.reactionType === "neutral" &&
                     "Equals means you are neutral"}
                   {showReactionTooltip?.reactionType === "less" &&
-                    "Minus means you want less of this energy"}
+                    "Remove this from your feed"}
                 </AppText>
               </View>
             )}
@@ -974,7 +1368,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 value={replyMessage}
                 onChangeText={setReplyMessage}
                 placeholder="Write a reply..."
-                placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
                 multiline
                 maxLength={500}
                 autoFocus
@@ -985,7 +1379,9 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                   borderRadius: 12,
                   padding: 12,
                   color: "rgba(255, 255, 255, 0.95)",
-                  fontSize: 15,
+                  fontSize: 16,
+                  lineHeight: 24,
+                  fontFamily: "InstrumentSansRegular",
                   minHeight: 70,
                   borderWidth: 1,
                   borderColor: `${themeChakraColor.text}20`,
@@ -1080,19 +1476,92 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 ))}
               </View>
             )}
+          </View>
         </View>
       </View>
     )
-  }
+  };
 
-  // All (global) uses white-violet light; individual days use their chakra color
-  const ALL_FRAME = {
-    text: "#E8E0F5",
-    glow: "#E6DCFF",
-    frame: "rgba(240, 235, 255, 0.12)",
+  // Self-governance: blocked from Sanctuary (30 minus received)
+  if (isBlocked === true) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: EARTH_COLORS.background }}>
+        <View
+          style={{
+            flex: 1,
+            paddingHorizontal: 24,
+            paddingTop: 48,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <AppText
+            font="cormorant-regular"
+            size="2xl"
+            style={{
+              color: EARTH_COLORS.text,
+              textAlign: "center",
+              letterSpacing: 1.2,
+              marginBottom: 24,
+            }}
+          >
+            Social Sanctuary
+          </AppText>
+          <AppText
+            font="instrument-regular"
+            size="base"
+            style={{
+              color: EARTH_COLORS.textSecondary,
+              textAlign: "center",
+              lineHeight: 24,
+              marginBottom: 16,
+            }}
+          >
+            Social Sanctuary is monitored by the community itself. The collective decides the space.
+          </AppText>
+          <AppText
+            font="instrument-regular"
+            size="base"
+            style={{
+              color: EARTH_COLORS.textSecondary,
+              textAlign: "center",
+              lineHeight: 24,
+              marginBottom: 24,
+            }}
+          >
+            Don&apos;t let your head worry about it at all—you&apos;re in a healing space. Embrace this moment and get back into the course. We all walk through this together.
+          </AppText>
+          <Pressable
+            onPress={() =>
+              Linking.openURL(
+                "mailto:support@soulschool.app?subject=Social Sanctuary - I feel this was a mistake",
+              )
+            }
+            style={{
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              borderRadius: 12,
+              backgroundColor: "rgba(135, 174, 115, 0.25)",
+              borderWidth: 1,
+              borderColor: "rgba(135, 174, 115, 0.5)",
+            }}
+          >
+            <AppText font="instrument-medium" size="base" style={{ color: EARTH_COLORS.accentLight }}>
+              If you feel this was a mistake, email us
+            </AppText>
+          </Pressable>
+          <Pressable
+            onPress={() => router.back()}
+            style={{ marginTop: 32, padding: 12 }}
+          >
+            <AppText font="instrument-regular" size="sm" style={{ color: EARTH_COLORS.textSecondary }}>
+              Back to course
+            </AppText>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    )
   }
-  const borderChakraColor =
-    selectedDay === "global" ? ALL_FRAME : CHAKRA_COLORS[selectedDay]
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: EARTH_COLORS.background }}>
@@ -1175,25 +1644,26 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
               />
               <View style={{ alignItems: "center" }}>
                 <AppText
-                  font="cormorant-italic"
+                  font="cormorant-regular"
+                  size="2xl"
                   style={{
+                    fontFamily: "CormorantGaramond",
                     color: EARTH_COLORS.text,
-                    fontSize: 24,
                     textAlign: "center",
-                    letterSpacing: 0.5,
+                    letterSpacing: 1.2,
                   }}
                 >
                   Social Sanctuary
                 </AppText>
                 {selectedDay !== "global" && (
                   <AppText
-                    font="instrument-regular"
+                    font="instrument-medium"
+                    size="sm"
                     style={{
                       color: CHAKRA_COLORS[selectedDay].text,
-                      fontSize: 14,
                       textAlign: "center",
                       marginTop: 2,
-                      opacity: 0.8,
+                      opacity: 0.9,
                     }}
                   >
                     {getChakraName(selectedDay)} Chakra
@@ -1201,7 +1671,25 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 )}
               </View>
             </View>
-            {/* Share App Button - Only show if enabled */}
+            {/* Refresh feed - earth icon spins while refreshing */}
+            <Pressable
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Light)
+                onRefresh()
+              }}
+              style={{ padding: 6, marginRight: 4 }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Refresh feed"
+              accessibilityHint="Pull down or tap to refresh sanctuary feed"
+            >
+              <Animated.View style={refreshIconAnimatedStyle}>
+                <Ionicons
+                  name="earth"
+                  size={22}
+                  color={refreshing ? "#06B6D4" : EARTH_COLORS.textSecondary}
+                />
+              </Animated.View>
+            </Pressable>
             {ENABLE_QR_CODE_SHARING && (
               <Pressable
                 onPress={() => {
@@ -1324,6 +1812,13 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 12, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={EARTH_COLORS.accent}
+            />
+          }
         >
           {isLoading ? (
             <View
@@ -1361,8 +1856,13 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
             </View>
           ) : (
             <View>
-              {comments.map((comment) => (
-                <CommentItem key={comment.id} comment={comment} />
+              {comments.map((comment, index) => (
+                <Animated.View
+                  key={comment.id}
+                  entering={FadeIn.delay(Math.min(index * 80, 400)).duration(350)}
+                >
+                  <CommentItem comment={comment} />
+                </Animated.View>
               ))}
             </View>
           )}
@@ -1421,7 +1921,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 }
               }}
               placeholder="Share your reflection..."
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              placeholderTextColor="rgba(255, 255, 255, 0.45)"
               multiline
               maxLength={500}
               spellCheck={false}
@@ -1433,7 +1933,9 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 padding: 14,
                 paddingHorizontal: 16,
                 color: EARTH_COLORS.text,
-                fontSize: 15,
+                fontSize: 17,
+                lineHeight: 26,
+                fontFamily: "InstrumentSansRegular",
                 minHeight: 50,
                 maxHeight: 120,
                 borderWidth: 1,
@@ -1486,15 +1988,117 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
         </View>
       </KeyboardAvoidingView>
 
-      {/* Reflection Diary Modal */}
-      {selectedReflection && (
-        <ReflectionDiaryModal
-          bottomSheetRef={reflectionDiaryRef}
-          reflectionId={selectedReflection.id || ""}
-          chakraDay={selectedReflection.chakraDay}
-          chakraName={CHAKRA_NAMES[selectedReflection.chakraDay]}
-        />
-      )}
+      {/* Self-governance: "little shepherd" modal — show on first 3 minus clicks */}
+      <Modal
+        visible={!!shepherdModalReflectionId}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShepherdModalReflectionId(null)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+          }}
+          onPress={() => setShepherdModalReflectionId(null)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: EARTH_COLORS.card,
+              borderRadius: 20,
+              padding: 24,
+              borderWidth: 1,
+              borderColor: EARTH_COLORS.cardBorder,
+              maxWidth: 320,
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <AppText
+              font="instrument-regular"
+              size="base"
+              style={{
+                color: EARTH_COLORS.text,
+                textAlign: "center",
+                lineHeight: 24,
+                marginBottom: 24,
+              }}
+            >
+              Should we clean this from our community space, little shepherd?
+            </AppText>
+            <View style={{ flexDirection: "row", gap: 12, justifyContent: "center" }}>
+              <Pressable
+                onPress={async () => {
+                  const id = shepherdModalReflectionId
+                  setShepherdModalReflectionId(null)
+                  if (!id) return
+                  try {
+                    const userId = await getUserId()
+                    await addHiddenReflection(userId, id)
+                    await incrementMinusPopupShown(userId)
+                    setComments((prev) => prev.filter((c) => c.id !== id))
+                    setSanctuaryUserData((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            minusPopupShownCount: Math.min(3, prev.minusPopupShownCount + 1),
+                            hiddenReflectionIds: [...(prev.hiddenReflectionIds || []), id],
+                          }
+                        : prev,
+                    )
+                  } catch (e) {
+                    if (__DEV__) console.warn("Shepherd modal Yes error:", e)
+                  }
+                  addHapticFeedback(HapticStrength.Light)
+                }}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 20,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(135, 174, 115, 0.25)",
+                  borderWidth: 1,
+                  borderColor: "rgba(135, 174, 115, 0.5)",
+                }}
+              >
+                <AppText font="instrument-medium" size="base" style={{ color: EARTH_COLORS.accentLight }}>
+                  Yes
+                </AppText>
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  setShepherdModalReflectionId(null)
+                  try {
+                    const userId = await getUserId()
+                    await incrementMinusPopupShown(userId)
+                    setSanctuaryUserData((prev) =>
+                      prev
+                        ? { ...prev, minusPopupShownCount: Math.min(3, prev.minusPopupShownCount + 1) }
+                        : prev,
+                    )
+                  } catch (e) {
+                    if (__DEV__) console.warn("Shepherd modal No error:", e)
+                  }
+                  addHapticFeedback(HapticStrength.Light)
+                }}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 20,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.08)",
+                  borderWidth: 1,
+                  borderColor: EARTH_COLORS.cardBorder,
+                }}
+              >
+                <AppText font="instrument-regular" size="base" style={{ color: EARTH_COLORS.text }}>
+                  No
+                </AppText>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Share App Modal */}
       {ENABLE_QR_CODE_SHARING && (
@@ -1503,6 +2107,14 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
           onClose={() => setShowShareModal(false)}
         />
       )}
+      <ProfilePreviewModal
+        visible={!!profilePreview}
+        onClose={() => setProfilePreview(null)}
+        userId={profilePreview?.userId ?? ""}
+        displayName={profilePreview?.displayName}
+        avatarUrl={profilePreview?.avatarUrl}
+        location={profilePreview?.location}
+      />
     </SafeAreaView>
   )
 }

@@ -5,9 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { ActionBarAnimated } from "@/components/ActionBarAnimated"
 import Animated, { useAnimatedRef } from "react-native-reanimated"
 import { useRouter } from "expo-router"
-import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { useShallow } from "zustand/react/shallow"
-import { FLOATING_NAV_SCROLL_BOTTOM_PADDING } from "@/constants/layout"
+import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 
 const Chakras101 = () => {
   const { width } = useWindowDimensions()
@@ -15,32 +13,15 @@ const Chakras101 = () => {
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
   const router = useRouter()
 
-  // Check if we're in a trial (pre-paywall) context - if so, back should go to waiting room
-  const { hasLifetimeAccess, courseStartDate, journeyStarted } =
-    useChakraJourneyStore(
-      useShallow((state) => ({
-        hasLifetimeAccess: state.hasLifetimeAccess,
-        courseStartDate: state.courseStartDate,
-        journeyStarted: state.journeyStarted,
-      })),
-    )
-
-  // If in trial mode with course start date but journey not started, navigate back to waiting room
-  // CRITICAL: Must NOT go back to WelcomeScreen (Screen 2) - must go to Waiting Room (Screen 4)
+  // Always use router.back() to return to the previous screen.
+  // From pill (ChakraTemplate): back → chakra day page. From home/waiting: back → ChakraHome.
+  // Replace was wrong UX: it always sent trial users to homepage, even when they came from a chakra page.
   const handleBack = () => {
-    // If we're in trial mode with a course start date but journey hasn't started,
-    // we're definitely in the waiting room context - go back to ChakraHome
-    // ChakraHome will automatically show WaitingScreen if conditions are met
-    if (!hasLifetimeAccess && courseStartDate && !journeyStarted) {
-      // We're in waiting room - go back to ChakraHome which shows WaitingScreen
-      router.replace("/(chakras)/ChakraHome")
-    } else if (!hasLifetimeAccess && courseStartDate) {
-      // We have a course start date but journey has started - still go to ChakraHome
-      // This covers the case where they might have accessed Chakras101 from waiting room
-      router.replace("/(chakras)/ChakraHome")
-    } else {
-      // For lifetime users or other cases, use normal back navigation
+    if (router.canGoBack()) {
       router.back()
+    } else {
+      // Fallback when no history (e.g. deep link)
+      router.replace("/(chakras)/ChakraHome")
     }
   }
 
@@ -60,7 +41,7 @@ const Chakras101 = () => {
         contentContainerStyle={{
           marginTop: top * 2.2,
           paddingHorizontal: 16,
-          paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING,
+          paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
         }}
       >
         {/* ImageBackground and other content */}
@@ -83,12 +64,22 @@ const Chakras101 = () => {
             <Image
               source={require("@/assets/images/7chakras.png")}
               resizeMode="contain"
-              style={{ alignSelf: "center", width: 128, height: 128, marginTop: 32 }}
+              style={{
+                alignSelf: "center",
+                width: 128,
+                height: 128,
+                marginTop: 32,
+              }}
             />
             <AppText
               font="instrument-italic"
               size="sm"
-              style={{ textAlign: "center", marginHorizontal: 16, marginTop: 24, lineHeight: 22 }}
+              style={{
+                textAlign: "center",
+                marginHorizontal: 16,
+                marginTop: 24,
+                lineHeight: 22,
+              }}
             >
               "The whispers of your soul echo in the chambers of your chakras;
               listen deeply, and find the healing you have always carried
@@ -104,7 +95,12 @@ const Chakras101 = () => {
             <AppText
               font="instrument-semibold-italic"
               size="sm"
-              style={{ textAlign: "justify", marginHorizontal: 16, marginTop: 16, lineHeight: 22 }}
+              style={{
+                textAlign: "justify",
+                marginHorizontal: 16,
+                marginTop: 16,
+                lineHeight: 22,
+              }}
             >
               These swirling vortexes of energy, mapped along your spine,
               correlate to specific organs, emotions, and even stages of
@@ -113,7 +109,12 @@ const Chakras101 = () => {
             <AppText
               font="instrument-regular"
               size="sm"
-              style={{ textAlign: "justify", marginHorizontal: 16, marginTop: 16, lineHeight: 24 }}
+              style={{
+                textAlign: "justify",
+                marginHorizontal: 16,
+                marginTop: 16,
+                lineHeight: 24,
+              }}
             >
               {"  "}Chakras are energy centers within your subtle body,
               understood as spinning wheels of light. They regulate the flow of
@@ -133,7 +134,12 @@ const Chakras101 = () => {
             <AppText
               font="instrument-regular"
               size="sm"
-              style={{ marginHorizontal: 16, marginTop: 16, textAlign: "justify", lineHeight: 24 }}
+              style={{
+                marginHorizontal: 16,
+                marginTop: 16,
+                textAlign: "justify",
+                lineHeight: 24,
+              }}
             >
               A wonderful system to integrate the 7 chakras into your life is to
               fold them into the 7 days of the week. From there you can start

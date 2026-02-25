@@ -41,6 +41,7 @@ npx expo start --web
 ### Step 5: Move Screenshots
 
 Move all downloaded PNGs to:
+
 ```
 assets/dev-gallery/snapshots/
 ```
@@ -68,6 +69,7 @@ npx expo start --web
 ### Step 3: Manual Screenshot
 
 For each screen:
+
 1. Wait for the screen to render (3 seconds)
 2. Open DevTools (F12 or Cmd+Option+I)
 3. Press Cmd+Shift+P (Mac) or Ctrl+Shift+P (Windows)
@@ -77,11 +79,13 @@ For each screen:
 ### Step 4: Save to Snapshots
 
 Save all screenshots to:
+
 ```
 assets/dev-gallery/snapshots/
 ```
 
 With exact filenames from gallery-config.ts:
+
 - `trial1-root-day1.png`
 - `trial1-sacral-day2.png`
 - ... (all 20 screens)
@@ -91,6 +95,7 @@ With exact filenames from gallery-config.ts:
 ## Expected Filenames (20 Total)
 
 ### Trial 1 (7 screens):
+
 - `trial1-root-day1.png`
 - `trial1-sacral-day2.png`
 - `trial1-solar-day3.png`
@@ -100,6 +105,7 @@ With exact filenames from gallery-config.ts:
 - `trial1-crown-day7.png`
 
 ### Trial 2 (7 screens):
+
 - `trial2-root-day1.png`
 - `trial2-sacral-day2.png`
 - `trial2-solar-day3.png`
@@ -109,12 +115,14 @@ With exact filenames from gallery-config.ts:
 - `trial2-crown-day7.png`
 
 ### Thresholds (4 screens):
+
 - `threshold-welcome.png`
 - `threshold-waiting.png`
 - `threshold-goodbye.png`
 - `threshold-commitment-gate.png`
 
 ### Sanctuary (2 screens):
+
 - `sanctuary-chakra-hub.png`
 - `sanctuary-community.png`
 
@@ -132,15 +140,18 @@ With exact filenames from gallery-config.ts:
 ## Troubleshooting
 
 **Issue: Screenshots show navigation errors**
+
 - This is expected during capture
 - The screenshots will still capture the visual content
 - Navigation errors don't affect the image capture
 
 **Issue: html2canvas not working**
+
 - Use Method 2 (Manual Capture)
 - Or check browser console for errors
 
 **Issue: Screenshots not displaying in gallery**
+
 - Verify filenames match exactly (case-sensitive)
 - Check that files are in `assets/dev-gallery/snapshots/`
 - Refresh the web preview

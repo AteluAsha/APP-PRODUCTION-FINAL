@@ -5,7 +5,7 @@
  * Paths are case-sensitive. In Firebase Console → Storage, ensure folder and
  * filenames match exactly:
  *   Folder: crystal_Bowl_Meditation_Audio
- *   Files:  Day1_396hz_CrystalBowl_FrequencyHealing.aac, Day2_417hz_1Hour_CrystalBowl_SoundBath.aac, Day3_528hz_CrystalBowl_1Hour_SoundBath.aac, etc.
+ *   Files:  Day1_396hz_CrystalBowlSoundBath_Hero2.mov, Day2_417hz_1Hour_CrystalBowl_SoundBath.aac, Day3_528hz_CrystalBowl_1Hour_SoundBath.aac, etc.
  */
 
 import { useState, useEffect } from "react"
@@ -16,13 +16,14 @@ import { checkRateLimit, waitForRateLimit } from "@/src/utils/rateLimiter"
 import { getCachedAudioUrl, setCachedAudioUrl } from "@/src/utils/audioCache"
 import { retryWithBackoff, isRetryableError } from "@/src/utils/audioRetry"
 import { getLocalAudioUri } from "@/src/utils/audioDownload"
+import { FIREBASE_CRYSTAL_BOWL_FOLDER } from "@/constants/firebaseStoragePaths"
 
 /** Firebase Storage folder (case-sensitive). Must match Storage bucket exactly. */
-export const CRYSTAL_BOWL_STORAGE_FOLDER = "crystal_Bowl_Meditation_Audio"
+export const CRYSTAL_BOWL_STORAGE_FOLDER = FIREBASE_CRYSTAL_BOWL_FOLDER
 
-/** Chakra → crystal bowl filename (1hr AAC). Must match files in Storage. */
+/** Chakra → crystal bowl filename (1hr). Only these 7 hero files; must match Storage exactly. */
 const CHAKRA_TO_CRYSTAL_BOWL_FILE: Record<Chakra, string> = {
-  [Chakra.ROOT]: "Day1_396hz_CrystalBowl_FrequencyHealing.aac",
+  [Chakra.ROOT]: "Day1_396hz_CrystalBowlSoundBath_Hero2.mov",
   [Chakra.SACRAL]: "Day2_417hz_1Hour_CrystalBowl_SoundBath.aac",
   [Chakra.SOLAR_PLEXUS]: "Day3_528hz_CrystalBowl_1Hour_SoundBath.aac",
   [Chakra.HEART]: "Day4_639hz_CrystalBowl_Meditation_FrequencyHealing.aac",

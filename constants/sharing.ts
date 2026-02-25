@@ -20,5 +20,12 @@ export const APP_STORE_URLS = {
 // Referral/invite link (placeholder - replace when referral system is ready)
 export const REFERRAL_BASE_URL = "https://soulschool.app/invite"
 
+// Project Starseed – mother ship and contribute (scholarships)
+export const PROJECT_STARSEED_URL = "https://projectstarseed.org/"
+export const CONTRIBUTE_URL = "https://projectstarseed.org/contribute"
+
+// PENDING: Replace with App Store review URL when app is published
+export const REVIEW_URL = "https://www.soulschool.app/community"
+
 // Share message template
 export const SHARE_MESSAGE = `Join me on Soul School - A 7-day journey through the chakras for healing and awakening. ✨`

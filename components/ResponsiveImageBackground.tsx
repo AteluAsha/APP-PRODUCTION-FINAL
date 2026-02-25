@@ -1,5 +1,10 @@
 import React, { useState } from "react"
-import { ImageBackground, ImageSourcePropType, StyleProp, ViewStyle } from "react-native"
+import {
+  ImageBackground,
+  ImageSourcePropType,
+  StyleProp,
+  ViewStyle,
+} from "react-native"
 
 interface ResponsiveImageBackgroundProps {
   children: React.ReactNode

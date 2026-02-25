@@ -61,40 +61,52 @@ export function CommunicationReminderModal({
           >
             <View style={styles.header}>
               <View style={styles.iconWrap}>
-                <Ionicons name="heart" size={22} color="rgba(135, 174, 115, 0.9)" />
+                <Ionicons
+                  name="heart"
+                  size={22}
+                  color="rgba(135, 174, 115, 0.9)"
+                />
               </View>
-              <AppText font="instrument-semibold" size="lg" style={styles.title}>
+              <AppText
+                font="instrument-semibold"
+                size="lg"
+                style={styles.title}
+              >
                 Gentle reminders
               </AppText>
             </View>
 
-            <AppText
-              font="instrument-regular"
-              size="sm"
-              style={styles.body}
-            >
+            <AppText font="instrument-regular" size="sm" style={styles.body}>
               We will remind you somatically as we get closer to the opening. We
               don't send notifications—we communicate, and that is all.
             </AppText>
 
-            <Pressable onPress={handleAllow} style={({ pressed }) => [pressed && { opacity: 0.9 }]}>
+            <Pressable
+              onPress={handleAllow}
+              style={({ pressed }) => [pressed && { opacity: 0.9 }]}
+            >
               <LinearGradient
-                colors={[
-                  "rgba(135, 174, 115, 0.35)",
-                  "rgba(6, 182, 212, 0.2)",
-                ]}
+                colors={["rgba(135, 174, 115, 0.35)", "rgba(6, 182, 212, 0.2)"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.allowButton}
               >
-                <AppText font="instrument-semibold" size="sm" style={styles.allowButtonText}>
+                <AppText
+                  font="instrument-semibold"
+                  size="sm"
+                  style={styles.allowButtonText}
+                >
                   Allow communication
                 </AppText>
               </LinearGradient>
             </Pressable>
 
             <Pressable onPress={handleNotNow} style={styles.notNowWrap}>
-              <AppText font="instrument-regular" size="sm" style={styles.notNowText}>
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={styles.notNowText}
+              >
                 Not now
               </AppText>
             </Pressable>

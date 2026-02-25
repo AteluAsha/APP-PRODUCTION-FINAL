@@ -1,10 +1,22 @@
 import React, { useState, useEffect, useCallback } from "react"
-import { View, Image, useWindowDimensions, Pressable } from "react-native"
+import {
+  View,
+  Image,
+  useWindowDimensions,
+  Pressable,
+  ImageBackground,
+  StyleSheet,
+} from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import Animated, { useAnimatedRef } from "react-native-reanimated"
+import Animated, {
+  useAnimatedRef,
+  FadeIn,
+  Easing,
+} from "react-native-reanimated"
 import { ActionBarAnimated } from "@/components/ActionBarAnimated"
 import { HeaderSection } from "@/components/chakras/HeaderSection"
 import { chakraContent } from "@/constants/chakras/content"
+import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { PillBottomSheet } from "@/components/chakras/PillBottomSheet"
 import { PillSection } from "@/components/chakras/PillSection"
 import { Divider } from "@/components/chakras/Divider"
@@ -17,6 +29,7 @@ import { HeaderBackground } from "@/components/chakras/HeaderBackground"
 import Part2Section from "@/components/chakras/Part2Section"
 import ElementsSection from "@/components/chakras/ElementsSection"
 import Part3Section from "@/components/chakras/Part3Section"
+import SectionHeader from "@/components/chakras/SectionHeader"
 import ResponsiveImage from "@/components/ResponsiveImage"
 import { AppText } from "@/components/AppText"
 import { Chakra } from "@/types/chakras/Chakra"
@@ -24,6 +37,7 @@ import { useRouter } from "expo-router"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
+import GoodbyeModal from "@/components/chakras/GoodbyeModal"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useEmbodimentAudio } from "@/hooks/useEmbodimentAudio"
 import { useTuningForkAudio } from "@/hooks/useTuningForkAudio"
@@ -31,27 +45,43 @@ import { DropInButton } from "@/components/chakras/DropInButton"
 // Social Sanctuary and Anua access handled globally by FloatingNavButtons
 import { getChakraIndex } from "@/utils/chakraMapping"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
+import { getIntegrationMomentContent } from "@/constants/chakras/integrationMomentContent"
+import { IntegrationMomentModal } from "@/components/chakras/IntegrationMomentModal"
+
+const INTEGRATION_BUTTON_BG = require("@/assets/images/DailyIntegration_BGB_utton_Image.png")
 import { usePillBottomSheetStore } from "@/hooks/usePillBottomSheetStore"
 import { LinearGradient } from "expo-linear-gradient"
-import { Ionicons } from "@expo/vector-icons"
 
 const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false)
   const [currentPill, setCurrentPill] = useState<PillType | null>(null)
+  const [integrationModalVisible, setIntegrationModalVisible] = useState(false)
   // Note: Social Sanctuary and Anua access handled globally by FloatingNavButtons
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
   const router = useRouter()
 
-  const setCompletedChakra = useCompletedChakraStore(
-    (state) => state.setCompletedChakra,
+  const { setCompletedChakra, clearCompletedChakra } = useCompletedChakraStore(
+    useShallow((state) => ({
+      setCompletedChakra: state.setCompletedChakra,
+      clearCompletedChakra: state.clearCompletedChakra,
+    })),
   )
 
-  const { markChakraCompleted, hasLifetimeAccess } = useChakraJourneyStore(
+  const {
+    markChakraCompleted,
+    hasLifetimeAccess,
+    lifetimeChosenTimegateJourney,
+    hasCompletedChakra,
+  } = useChakraJourneyStore(
     useShallow((state) => ({
       markChakraCompleted: state.markChakraCompleted,
       hasLifetimeAccess: state.hasLifetimeAccess,
+      lifetimeChosenTimegateJourney: state.lifetimeChosenTimegateJourney,
+      hasCompletedChakra: state.hasCompletedChakra,
     })),
   )
+
+  const [showGoodbyeModal, setShowGoodbyeModal] = useState(false)
 
   const getChakraName = (chakraName: Chakra): string => {
     switch (chakraName) {
@@ -86,14 +116,21 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
       const chakraIndex = getChakraIndex(chakra)
       markChakraCompleted(chakraIndex)
       setCompletedChakra(chakra)
-      // Replace to correct home so GoodbyeModal shows (ChakraHub for lifetime, ChakraHome for trial)
-      if (hasLifetimeAccess) {
-        router.replace("/(chakras)/ChakraHub")
-      } else {
-        router.replace("/(chakras)/ChakraHome")
-      }
+      setShowGoodbyeModal(true)
     } else {
       router.back()
+    }
+  }
+
+  const handleGoodbyeNavigateHome = () => {
+    clearCompletedChakra()
+    setShowGoodbyeModal(false)
+    if (hasLifetimeAccess && lifetimeChosenTimegateJourney) {
+      router.replace("/(chakras)/ChakraHome")
+    } else if (hasLifetimeAccess) {
+      router.replace("/(chakras)/ChakraHub")
+    } else {
+      router.replace("/(chakras)/ChakraHome")
     }
   }
 
@@ -176,10 +213,11 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   }, [setIsBottomSheetVisible, setCurrentPill, setIsPillBottomSheetVisible])
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
+    <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
       <ActionBarAnimated
         scrollViewRef={scrollRef}
         headerImageSource={content.chakraHeaderImage}
+        showBackButton={false}
       />
 
       <ParallaxScrollView
@@ -192,157 +230,274 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
         keyboardShouldPersistTaps="handled"
         headerHeight={screenWidth}
         headerImage={
-          <HeaderBackground
-            backgroundSource={content.header.headerBackground}
-            chakraImageSource={content.chakraHeaderImage}
-            chakraImageSizePx={content.header.chakraImageSizePx}
-            height={screenWidth}
-          />
+          <View style={{ width: "100%", height: screenWidth }}>
+            <HeaderBackground
+              backgroundSource={content.header.headerBackground}
+              chakraImageSource={content.chakraHeaderImage}
+              chakraImageSizePx={content.header.chakraImageSizePx}
+              headerHeight={screenWidth}
+              chakra={chakra}
+            />
+            <View
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                justifyContent: "flex-end",
+              }}
+              pointerEvents="box-none"
+            >
+              <HeaderSection
+                headerHeight={screenWidth}
+                textLine1={content.header.textLine1}
+                textLine2={content.header.textLine2}
+                textLine3={content.header.textLine3}
+              />
+            </View>
+          </View>
         }
       >
-        <View style={{ paddingBottom: 80 }}>
-          <HeaderSection
-            headerHeight={screenWidth}
-            textLine1={content.header.textLine1}
-            textLine2={content.header.textLine2}
-            textLine3={content.header.textLine3}
-            rightContent={
-              hasLifetimeAccess ? (
+        <View style={{ paddingBottom: 80 + SCROLL_BREATHING_BOTTOM_PADDING, paddingTop: 8 }}>
+          <Animated.View
+            style={{ backgroundColor: "#000000" }}
+            entering={FadeIn.duration(520)
+              .delay(80)
+              .easing(Easing.out(Easing.ease))}
+          >
+            {/* Master meditation: baked layout so page and buttons appear in one paint (no "Preparing..." swap). */}
+            <Animated.View
+              entering={FadeIn.duration(460)
+                .delay(40)
+                .easing(Easing.out(Easing.ease))}
+              style={{ marginBottom: 8 }}
+            >
+              {embodimentAudio.error ? (
+                <View
+                  style={{
+                    marginHorizontal: 24,
+                    marginBottom: 12,
+                    paddingVertical: 10,
+                    paddingHorizontal: 16,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: "rgba(168,85,247,0.4)",
+                    backgroundColor: "rgba(168,85,247,0.08)",
+                  }}
+                >
+                  <AppText
+                    font="instrument-regular"
+                    size="sm"
+                    style={{
+                      color: "rgba(216,180,254,0.9)",
+                      textAlign: "center",
+                    }}
+                  >
+                    The audio is taking a moment to arrive. Please try again, or
+                    continue your journey.
+                  </AppText>
+                </View>
+              ) : null}
+              <View style={{ alignItems: "center", marginBottom: 12 }}>
                 <DropInButton
                   audioUri={
                     tuningForkAudio.localUri ?? tuningForkAudio.url ?? null
                   }
                   disabled={tuningForkAudio.isLoading}
+                  compact
                 />
-              ) : undefined
-            }
-          />
-          <View style={{ backgroundColor: "#000000" }}>
-            {/* Embodiment Meditation Audio (audioIntro) - Using Firebase Storage URLs */}
-            {embodimentAudio.isLoading ? (
-              <View
-                style={{
-                  width: "83.33%",
-                  alignSelf: "center",
-                  marginTop: 24,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.75)",
-                  borderRadius: 12,
-                  padding: 16,
-                  alignItems: "center",
-                }}
-              >
-                <AppText
-                  font="instrument-regular"
-                  size="base"
-                  style={{ color: "rgba(255,255,255,0.8)", fontStyle: "italic" }}
-                >
-                  Preparing your meditation space...
-                </AppText>
               </View>
-            ) : embodimentAudio.error ? (
-              <View
-                style={{
-                  width: "83.33%",
-                  alignSelf: "center",
-                  marginTop: 24,
-                  borderWidth: 1,
-                  borderColor: "rgba(168,85,247,0.5)",
-                  borderRadius: 12,
-                  padding: 16,
-                  alignItems: "center",
-                }}
-              >
-                <AppText
-                  font="instrument-regular"
-                  size="base"
-                  style={{ color: "rgba(216,180,254,0.8)", fontStyle: "italic" }}
-                >
-                  The audio is taking a moment to arrive. Please try again, or
-                  continue your journey.
-                </AppText>
-              </View>
-            ) : chakra === Chakra.THIRD_EYE &&
-              (embodimentAudio.localUriPartOne || embodimentAudio.partOne) &&
-              (embodimentAudio.localUriPartTwo || embodimentAudio.partTwo) ? (
-              // Day 6 (Third Eye) - Two buttons for Part One and Part Two
-              <>
+              {chakra === Chakra.THIRD_EYE ? (
+                <>
+                  <AudioRow
+                    title="Part One: Ajna Embodiment"
+                    author="Mother JJ"
+                    durationMs={1750000}
+                    audioSource={{
+                      uri:
+                        embodimentAudio.localUriPartOne ||
+                        embodimentAudio.partOne ||
+                        "",
+                    }}
+                    authorColor="#FFFFFF"
+                    isIntroAudio={true}
+                    chakraColor={getChakraColor(chakraDay)}
+                    disabled={
+                      embodimentAudio.isLoading || !!embodimentAudio.error
+                    }
+                  />
+                  <AudioRow
+                    title="Part Two: Somatic Healing"
+                    author="Mother JJ"
+                    durationMs={1257000}
+                    audioSource={{
+                      uri:
+                        embodimentAudio.localUriPartTwo ||
+                        embodimentAudio.partTwo ||
+                        "",
+                    }}
+                    authorColor="#FFFFFF"
+                    isIntroAudio={true}
+                    chakraColor={getChakraColor(chakraDay)}
+                    disabled={
+                      embodimentAudio.isLoading || !!embodimentAudio.error
+                    }
+                  />
+                </>
+              ) : (
                 <AudioRow
-                  title="Part One: Ajna Embodiment"
+                  title={content.audioIntro.title}
                   author="Mother JJ"
-                  durationMs={1750000} // 29:10 - Part One
+                  durationMs={
+                    chakra === Chakra.CROWN
+                      ? 2684000
+                      : content.audioIntro.durationMs
+                  }
                   audioSource={{
                     uri:
-                      embodimentAudio.localUriPartOne ||
-                      embodimentAudio.partOne ||
+                      embodimentAudio.localUri ||
+                      embodimentAudio.single ||
                       "",
                   }}
                   authorColor="#FFFFFF"
                   isIntroAudio={true}
                   chakraColor={getChakraColor(chakraDay)}
+                  disabled={
+                    embodimentAudio.isLoading || !!embodimentAudio.error
+                  }
                 />
-                <AudioRow
-                  title="Part Two: Somatic Healing"
-                  author="Mother JJ"
-                  durationMs={1257000} // 20:57 - Part Two
-                  audioSource={{
-                    uri:
-                      embodimentAudio.localUriPartTwo ||
-                      embodimentAudio.partTwo ||
-                      "",
-                  }}
-                  authorColor="#FFFFFF"
-                  isIntroAudio={true}
-                  chakraColor={getChakraColor(chakraDay)}
-                />
-              </>
-            ) : (embodimentAudio.localUri || embodimentAudio.single) ? (
-              // Days 1-5, 7 - Single embodiment (use local when cached)
-              <AudioRow
-                title={content.audioIntro.title}
-                author="Mother JJ"
-                durationMs={
-                  chakra === Chakra.CROWN
-                    ? 2684000
-                    : content.audioIntro.durationMs
-                }
-                audioSource={{
-                  uri:
-                    embodimentAudio.localUri ||
-                    embodimentAudio.single ||
-                    "",
-                }}
-                authorColor="#FFFFFF"
-                isIntroAudio={true} // Mark as intro audio for Intro Ritual
-                chakraColor={getChakraColor(chakraDay)}
-              />
-            ) : null}
-            <View style={{ width: "100%" }}>
+              )}
+            </Animated.View>
+            <Animated.View
+              entering={FadeIn.duration(440)
+                .delay(120)
+                .easing(Easing.out(Easing.ease))}
+            >
               <PillSection chakra={chakra} onPress={handlePillPress} />
-            </View>
-            <Divider style={{ marginHorizontal: 32, marginBottom: 16 }} />
-            <TextSection title="OVERVIEW" content={content.overview} />
-            <TextSection title="SANSKRIT" content={content.sanskrit} />
-            <AffirmationSection affirmationText={content.affirmationText} />
-            <ResponsiveImage
-              source={content.locationImage}
-              width={screenWidth}
-              style={{ alignSelf: "center", marginTop: 40 }}
-            />
-            <Part2Section chakra={chakra} />
-            <ElementsSection chakra={chakra} />
-            <Part3Section chakra={chakra} />
-          </View>
-          <AudioRow
-            title={content.audioOutro.title}
-            author={content.audioOutro.author}
-            durationMs={content.audioOutro.durationMs}
-            audioSource={content.audioOutro.source}
-            authorColor={"#C16061"}
-            chakraColor={getChakraColor(chakraDay)}
+            </Animated.View>
+            <Animated.View
+              entering={FadeIn.duration(420)
+                .delay(180)
+                .easing(Easing.out(Easing.ease))}
+            >
+              <Divider style={{ marginHorizontal: 32, marginBottom: 16 }} />
+              <TextSection title="OVERVIEW" content={content.overview} />
+              <TextSection title="SANSKRIT" content={content.sanskrit} />
+              <AffirmationSection affirmationText={content.affirmationText} />
+            </Animated.View>
+            <Animated.View
+              entering={FadeIn.duration(440)
+                .delay(220)
+                .easing(Easing.out(Easing.ease))}
+            >
+              <ResponsiveImage
+                source={content.locationImage}
+                width={screenWidth}
+                style={{ alignSelf: "center", marginTop: 40 }}
+              />
+              <Part2Section chakra={chakra} />
+              <ElementsSection chakra={chakra} />
+              <Part3Section chakra={chakra} />
+            </Animated.View>
+          </Animated.View>
+          <Animated.View
+            entering={FadeIn.duration(420)
+              .delay(280)
+              .easing(Easing.out(Easing.ease))}
+          >
+          <Pressable
+            onPress={() => {
+              setIntegrationModalVisible(true)
+              addHapticFeedback(HapticStrength.Light)
+            }}
+            style={{
+              width: "83.33%",
+              alignSelf: "center",
+              marginTop: 6,
+              marginBottom: 28,
+              borderRadius: 18,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.35)",
+            }}
+          >
+            <ImageBackground
+              source={INTEGRATION_BUTTON_BG}
+              resizeMode="cover"
+              style={{
+                borderRadius: 18,
+                paddingVertical: 16,
+                paddingHorizontal: 28,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {/* Dark overlay so title and subtitle stay readable on all parts of the image */}
+              <View
+                style={{
+                  ...StyleSheet.absoluteFillObject,
+                  backgroundColor: "rgba(0,0,0,0.4)",
+                  borderRadius: 18,
+                }}
+              />
+              <AppText
+                font="cormorant-italic"
+                size="base"
+                style={{
+                  marginBottom: 4,
+                  fontSize: 20,
+                  color: "#ffffff",
+                  textAlign: "center",
+                  textShadowColor: "rgba(0,0,0,0.8)",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 3,
+                }}
+              >
+                {getIntegrationMomentContent(chakraDay)?.title ??
+                  "Bridge moment"}
+              </AppText>
+              <AppText
+                font="instrument-italic"
+                size="sm"
+                style={{
+                  color: "rgba(255,255,255,0.98)",
+                  textAlign: "center",
+                  textShadowColor: "rgba(0,0,0,0.8)",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 2,
+                }}
+              >
+                A moment of Integration
+              </AppText>
+            </ImageBackground>
+          </Pressable>
+          <IntegrationMomentModal
+            visible={integrationModalVisible}
+            onClose={() => setIntegrationModalVisible(false)}
+            dayIndex={chakraDay}
           />
-          {/* Mirror Of Embodiment Quiz Button - Earth tones, depth, gradient lighting */}
-          <View style={{ marginTop: 32, marginBottom: 24, alignItems: "center" }}>
+          </Animated.View>
+          {/* PART IV - Mirror of Embodiment: section header, divider, quiz button */}
+          <Animated.View
+            entering={FadeIn.duration(420)
+              .delay(320)
+              .easing(Easing.out(Easing.ease))}
+            style={{ marginTop: 28, marginBottom: 24, alignItems: "center" }}
+          >
+            <SectionHeader
+              subtitle="— PART IV —"
+              title="Mirror of Embodiment"
+            />
+            <View
+              style={{
+                height: 1,
+                width: 64,
+                backgroundColor: "#8E8E8E",
+                alignSelf: "center",
+                marginBottom: 24,
+              }}
+            />
             <Pressable
               onPress={() => {
                 addHapticFeedback(HapticStrength.Medium)
@@ -395,74 +550,92 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                     borderTopRightRadius: 20,
                   }}
                 />
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, zIndex: 10 }}>
-                  <Ionicons name="sparkles" size={16} color="#D4C5A9" />
-                  <AppText
-                    font="koh-santepheap"
-                    size="lg"
-                    style={{
-                      textAlign: "center",
-                      color: "#ffffff",
-                      textShadowColor: "rgba(0, 0, 0, 0.5)",
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 3,
-                    }}
-                  >
-                    Mirror Of Embodiment
-                  </AppText>
-                  <Ionicons name="sparkles" size={16} color="#D4C5A9" />
-                </View>
                 <AppText
-                  font="instrument-regular"
-                  size="xs"
+                  font="koh-santepheap"
+                  size="lg"
                   style={{
                     textAlign: "center",
-                    marginTop: 6,
-                    color: "rgba(255,255,255,0.75)",
-                    fontStyle: "italic",
-                    zIndex: 10,
-                    textShadowColor: "rgba(0, 0, 0, 0.4)",
+                    color: "#ffffff",
+                    textShadowColor: "rgba(0, 0, 0, 0.5)",
                     textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 2,
+                    textShadowRadius: 3,
+                    zIndex: 10,
                   }}
                 >
-                  Test your understanding
+                  A Test of Remembrance
                 </AppText>
               </LinearGradient>
             </Pressable>
-          </View>
-          {/* Completion Ceremony - Chakra Ball on Black Background */}
-          <View style={{ marginTop: 64, marginBottom: 32, alignItems: "center" }}>
+          </Animated.View>
+          {/* Completion Ceremony - whole section tappable; checkbox fills when completed; resets Monday midnight via week transition */}
+          <Animated.View
+            entering={FadeIn.duration(440)
+              .delay(360)
+              .easing(Easing.out(Easing.ease))}
+            style={{ marginTop: 48, marginBottom: 24, alignItems: "center" }}
+          >
             <Pressable
-              style={{ alignItems: "center" }}
               onPress={() => {
                 addHapticFeedback(HapticStrength.Medium)
                 navigateBack(true)
               }}
+              style={{ alignItems: "center" }}
+              accessibilityLabel="Mark day complete"
+              accessibilityHint="Tap to complete today's journey"
             >
-              <View style={{ alignItems: "center" }}>
+              <Image
+                source={content.goodbye.chakraImage}
+                resizeMode="contain"
+                style={{ width: 128, height: 128 }}
+              />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: 16,
+                  marginBottom: 16,
+                }}
+              >
+                <View
+                  style={{
+                    width: 22,
+                    height: 22,
+                    marginRight: 10,
+                    borderRadius: 3,
+                    borderWidth: 1.5,
+                    borderColor: "rgba(255,255,255,0.75)",
+                    backgroundColor: hasCompletedChakra(chakraDay)
+                      ? "#ffffff"
+                      : "transparent",
+                  }}
+                />
                 <AppText
                   font="koh-santepheap"
                   size="xl"
-                  style={{ textAlign: "center", marginBottom: 16, color: "#ffffff" }}
+                  style={{
+                    textAlign: "center",
+                    color: "#ffffff",
+                  }}
                 >
-                  &#9634;{"  "} {content.goodbye.content}
-                </AppText>
-                <Image
-                  source={content.goodbye.chakraImage}
-                  resizeMode="contain"
-                  style={{ width: 128, height: 128 }}
-                />
-                <AppText
-                  font="instrument-regular"
-                  size="sm"
-                  style={{ textAlign: "center", marginTop: 16, color: "rgba(255,255,255,0.7)", fontStyle: "italic" }}
-                >
-                  I have completed today's journey
+                  {content.goodbye.content}
                 </AppText>
               </View>
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{
+                  textAlign: "center",
+                  color: "rgba(255,255,255,0.7)",
+                  fontStyle: "italic",
+                  paddingVertical: 8,
+                  paddingHorizontal: 16,
+                }}
+              >
+                I have completed today's journey
+              </AppText>
             </Pressable>
-          </View>
+          </Animated.View>
         </View>
       </ParallaxScrollView>
 
@@ -474,6 +647,14 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
           chakra={chakra}
         />
       )}
+
+      <GoodbyeModal
+        isVisible={showGoodbyeModal}
+        onClose={() => setShowGoodbyeModal(false)}
+        chakraDay={chakraDay}
+        navigateToHubOnHome={!lifetimeChosenTimegateJourney}
+        onNavigateHome={handleGoodbyeNavigateHome}
+      />
 
       {/* Note: Social Sanctuary and Anua access is handled globally by FloatingNavButtons */}
     </SafeAreaView>

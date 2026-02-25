@@ -60,6 +60,8 @@ const formatDate = (dateString: string): string => {
   }
 }
 
+export type JourneyNotesTheme = "default" | "player"
+
 interface JourneyNotesViewProps {
   onNotePress?: (chakraDay: number) => void
   onOpenFullPage?: () => void
@@ -69,6 +71,92 @@ interface JourneyNotesViewProps {
   contextChakraDay?: number
   /** Callback when user taps "Send thought to Anua" on a note - dismiss sheet and open Anua */
   onSendToAnua?: (content: string) => void
+  /** When "player", uses softer transparent sand/white styling (e.g. opened from audio player). */
+  theme?: JourneyNotesTheme
+}
+
+const PLAYER_THEME = {
+  bgGradient: [
+    "rgba(30, 28, 26, 0.97)",
+    "rgba(18, 16, 14, 0.98)",
+    "rgba(0, 0, 0, 0.98)",
+  ] as const,
+  headerTextShadow: {
+    textShadowColor: "transparent",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 0,
+  },
+  hintColor: "rgba(255,255,255,0.6)",
+  inputGradient: [
+    "rgba(255, 250, 240, 0.06)",
+    "rgba(240, 235, 225, 0.04)",
+    "rgba(0, 0, 0, 0.5)",
+  ] as const,
+  inputBorder: "rgba(255, 250, 240, 0.2)",
+  inputGlow: "rgba(255, 250, 240, 0.06)",
+  placeholderColor: "rgba(255,255,255,0.4)",
+  emptyGradient: [
+    "rgba(255, 250, 240, 0.08)",
+    "rgba(240, 235, 225, 0.04)",
+    "transparent",
+  ] as const,
+  emptyIconColor: "rgba(255, 250, 240, 0.5)",
+  noteCardBg: "rgba(255, 250, 240, 0.06)",
+  noteCardBorder: "rgba(255, 250, 240, 0.15)",
+  dayHeaderColor: "rgba(255,255,255,0.9)",
+  sendActive: "rgba(255, 250, 240, 0.9)",
+  sendInactive: "rgba(255, 250, 240, 0.35)",
+  loadingIconColor: "rgba(255, 250, 240, 0.6)",
+  addButtonGradientActive: [
+    "rgba(255, 250, 240, 0.2)",
+    "rgba(240, 235, 225, 0.15)",
+  ] as const,
+  addButtonGradientInactive: [
+    "rgba(255, 250, 240, 0.08)",
+    "rgba(240, 235, 225, 0.05)",
+  ] as const,
+}
+
+const DEFAULT_THEME = {
+  bgGradient: [
+    "rgba(135, 174, 115, 0.15)",
+    "rgba(107, 142, 90, 0.1)",
+    "rgba(0, 0, 0, 0.95)",
+  ] as const,
+  headerTextShadow: {
+    textShadowColor: "rgba(135, 174, 115, 0.4)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  hintColor: "rgba(135, 174, 115, 0.85)",
+  inputGradient: [
+    "rgba(135, 174, 115, 0.12)",
+    "rgba(107, 142, 90, 0.08)",
+    "rgba(0, 0, 0, 0.4)",
+  ] as const,
+  inputBorder: "rgba(135, 174, 115, 0.3)",
+  inputGlow: "rgba(135, 174, 115, 0.1)",
+  placeholderColor: "rgba(135, 174, 115, 0.5)",
+  emptyGradient: [
+    "rgba(135, 174, 115, 0.2)",
+    "rgba(107, 142, 90, 0.1)",
+    "transparent",
+  ] as const,
+  emptyIconColor: "rgba(135, 174, 115, 0.5)",
+  noteCardBg: "rgba(135, 174, 115, 0.08)",
+  noteCardBorder: "rgba(135, 174, 115, 0.2)",
+  dayHeaderColor: "#A8C99A",
+  sendActive: "#A8C99A",
+  sendInactive: "rgba(135, 174, 115, 0.4)",
+  loadingIconColor: "rgba(135, 174, 115, 0.7)",
+  addButtonGradientActive: [
+    "rgba(135, 174, 115, 0.4)",
+    "rgba(107, 142, 90, 0.3)",
+  ] as const,
+  addButtonGradientInactive: [
+    "rgba(135, 174, 115, 0.15)",
+    "rgba(107, 142, 90, 0.1)",
+  ] as const,
 }
 
 export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
@@ -77,7 +165,9 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
   sheetOpenKey,
   contextChakraDay,
   onSendToAnua,
+  theme = "default",
 }) => {
+  const t = theme === "player" ? PLAYER_THEME : DEFAULT_THEME
   const { getAllNotes, getNotesCount, addNote } = useJourneyNotesStore()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -166,11 +256,7 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
       style={[styles.container, { paddingBottom: Math.max(insets.bottom, 20) }]}
     >
       <LinearGradient
-        colors={[
-          "rgba(135, 174, 115, 0.15)",
-          "rgba(107, 142, 90, 0.1)",
-          "rgba(0, 0, 0, 0.95)",
-        ]}
+        colors={[...t.bgGradient]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -180,11 +266,19 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
         <AppText
           font="instrument-bold"
           size="2xl"
-          style={[styles.headerText, { color: "#ffffff", marginBottom: 8 }]}
+          style={[
+            styles.headerText,
+            { color: "#ffffff", marginBottom: 8 },
+            t.headerTextShadow,
+          ]}
         >
           Notes Along the Way
         </AppText>
-        <AppText font="instrument-regular" size="sm" style={{ color: "rgba(255,255,255,0.7)" }}>
+        <AppText
+          font="instrument-regular"
+          size="sm"
+          style={{ color: "rgba(255,255,255,0.7)" }}
+        >
           {notesCount === 0
             ? "Your reflections will appear here"
             : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
@@ -196,6 +290,20 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
         onSelect={setSelectedChakraDay}
       />
 
+      <AppText
+        font="instrument-regular"
+        size="xs"
+        style={{
+          color: t.hintColor,
+          textAlign: "center",
+          marginBottom: 12,
+          paddingHorizontal: 16,
+          lineHeight: 18,
+        }}
+      >
+        All notes save to the chakra you're exploring in this moment.
+      </AppText>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -203,21 +311,22 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
       >
         <View style={styles.inputContainer}>
           <LinearGradient
-            colors={[
-              "rgba(135, 174, 115, 0.12)",
-              "rgba(107, 142, 90, 0.08)",
-              "rgba(0, 0, 0, 0.4)",
-            ]}
+            colors={[...t.inputGradient]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.inputGradient}
+            style={[styles.inputGradient, { borderColor: t.inputBorder }]}
           >
-            <View style={styles.inputGlow} />
+            <View
+              style={[
+                styles.inputGlow,
+                { backgroundColor: t.inputGlow },
+              ]}
+            />
             <TextInput
               value={noteText}
               onChangeText={handleTextChange}
               placeholder={`Share your reflections for ${displayDayName}...`}
-              placeholderTextColor="rgba(135, 174, 115, 0.5)"
+              placeholderTextColor={t.placeholderColor}
               multiline
               maxLength={1000}
               style={styles.textInput}
@@ -237,20 +346,23 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
             <LinearGradient
               colors={
                 noteText.trim() && !isAddingNote
-                  ? ["rgba(135, 174, 115, 0.4)", "rgba(107, 142, 90, 0.3)"]
-                  : ["rgba(135, 174, 115, 0.15)", "rgba(107, 142, 90, 0.1)"]
+                  ? [...t.addButtonGradientActive]
+                  : [...t.addButtonGradientInactive]
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.addButtonGradient}
+              style={[
+                styles.addButtonGradient,
+                theme === "player" && {
+                  borderColor: t.inputBorder,
+                },
+              ]}
             >
               <Ionicons
                 name="send"
                 size={20}
                 color={
-                  noteText.trim() && !isAddingNote
-                    ? "#A8C99A"
-                    : "rgba(135, 174, 115, 0.4)"
+                  noteText.trim() && !isAddingNote ? t.sendActive : t.sendInactive
                 }
               />
             </LinearGradient>
@@ -262,11 +374,15 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
             entering={FadeIn.duration(800).easing(Easing.out(Easing.ease))}
             style={[styles.loadingContainer, { minHeight: 200 }]}
           >
-            <Ionicons name="leaf" size={40} color="rgba(135, 174, 115, 0.7)" />
+            <Ionicons name="leaf" size={40} color={t.loadingIconColor} />
             <AppText
               font="instrument-regular"
               size="base"
-              style={{ color: "rgba(255,255,255,0.8)", marginTop: 16, textAlign: "center" }}
+              style={{
+                color: "rgba(255,255,255,0.8)",
+                marginTop: 16,
+                textAlign: "center",
+              }}
             >
               Gathering your reflections...
             </AppText>
@@ -274,11 +390,7 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
         ) : filteredNotes.length === 0 ? (
           <View style={styles.emptyContainer}>
             <LinearGradient
-              colors={[
-                "rgba(135, 174, 115, 0.2)",
-                "rgba(107, 142, 90, 0.1)",
-                "transparent",
-              ]}
+              colors={[...t.emptyGradient]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.emptyGradient}
@@ -286,12 +398,16 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
               <Ionicons
                 name="leaf-outline"
                 size={56}
-                color="rgba(135, 174, 115, 0.5)"
+                color={t.emptyIconColor}
               />
               <AppText
                 font="instrument-regular"
                 size="base"
-                style={{ color: "rgba(255,255,255,0.8)", marginTop: 24, textAlign: "center" }}
+                style={{
+                  color: "rgba(255,255,255,0.8)",
+                  marginTop: 24,
+                  textAlign: "center",
+                }}
               >
                 {selectedChakraDay === "all"
                   ? "Your journey notes will appear here"
@@ -300,7 +416,11 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
               <AppText
                 font="instrument-regular"
                 size="sm"
-                style={{ color: "rgba(255,255,255,0.6)", marginTop: 12, textAlign: "center" }}
+                style={{
+                  color: "rgba(255,255,255,0.6)",
+                  marginTop: 12,
+                  textAlign: "center",
+                }}
               >
                 Reflect on your journey as you progress through each chakra
               </AppText>
@@ -322,7 +442,7 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
                       <AppText
                         font="instrument-bold"
                         size="lg"
-                        style={{ color: "#A8C99A" }}
+                        style={{ color: t.dayHeaderColor }}
                       >
                         {getDayName(day)} - {getChakraName(day)}
                       </AppText>
@@ -335,18 +455,36 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
                       </AppText>
                     </View>
                     {dayNotes.map((note) => (
-                      <View key={note.id} style={styles.noteCard}>
+                      <View
+                        key={note.id}
+                        style={[
+                          styles.noteCard,
+                          theme === "player" && {
+                            backgroundColor: t.noteCardBg,
+                            borderColor: t.noteCardBorder,
+                            shadowColor: "transparent",
+                            shadowOpacity: 0,
+                            elevation: 0,
+                          },
+                        ]}
+                      >
                         <AppText
                           font="instrument-regular"
                           size="xs"
-                          style={{ color: "rgba(255,255,255,0.5)", marginBottom: 8 }}
+                          style={{
+                            color: "rgba(255,255,255,0.5)",
+                            marginBottom: 8,
+                          }}
                         >
                           {formatDate(note.createdAt)}
                         </AppText>
                         <AppText
                           font="instrument-regular"
                           size="base"
-                          style={{ color: "rgba(255,255,255,0.9)", lineHeight: 24 }}
+                          style={{
+                            color: "rgba(255,255,255,0.9)",
+                            lineHeight: 24,
+                          }}
                         >
                           {note.content}
                         </AppText>

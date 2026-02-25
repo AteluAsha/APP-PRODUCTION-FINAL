@@ -1,7 +1,27 @@
 /**
  * Date and time utility functions.
  * Combines functionality for handling specific dates, weeks, time differences, and formatting.
+ *
+ * CRITICAL: All dates use the device's LOCAL timezone to match user expectations.
+ * - getLocalDateISO(): Today's date in local time (YYYY-MM-DD)
+ * - getCurrentWeekStartDateISO(): Monday of current week in local time
+ * - Parsing "YYYY-MM-DD" + "T00:00:00" ensures local midnight (not UTC)
+ * - Never use toISOString().split("T")[0] for local dates – that returns UTC
  */
+
+// --- Local Date (Timezone-Safe) ---
+
+/**
+ * Returns today's date as YYYY-MM-DD in the device's LOCAL timezone.
+ * Use this instead of new Date().toISOString().split("T")[0] which returns UTC.
+ */
+export const getLocalDateISO = (date?: Date): string => {
+  const d = date ?? new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
 
 // --- Day of Week & Week Start ---
 
@@ -33,12 +53,12 @@ export const getStartOfWeek = (date: Date): Date => {
 
 /**
  * Gets the ISO date string (YYYY-MM-DD) for the Monday of the current week.
- * @returns ISO date string.
+ * Uses local timezone – toISOString() would return UTC and cause timezone bugs.
+ * @returns ISO date string (YYYY-MM-DD) in local time.
  */
 export const getCurrentWeekStartDateISO = (): string => {
-  const today = new Date()
-  const monday = getStartOfWeek(today)
-  return monday.toISOString().split("T")[0]
+  const monday = getStartOfWeek(new Date())
+  return getLocalDateISO(monday)
 }
 
 /**
@@ -162,7 +182,9 @@ export const calculateCourseStartDate = (
 }
 
 /**
- * Checks if the current date has reached or passed the course start date
+ * Checks if the current date has reached or passed the course start date.
+ * Uses local timezone – "T00:00:00" ensures the date is parsed as local midnight
+ * (new Date("YYYY-MM-DD") alone parses as UTC midnight, causing timezone bugs).
  * @param courseStartDateISO ISO date string (YYYY-MM-DD) of when the course should start
  * @returns true if current date >= course start date
  */
@@ -172,7 +194,7 @@ export const hasReachedCourseStartDate = (
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const courseStartDate = new Date(courseStartDateISO)
+  const courseStartDate = new Date(courseStartDateISO + "T00:00:00")
   courseStartDate.setHours(0, 0, 0, 0)
 
   return today >= courseStartDate

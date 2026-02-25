@@ -1,9 +1,11 @@
 /**
  * MusicRoomAudioManager
  *
- * Headless playback for Music Room audio. When source + audioOrigin === 'music-room',
- * creates and manages the expo-av Sound. No UI. Handles play/pause from store and
- * playlist advance on track end.
+ * Headless playback for Music Room (Frequency of Gnosis) audio. APP2 (Lifetime) only:
+ * - Only runs when source + audioOrigin === 'music-room'. Trial never sets that.
+ * - When user is ON the full-screen AudioPlayer, we must not own the track (AudioPlayer
+ *   does). Otherwise we'd double-play. So we unload when pathname is AudioPlayer and
+ *   do not init while on that screen.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -13,19 +15,24 @@ import {
   InterruptionModeIOS,
   InterruptionModeAndroid,
 } from "expo-av"
+import { usePathname } from "expo-router"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
 
 export function MusicRoomAudioManager() {
+  const pathname = usePathname()
   const source = useCurrentAudioStore((s) => s.source)
   const prefs = useCurrentAudioStore((s) => s.prefs)
   const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
   const isPlayingFromStore = useCurrentAudioStore((s) => s.isPlaying)
   const setPlaying = useCurrentAudioStore((s) => s.setPlaying)
 
+  const isOnAudioPlayer = pathname?.includes("AudioPlayer") ?? false
+
   const trackRef = useRef<Audio.Sound | null>(null)
   const lastSourceRef = useRef<typeof source>(null)
   const lastIsPlayingRef = useRef(false)
   const userPauseRequestedAtRef = useRef<number>(0)
+  const initInProgressRef = useRef(false)
   const [justFinished, setJustFinished] = useState(false)
 
   const onPlaybackStatusUpdate = useCallback(
@@ -46,12 +53,13 @@ export function MusicRoomAudioManager() {
   )
 
   const initAndPlay = useCallback(async () => {
+    if (initInProgressRef.current) return
     const state = useCurrentAudioStore.getState()
     const src = state.source
     const pref = state.prefs
-    const meta = state.metadata
     if (!src || !pref || state.audioOrigin !== "music-room") return
 
+    initInProgressRef.current = true
     try {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
@@ -67,26 +75,36 @@ export function MusicRoomAudioManager() {
         onPlaybackStatusUpdate,
       )
       trackRef.current = sound
+      await sound.setProgressUpdateIntervalAsync(500)
       await sound.setIsLoopingAsync(false)
       await sound.setVolumeAsync(1)
       setPlaying(true)
     } catch (e) {
       if (__DEV__) console.warn("[MusicRoomAudioManager] Init error:", e)
       setPlaying(false)
+    } finally {
+      initInProgressRef.current = false
     }
   }, [onPlaybackStatusUpdate, setPlaying])
 
-  const unloadTrack = useCallback(async () => {
-    if (trackRef.current) {
-      try {
-        await trackRef.current.unloadAsync()
-      } catch (e) {
-        if (__DEV__) console.warn("[MusicRoomAudioManager] Unload error:", e)
+  const unloadTrack = useCallback(
+    async (opts?: { skipSetPlaying?: boolean }) => {
+      if (trackRef.current) {
+        try {
+          await trackRef.current.unloadAsync()
+        } catch (e) {
+          if (__DEV__)
+            console.warn("[MusicRoomAudioManager] Unload error:", e)
+        }
+        trackRef.current = null
       }
-      trackRef.current = null
-    }
-    setPlaying(false)
-  }, [setPlaying])
+      const skip =
+        opts?.skipSetPlaying === true ||
+        useCurrentAudioStore.getState().pendingTrackKey != null
+      if (!skip) setPlaying(false)
+    },
+    [setPlaying],
+  )
 
   // Handle play/pause from store (user tapped in mini player or Music Room row)
   // On pause/play failure (e.g. after backgrounding), unload to avoid stuck state and glitching
@@ -104,7 +122,8 @@ export function MusicRoomAudioManager() {
             await track.pauseAsync()
           }
         } catch (e) {
-          if (__DEV__) console.warn("[MusicRoomAudioManager] Play/pause error:", e)
+          if (__DEV__)
+            console.warn("[MusicRoomAudioManager] Play/pause error:", e)
           userPauseRequestedAtRef.current = 0
           lastIsPlayingRef.current = false
           setPlaying(false)
@@ -120,23 +139,18 @@ export function MusicRoomAudioManager() {
     }
   }, [isPlayingFromStore, audioOrigin, setPlaying])
 
-  // Handle didJustFinish -> advance to next in playlist
+  // Handle didJustFinish -> stop playback (no continuous play); reset store and unload so button returns to play
   useEffect(() => {
     if (!justFinished || audioOrigin !== "music-room") return
     setJustFinished(false)
+    useCurrentAudioStore.getState().reset()
+    lastSourceRef.current = null
+    unloadTrack()
+  }, [justFinished, audioOrigin, unloadTrack])
 
-    const advanced = useCurrentAudioStore.getState().advanceToNext()
-    if (advanced) {
-      lastSourceRef.current = null
-      unloadTrack().then(() => {
-        initAndPlay()
-      })
-    }
-  }, [justFinished, audioOrigin, unloadTrack, initAndPlay])
-
-  // Main effect: init when source changes for music-room
+  // Main effect: init when source changes for music-room, but NOT when user is on full-screen AudioPlayer (it owns the track there)
   useEffect(() => {
-    if (audioOrigin !== "music-room" || !source || !prefs) {
+    if (audioOrigin !== "music-room" || !source || !prefs || isOnAudioPlayer) {
       unloadTrack()
       return
     }
@@ -145,7 +159,7 @@ export function MusicRoomAudioManager() {
     lastSourceRef.current = source
 
     if (sourceChanged) {
-      unloadTrack().then(() => {
+      unloadTrack({ skipSetPlaying: true }).then(() => {
         initAndPlay()
       })
     }
@@ -153,7 +167,7 @@ export function MusicRoomAudioManager() {
     return () => {
       unloadTrack()
     }
-  }, [source, prefs, audioOrigin])
+  }, [source, prefs, audioOrigin, isOnAudioPlayer])
 
   // Unload when store reset (source cleared)
   useEffect(() => {

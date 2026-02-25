@@ -19,14 +19,17 @@ import { formatDate } from "@/utils/date"
 let Notifications: typeof import("expo-notifications") | null = null
 try {
   Notifications = require("expo-notifications")
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  })
+  if (Notifications) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    })
+  }
 } catch (e) {
   if (__DEV__) {
     console.warn(

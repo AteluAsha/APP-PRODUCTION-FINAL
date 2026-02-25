@@ -70,8 +70,9 @@ const normalizeAnuaPronunciationForTTS = (text: string): string => {
 }
 
 /**
- * Stop any currently playing Anua audio. Call before speaking to prevent overlap.
- * CRITICAL: Anua must never talk over herself.
+ * Stop any currently playing Anua TTS only. Does not touch global healing audio.
+ * Call from AudioPlayer when user plays/closes a track so Anua does not talk over it.
+ * CRITICAL: Anua must never control or stop healing audio; this stops only Anua's voice.
  */
 export const stopAnuaAudio = async (): Promise<void> => {
   if (currentAnuaSound) {

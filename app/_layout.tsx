@@ -1,3 +1,9 @@
+/**
+ * Root Layout - App Entry
+ *
+ * OPENING SEQUENCE (always first): Splash → Path Selection (WelcomeScreen) → 7 Chakras in 7 Days.
+ * After Enter Path: DateSelection | Waiting Room | Trial Home | Lifetime Home (ChakraHub).
+ */
 import "@/src/utils/splash-keeper"
 import "../globals.css"
 import {
@@ -28,7 +34,9 @@ import { OtherOriginAudioManager } from "@/components/audio/OtherOriginAudioMana
 import { FloatingNavButtons } from "@/components/navigation/FloatingNavButtons"
 import { GlobalHomeButton } from "@/components/navigation/GlobalHomeButton"
 import { GlobalAnuaChat } from "@/components/navigation/GlobalAnuaChat"
+import { PathSelectionGate } from "@/components/navigation/PathSelectionGate"
 import { ProfileSheet } from "@/components/profile/ProfileSheet"
+import { InviteRefApplier } from "@/components/invite/InviteRefApplier"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import * as Linking from "expo-linking"
 import "@/src/services/firebase"
@@ -43,6 +51,8 @@ LogBox.ignoreLogs([
   "Missing or insufficient permissions",
   "Error updating cache",
   "FirebaseError",
+  "@firebase/fi",
+  "@firebase/firestore",
 ])
 
 export default function RootLayout() {
@@ -62,6 +72,20 @@ export default function RootLayout() {
     }, 80)
     return () => clearTimeout(t)
   }, [showHeroLogo])
+  // Safety: if still on hero splash after 8s (e.g. animation callback never fired), force transition so app never freezes
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setShowHeroLogo((prev) => {
+        if (prev) {
+          if (__DEV__) console.warn("[RootLayout] Splash safety timeout: forcing transition")
+          SplashScreen.hideAsync().catch(() => {})
+          return false
+        }
+        return prev
+      })
+    }, 8000)
+    return () => clearTimeout(t)
+  }, [])
 
   useEffect(() => {
     const setupAudio = async () => {
@@ -86,7 +110,10 @@ export default function RootLayout() {
     const checkExpiry = () => {
       try {
         const store = useChakraJourneyStore.getState()
-        if (store.paymentStatus === "scholarship" && store.scholarshipExpiryDate) {
+        if (
+          store.paymentStatus === "scholarship" &&
+          store.scholarshipExpiryDate
+        ) {
           const expiryDate = new Date(store.scholarshipExpiryDate)
           if (new Date() > expiryDate) {
             useChakraJourneyStore.setState({
@@ -166,6 +193,8 @@ export default function RootLayout() {
     require("@/assets/images/ibelong.png"),
     require("@/assets/images/heartoutline.png"),
     require("../assets/images/SoulSchool_HERO_Logo.png"),
+    require("../assets/images/Welcomeheader.png"),
+    require("../assets/images/WelcomeMain.png"),
     require("../assets/images/Hero_tulip_LOGO_MASTER.png"),
     require("../assets/images/Anua_Hero_Icon_Image.png"),
   ])
@@ -178,6 +207,7 @@ export default function RootLayout() {
 
   useChakraWeekTransition()
 
+  // RevenueCat: initialized at startup from src/core/config/revenueCatConfig.ts when env keys are not set
   useEffect(() => {
     const initRevenueCat = async () => {
       try {
@@ -185,21 +215,25 @@ export default function RootLayout() {
         const userId = await getUserId()
         await initializeRevenueCat(userId)
       } catch (error) {
-        if (__DEV__) console.error("[RootLayout] Failed to initialize RevenueCat:", error)
+        if (__DEV__)
+          console.error("[RootLayout] Failed to initialize RevenueCat:", error)
       }
     }
     initRevenueCat()
   }, [])
 
   useEffect(() => {
-    try { initializeSentry().catch(() => {}) } catch {}
+    try {
+      initializeSentry().catch(() => {})
+    } catch {}
   }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => {
       Promise.resolve().then(async () => {
         try {
-          const { populatePlaceholders } = await import("@/src/services/communityPlaceholders")
+          const { populatePlaceholders } =
+            await import("@/src/services/communityPlaceholders")
           setTimeout(() => populatePlaceholders().catch(() => {}), 3000)
         } catch {}
       })
@@ -211,7 +245,8 @@ export default function RootLayout() {
     const timer = setTimeout(() => {
       Promise.resolve().then(async () => {
         try {
-          const { populateCacheFromCommunity } = await import("@/src/services/anuaCommunityCache")
+          const { populateCacheFromCommunity } =
+            await import("@/src/services/anuaCommunityCache")
           setTimeout(() => populateCacheFromCommunity().catch(() => {}), 4000)
         } catch {}
       })
@@ -223,19 +258,37 @@ export default function RootLayout() {
     const handleDeepLink = async (url: string) => {
       try {
         const parsed = Linking.parse(url)
-        if (parsed.path === "/payment-success" && parsed.queryParams?.session_id) {
+        const path = parsed.path === "/invite" || parsed.path === "invite"
+        if (path && parsed.queryParams?.ref) {
+          const ref = parsed.queryParams.ref as string
+          const { setPendingInviteRef } = await import(
+            "@/src/services/inviteRefStorage"
+          )
+          await setPendingInviteRef(ref)
+        }
+        if (
+          parsed.path === "/payment-success" &&
+          parsed.queryParams?.session_id
+        ) {
           const sessionId = parsed.queryParams.session_id as string
           const { verifyPayment } = await import("@/src/services/stripe")
-          const { useChakraJourneyStore } = await import("@/hooks/useChakraJourneyStore")
+          const { useChakraJourneyStore } =
+            await import("@/hooks/useChakraJourneyStore")
           const isPaid = await verifyPayment(sessionId)
-          if (isPaid) useChakraJourneyStore.getState().grantLifetimeAccess("paid")
+          if (isPaid)
+            useChakraJourneyStore.getState().grantLifetimeAccess("paid")
         }
       } catch (error) {
-        if (__DEV__) console.error("[RootLayout] Error handling deep link:", error)
+        if (__DEV__)
+          console.error("[RootLayout] Error handling deep link:", error)
       }
     }
-    const subscription = Linking.addEventListener("url", ({ url }) => handleDeepLink(url))
-    Linking.getInitialURL().then((url) => { if (url) handleDeepLink(url) })
+    const subscription = Linking.addEventListener("url", ({ url }) =>
+      handleDeepLink(url),
+    )
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url)
+    })
     return () => subscription.remove()
   }, [])
 
@@ -253,7 +306,13 @@ export default function RootLayout() {
     setShowHeroLogo(false)
   }
 
-  if (Platform.OS === "web" && __DEV__) {
+  // Screenshot capture: run "EXPO_PUBLIC_CAPTURE_SCREENS=1 npm run web" to capture all screens.
+  // Saves PNGs to Downloads. See SCREEN_INVENTORY_REFERENCE.md for details.
+  if (
+    Platform.OS === "web" &&
+    __DEV__ &&
+    process.env.EXPO_PUBLIC_CAPTURE_SCREENS === "1"
+  ) {
     const { CaptureAll } = require("@/components/dev/CaptureAll")
     return (
       <View style={{ flex: 1, backgroundColor: "#000" }}>
@@ -265,7 +324,10 @@ export default function RootLayout() {
   if (showHeroLogo) {
     return (
       <View style={{ flex: 1, backgroundColor: "#000000" }}>
-        <SplashScreenReveal onAnimationComplete={handleHeroLogoComplete} assetsReady={assetsReady} />
+        <SplashScreenReveal
+          onAnimationComplete={handleHeroLogoComplete}
+          assetsReady={assetsReady}
+        />
       </View>
     )
   }
@@ -276,11 +338,23 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <BottomSheetModalProvider>
             <View style={{ flex: 1, backgroundColor: "#000000" }}>
-              <Animated.View style={{ flex: 1 }} entering={FadeIn.duration(1000).easing(Easing.out(Easing.ease))}>
+              <Animated.View
+                style={{ flex: 1 }}
+                entering={FadeIn.duration(1000).easing(Easing.out(Easing.ease))}
+              >
                 <Stack>
-                  <Stack.Screen name="(chakras)" options={{ headerShown: false }} />
-                  <Stack.Screen name="AudioPlayer" options={{ headerShown: false, animation: "fade" }} />
-                  <Stack.Screen name="CommunityHalls" options={{ headerShown: false, animation: "fade" }} />
+                  <Stack.Screen
+                    name="(chakras)"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="AudioPlayer"
+                    options={{ headerShown: false, animation: "fade" }}
+                  />
+                  <Stack.Screen
+                    name="CommunityHalls"
+                    options={{ headerShown: false, animation: "fade" }}
+                  />
                   <Stack.Screen name="+not-found" />
                 </Stack>
                 <MusicRoomAudioManager />
@@ -289,7 +363,12 @@ export default function RootLayout() {
                 <FloatingNavButtons />
                 <GlobalHomeButton />
                 <GlobalAnuaChat />
-                <StatusBar style="light" translucent={Platform.OS === "android"} />
+                <PathSelectionGate />
+                <InviteRefApplier />
+                <StatusBar
+                  style="light"
+                  translucent={Platform.OS === "android"}
+                />
               </Animated.View>
               <ProfileSheet />
               {/* TribeChatModal not in codebase; add when component exists: import from "@/components/tribe/TribeChatModal" and render <TribeChatModal /> */}

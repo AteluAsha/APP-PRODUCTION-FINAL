@@ -11,6 +11,7 @@ import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window")
 
@@ -53,7 +54,8 @@ export default function CoursePreview() {
             flexGrow: 1,
             justifyContent: "center",
             alignItems: "center",
-            paddingVertical: 20,
+            paddingTop: 20,
+            paddingBottom: 20 + SCROLL_BREATHING_BOTTOM_PADDING,
           }}
           showsVerticalScrollIndicator={false}
           bounces={true}

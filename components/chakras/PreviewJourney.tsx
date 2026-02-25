@@ -3,6 +3,7 @@
  *
  * Integrates the original Root Chakra course preview hero
  * with the full 7-day course preview image. Scrollable layout.
+ * Softer visuals, Cormorant for affirmations, generous spacing.
  */
 
 import React from "react"
@@ -23,6 +24,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { chakraContent } from "@/constants/chakras/content"
 import { Chakra } from "@/types/chakras/Chakra"
 
+const STILLNESS_BG = "#0f1210"
+
 interface PreviewJourneyProps {
   onBackPress: () => void
 }
@@ -41,8 +44,8 @@ export const PreviewJourney: React.FC<PreviewJourneyProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Original course preview hero - gentle introduction */}
-        <View style={styles.heroSection}>
+        {/* Edge-to-edge black header: top of screen down through chakra ball + padding */}
+        <View style={styles.blackHeader}>
           <View style={styles.chakraImageWrap}>
             <Image
               source={root.goodbye.chakraImage}
@@ -50,6 +53,10 @@ export const PreviewJourney: React.FC<PreviewJourneyProps> = ({
               resizeMode="contain"
             />
           </View>
+        </View>
+
+        {/* Course preview content on grey background */}
+        <View style={styles.heroSection}>
           <AppText
             font="instrument-semibold"
             size="3xl"
@@ -65,9 +72,9 @@ export const PreviewJourney: React.FC<PreviewJourneyProps> = ({
             The Seed of Self
           </AppText>
           <AppText
-            font="instrument-regular"
-            size="base"
-            style={styles.heroQuote}
+            font="cormorant-italic"
+            size="lg"
+            style={styles.heroIAm}
           >
             &quot;I Am&quot;
           </AppText>
@@ -85,27 +92,33 @@ export const PreviewJourney: React.FC<PreviewJourneyProps> = ({
               size="base"
               style={styles.bodyText}
             >
-              Your journey begins with the Root Chakra - Muladhara - your
+              Your journey begins with the Root Chakra — Muladhara — your
               foundation and connection to the Earth.
             </AppText>
-            <AppText
-              font="instrument-regular"
-              size="base"
-              style={[styles.bodyText, styles.quoteText]}
-            >
-              &quot;In the stillness of the Earth, find your grounding, your
-              sanctuary, your belonging. Remember, you are home.&quot;
-            </AppText>
           </View>
+
+          {/* Affirmation-style quote: Cormorant, centered, generous spacing */}
+          <View style={styles.affirmationWrap}>
+            <View style={styles.affirmationDivider} />
+            <AppText
+              font="cormorant-italic"
+              style={styles.affirmationText}
+            >
+              In the stillness of the Earth, find your grounding, your
+              sanctuary, your belonging. Remember, you are home.
+            </AppText>
+            <View style={[styles.affirmationDivider, styles.affirmationDividerBottom]} />
+          </View>
+
           <View style={styles.previewSection}>
             <AppText
               font="instrument-regular"
               size="base"
               style={styles.bodyText}
             >
-              This is a preview of what awaits on your 7-day chakra journey. Each
-              day of the week, a new chakra will unlock, guiding you from your
-              roots to your highest self.
+              This is a preview of what awaits on your 7-day chakra journey.
+              Each day of the week, a new chakra will unlock, guiding you from
+              your roots to your highest self.
             </AppText>
           </View>
           <AppText
@@ -172,7 +185,11 @@ export const PreviewJourney: React.FC<PreviewJourneyProps> = ({
         style={[styles.backButton, { top: Math.max(insets.top, 16) + 8 }]}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="arrow-back" size={24} color="rgba(255, 255, 255, 0.85)" />
+        <Ionicons
+          name="arrow-back"
+          size={24}
+          color="rgba(255, 255, 255, 0.85)"
+        />
       </Pressable>
     </SafeAreaView>
   )
@@ -181,79 +198,107 @@ export const PreviewJourney: React.FC<PreviewJourneyProps> = ({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: STILLNESS_BG,
   },
   scrollContent: {
     paddingBottom: 80,
   },
-  heroSection: {
-    paddingHorizontal: 24,
+  blackHeader: {
+    width: "100%",
+    backgroundColor: "#000000",
     paddingTop: 32,
+    paddingBottom: 24,
+    alignItems: "center",
+  },
+  heroSection: {
+    paddingHorizontal: 28,
+    paddingTop: 24,
   },
   chakraImageWrap: {
     alignSelf: "center",
-    width: 120,
-    height: 120,
+    width: 128,
+    height: 128,
   },
   chakraImage: {
     width: "100%",
     height: "100%",
-    opacity: 0.9,
+    opacity: 0.88,
   },
   heroTitle: {
-    color: "rgba(255, 255, 255, 0.98)",
+    color: "rgba(255, 255, 255, 0.95)",
     textAlign: "center",
-    marginTop: 12,
+    marginTop: 16,
   },
   heroSubtitle: {
-    color: "rgba(255, 255, 255, 0.92)",
+    color: "rgba(255, 255, 255, 0.82)",
     textAlign: "center",
-    marginTop: 2,
+    marginTop: 6,
   },
-  heroQuote: {
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
-    marginTop: 4,
-    fontStyle: "italic",
-  },
-  heroLocation: {
+  heroIAm: {
     color: "rgba(255, 255, 255, 0.88)",
     textAlign: "center",
-    marginTop: 4,
+    marginTop: 8,
+    fontFamily: "CormorantGaramondItalic",
+  },
+  heroLocation: {
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+    marginTop: 8,
   },
   bodyText: {
-    color: "rgba(255, 255, 255, 0.97)",
-    lineHeight: 24,
-  },
-  quoteText: {
-    marginTop: 10,
-    fontStyle: "italic",
-  },
-  returnMondayText: {
-    color: "rgba(255, 255, 255, 0.96)",
-    textAlign: "center",
-    marginTop: 12,
-    lineHeight: 24,
+    color: "rgba(255, 255, 255, 0.88)",
+    lineHeight: 26,
   },
   paragraphSection: {
-    marginTop: 14,
-    paddingHorizontal: 4,
+    marginTop: 24,
+    paddingHorizontal: 0,
+  },
+  affirmationWrap: {
+    marginTop: 28,
+    marginBottom: 28,
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  affirmationDivider: {
+    height: 1,
+    width: 48,
+    backgroundColor: "rgba(255, 255, 255, 0.28)",
+    marginBottom: 20,
+  },
+  affirmationDividerBottom: {
+    marginBottom: 0,
+    marginTop: 20,
+  },
+  affirmationText: {
+    fontFamily: "CormorantGaramondItalic",
+    fontSize: 22,
+    lineHeight: 34,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  returnMondayText: {
+    color: "rgba(255, 255, 255, 0.82)",
+    textAlign: "center",
+    marginTop: 24,
+    lineHeight: 26,
   },
   previewSection: {
-    marginTop: 12,
-    paddingHorizontal: 4,
+    marginTop: 24,
+    paddingHorizontal: 0,
   },
   imageSection: {
-    marginTop: 20,
+    marginTop: 32,
     paddingHorizontal: 16,
   },
   coursePreviewImage: {
     width: SCREEN_WIDTH - 32,
     alignSelf: "center",
-    height: (SCREEN_WIDTH - 32) * 1.4, // Portrait-ish aspect for full course preview
+    height: (SCREEN_WIDTH - 32) * 1.4,
+    opacity: 0.92,
   },
   footerSection: {
-    marginTop: 20,
+    marginTop: 28,
     paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
@@ -263,10 +308,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(6, 182, 212, 0.3)",
-    shadowColor: "rgba(6, 182, 212, 0.2)",
+    borderColor: "rgba(6, 182, 212, 0.25)",
+    shadowColor: "rgba(6, 182, 212, 0.15)",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
   },
@@ -278,7 +323,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   returnButtonText: {
-    color: "rgba(255, 255, 255, 0.95)",
+    color: "rgba(255, 255, 255, 0.92)",
   },
   returnButtonPressed: {
     opacity: 0.85,

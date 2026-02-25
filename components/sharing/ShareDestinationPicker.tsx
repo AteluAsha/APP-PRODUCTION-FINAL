@@ -53,6 +53,10 @@ export interface ShareDestinationListProps {
   url: string
   title?: string
   onSuccess?: () => void
+  /** When "embedded", used inside invite modals: no chevrons, more spacing, optional section label. */
+  variant?: "default" | "embedded"
+  /** Label above the list when variant="embedded", e.g. "Share via". */
+  sectionLabel?: string
 }
 
 /** Inline list of share destinations; use inside your own modal/card. */
@@ -61,14 +65,21 @@ export function ShareDestinationList({
   url,
   title = SHARE_TITLE,
   onSuccess,
+  variant = "default",
+  sectionLabel,
 }: ShareDestinationListProps) {
   const [copyJustDone, setCopyJustDone] = useState(false)
   const [loadingId, setLoadingId] = useState<ShareDestinationId | null>(null)
+  const isEmbedded = variant === "embedded"
 
   const handleDestination = async (destinationId: ShareDestinationId) => {
     addHapticFeedback(HapticStrength.Medium)
     setLoadingId(destinationId)
-    const success = await shareToDestination(destinationId, { message, url, title })
+    const success = await shareToDestination(destinationId, {
+      message,
+      url,
+      title,
+    })
     setLoadingId(null)
     if (success) {
       if (destinationId === "copy") {
@@ -79,43 +90,107 @@ export function ShareDestinationList({
     }
   }
 
-  return (
-    <View style={styles.list}>
-      {SHARE_DESTINATION_IDS.map((id) => {
-        const config = DESTINATION_CONFIG[id]
-        const isCopy = id === "copy"
-        const showDone = isCopy && copyJustDone
-        const isLoading = loadingId === id
-        return (
-          <Pressable
-            key={id}
-            onPress={() => handleDestination(id)}
-            disabled={isLoading}
-            style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}
+  const listStyle = isEmbedded ? styles.listEmbedded : styles.list
+  const rowStyle = isEmbedded ? styles.rowEmbedded : styles.row
+  const rowIconStyle = isEmbedded ? styles.rowIconEmbedded : styles.rowIcon
+
+  if (isEmbedded) {
+    return (
+      <View>
+        {sectionLabel && (
+          <AppText
+            font="instrument-regular"
+            size="xs"
+            style={styles.sectionLabel}
           >
-            <View style={styles.rowIcon}>
-              <Ionicons
-                name={config.icon}
-                size={20}
-                color={showDone ? "rgba(184, 212, 168, 0.95)" : "rgba(255,255,255,0.88)"}
-              />
-            </View>
-            <AppText
-              font="instrument-regular"
-              size="sm"
-              style={{
-                flex: 1,
-                color: showDone ? "rgba(184, 212, 168, 0.95)" : "rgba(255,255,255,0.92)",
-              }}
+            {sectionLabel}
+          </AppText>
+        )}
+        <View style={styles.embeddedDepthFrame}>
+          <View style={styles.embeddedRow}>
+            {SHARE_DESTINATION_IDS.map((id) => {
+              const config = DESTINATION_CONFIG[id]
+              const isCopy = id === "copy"
+              const showDone = isCopy && copyJustDone
+              const isLoading = loadingId === id
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => handleDestination(id)}
+                  disabled={isLoading}
+                  style={({ pressed }) => [
+                    styles.embeddedIconWrap,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  accessibilityLabel={showDone ? "Link copied" : config.label}
+                >
+                  <Ionicons
+                    name={config.icon}
+                    size={22}
+                    color={
+                      showDone
+                        ? "rgba(184, 212, 168, 0.95)"
+                        : "rgba(255,255,255,0.9)"
+                    }
+                  />
+                </Pressable>
+              )
+            })}
+          </View>
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View>
+      <View style={listStyle}>
+        {SHARE_DESTINATION_IDS.map((id) => {
+          const config = DESTINATION_CONFIG[id]
+          const isCopy = id === "copy"
+          const showDone = isCopy && copyJustDone
+          const isLoading = loadingId === id
+          return (
+            <Pressable
+              key={id}
+              onPress={() => handleDestination(id)}
+              disabled={isLoading}
+              style={({ pressed }) => [rowStyle, pressed && { opacity: 0.85 }]}
             >
-              {showDone ? "Link copied!" : config.label}
-            </AppText>
-            {!showDone && (
-              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.35)" />
-            )}
-          </Pressable>
-        )
-      })}
+              <View style={rowIconStyle}>
+                <Ionicons
+                  name={config.icon}
+                  size={20}
+                  color={
+                    showDone
+                      ? "rgba(184, 212, 168, 0.95)"
+                      : "rgba(255,255,255,0.88)"
+                  }
+                />
+              </View>
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{
+                  flex: 1,
+                  color: showDone
+                    ? "rgba(184, 212, 168, 0.95)"
+                    : "rgba(255,255,255,0.92)",
+                }}
+              >
+                {showDone ? "Link copied!" : config.label}
+              </AppText>
+              {!showDone && (
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color="rgba(255,255,255,0.35)"
+                />
+              )}
+            </Pressable>
+          )
+        })}
+      </View>
     </View>
   )
 }
@@ -170,15 +245,31 @@ export function ShareDestinationPicker({
                 accessibilityLabel="Soul School chakra icon"
               />
               <View style={styles.headerTextWrap}>
-                <AppText font="instrument-semibold" size="xl" className="text-white">
+                <AppText
+                  font="instrument-semibold"
+                  size="xl"
+                  className="text-white"
+                >
                   {modalTitle}
                 </AppText>
-                <AppText font="instrument-regular" size="sm" className="text-white/70">
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  className="text-white/70"
+                >
                   {modalSubtitle}
                 </AppText>
               </View>
-              <Pressable onPress={handleClose} hitSlop={12} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="rgba(255,255,255,0.7)" />
+              <Pressable
+                onPress={handleClose}
+                hitSlop={12}
+                style={styles.closeButton}
+              >
+                <Ionicons
+                  name="close"
+                  size={24}
+                  color="rgba(255,255,255,0.7)"
+                />
               </Pressable>
             </View>
 
@@ -241,6 +332,44 @@ const styles = StyleSheet.create({
   list: {
     gap: 6,
   },
+  listEmbedded: {
+    gap: 10,
+  },
+  sectionLabel: {
+    color: "rgba(255,255,255,0.6)",
+    marginBottom: 10,
+  },
+  embeddedDepthFrame: {
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.2)",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  embeddedRow: {
+    flexDirection: "row",
+    flex: 1,
+    justifyContent: "space-around",
+    alignItems: "center",
+    gap: 4,
+  },
+  embeddedIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -256,8 +385,23 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  rowEmbedded: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(6, 182, 212, 0.12)",
+  },
   rowIcon: {
     marginRight: 10,
+    width: 24,
+    alignItems: "center",
+  },
+  rowIconEmbedded: {
+    marginRight: 12,
     width: 24,
     alignItems: "center",
   },

@@ -1,26 +1,68 @@
 import { PropsWithChildren } from "react"
-import { ImageBackground, Image, ImageSourcePropType } from "react-native"
+import {
+  View,
+  ImageBackground,
+  Image,
+  ImageSourcePropType,
+} from "react-native"
+import { Chakra } from "@/types/chakras/Chakra"
+
+/** Default orb distance from top; Throat (Day 5) uses more so orb sits at throat, not over face. */
+const DEFAULT_CHAKRA_ORB_MARGIN_TOP = 64
+const THROAT_CHAKRA_ORB_MARGIN_TOP = 212
+
+/** Throat header: shift background right so model isn't stacked under orb (crop left, show more right). */
+const THROAT_HEADER_IMAGE_SHIFT_RIGHT_PX = 28
 
 type HeaderBackgroundProps = PropsWithChildren<{
   backgroundSource: ImageSourcePropType
   chakraImageSource: ImageSourcePropType
   chakraImageSizePx: number
+  headerHeight: number
+  chakra?: Chakra
 }>
 export const HeaderBackground = ({
   backgroundSource,
   chakraImageSource,
   chakraImageSizePx,
+  headerHeight,
+  chakra,
 }: HeaderBackgroundProps) => {
-  return (
+  const marginTop =
+    chakra === Chakra.THROAT ? THROAT_CHAKRA_ORB_MARGIN_TOP : DEFAULT_CHAKRA_ORB_MARGIN_TOP
+  const isThroat = chakra === Chakra.THROAT
+
+  const backgroundImage = (
     <ImageBackground
       source={backgroundSource}
-      className={`w-full aspect-square object-cover self-center z-10`}
+      style={{
+        width: isThroat
+          ? headerHeight + THROAT_HEADER_IMAGE_SHIFT_RIGHT_PX * 2
+          : "100%",
+        height: headerHeight,
+        marginLeft: isThroat ? -THROAT_HEADER_IMAGE_SHIFT_RIGHT_PX : undefined,
+      }}
+      resizeMode="cover"
     >
       <Image
         source={chakraImageSource}
-        className={`object-fill self-center mt-16 z-10`}
-        style={{ width: chakraImageSizePx, height: chakraImageSizePx }}
+        style={{
+          width: chakraImageSizePx,
+          height: chakraImageSizePx,
+          alignSelf: "center",
+          marginTop,
+        }}
+        resizeMode="contain"
       />
     </ImageBackground>
   )
+
+  if (isThroat) {
+    return (
+      <View style={{ width: "100%", height: headerHeight, overflow: "hidden" }}>
+        {backgroundImage}
+      </View>
+    )
+  }
+  return backgroundImage
 }

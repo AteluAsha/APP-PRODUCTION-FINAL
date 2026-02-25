@@ -9,9 +9,8 @@ const KEY_PRELOAD_STARTED = "audio_preload_started"
 
 export async function getAudioPreloadStarted(): Promise<boolean> {
   try {
-    const { default: AsyncStorage } = await import(
-      "@react-native-async-storage/async-storage"
-    )
+    const { default: AsyncStorage } =
+      await import("@react-native-async-storage/async-storage")
     const value = await AsyncStorage.getItem(KEY_PRELOAD_STARTED)
     return value === "true"
   } catch {
@@ -21,9 +20,8 @@ export async function getAudioPreloadStarted(): Promise<boolean> {
 
 export async function setAudioPreloadStarted(): Promise<void> {
   try {
-    const { default: AsyncStorage } = await import(
-      "@react-native-async-storage/async-storage"
-    )
+    const { default: AsyncStorage } =
+      await import("@react-native-async-storage/async-storage")
     await AsyncStorage.setItem(KEY_PRELOAD_STARTED, "true")
   } catch {
     // Non-critical

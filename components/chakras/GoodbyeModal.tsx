@@ -1,6 +1,9 @@
 /**
  * Goodbye Modal - End-of-Day Completion Screen
  *
+ * Root chakra goodbye (day 0) is the hero-locked design. Days 1-6 must use the exact same
+ * layout, typography, and section structure; no day-specific formatting.
+ *
  * LOCKED DESIGN (all 7 days):
  * - Section 1: Day title, identity statement, chakra image, hero affirmation quote, closing message.
  *   Centered in upper area with paddingBottom reserve.
@@ -10,15 +13,16 @@
  * Content varies by chakraDay (0-6); layout is identical for all 7 days.
  */
 import ResponsiveImage from "@/components/ResponsiveImage"
+import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { AppText } from "@/components/AppText"
 import React, { useState, useEffect } from "react"
 import {
   View,
   Image,
   useWindowDimensions,
-  TouchableWithoutFeedback,
   Pressable,
   StyleSheet,
+  ScrollView,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Animated, {
@@ -51,16 +55,22 @@ const GoodbyeModal = ({
   onClose,
   chakraDay,
   navigateToHubOnHome = true,
+  onNavigateHome,
 }: {
   isVisible: boolean
   onClose: () => void
   chakraDay?: number
-  /** When false (e.g. shown from ChakraHub), Home just closes. When true (ChakraHome), Home navigates to ChakraHub. */
+  /** When false, Home just closes (stay on current screen). When true (lifetime, non-course), Home navigates to ChakraHub. */
   navigateToHubOnHome?: boolean
+  /** When provided (e.g. from day screen), Home button calls this instead of internal nav. Use to close + replace without flicker. */
+  onNavigateHome?: () => void
 }) => {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const topInset = Math.max(insets.top, 12)
+  const bottomInset = Math.max(insets.bottom, 24)
   const [showCardReveal, setShowCardReveal] = useState(false)
+  const [showIntegrationPrompt, setShowIntegrationPrompt] = useState(true)
 
   // Get lifetime access status
   const hasLifetimeAccess = useChakraJourneyStore(
@@ -69,7 +79,6 @@ const GoodbyeModal = ({
 
   const currentChakra =
     chakraDay !== undefined ? getChakraFromDay(chakraDay) : Chakra.ROOT
-  const isDayOne = chakraDay === 0
   const isLastDay = chakraDay === 6
   const { width } = useWindowDimensions()
   const opacity = useSharedValue(0)
@@ -89,6 +98,8 @@ const GoodbyeModal = ({
     chakraDay !== undefined && chakraDay < 6 ? chakraDay + 1 : null
   const nextChakraName = nextDay !== null ? getChakraName(nextDay) : null
   const nextChakraImage = nextDay !== null ? getChakraImage(nextDay) : null
+  const nextContent =
+    nextDay !== null ? chakraContent[getChakraFromDay(nextDay)] : null
 
   // Calculate midnight countdown for next day (trials only)
   const [midnightCountdown, setMidnightCountdown] = useState({
@@ -118,14 +129,21 @@ const GoodbyeModal = ({
   // Handle navigation to home
   const handleNavigateHome = () => {
     addHapticFeedback(HapticStrength.Light)
+    if (onNavigateHome) {
+      onNavigateHome()
+      return
+    }
     onClose()
     requestAnimationFrame(() => {
       setTimeout(() => {
         if (hasLifetimeAccess) {
-          useChakraJourneyStore
-            .getState()
-            .setLifetimeChosenTimegateJourney(false)
-          router.replace("/(chakras)/ChakraHub")
+          if (navigateToHubOnHome) {
+            useChakraJourneyStore
+              .getState()
+              .setLifetimeChosenTimegateJourney(false)
+            router.replace("/(chakras)/ChakraHub")
+          }
+          // else: stay on current screen (course mode ChakraHome) – just close
         } else {
           router.push("/(chakras)/ChakraHome")
         }
@@ -144,6 +162,15 @@ const GoodbyeModal = ({
   const cardAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: cardScale.value }],
   }))
+
+  // Reset integration prompt when modal opens; auto-advance after 2.5s
+  useEffect(() => {
+    if (isVisible) {
+      setShowIntegrationPrompt(true)
+      const t = setTimeout(() => setShowIntegrationPrompt(false), 2500)
+      return () => clearTimeout(t)
+    }
+  }, [isVisible])
 
   React.useEffect(() => {
     if (isVisible) {
@@ -173,15 +200,9 @@ const GoodbyeModal = ({
     }
   }, [isVisible, opacity, pulseScale, cardScale])
 
-  const Wrapper = hasLifetimeAccess ? React.Fragment : TouchableWithoutFeedback
-  const wrapperProps = hasLifetimeAccess
-    ? {}
-    : { onPress: onClose }
-
   return (
     <>
-      <Wrapper {...wrapperProps}>
-        <Animated.View
+      <Animated.View
           style={[
             animatedStyle,
             {
@@ -195,451 +216,269 @@ const GoodbyeModal = ({
             },
           ]}
         >
-          {/* Trial: Back arrow top left (return to chakra day); Chakra icon top right (home) */}
-          {!hasLifetimeAccess && (
-            <>
-              <Pressable
-                onPress={() => {
-                  addHapticFeedback(HapticStrength.Light)
-                  onClose()
-                  requestAnimationFrame(() => {
-                    setTimeout(() => {
-                      router.push(`/(chakras)/${currentChakra}` as const)
-                    }, 300)
-                  })
-                }}
-                style={{
-                  position: "absolute",
-                  top: Math.max(insets.top, 16) + 8,
-                  left: 16,
-                  zIndex: 10003,
-                  padding: 8,
-                  backgroundColor: "transparent",
-                }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                accessibilityLabel="Back"
-                accessibilityHint="Return to chakra day"
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={28}
-                  color="rgba(255, 255, 255, 0.9)"
-                />
-              </Pressable>
-              <Pressable
-                onPress={handleNavigateHome}
-                style={{
-                  position: "absolute",
-                  top: Math.max(insets.top, 16) + 4,
-                  right: 16,
-                  zIndex: 10003,
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: "rgba(0, 0, 0, 0.5)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.15)",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                accessibilityLabel="Home"
-                accessibilityHint="Return to trial home"
-              >
-                <Image
-                  source={require("@/assets/images/7chakras.png")}
-                  style={{ width: 22, height: 22, opacity: 0.9 }}
-                  resizeMode="contain"
-                />
-              </Pressable>
-            </>
-          )}
-          {/* Lifetime: X top right only (replaces touch-anywhere-to-close) */}
-          {hasLifetimeAccess && (
-            <Pressable
-              onPress={handleNavigateHome}
-              style={{
-                position: "absolute",
-                top: Math.max(insets.top, 16) + 8,
-                right: 16,
-                zIndex: 10003,
-                padding: 8,
-                backgroundColor: "transparent",
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel="Close"
-              accessibilityHint="Return to home"
-            >
+          {/* Back arrow: navigate to chakra day first so home screen never flashes */}
+          <Pressable
+            onPress={() => {
+              addHapticFeedback(HapticStrength.Light)
+              router.replace(`/(chakras)/${currentChakra}` as const)
+              onClose()
+            }}
+            style={{
+              position: "absolute",
+              top: topInset,
+              left: 16,
+              zIndex: 10003,
+              padding: 8,
+              backgroundColor: "transparent",
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Back"
+            accessibilityHint="Return to chakra day"
+          >
+            <Ionicons
+              name="chevron-back"
+              size={28}
+              color="rgba(255, 255, 255, 0.9)"
+            />
+          </Pressable>
+          {/* Top right: Home/Close (lifetime = X, trial = chakra icon) */}
+          <Pressable
+            onPress={handleNavigateHome}
+            style={{
+              position: "absolute",
+              top: topInset,
+              right: 16,
+              zIndex: 10003,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              borderWidth: 1,
+              borderColor: "rgba(255, 255, 255, 0.15)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel={hasLifetimeAccess ? "Close" : "Home"}
+            accessibilityHint="Return to home"
+          >
+            {hasLifetimeAccess ? (
               <Ionicons
                 name="close"
                 size={28}
                 color="rgba(255, 255, 255, 0.9)"
               />
-            </Pressable>
-          )}
-          {/* SECTION 1: Main content - centered, stays in upper area */}
-          <View
-            style={{
-              flex: 1,
-              width: "100%",
-              maxWidth: 400,
-              alignSelf: "center",
-              paddingHorizontal: 24,
-            }}
-          >
-            {/* SECTION 1: Main content - shifted down a bit, never overlaps Section 2 */}
-            <View
+            ) : (
+              <Image
+                source={require("@/assets/images/7chakras.png")}
+                style={{ width: 22, height: 22, opacity: 0.9 }}
+                resizeMode="contain"
+              />
+            )}
+          </Pressable>
+          {/* Integration pause: "Take a breath..." – show first, then main content */}
+          {showIntegrationPrompt ? (
+            <Pressable
+              onPress={() => setShowIntegrationPrompt(false)}
               style={{
                 flex: 1,
-                alignItems: "center",
                 justifyContent: "center",
-                paddingTop: 52,
-                paddingVertical: 20,
-                paddingBottom: 320 /* Reserve space for Section 2 so content stays above it */,
+                alignItems: "center",
+                paddingHorizontal: 32,
               }}
             >
-              {/* Day Name */}
-              {chakraDay !== undefined && (
-                <View className="w-full items-center mb-1">
-                  <AppText
-                    font="instrument-regular"
-                    size="sm"
-                    className="text-white/85 text-center"
-                    style={{
-                      letterSpacing: 1,
-                      textShadowColor: "rgba(168, 201, 154, 0.2)",
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 6,
-                    }}
-                  >
-                    {getDayName(chakraDay)} {getChakraName(chakraDay)} Day
-                  </AppText>
-                </View>
-              )}
-
-              {/* Identity Statement - Seed phrase (e.g. "I Am", "I Speak") */}
-              <View className="items-center mb-2">
-                <AppText
-                  font="koh-santepheap"
-                  size="2xl"
-                  className="text-center text-white/90"
-                  style={{
-                    letterSpacing: 1.2,
-                    textShadowColor: "rgba(168, 201, 154, 0.3)",
-                    textShadowOffset: { width: 0, height: 2 },
-                    textShadowRadius: 16,
-                    lineHeight: 36,
-                  }}
-                >
-                  {identityStatement}
-                </AppText>
-              </View>
-
-              {/* Chakra Image */}
-              {content?.goodbye?.chakraImage && (
-                <Pressable
-                  onPress={handleNavigateHome}
-                  disabled={!hasLifetimeAccess}
-                  className="active:opacity-80"
-                  accessibilityLabel={
-                    hasLifetimeAccess ? "Return home" : undefined
-                  }
-                  accessibilityHint={
-                    hasLifetimeAccess
-                      ? "Tap to return to your journey home"
-                      : undefined
-                  }
-                >
-                  <View style={styles.chakraImageContainer}>
-                    <Animated.View style={pulseAnimatedStyle}>
-                      <Image
-                        source={content.goodbye.chakraImage}
-                        style={styles.chakraImage}
-                        resizeMode="contain"
-                      />
-                    </Animated.View>
-                  </View>
-                </Pressable>
-              )}
-
-              {/* Hero Affirmation Quote - Full daily affirmation (slightly lower / more centered) */}
-              <View
-                className="mt-5 mb-5 px-6 py-4 rounded-xl w-full"
+              <AppText
+                font="cormorant-italic"
+                size="xl"
                 style={{
-                  backgroundColor: "rgba(255, 255, 255, 0.03)",
-                  borderWidth: 0.5,
-                  borderColor: "rgba(168, 201, 154, 0.15)",
+                  color: "rgba(255,255,255,0.9)",
+                  textAlign: "center",
+                  lineHeight: 32,
+                  fontStyle: "italic",
                 }}
               >
-                <AppText
-                  font="instrument-regular"
-                  size="base"
-                  className="text-center text-white/90"
-                  style={{
-                    letterSpacing: 1.5,
-                    lineHeight: 28,
-                    fontStyle: "italic",
-                    textShadowColor: "rgba(168, 201, 154, 0.4)",
-                    textShadowOffset: { width: 0, height: 2 },
-                    textShadowRadius: 12,
-                  }}
-                >
-                  {heroAffirmation}
-                </AppText>
-              </View>
-
-              {/* Closing message */}
-              <View className="w-full items-center">
-                <AppText
-                  font="instrument-regular"
-                  size="sm"
-                  className="text-center text-white/85 mb-2"
-                  style={{
-                    letterSpacing: 0.8,
-                    lineHeight: 22,
-                    textShadowColor: "rgba(168, 201, 154, 0.25)",
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 8,
-                  }}
-                >
-                  Wonderful work, lovely soul. Have a beautiful day.
-                </AppText>
-                {!isLastDay && (
-                  <View className="relative w-full items-center justify-center">
-                    <Image
-                      source={require("@/assets/images/heartoutline.png")}
-                      style={{
-                        position: "absolute",
-                        width: 24,
-                        height: 24,
-                        opacity: 0.3,
-                        alignSelf: "center",
-                      }}
-                    />
-                    <AppText
-                      font="instrument-regular"
-                      size="xs"
-                      className="text-center text-white/80 italic"
-                      style={{
-                        letterSpacing: 1,
-                        textShadowColor: "rgba(168, 201, 154, 0.2)",
-                        textShadowOffset: { width: 0, height: 1 },
-                        textShadowRadius: 6,
-                      }}
-                    >
-                      We will see you tomorrow.
-                    </AppText>
-                  </View>
-                )}
-              </View>
-            </View>
-          </View>
-
-          {/* SECTION 2: Anchored to BOTTOM of screen - direct child of full-screen view */}
-          <View
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              alignItems: "center",
-              borderTopWidth: 1,
-              borderTopColor: "rgba(255, 255, 255, 0.08)",
-              paddingTop: 24,
-              paddingBottom: Math.max(insets.bottom, 24) + 60,
+                Take a breath and feel what you've received today
+              </AppText>
+            </Pressable>
+          ) : (
+          <>
+          {/* SECTION 1: Scrollable main content - clear hierarchy, no wrapping */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingTop: 32 + topInset,
+              paddingBottom:
+                24 +
+                SCROLL_BREATHING_BOTTOM_PADDING +
+                40 /* extra gap above chakra card so "Wonderful work..." isn't pushed into it (match day 1) */,
               paddingHorizontal: 24,
+              maxWidth: 420,
+              alignSelf: "center",
+              width: "100%",
             }}
+            showsVerticalScrollIndicator={false}
           >
-            {chakraCardImage && (
+            {/* Section 1: Same formatting as hero AffirmationSection (no "Affirmation" label) */}
+            <View style={styles.affirmationTopLine} />
+            {chakraDay !== undefined && (
+              <AppText
+                font="cormorant-regular"
+                size="xs"
+                style={styles.affirmationLabel}
+              >
+                {getDayName(chakraDay)} {getChakraName(chakraDay)} Day
+              </AppText>
+            )}
+
+            {/* Identity "I Am" – hero affirmation style (match AffirmationSection) */}
+            <AppText
+              font="cormorant-italic"
+              style={styles.heroAffirmationText}
+            >
+              {identityStatement}
+            </AppText>
+
+            {/* Chakra image – smaller, tap opens card */}
+            {content?.goodbye?.chakraImage && (
               <Pressable
                 onPress={() => setShowCardReveal(true)}
-                className="active:opacity-80 mb-5"
-                style={{
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  shadowColor: "rgba(168, 201, 154, 0.5)",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.8,
-                  shadowRadius: 12,
-                  elevation: 6,
-                }}
+                style={{ alignItems: "center", marginVertical: 18 }}
+                accessibilityLabel="View your chakra card"
               >
-                <LinearGradient
-                  colors={[
-                    "rgba(139, 115, 85, 0.12)",
-                    "rgba(168, 201, 154, 0.08)",
-                    "rgba(212, 197, 169, 0.1)",
-                    "rgba(139, 115, 85, 0.12)",
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  locations={[0, 0.3, 0.7, 1]}
-                  style={{
-                    borderRadius: 16,
-                    paddingVertical: 12,
-                    paddingHorizontal: 20,
-                    borderWidth: 0.5,
-                    borderColor: "rgba(168, 201, 154, 0.25)",
-                    backgroundColor: "rgba(0, 0, 0, 0.15)",
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* Subtle gradient light overlay - top to bottom */}
-                  <LinearGradient
-                    colors={[
-                      "rgba(255, 255, 255, 0.12)",
-                      "rgba(255, 255, 255, 0.04)",
-                      "transparent",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      borderRadius: 16,
-                    }}
-                  />
-                  {/* Subtle inner glow */}
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "20%",
-                      right: "20%",
-                      height: "30%",
-                      backgroundColor: "rgba(168, 201, 154, 0.15)",
-                      borderRadius: 8,
-                      opacity: 0.6,
-                    }}
-                  />
-                  <View className="flex-row items-center justify-center gap-3 relative z-10">
-                    {/* Tiny vibrant card icon */}
-                    <Animated.View style={cardAnimatedStyle}>
-                      <Image
-                        source={chakraCardImage}
-                        style={{
-                          width: 32,
-                          height: 42,
-                          borderRadius: 4,
-                          borderWidth: 0.5,
-                          borderColor: "rgba(168, 201, 154, 0.3)",
-                        }}
-                        resizeMode="cover"
-                      />
-                    </Animated.View>
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      className="text-white/90"
-                      style={{
-                        letterSpacing: 0.8,
-                        textShadowColor: "rgba(168, 201, 154, 0.5)",
-                        textShadowOffset: { width: 0, height: 1 },
-                        textShadowRadius: 8,
-                      }}
-                    >
-                      Open Your Gift
-                    </AppText>
-                  </View>
-                </LinearGradient>
+                <View style={styles.chakraImageContainer}>
+                  <Animated.View style={pulseAnimatedStyle}>
+                    <Image
+                      source={content.goodbye.chakraImage}
+                      style={styles.chakraImage}
+                      resizeMode="contain"
+                    />
+                  </Animated.View>
+                </View>
               </Pressable>
             )}
 
-            {/* Gallery of Gnosis info on Day One */}
-            {isDayOne && (
-              <View className="mb-5 px-4">
-                <AppText
-                  font="instrument-regular"
-                  size="xs"
-                  className="text-center text-white/60"
-                  style={{
-                    textAlign: "center",
-                    textShadowColor: "rgba(0, 0, 0, 0.5)",
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 2,
-                  }}
-                >
-                  Your chakra cards are collected in the Gallery
-                </AppText>
-              </View>
+            {/* Hero quote – hero style; scale down font when long so days 2–7 match day 1 visual harmony */}
+            <AppText
+              font="cormorant-italic"
+              style={[
+                styles.heroAffirmationText,
+                (heroAffirmation.length > 42 || heroAffirmation.includes("\n"))
+                  ? styles.heroAffirmationTextLong
+                  : null,
+              ]}
+            >
+              {heroAffirmation}
+            </AppText>
+
+            {/* Closing message – gentle, slightly smaller; more space from hero above, less below */}
+            <AppText
+              font="cormorant-italic"
+              size="sm"
+              style={styles.closingMessageText}
+            >
+              {content?.goodbye?.closingMessage ??
+                "Wonderful work, lovely soul. Have a beautiful day."}
+            </AppText>
+
+            <View style={styles.affirmationBottomLine} />
+          </ScrollView>
+
+          {/* SECTION 2: Bottom - Gift + Tomorrow + Home (own section) */}
+          <View
+            style={[
+              styles.bottomSection,
+              {
+                paddingBottom: bottomInset + 24,
+              },
+            ]}
+          >
+            {/* Subtle gold separator above bottom section */}
+            <LinearGradient
+              colors={[
+                "transparent",
+                "rgba(212, 165, 116, 0.2)",
+                "rgba(212, 165, 116, 0.14)",
+                "transparent",
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.goldSeparator}
+            />
+            {chakraCardImage && (
+              <Pressable
+                onPress={() => setShowCardReveal(true)}
+                style={{ alignItems: "center" }}
+              >
+                <Animated.View style={cardAnimatedStyle}>
+                  <Image
+                    source={chakraCardImage}
+                    style={styles.cardThumb}
+                    resizeMode="cover"
+                  />
+                </Animated.View>
+                <View style={styles.openGiftButtonWrap}>
+                  <View style={styles.openGiftButton}>
+                    <AppText font="instrument-medium" size="sm" style={{ color: "#fff" }}>
+                      Open Your Gift
+                    </AppText>
+                  </View>
+                </View>
+              </Pressable>
             )}
 
-            {/* Next Day Tease - Trials and Lifetime (different clock copy) */}
-            {nextDay !== null && nextChakraName && nextChakraImage && (
-              <View
-                className="px-4 w-full items-center mt-4 pt-5"
-                style={{
-                  borderTopWidth: 0.5,
-                  borderTopColor: "rgba(255, 255, 255, 0.06)",
-                }}
-              >
-                <AppText
-                  font="instrument-medium"
-                  size="xs"
-                  className="text-center text-white/80 mb-2"
-                  style={{
-                    textAlign: "center",
-                    letterSpacing: 0.6,
-                    textShadowColor: "rgba(0, 0, 0, 0.6)",
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 4,
-                  }}
-                >
-                  Tomorrow: {nextChakraName} Chakra
-                </AppText>
-
-                <View className="mb-2 items-center">
-                  <Image
-                    source={nextChakraImage}
-                    style={{ width: 44, height: 44, opacity: 0.7 }}
-                    resizeMode="contain"
-                  />
-                </View>
-
-                <View className="flex-row items-center justify-center gap-2">
-                  <Ionicons
-                    name="time-outline"
-                    size={12}
-                    color="rgba(255, 255, 255, 0.7)"
-                  />
+            {/* Preview: tomorrow's line (next day's closingSubline); time subtle below */}
+            {!isLastDay && nextDay !== null && (
+              <View style={styles.tomorrowBlock}>
+                {nextContent?.goodbye?.closingSubline ? (
+                  <AppText
+                    font="cormorant-italic"
+                    size="base"
+                    style={styles.tomorrowPreviewLine}
+                  >
+                    {nextContent.goodbye.closingSubline}
+                  </AppText>
+                ) : (
                   <AppText
                     font="instrument-regular"
-                    size="xs"
-                    className="text-white/70 text-center"
-                    style={{
-                      textAlign: "center",
-                      textShadowColor: "rgba(0, 0, 0, 0.5)",
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 3,
-                    }}
+                    size="sm"
+                    style={[styles.tomorrowPreviewLine, { fontStyle: "italic" }]}
                   >
+                    We will see you tomorrow.
+                  </AppText>
+                )}
+                <View style={styles.timeRow}>
+                  <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.65)" />
+                  <AppText font="instrument-regular" size="xs" style={styles.timeText}>
                     {hasLifetimeAccess
-                      ? `Aligns at midnight (lunar time): ${midnightCountdown.hours}:${midnightCountdown.minutes}:${midnightCountdown.seconds}`
-                      : `Opens at midnight: ${midnightCountdown.hours}:${midnightCountdown.minutes}:${midnightCountdown.seconds}`}
+                      ? `Aligns at midnight ${midnightCountdown.hours}:${midnightCountdown.minutes}:${midnightCountdown.seconds}`
+                      : `Opens at midnight ${midnightCountdown.hours}:${midnightCountdown.minutes}:${midnightCountdown.seconds}`}
                   </AppText>
                 </View>
                 {hasLifetimeAccess && (
-                  <AppText
-                    font="instrument-italic"
-                    size="xs"
-                    className="text-white/60 text-center mt-1"
-                    style={{
-                      textShadowColor: "rgba(0, 0, 0, 0.5)",
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 3,
-                    }}
-                  >
+                  <AppText font="instrument-italic" size="xs" style={styles.continueAnytime}>
                     You may continue anytime
                   </AppText>
                 )}
               </View>
             )}
+
+            {/* Home button - primary exit */}
+            <Pressable
+              onPress={handleNavigateHome}
+              style={({ pressed }) => [
+                styles.homeButton,
+                { opacity: pressed ? 0.9 : 1 },
+              ]}
+            >
+              <AppText font="instrument-medium" size="base" style={{ color: "#fff" }}>
+                Home
+              </AppText>
+            </Pressable>
           </View>
+          </>
+          )}
         </Animated.View>
-      </Wrapper>
 
       {/* Chakra Card Reveal Modal */}
       <ChakraCardRevealModal
@@ -652,16 +491,131 @@ const GoodbyeModal = ({
 }
 
 const styles = StyleSheet.create({
+  affirmationTopLine: {
+    height: 1,
+    width: 48,
+    backgroundColor: "rgba(255,255,255,0.35)",
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  affirmationLabel: {
+    fontFamily: "CormorantGaramond",
+    fontWeight: "300",
+    letterSpacing: 1.4,
+    color: "rgba(255,255,255,0.72)",
+    textAlign: "center",
+    marginBottom: 14,
+  },
+  heroAffirmationText: {
+    fontFamily: "CormorantGaramondItalic",
+    fontWeight: "400",
+    fontSize: 24,
+    lineHeight: 38,
+    color: "rgba(255,255,255,0.82)",
+    textAlign: "center",
+    paddingHorizontal: 16,
+    marginBottom: 6,
+  },
+  heroAffirmationTextLong: {
+    fontSize: 20,
+    lineHeight: 30,
+  },
+  closingMessageText: {
+    textAlign: "center",
+    color: "rgba(255,255,255,0.82)",
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 22,
+    marginBottom: 12,
+  },
+  affirmationBottomLine: {
+    height: 1,
+    width: 48,
+    backgroundColor: "rgba(255,255,255,0.35)",
+    alignSelf: "center",
+    marginTop: 8,
+  },
   chakraImageContainer: {
-    width: 120,
-    height: 120,
+    width: 88,
+    height: 88,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8, // Reduced from 16
   },
   chakraImage: {
-    width: 120,
-    height: 120,
+    width: 88,
+    height: 88,
+  },
+  goldSeparator: {
+    height: 1,
+    width: "100%",
+    marginBottom: 24,
+  },
+  bottomSection: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    width: "100%",
+    alignItems: "center",
+    paddingTop: 32,
+    paddingHorizontal: 24,
+  },
+  cardThumb: {
+    width: 64,
+    height: 80,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(168, 201, 154, 0.35)",
+  },
+  openGiftButtonWrap: {
+    marginTop: 20,
+  },
+  openGiftButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: "rgba(168, 201, 154, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+  },
+  tomorrowBlock: {
+    width: "100%",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(212, 165, 116, 0.12)",
+  },
+  tomorrowPreviewLine: {
+    textAlign: "center",
+    color: "rgba(255,255,255,0.88)",
+    lineHeight: 26,
+    paddingHorizontal: 8,
+    marginBottom: 10,
+  },
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  timeText: {
+    color: "rgba(255,255,255,0.6)",
+  },
+  continueAnytime: {
+    color: "rgba(255,255,255,0.55)",
+    marginTop: 6,
+  },
+  homeButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: "rgba(168, 201, 154, 0.5)",
+    backgroundColor: "rgba(168, 201, 154, 0.2)",
+    minWidth: 160,
+    alignItems: "center",
   },
 })
 

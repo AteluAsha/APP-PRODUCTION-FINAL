@@ -2,18 +2,13 @@
  * Date Selection Screen (Hero) - Trials App
  *
  * Full-screen "Your Path Awaits" date selection. Replaces the previous
- * date selection with the WelcomeModal design as the hero screen.
+ * date selection with the hero screen.
  * Flow: Path selection → this screen → confirm date (locks only) →
  * scroll → Begin Your Journey → waiting room (preload starts there).
  */
 
 import React, { useMemo, useState, useCallback } from "react"
-import {
-  View,
-  Image,
-  ScrollView,
-  Pressable,
-} from "react-native"
+import { View, Image, ScrollView, Pressable } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { AppText } from "@/components/AppText"
@@ -21,17 +16,16 @@ import { Ionicons } from "@expo/vector-icons"
 import { ScrollDatePicker } from "@/components/chakras/ScrollDatePicker"
 import { DateConfirmationModal } from "@/components/chakras/DateConfirmationModal"
 import { InviteFriendModal } from "@/components/invite/InviteFriendModal"
-import { formatDate, getNextMondayDate } from "@/utils/date"
+import { formatDate, getLocalDateISO, getNextMondayDate } from "@/utils/date"
 import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { getChakraName } from "@/constants/chakras/chakraConstants"
+import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { DAY_NAMES, CHAKRA_NAMES } from "@/constants/chakras/chakraConstants"
 import {
   scheduleJourneyReminders,
-  requestNotificationPermissions,
   hasNotificationPermission,
 } from "@/src/services/journeyNotifications"
-import { CommunicationReminderModal } from "@/components/chakras/CommunicationReminderModal"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 
 const getChakraImage = (index: number) => {
@@ -62,7 +56,6 @@ export default function DateSelectionScreen() {
   const [selectedDateISO, setSelectedDateISO] = useState<string | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
-  const [showCommunicationModal, setShowCommunicationModal] = useState(false)
 
   const { setFirstLaunchComplete } = useFirstLaunchStore()
   const {
@@ -70,23 +63,28 @@ export default function DateSelectionScreen() {
     setCourseStartDate,
     courseStartDate,
     completedTrialCourses = 0,
+    hasLifetimeAccess = false,
   } = useChakraJourneyStore()
 
   const handleBack = useCallback(() => {
     addHapticFeedback(HapticStrength.Light)
     useChakraJourneyStore.getState().setLifetimeChosenTimegateJourney(false)
-    router.replace("/(chakras)/WelcomeScreen")
-  }, [router])
+    if (hasLifetimeAccess) {
+      router.replace("/(chakras)/ChakraHub")
+    } else {
+      router.replace("/(chakras)/WelcomeScreen")
+    }
+  }, [router, hasLifetimeAccess])
 
   const handleDateSelect = useCallback((dateISO: string) => {
     setSelectedDateISO(dateISO)
     setTimeout(() => setShowConfirmation(true), 150)
   }, [])
 
-  // Confirm locks the date; then show our communication reminder or schedule if already permitted
+  // Confirm locks the date; schedule reminders if already permitted. Reminder modal now shows 60s after entering waiting room.
   const handleConfirmDate = useCallback(async () => {
     if (!selectedDateISO) return
-    const todayISO = new Date().toISOString().split("T")[0]
+    const todayISO = getLocalDateISO()
     setInitialOpenDate(todayISO)
     setCourseStartDate(selectedDateISO)
     addHapticFeedback(HapticStrength.Medium)
@@ -98,37 +96,39 @@ export default function DateSelectionScreen() {
         if (__DEV__)
           console.warn("[DateSelection] Failed to schedule reminders:", err)
       })
-    } else {
-      setShowCommunicationModal(true)
     }
   }, [selectedDateISO, setInitialOpenDate, setCourseStartDate])
-
-  const handleCommunicationAllow = useCallback(async () => {
-    if (!selectedDateISO) return
-    const granted = await requestNotificationPermissions()
-    if (granted) {
-      scheduleJourneyReminders(selectedDateISO).catch((err) => {
-        if (__DEV__)
-          console.warn("[DateSelection] Failed to schedule reminders:", err)
-      })
-    }
-    setShowCommunicationModal(false)
-  }, [selectedDateISO])
-
-  const handleCommunicationNotNow = useCallback(() => {
-    setShowCommunicationModal(false)
-  }, [])
 
   const handleCancelConfirmation = useCallback(() => {
     setShowConfirmation(false)
   }, [])
 
-  // Begin Your Journey: mark hero onboarding complete and go to waiting room (preload starts there)
+  // Begin Your Journey: three doors for trial users (Lifetime does not use these—they go WelcomeScreen → ChakraHub).
+  // Door 1 – Fresh (Trial 1): completedTrialCourses === 0 → ChakraHome → Waiting room, then main home.
+  // Door 2 – Trial 2 begins: completedTrialCourses === 1 → ChakraHome → Waiting room (or main home if start date reached).
+  // Door 3 – Both trials end: completedTrialCourses >= 2 → SimpleGraceTransition → Continue → ChakraHome (paywall) → ChakraHub after purchase.
+  // Use completedTrialCourses (canonical), not trialHistory.length.
   const handleBeginJourney = useCallback(() => {
     addHapticFeedback(HapticStrength.Medium)
-    useChakraJourneyStore.getState().setHasCompletedHeroOnboarding(true)
-    setFirstLaunchComplete()
-    router.replace("/(chakras)/ChakraHome")
+    const state = useChakraJourneyStore.getState()
+    const bothTrialsActuallyCompleted =
+      !state.hasLifetimeAccess && state.completedTrialCourses >= 2
+
+    if (state.completedTrialCourses < 2 || state.hasLifetimeAccess) {
+      state.setHasCompletedHeroOnboarding(true)
+      setFirstLaunchComplete()
+    }
+
+    // Lifetime: mark course mode so ChakraHome shows waiting room / trial root instead of redirecting to ChakraHub
+    if (state.hasLifetimeAccess) {
+      state.setLifetimeChosenTimegateJourney(true)
+    }
+
+    if (bothTrialsActuallyCompleted) {
+      router.replace("/(chakras)/SimpleGraceTransition")
+    } else {
+      router.replace("/(chakras)/ChakraHome")
+    }
   }, [setFirstLaunchComplete, router])
 
   const displayStartDate = useMemo(() => {
@@ -144,8 +144,13 @@ export default function DateSelectionScreen() {
   const remainingTrials = 2 - completedTrialCourses
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }} edges={["top", "bottom"]}>
-      <View style={{ width: "100%", flex: 1, maxWidth: 512, alignSelf: "center" }}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#000000" }}
+      edges={["top", "bottom"]}
+    >
+      <View
+        style={{ width: "100%", flex: 1, maxWidth: 512, alignSelf: "center" }}
+      >
         {/* Back button - top left */}
         <Pressable
           onPress={handleBack}
@@ -171,7 +176,7 @@ export default function DateSelectionScreen() {
           contentContainerStyle={{
             paddingHorizontal: 24,
             paddingTop: 80,
-            paddingBottom: 140,
+            paddingBottom: 140 + SCROLL_BREATHING_BOTTOM_PADDING,
           }}
         >
           {/* Hero Logo */}
@@ -206,11 +211,15 @@ export default function DateSelectionScreen() {
             <AppText
               font="instrument-regular"
               size="base"
-              style={{ color: "rgba(255,255,255,0.8)", textAlign: "center", lineHeight: 24 }}
+              style={{
+                color: "rgba(255,255,255,0.8)",
+                textAlign: "center",
+                lineHeight: 24,
+              }}
             >
               Welcome to a sacred journey through the 7 chakras—a week-long
-              exploration of your energy centers, guiding you from foundation
-              to highest consciousness.
+              exploration of your energy centers, guiding you from foundation to
+              highest consciousness.
             </AppText>
           </View>
 
@@ -228,7 +237,11 @@ export default function DateSelectionScreen() {
               <AppText
                 font="instrument-regular"
                 size="xs"
-                style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", marginBottom: 8 }}
+                style={{
+                  color: "rgba(255,255,255,0.4)",
+                  textAlign: "center",
+                  marginBottom: 8,
+                }}
               >
                 Your journey begins
               </AppText>
@@ -242,15 +255,19 @@ export default function DateSelectionScreen() {
               <AppText
                 font="instrument-regular"
                 size="xs"
-                style={{ color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: 8 }}
+                style={{
+                  color: "rgba(255,255,255,0.5)",
+                  textAlign: "center",
+                  marginTop: 8,
+                }}
               >
                 At midnight Monday morning
               </AppText>
             </View>
           )}
 
-          {/* Trials Info */}
-          {remainingTrials > 0 && !selectedDateISO && (
+          {/* Trials Info - hide for lifetime users (course mode) */}
+          {!hasLifetimeAccess && remainingTrials > 0 && !selectedDateISO && (
             <View style={{ marginBottom: 24, alignItems: "center" }}>
               <AppText
                 font="instrument-regular"
@@ -323,7 +340,13 @@ export default function DateSelectionScreen() {
               elevation: 4,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Ionicons
                 name="heart"
                 size={18}
@@ -333,7 +356,11 @@ export default function DateSelectionScreen() {
               <AppText
                 font="instrument-medium"
                 size="sm"
-                style={{ textAlign: "center", color: "rgba(135, 174, 115, 1)", flex: 0 }}
+                style={{
+                  textAlign: "center",
+                  color: "rgba(135, 174, 115, 1)",
+                  flex: 0,
+                }}
               >
                 Invite a friend to join your journey
               </AppText>
@@ -379,7 +406,12 @@ export default function DateSelectionScreen() {
           <AppText
             font="instrument-regular"
             size="xs"
-            style={{ textAlign: "center", marginTop: 12, color: "rgba(255,255,255,0.4)" }}
+            style={{
+              textAlign: "center",
+              marginTop: 20,
+              fontSize: 10,
+              color: "rgba(255,255,255,0.35)",
+            }}
           >
             Soul School is operated by Project Starseed, an IRS-recognized
             501(c)(3) tax-exempt organization.
@@ -393,18 +425,13 @@ export default function DateSelectionScreen() {
         onConfirm={handleConfirmDate}
         onCancel={handleCancelConfirmation}
         offeringNumber={completedTrialCourses === 1 ? 2 : 1}
+        isCourseMode={hasLifetimeAccess}
       />
 
       <InviteFriendModal
         visible={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         startDate={displayStartDate}
-      />
-
-      <CommunicationReminderModal
-        visible={showCommunicationModal}
-        onAllow={handleCommunicationAllow}
-        onNotNow={handleCommunicationNotNow}
       />
     </SafeAreaView>
   )

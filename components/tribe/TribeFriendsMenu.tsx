@@ -65,7 +65,12 @@ export function TribeFriendsMenu({
     setTimeout(() => setCopied(false), 1500)
   }
 
-  const list = activeTab === "Connected" ? connected : activeTab === "Pending" ? pending : suggested
+  const list =
+    activeTab === "Connected"
+      ? connected
+      : activeTab === "Pending"
+        ? pending
+        : suggested
 
   if (!visible) return null
 
@@ -92,11 +97,19 @@ export function TribeFriendsMenu({
             style={[styles.gradient, { paddingTop: Math.max(insets.top, 20) }]}
           >
             <View style={styles.header}>
-              <AppText font="instrument-bold" size="lg" style={styles.headerTitle}>
+              <AppText
+                font="instrument-bold"
+                size="lg"
+                style={styles.headerTitle}
+              >
                 My Tribe
               </AppText>
               <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-                <Ionicons name="close" size={26} color="rgba(255,255,255,0.9)" />
+                <Ionicons
+                  name="close"
+                  size={26}
+                  color="rgba(255,255,255,0.9)"
+                />
               </Pressable>
             </View>
 
@@ -107,28 +120,52 @@ export function TribeFriendsMenu({
                   {currentProfilePicUrl ? (
                     <View style={styles.avatarPlaceholder} />
                   ) : (
-                    <Ionicons name="person" size={28} color="rgba(135, 174, 115, 0.8)" />
+                    <Ionicons
+                      name="person"
+                      size={28}
+                      color="rgba(135, 174, 115, 0.8)"
+                    />
                   )}
                 </View>
                 <View style={styles.profileInfo}>
-                  <AppText font="instrument-semibold" size="base" style={styles.profileName}>
+                  <AppText
+                    font="instrument-semibold"
+                    size="base"
+                    style={styles.profileName}
+                  >
                     {currentDisplayName}
                   </AppText>
                   <Pressable onPress={handleCopyId} style={styles.idRow}>
-                    <AppText font="instrument-regular" size="xs" style={styles.idLabel}>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={styles.idLabel}
+                    >
                       ID: {currentUserId}
                     </AppText>
-                    <Ionicons name="copy-outline" size={14} color="rgba(168, 201, 154, 0.7)" />
+                    <Ionicons
+                      name="copy-outline"
+                      size={14}
+                      color="rgba(168, 201, 154, 0.7)"
+                    />
                   </Pressable>
                   {copied && (
-                    <AppText font="instrument-regular" size="xs" style={styles.copiedText}>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={styles.copiedText}
+                    >
                       Copied!
                     </AppText>
                   )}
                 </View>
                 {onEditProfile && (
                   <Pressable onPress={onEditProfile} style={styles.editBtn}>
-                    <Ionicons name="pencil" size={18} color="rgba(168, 201, 154, 0.9)" />
+                    <Ionicons
+                      name="pencil"
+                      size={18}
+                      color="rgba(168, 201, 154, 0.9)"
+                    />
                   </Pressable>
                 )}
               </View>
@@ -146,9 +183,15 @@ export function TribeFriendsMenu({
                   style={[styles.tab, activeTab === tab && styles.tabActive]}
                 >
                   <AppText
-                    font={activeTab === tab ? "instrument-semibold" : "instrument-regular"}
+                    font={
+                      activeTab === tab
+                        ? "instrument-semibold"
+                        : "instrument-regular"
+                    }
                     size="sm"
-                    style={activeTab === tab ? styles.tabTextActive : styles.tabText}
+                    style={
+                      activeTab === tab ? styles.tabTextActive : styles.tabText
+                    }
                   >
                     {tab}
                   </AppText>
@@ -165,27 +208,50 @@ export function TribeFriendsMenu({
               {list.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Ionicons
-                    name={activeTab === "Suggested" ? "people-outline" : "person-add-outline"}
+                    name={
+                      activeTab === "Suggested"
+                        ? "people-outline"
+                        : "person-add-outline"
+                    }
                     size={40}
                     color="rgba(135, 174, 115, 0.35)"
                   />
-                  <AppText font="instrument-regular" size="sm" style={styles.emptyText}>
-                    {activeTab === "Connected" && "No one in the room yet. Invite friends to get started."}
+                  <AppText
+                    font="instrument-regular"
+                    size="sm"
+                    style={styles.emptyText}
+                  >
+                    {activeTab === "Connected" &&
+                      "No one in the room yet. Invite friends to get started."}
                     {activeTab === "Pending" && "No pending invites."}
-                    {activeTab === "Suggested" && "Find friends to see who's on Soul School."}
+                    {activeTab === "Suggested" &&
+                      "Find friends to see who's on Soul School."}
                   </AppText>
                 </View>
               ) : (
                 list.map((f) => (
                   <View key={f.id} style={styles.friendRow}>
                     <View style={styles.friendAvatar}>
-                      <Ionicons name="person" size={20} color="rgba(168, 201, 154, 0.8)" />
+                      <Ionicons
+                        name="person"
+                        size={20}
+                        color="rgba(168, 201, 154, 0.8)"
+                      />
                     </View>
-                    <AppText font="instrument-medium" size="sm" style={styles.friendName} numberOfLines={1}>
+                    <AppText
+                      font="instrument-medium"
+                      size="sm"
+                      style={styles.friendName}
+                      numberOfLines={1}
+                    >
                       {f.displayName}
                     </AppText>
                     {f.status === "pending" && (
-                      <AppText font="instrument-regular" size="xs" style={styles.pendingLabel}>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={styles.pendingLabel}
+                      >
                         Pending
                       </AppText>
                     )}
@@ -205,13 +271,24 @@ export function TribeFriendsMenu({
                 style={styles.inviteBtnWrap}
               >
                 <LinearGradient
-                  colors={["rgba(135, 174, 115, 0.35)", "rgba(6, 182, 212, 0.2)"]}
+                  colors={[
+                    "rgba(135, 174, 115, 0.35)",
+                    "rgba(6, 182, 212, 0.2)",
+                  ]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.inviteBtn}
                 >
-                  <Ionicons name="person-add" size={20} color="rgba(255,255,255,0.95)" />
-                  <AppText font="instrument-semibold" size="sm" style={styles.inviteBtnText}>
+                  <Ionicons
+                    name="person-add"
+                    size={20}
+                    color="rgba(255,255,255,0.95)"
+                  />
+                  <AppText
+                    font="instrument-semibold"
+                    size="sm"
+                    style={styles.inviteBtnText}
+                  >
                     + Invite more
                   </AppText>
                 </LinearGradient>
@@ -226,13 +303,24 @@ export function TribeFriendsMenu({
                   style={styles.findBtnWrap}
                 >
                   <LinearGradient
-                    colors={["rgba(6, 182, 212, 0.2)", "rgba(135, 174, 115, 0.15)"]}
+                    colors={[
+                      "rgba(6, 182, 212, 0.2)",
+                      "rgba(135, 174, 115, 0.15)",
+                    ]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.findBtn}
                   >
-                    <Ionicons name="people-outline" size={20} color="rgba(168, 201, 154, 0.95)" />
-                    <AppText font="instrument-medium" size="sm" style={styles.findBtnText}>
+                    <Ionicons
+                      name="people-outline"
+                      size={20}
+                      color="rgba(168, 201, 154, 0.95)"
+                    />
+                    <AppText
+                      font="instrument-medium"
+                      size="sm"
+                      style={styles.findBtnText}
+                    >
                       Find friends on Soul School
                     </AppText>
                   </LinearGradient>
@@ -306,7 +394,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.06)",
   },
-  tabActive: { backgroundColor: "rgba(135, 174, 115, 0.25)", borderWidth: 1, borderColor: "rgba(135, 174, 115, 0.4)" },
+  tabActive: {
+    backgroundColor: "rgba(135, 174, 115, 0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.4)",
+  },
   tabText: { color: "rgba(255,255,255,0.7)" },
   tabTextActive: { color: "rgba(255,255,255,0.98)" },
   listScroll: { flex: 1 },
@@ -317,7 +409,11 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     paddingHorizontal: 24,
   },
-  emptyText: { color: "rgba(255,255,255,0.6)", textAlign: "center", marginTop: 12 },
+  emptyText: {
+    color: "rgba(255,255,255,0.6)",
+    textAlign: "center",
+    marginTop: 12,
+  },
   friendRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -337,8 +433,18 @@ const styles = StyleSheet.create({
   },
   friendName: { flex: 1, color: "rgba(255,255,255,0.9)" },
   pendingLabel: { color: "rgba(212, 165, 116, 0.9)", marginLeft: 8 },
-  actions: { gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: "rgba(135, 174, 115, 0.15)" },
-  inviteBtnWrap: { borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: "rgba(135, 174, 115, 0.4)" },
+  actions: {
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(135, 174, 115, 0.15)",
+  },
+  inviteBtnWrap: {
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.4)",
+  },
   inviteBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -348,7 +454,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   inviteBtnText: { color: "rgba(255,255,255,0.95)" },
-  findBtnWrap: { borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: "rgba(6, 182, 212, 0.3)" },
+  findBtnWrap: {
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(6, 182, 212, 0.3)",
+  },
   findBtn: {
     flexDirection: "row",
     alignItems: "center",

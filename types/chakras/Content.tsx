@@ -42,6 +42,8 @@ export type Content = {
     essence: string
     body: string
     somaticCue: string
+    /** Optional URL to open for pose visual (e.g. Pocket Yoga or video). */
+    poseUrl?: string
   }
   soundBath: {
     title: string
@@ -56,6 +58,10 @@ export type Content = {
   goodbye: {
     content: string
     chakraImage: ImageSourcePropType
+    /** Unique closing message per day (e.g. "Wonderful work, lovely soul. Your roots are stronger.") */
+    closingMessage?: string
+    /** Subline (e.g. "Tomorrow, the Sacral invites you to feel and flow.") */
+    closingSubline?: string
   }
   elements: {
     background: ImageSourcePropType

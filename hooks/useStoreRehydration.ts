@@ -17,7 +17,10 @@ interface StoreRehydrationState {
 }
 
 export const useStoreRehydration = create<StoreRehydrationState>((set) => {
-  const t = setTimeout(() => set({ safetyPassed: true }), REHYDRATION_MAX_WAIT_MS)
+  const t = setTimeout(
+    () => set({ safetyPassed: true }),
+    REHYDRATION_MAX_WAIT_MS,
+  )
   return {
     journeyRehydrated: false,
     firstLaunchRehydrated: false,

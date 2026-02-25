@@ -1,8 +1,12 @@
 /**
- * The Sentinel - Egoless Filter
+ * The Sentinel - Egoless Filter (Anua monitor for Social Sanctuary)
  *
- * Uses Gemini API to screen community reflections for hate, spam, or ego-driven vitriol.
- * Acts as a guardian to maintain the sacred space of the Social Sanctuary.
+ * Uses Anua (Gemini) to screen every feed comment before it is written to Firestore.
+ * All Social Sanctuary reflections and replies pass through moderateReflection()
+ * in the app before addReflection() is called. Only approved content reaches the
+ * social_sanctuary collection, so the feed and Firestore are fully connected:
+ * what you see in the feed is exactly what is stored, and it has been checked
+ * for hate, spam, and ego-driven vitriol.
  */
 
 import { askAnua, isAnuaAvailable } from "./gemini"

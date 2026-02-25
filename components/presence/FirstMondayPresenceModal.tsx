@@ -102,7 +102,10 @@ export function FirstMondayPresenceModal({
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboardView}
         >
-          <Pressable style={styles.cardWrap} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={styles.cardWrap}
+            onPress={(e) => e.stopPropagation()}
+          >
             <LinearGradient
               colors={[
                 "rgba(18, 22, 28, 0.97)",
@@ -119,21 +122,42 @@ export function FirstMondayPresenceModal({
                 contentContainerStyle={styles.scrollContent}
               >
                 <View style={styles.headerRow}>
-                  <AppText font="instrument-bold" size="xl" style={styles.title}>
+                  <AppText
+                    font="instrument-bold"
+                    size="xl"
+                    style={styles.title}
+                  >
                     Give yourself a sound
                   </AppText>
-                  <Pressable onPress={handleLater} hitSlop={12} style={styles.closeBtn}>
-                    <Ionicons name="close" size={26} color="rgba(255,255,255,0.8)" />
+                  <Pressable
+                    onPress={handleLater}
+                    hitSlop={12}
+                    style={styles.closeBtn}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={26}
+                      color="rgba(255,255,255,0.8)"
+                    />
                   </Pressable>
                 </View>
 
-                <AppText font="instrument-regular" size="sm" style={styles.subtitle}>
-                  Choose how you want to be called and add a visual expression. You can update this anytime from the menu.
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={styles.subtitle}
+                >
+                  Choose how you want to be called and add a visual expression.
+                  You can update this anytime from the menu.
                 </AppText>
 
                 {/* Name – clear label + input box */}
                 <View style={styles.fieldWrap}>
-                  <AppText font="instrument-semibold" size="sm" style={styles.label}>
+                  <AppText
+                    font="instrument-semibold"
+                    size="sm"
+                    style={styles.label}
+                  >
                     Name
                   </AppText>
                   <View style={styles.inputBoxWrap}>
@@ -162,7 +186,11 @@ export function FirstMondayPresenceModal({
 
                 {/* Visual expression – label + photo button */}
                 <View style={styles.fieldWrap}>
-                  <AppText font="instrument-semibold" size="sm" style={styles.label}>
+                  <AppText
+                    font="instrument-semibold"
+                    size="sm"
+                    style={styles.label}
+                  >
                     Visual expression
                   </AppText>
                   <Pressable
@@ -181,9 +209,15 @@ export function FirstMondayPresenceModal({
                       style={styles.photoBtnGradient}
                     >
                       {photoUri ? (
-                        <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                        <Image
+                          source={{ uri: photoUri }}
+                          style={styles.photoPreview}
+                        />
                       ) : isPickingPhoto ? (
-                        <ActivityIndicator size="small" color="rgba(168, 201, 154, 0.9)" />
+                        <ActivityIndicator
+                          size="small"
+                          color="rgba(168, 201, 154, 0.9)"
+                        />
                       ) : (
                         <>
                           <Ionicons
@@ -192,7 +226,11 @@ export function FirstMondayPresenceModal({
                             color="rgba(168, 201, 154, 0.85)"
                             style={{ marginBottom: 8 }}
                           />
-                          <AppText font="instrument-regular" size="sm" style={styles.photoBtnText}>
+                          <AppText
+                            font="instrument-regular"
+                            size="sm"
+                            style={styles.photoBtnText}
+                          >
                             Add a photo (optional)
                           </AppText>
                         </>
@@ -204,7 +242,10 @@ export function FirstMondayPresenceModal({
                 {/* Begin – primary */}
                 <Pressable
                   onPress={handleBegin}
-                  style={({ pressed }) => [styles.primaryBtnWrap, pressed && styles.primaryBtnPressed]}
+                  style={({ pressed }) => [
+                    styles.primaryBtnWrap,
+                    pressed && styles.primaryBtnPressed,
+                  ]}
                 >
                   <LinearGradient
                     colors={[
@@ -216,7 +257,11 @@ export function FirstMondayPresenceModal({
                     end={{ x: 1, y: 1 }}
                     style={styles.primaryBtn}
                   >
-                    <AppText font="instrument-semibold" size="base" style={styles.primaryBtnText}>
+                    <AppText
+                      font="instrument-semibold"
+                      size="base"
+                      style={styles.primaryBtnText}
+                    >
                       Begin
                     </AppText>
                   </LinearGradient>
@@ -225,9 +270,16 @@ export function FirstMondayPresenceModal({
                 {/* I'll do this later */}
                 <Pressable
                   onPress={handleLater}
-                  style={({ pressed }) => [styles.laterBtn, pressed && { opacity: 0.8 }]}
+                  style={({ pressed }) => [
+                    styles.laterBtn,
+                    pressed && { opacity: 0.8 },
+                  ]}
                 >
-                  <AppText font="instrument-regular" size="sm" style={styles.laterBtnText}>
+                  <AppText
+                    font="instrument-regular"
+                    size="sm"
+                    style={styles.laterBtnText}
+                  >
                     I&apos;ll do this later
                   </AppText>
                 </Pressable>

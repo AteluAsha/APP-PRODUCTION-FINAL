@@ -19,15 +19,20 @@ try {
   }
 }
 
+// HERO MASTER: App icon on phone MUST be black background + color wheel. Never white.
+// Single source: ChakraWheel_ONBLACK_300DPI.png (production app icon for iOS and Android).
+const APP_ICON_BLACK = "./assets/images/ChakraWheel_ONBLACK_300DPI.png"
+
 module.exports = {
   expo: {
+    // Home screen label under icon; store listing may use longer name (e.g. Soul School | ProjectStarseed)
     name: "Soul School",
     slug: "soul-school",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/7chakras.png",
+    icon: APP_ICON_BLACK,
     splash: {
-      image: "./assets/images/SoulSchool_HERO_Logo.png",
+      image: "./assets/images/SoulSchool_Error_HeroLogo.png",
       backgroundColor: "#000000",
       resizeMode: "contain",
       imageWidth: 300,
@@ -39,8 +44,9 @@ module.exports = {
     ios: {
       jsEngine: "hermes", // Explicitly set Hermes for iOS
       supportsTablet: true,
-      icon: "./assets/images/7chakras.png",
+      icon: APP_ICON_BLACK,
       infoPlist: {
+        // iOS home screen label; keep "Soul School" regardless of App Store listing name
         CFBundleDisplayName: "Soul School",
         LSApplicationQueriesSchemes: ["whatsapp", "sms", "mailto"],
         UIBackgroundModes: ["audio"],
@@ -54,7 +60,7 @@ module.exports = {
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android
       adaptiveIcon: {
-        foregroundImage: "./assets/images/7chakras.png",
+        foregroundImage: APP_ICON_BLACK,
         backgroundColor: "#000000",
       },
       package: "com.sevenchakras.SevenChakras",
@@ -72,7 +78,7 @@ module.exports = {
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/SoulSchool_HERO_Logo.png",
+          image: "./assets/images/SoulSchool_Error_HeroLogo.png",
           backgroundColor: "#000000",
           resizeMode: "contain",
           imageWidth: 300,
@@ -98,7 +104,8 @@ module.exports = {
       [
         "expo-contacts",
         {
-          contactsPermission: "Allow Soul School to find friends who are also on the journey.",
+          contactsPermission:
+            "Allow Soul School to find friends who are also on the journey.",
         },
       ],
     ],

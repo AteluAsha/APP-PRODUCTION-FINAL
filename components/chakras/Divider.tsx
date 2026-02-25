@@ -9,10 +9,8 @@ export const Divider = ({
 }) => {
   return (
     <View
-      style={[
-        { height: 1, backgroundColor: "#8E8E8E" },
-        style,
-      ]}
+      className={className}
+      style={[{ height: 1, backgroundColor: "#8E8E8E" }, style]}
     />
   )
 }

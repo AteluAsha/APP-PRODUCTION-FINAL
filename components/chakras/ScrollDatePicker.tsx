@@ -7,7 +7,7 @@
 import React, { useState } from "react"
 import { View, ScrollView, Pressable } from "react-native"
 import { AppText } from "@/components/AppText"
-import { getNextMondayDate } from "@/utils/date"
+import { getLocalDateISO, getNextMondayDate } from "@/utils/date"
 
 interface ScrollDatePickerProps {
   onDateSelect: (dateISO: string) => void
@@ -26,7 +26,7 @@ export const ScrollDatePicker: React.FC<ScrollDatePickerProps> = ({
     for (let i = 0; i < 6; i++) {
       const date = new Date(nextMonday)
       date.setDate(date.getDate() + i * 7)
-      mondays.push(date.toISOString().split("T")[0])
+      mondays.push(getLocalDateISO(date))
     }
 
     return mondays

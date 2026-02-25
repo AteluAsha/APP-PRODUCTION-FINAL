@@ -1,9 +1,15 @@
 import React from "react"
 import { TouchableOpacity } from "react-native"
-import { MaterialCommunityIcons, Feather, Ionicons } from "@expo/vector-icons"
+import { Feather, Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { ICON } from "@/constants/layout"
+
+/** Same row as GlobalHomeButton (chakra icon): top offset and 40px height */
+const HEADER_ROW_TOP = (insets: { top: number }) =>
+  Math.max(insets.top, 8) + 8
+const HEADER_ROW_HEIGHT = ICON.homeButton
 
 interface ActionBarProps {
   useXButton?: boolean
@@ -23,6 +29,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   showBackButton = true,
 }) => {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
 
   const backWithHapticFeedback = () => {
     addHapticFeedback(HapticStrength.Light)
@@ -38,6 +45,15 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   if (!showBackButton && !useXButton) {
     return null
   }
+  const shadowStyle = {
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1 } as const,
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    elevation: 4,
+  }
+
+  const top = HEADER_ROW_TOP(insets)
   if (useXButton) {
     const isLeft = xButtonPosition === "left"
     return (
@@ -52,9 +68,14 @@ export const ActionBar: React.FC<ActionBarProps> = ({
         }}
         style={{
           position: "absolute",
-          top: 56,
-          ...(isLeft ? { left: 12 } : { right: 12 }),
+          top,
+          width: HEADER_ROW_HEIGHT,
+          height: HEADER_ROW_HEIGHT,
+          justifyContent: "center",
+          alignItems: "center",
+          ...(isLeft ? { left: 16 } : { right: 16 }),
           zIndex: 1000,
+          ...shadowStyle,
         }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityLabel="Close"
@@ -69,17 +90,24 @@ export const ActionBar: React.FC<ActionBarProps> = ({
       onPress={backWithHapticFeedback}
       style={{
         position: "absolute",
-        top: 56,
-        left: 12,
+        top,
+        left: 16,
+        width: HEADER_ROW_HEIGHT,
+        height: HEADER_ROW_HEIGHT,
+        justifyContent: "center",
+        alignItems: "center",
         zIndex: 1,
         backgroundColor: "transparent",
-        padding: 6,
-        margin: 0,
+        ...shadowStyle,
       }}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       activeOpacity={0.7}
     >
-      <Ionicons name="arrow-back" size={ICON.actionBar} color="rgba(255, 255, 255, 0.9)" />
+      <Ionicons
+        name="arrow-back"
+        size={ICON.actionBar}
+        color="rgba(255, 255, 255, 0.95)"
+      />
     </TouchableOpacity>
   )
 }

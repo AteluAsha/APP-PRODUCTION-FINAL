@@ -24,17 +24,21 @@ import { useAnimatedStyle } from "react-native-reanimated"
 import { useScrollViewOffset } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { ICON } from "@/constants/layout"
 
 export const ActionBarAnimated = ({
   scrollViewRef,
   headerImageSource,
   scrollThreshold = 200,
   onBackPress,
+  showBackButton = true,
 }: {
   scrollViewRef: AnimatedRef<Animated.ScrollView>
   headerImageSource?: ImageSourcePropType
   scrollThreshold?: number
   onBackPress?: () => void
+  /** When false, back arrow is hidden (e.g. main course day pages use menu bar home only). Default true. */
+  showBackButton?: boolean
 }) => {
   const router = useRouter()
   const scrollHandler = useScrollViewOffset(scrollViewRef)
@@ -67,31 +71,37 @@ export const ActionBarAnimated = ({
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Standalone back arrow – white arrow only, no background (avoids iOS grey circle) */}
-      <TouchableOpacity
-        onPress={handleBack}
-        accessibilityLabel="Back"
-        accessibilityHint="Tap to go back"
-        style={{
-          position: "absolute",
-          top: Math.max(insets.top, 8) + 8,
-          left: 16,
-          zIndex: 1001,
-          padding: 8,
-          backgroundColor: "transparent",
-          margin: 0,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name="arrow-back"
-          size={24}
-          color="rgba(255, 255, 255, 0.9)"
-        />
-      </TouchableOpacity>
+      {showBackButton && (
+        <TouchableOpacity
+          onPress={handleBack}
+          accessibilityLabel="Back"
+          accessibilityHint="Tap to go back"
+          style={{
+            position: "absolute",
+            top: Math.max(insets.top, 8) + 8,
+            left: 16,
+            width: ICON.homeButton,
+            height: ICON.homeButton,
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1001,
+            backgroundColor: "transparent",
+            shadowColor: "#000000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.5,
+            shadowRadius: 3,
+            elevation: 4,
+          }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="arrow-back"
+            size={ICON.actionBar}
+            color="rgba(255, 255, 255, 0.95)"
+          />
+        </TouchableOpacity>
+      )}
 
       {/* Scroll-triggered header bar overlay */}
       <Animated.View

@@ -9,7 +9,13 @@ const ChakrasLayout = () => {
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <BottomSheetModalProvider>
-          <Stack screenOptions={{ headerShown: false }}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: "fade",
+              animationDuration: 320,
+            }}
+          >
             <Stack.Screen name="index" />
             <Stack.Screen name="WelcomeScreen" />
             <Stack.Screen name="ChakraHome" />
@@ -18,10 +24,12 @@ const ChakrasLayout = () => {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
+                animationDuration: 320,
                 gestureEnabled: true,
               }}
             />
             <Stack.Screen name="DevPaywall" />
+            <Stack.Screen name="Paywall" />
             <Stack.Screen name="DateSelection" />
             <Stack.Screen name="ChakraHub" />
             <Stack.Screen name="CoursePreview" />
@@ -34,7 +42,7 @@ const ChakrasLayout = () => {
             <Stack.Screen name="AccountabilityOfAwakening" />
             <Stack.Screen name="GalleryOfGnosis" />
             <Stack.Screen name="NotesAlongTheWay" />
-            <Stack.Screen name="Donate" />
+            <Stack.Screen name="Contribute" />
           </Stack>
         </BottomSheetModalProvider>
       </GestureHandlerRootView>

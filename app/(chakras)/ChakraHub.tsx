@@ -1,6 +1,10 @@
 /**
  * APP_2 (Lifetime): Lifetime Home Screen
  *
+ * *** HERO LOCKED FOR PRODUCTION ***
+ * Layout, chakra ball size/position, Sanctuary section spacing, and overall
+ * design are finalized. Do not change without explicit product approval.
+ *
  * This is the home screen for post-paywall users (lifetime access mode).
  * Features:
  * - All chakras accessible (no timegates)
@@ -31,10 +35,12 @@ import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import GoodbyeModal from "@/components/chakras/GoodbyeModal"
+import { ReturnToCourseModal } from "@/components/chakras/ReturnToCourseModal"
 import { isChakraDayAccessible } from "@/src/services/timegate"
 import { useFocusEffect } from "@react-navigation/native"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
-import { FLOATING_NAV_SCROLL_BOTTOM_PADDING } from "@/constants/layout"
+import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
 
 const CHAKRA_ORDER: Chakra[] = [
   Chakra.ROOT,
@@ -91,6 +97,9 @@ export default function ChakraHub() {
     hasParticipatedDay,
     hasCompletedChakra,
     allChakrasCompleted,
+    lifetimeChosenTimegateJourney,
+    setLifetimeChosenTimegateJourney,
+    clearLifetimeCourseForNewStart,
   } = useChakraJourneyStore(
     useShallow((state) => ({
       hasEverCompletedChakra: state.hasEverCompletedChakra,
@@ -102,26 +111,30 @@ export default function ChakraHub() {
       hasParticipatedDay: state.hasParticipatedDay,
       hasCompletedChakra: state.hasCompletedChakra,
       allChakrasCompleted: state.allChakrasCompleted,
+      lifetimeChosenTimegateJourney: state.lifetimeChosenTimegateJourney,
+      setLifetimeChosenTimegateJourney: state.setLifetimeChosenTimegateJourney,
+      clearLifetimeCourseForNewStart: state.clearLifetimeCourseForNewStart,
     })),
   )
 
-  // When lifetime user has an active somatic journey (date + started), apply trial-style illumination + opacity
-  const inCourseMode = Boolean(courseStartDate && journeyStarted)
+  // When lifetime user has an active somatic journey (date + started) AND is currently in course mode,
+  // apply trial-style illumination + opacity. When they exit course mode, lifetimeChosenTimegateJourney
+  // is false, so all balls stay unlocked (full App 2).
+  const inCourseMode = Boolean(
+    courseStartDate && journeyStarted && lifetimeChosenTimegateJourney,
+  )
   const { completedChakra, clearCompletedChakra } = useCompletedChakraStore()
-  const [isGoodbyeModalVisible, setIsGoodbyeModalVisible] = useState(false)
+  const [showReturnToCourseModal, setShowReturnToCourseModal] = useState(false)
+  const isGoodbyeVisible = completedChakra != null
 
   useEffect(() => {
     if (completedChakra) {
-      setIsGoodbyeModalVisible(true)
       const chakraDayIndex = getChakraIndex(completedChakra)
       markChakraCompleted(chakraDayIndex)
-    } else {
-      setIsGoodbyeModalVisible(false)
     }
   }, [completedChakra, markChakraCompleted])
 
   const closeGoodbyeModal = () => {
-    setIsGoodbyeModalVisible(false)
     clearCompletedChakra()
   }
   const { chakrasData } = useChakrasData()
@@ -168,7 +181,6 @@ export default function ChakraHub() {
     React.useCallback(() => {
       return () => {
         if (completedChakra) {
-          setIsGoodbyeModalVisible(false)
           clearCompletedChakra()
         }
       }
@@ -200,8 +212,8 @@ export default function ChakraHub() {
     addHapticFeedback(HapticStrength.Light)
   }
 
-  const handleNavigateToDonate = () => {
-    router.push("/(chakras)/Donate")
+  const handleNavigateToContribute = () => {
+    router.push("/(chakras)/Contribute")
     addHapticFeedback(HapticStrength.Light)
   }
 
@@ -235,7 +247,7 @@ export default function ChakraHub() {
 
   const handleBack = () => {
     addHapticFeedback(HapticStrength.Light)
-    if (isGoodbyeModalVisible) {
+    if (isGoodbyeVisible) {
       closeGoodbyeModal()
       return
     }
@@ -256,6 +268,9 @@ export default function ChakraHub() {
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
+      {__DEV__ && (
+        <TrialTestFlow onUnlockNextDay={() => {}} currentDay={currentDay} />
+      )}
       <ActionBar onBackPress={handleBack} />
       {/* Hamburger – Profile (name, photo, Soul School ID). Same position as ChakraHome. */}
       <Pressable
@@ -289,13 +304,19 @@ export default function ChakraHub() {
         style={{ flex: 1, backgroundColor: "#000000" }}
         contentContainerStyle={{
           padding: 20,
-          paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING,
+          paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
           paddingTop: Math.max(insets.top, 20) + 20,
         }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero: Day title + tagline – explicit style so layout matches APP1 restoration */}
-        <View style={{ alignItems: "center", marginBottom: 32, paddingHorizontal: 16 }}>
+        <View
+          style={{
+            alignItems: "center",
+            marginBottom: 32,
+            paddingHorizontal: 16,
+          }}
+        >
           <AppText
             font="instrument-medium"
             size="lg"
@@ -325,8 +346,8 @@ export default function ChakraHub() {
           </AppText>
         </View>
 
-        {/* Chakras Grid - Bottom to top: Root at bottom, Crown at top */}
-        <View style={{ marginBottom: 32 }}>
+        {/* Chakras Grid - Bottom to top: Root at bottom, Crown at top; marginTop drops balls in frame */}
+        <View style={{ marginTop: 28, marginBottom: 32 }}>
           <View
             style={{
               flexDirection: "column-reverse",
@@ -427,8 +448,8 @@ export default function ChakraHub() {
           </View>
         </View>
 
-        {/* Sanctuary - Menu Options (explicit style for APP2 restoration) */}
-        <View style={{ marginTop: 40, marginBottom: 24 }}>
+        {/* Sanctuary - Menu Options (explicit style for APP2 restoration); marginTop pushes section down */}
+        <View style={{ marginTop: 56, marginBottom: 24 }}>
           <AppText
             font="instrument-bold"
             size="lg"
@@ -452,14 +473,14 @@ export default function ChakraHub() {
               accessibilityHint="View your collected chakra cards"
               style={({ pressed }) => [
                 {
-                shadowColor: "#9D4EDD",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 12,
-                elevation: 6,
-              },
-              pressed && { opacity: 0.9 },
-            ]}
+                  shadowColor: "#9D4EDD",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 12,
+                  elevation: 6,
+                },
+                pressed && { opacity: 0.9 },
+              ]}
             >
               <LinearGradient
                 colors={[
@@ -496,7 +517,14 @@ export default function ChakraHub() {
                     borderTopRightRadius: 16,
                   }}
                 />
-                <View style={{ flexDirection: "row", alignItems: "center", position: "relative" as const, zIndex: 10 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    position: "relative" as const,
+                    zIndex: 10,
+                  }}
+                >
                   <View
                     style={{
                       padding: 6,
@@ -613,7 +641,14 @@ export default function ChakraHub() {
                     borderTopRightRadius: 16,
                   }}
                 />
-                <View style={{ flexDirection: "row", alignItems: "center", position: "relative" as const, zIndex: 10 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    position: "relative" as const,
+                    zIndex: 10,
+                  }}
+                >
                   <View
                     style={{
                       backgroundColor: "rgba(135, 174, 115, 0.35)",
@@ -708,7 +743,14 @@ export default function ChakraHub() {
                     borderTopRightRadius: 16,
                   }}
                 />
-                <View style={{ flexDirection: "row", alignItems: "center", position: "relative" as const, zIndex: 10 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    position: "relative" as const,
+                    zIndex: 10,
+                  }}
+                >
                   <View
                     style={{
                       backgroundColor: "rgba(185, 120, 255, 0.35)",
@@ -809,7 +851,14 @@ export default function ChakraHub() {
                     borderTopRightRadius: 16,
                   }}
                 />
-                <View style={{ flexDirection: "row", alignItems: "center", position: "relative" as const, zIndex: 10 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    position: "relative" as const,
+                    zIndex: 10,
+                  }}
+                >
                   <View
                     style={{
                       backgroundColor: "rgba(16, 185, 129, 0.25)",
@@ -869,18 +918,20 @@ export default function ChakraHub() {
           <Pressable
             onPress={() => {
               addHapticFeedback(HapticStrength.Medium)
-              useChakraJourneyStore
-                .getState()
-                .setLifetimeChosenTimegateJourney(true)
-              router.push("/(chakras)/DateSelection")
+              if (hasSomaticJourneyScheduled) {
+                setShowReturnToCourseModal(true)
+              } else {
+                setLifetimeChosenTimegateJourney(true)
+                router.push("/(chakras)/DateSelection")
+              }
             }}
             style={({ pressed }) => [pressed && { opacity: 0.9 }]}
-            accessibilityLabel={
+            accessibilityLabel="Start a new 7 Day Journey"
+            accessibilityHint={
               hasSomaticJourneyScheduled
-                ? "Access course"
-                : "Select a start date"
+                ? "Continue current course or start a new one"
+                : "Choose when to begin your 7-day journey"
             }
-            accessibilityHint="Choose when to begin your 7-day journey"
           >
             <View
               style={{
@@ -898,9 +949,7 @@ export default function ChakraHub() {
                 size="sm"
                 style={{ color: "rgba(255,255,255,0.9)" }}
               >
-                {hasSomaticJourneyScheduled
-                  ? "Access course"
-                  : "Select a start date"}
+                Start a new 7 Day Journey
               </AppText>
             </View>
           </Pressable>
@@ -909,7 +958,7 @@ export default function ChakraHub() {
         {/* Subtle Donation Option - Ready but not activated */}
         {false && ( // Feature flag - set to true when ready to activate
           <Pressable
-            onPress={handleNavigateToDonate}
+            onPress={handleNavigateToContribute}
             className="active:opacity-80 mt-6"
           >
             <View className="items-center py-3 px-6 border border-[#8B7355]/30 rounded-lg bg-[#5A4A3A]/10">
@@ -928,7 +977,7 @@ export default function ChakraHub() {
         {false && ( // Feature flag - set to true when ready to activate
           <View className="mt-8 pt-6 border-t border-white/10">
             <Pressable
-              onPress={handleNavigateToDonate}
+              onPress={handleNavigateToContribute}
               className="active:opacity-70"
             >
               <AppText
@@ -945,12 +994,25 @@ export default function ChakraHub() {
       </ScrollView>
 
       <GoodbyeModal
-        isVisible={isGoodbyeModalVisible}
+        isVisible={isGoodbyeVisible}
         onClose={closeGoodbyeModal}
         chakraDay={
           completedChakra ? getChakraIndex(completedChakra) : undefined
         }
         navigateToHubOnHome={false}
+      />
+
+      <ReturnToCourseModal
+        visible={showReturnToCourseModal}
+        onClose={() => setShowReturnToCourseModal(false)}
+        onContinueCurrent={() => {
+          setLifetimeChosenTimegateJourney(true)
+          router.replace("/(chakras)/ChakraHome")
+        }}
+        onStartNew={() => {
+          clearLifetimeCourseForNewStart()
+          router.replace("/(chakras)/DateSelection")
+        }}
       />
     </SafeAreaView>
   )
@@ -987,7 +1049,7 @@ function ChakraBallItem({
     onPress()
   }
   return (
-    <View style={{ alignItems: "center", width: 90, opacity }}>
+    <View style={{ alignItems: "center", width: 102, opacity }}>
       <Pressable
         onPress={handlePress}
         style={({ pressed }) => [pressed && { opacity: 0.8 }]}
@@ -1011,6 +1073,7 @@ function ChakraBallItem({
               isAnimating={isCurrentDay && (!inCourseMode || isUnlocked)}
               onPress={handlePress}
               small={true}
+              smallDivisor={7.8}
             />
             {isCurrentDay &&
               (() => {

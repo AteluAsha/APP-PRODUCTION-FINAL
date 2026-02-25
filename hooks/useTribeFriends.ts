@@ -30,7 +30,10 @@ export interface TribeRoomMemberDoc {
   lastActiveAt?: string
 }
 
-export function useTribeFriends(roomId: string = DEFAULT_ROOM_ID, enabled: boolean = true) {
+export function useTribeFriends(
+  roomId: string = DEFAULT_ROOM_ID,
+  enabled: boolean = true,
+) {
   const [connected, setConnected] = useState<TribeFriend[]>([])
   const [pending, setPending] = useState<TribeFriend[]>([])
   const [loading, setLoading] = useState(true)
@@ -86,7 +89,9 @@ export function useTribeFriends(roomId: string = DEFAULT_ROOM_ID, enabled: boole
           if (__DEV__) {
             console.warn("[useTribeFriends] onSnapshot error:", err)
           }
-          setError(err instanceof Error ? err.message : "Failed to load members")
+          setError(
+            err instanceof Error ? err.message : "Failed to load members",
+          )
           setLoading(false)
         },
       )
@@ -102,21 +107,27 @@ export function useTribeFriends(roomId: string = DEFAULT_ROOM_ID, enabled: boole
   }, [roomId, enabled])
 
   const addPendingInvite = useCallback(
-    async (displayName: string, invitedBy?: string): Promise<{ ok: boolean; error?: string }> => {
+    async (
+      displayName: string,
+      invitedBy?: string,
+    ): Promise<{ ok: boolean; error?: string; memberId?: string }> => {
       if (!db) return { ok: false, error: "Firebase not configured" }
       try {
-        const memberId = `pending-${Date.now()}`
         const membersRef = collection(db, "tribeRooms", roomId, "members")
+        const memberId = invitedBy
+          ? `pending-${invitedBy}`
+          : `pending-${Date.now()}`
         await setDoc(doc(membersRef, memberId), {
           displayName: displayName || "Pending invite",
           status: "pending",
           invitedAt: new Date().toISOString(),
           invitedBy: invitedBy ?? null,
         })
-        return { ok: true }
+        return { ok: true, memberId }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to add invite"
-        if (__DEV__) console.warn("[useTribeFriends] addPendingInvite error:", err)
+        if (__DEV__)
+          console.warn("[useTribeFriends] addPendingInvite error:", err)
         return { ok: false, error: msg }
       }
     },
@@ -124,7 +135,11 @@ export function useTribeFriends(roomId: string = DEFAULT_ROOM_ID, enabled: boole
   )
 
   const setMemberConnected = useCallback(
-    async (memberId: string, displayName: string, profilePicUrl?: string): Promise<{ ok: boolean; error?: string }> => {
+    async (
+      memberId: string,
+      displayName: string,
+      profilePicUrl?: string,
+    ): Promise<{ ok: boolean; error?: string }> => {
       if (!db) return { ok: false, error: "Firebase not configured" }
       try {
         const membersRef = collection(db, "tribeRooms", roomId, "members")
@@ -142,8 +157,10 @@ export function useTribeFriends(roomId: string = DEFAULT_ROOM_ID, enabled: boole
         )
         return { ok: true }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Failed to update member"
-        if (__DEV__) console.warn("[useTribeFriends] setMemberConnected error:", err)
+        const msg =
+          err instanceof Error ? err.message : "Failed to update member"
+        if (__DEV__)
+          console.warn("[useTribeFriends] setMemberConnected error:", err)
         return { ok: false, error: msg }
       }
     },

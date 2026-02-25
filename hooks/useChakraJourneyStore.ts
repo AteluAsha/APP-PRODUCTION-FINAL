@@ -1,8 +1,11 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { calculateCourseStartDate } from "@/utils/date"
+import { calculateCourseStartDate, getLocalDateISO } from "@/utils/date"
 import { useStoreRehydration } from "@/hooks/useStoreRehydration"
+import { safeAsyncStorage } from "@/src/utils/safeAsyncStorage"
+import { getUserId } from "@/src/services/userId"
+import { updateUserScholarshipStatus } from "@/src/services/userScholarshipStatus"
 
 // Payment status types
 export type PaymentStatus = "pending" | "paid" | "scholarship"
@@ -36,13 +39,13 @@ interface ChakraJourneyState {
   // Trials don't need to be consecutive - user can complete them at any time
   completedTrialCourses: number
 
-  // Payment status: 'pending' (in trial), 'paid' (lifetime access), 'scholarship' (1 year access)
+  // Payment status: 'pending' (in trial), 'paid' (lifetime access), 'scholarship' (30-day access, renewable)
   paymentStatus: PaymentStatus
 
   // Flag indicating if user has lifetime access (bypasses time gates)
   hasLifetimeAccess: boolean
 
-  // Scholarship expiry date (ISO string) - scholarships are 1 year, not lifetime
+  // Scholarship expiry date (ISO string) - monthly pass; user can reapply after grant ends
   scholarshipExpiryDate: string | null
 
   // Accountability of Awakening - Progress Tracking
@@ -61,13 +64,29 @@ interface ChakraJourneyState {
   // List of first names of friends invited (for display on waiting room)
   invitedFriends: string[] // Array of first names
 
-  // Session-only: Lifetime user intentionally chose timegate journey (ChakraHub → DateSelection → ChakraHome)
-  // Not persisted - allows lifetime users to experience the Monday-Sunday flow with waiting room
+  // Lifetime user intentionally chose timegate journey (ChakraHub → DateSelection → ChakraHome)
+  // Persisted so "Return to course" works across app restarts
   lifetimeChosenTimegateJourney: boolean
+
+  // User chose "Continue to Trial 2" from paywall (Trial 1 complete) - suppresses paywall until Trial 2 ends
+  userChoseTrial2: boolean
+  setUserChoseTrial2: (value: boolean) => void
+
+  // User chose "Path of the Sovereign" from Seal of the Initiate - shows Gift page instead of paywall
+  userChoseSovereignDepart: boolean
+  setUserChoseSovereignDepart: (value: boolean) => void
+
+  // User chose "Path of the Gentle" from Grace of the Presence - shows RestingBlessing instead of Grace
+  userChoseGentleDepart: boolean
+  setUserChoseGentleDepart: (value: boolean) => void
 
   // Dev only: when true, ChakraHome opens paywall (CommitmentGate) on next mount/focus; then cleared
   devOpenPaywall: boolean
   setDevOpenPaywall: (value: boolean) => void
+
+  // Grace return flow: when true, ChakraHome opens paywall on next mount; then cleared
+  openPaywallFromGraceReturn: boolean
+  setOpenPaywallFromGraceReturn: (value: boolean) => void
 
   /** Set true only when user completes Path selection → Date selection → Begin. Used to enforce hero onboarding. */
   hasCompletedHeroOnboarding: boolean
@@ -106,12 +125,17 @@ interface ChakraJourneyState {
   addInvitedFriend: (firstName: string) => void
   clearInvitedFriends: () => void
 
-  // Lifetime user chose timegate journey (session-only, not persisted)
+  // Lifetime user chose timegate journey (persisted for "Return to course")
   setLifetimeChosenTimegateJourney: (value: boolean) => void
+  /** Lifetime only: clear current course so user can pick a new start date (Start a new one). */
+  clearLifetimeCourseForNewStart: () => void
 
   // Developer actions (will be removed in production)
   clearAllCompleted: () => void
   _setAllCompleted: (value: boolean) => void
+
+  /** Dev only: Reset onboarding so user sees WelcomeScreen → DateSelection again */
+  resetOnboarding: () => void
 }
 
 /**
@@ -169,7 +193,18 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         trialHistory: [],
         invitedFriends: [],
         lifetimeChosenTimegateJourney: false,
+        userChoseTrial2: false,
+        setUserChoseTrial2: (value: boolean) => set({ userChoseTrial2: value }),
+        userChoseSovereignDepart: false,
+        setUserChoseSovereignDepart: (value: boolean) =>
+          set({ userChoseSovereignDepart: value }),
+        userChoseGentleDepart: false,
+        setUserChoseGentleDepart: (value: boolean) =>
+          set({ userChoseGentleDepart: value }),
         devOpenPaywall: false,
+        openPaywallFromGraceReturn: false,
+        setOpenPaywallFromGraceReturn: (value: boolean) =>
+          set({ openPaywallFromGraceReturn: value }),
         hasCompletedHeroOnboarding: false,
         setHasCompletedHeroOnboarding: (value: boolean) =>
           set({ hasCompletedHeroOnboarding: value }),
@@ -238,6 +273,9 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
               participatedDays: [],
               allChakrasCompleted: false, // Reset for new trial
               trialHistory: newTrialHistory,
+              userChoseTrial2: false, // Clear when starting Trial 2
+              userChoseSovereignDepart: false, // Clear so they see Seal again when Trial 2 completes
+              userChoseGentleDepart: false, // Clear so they see Grace again when starting new journey
             }
             return newState
           })
@@ -350,11 +388,15 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
 
           // If the previous week was completed, record it before resetting
           if (wasCompleted && currentTrialCount < 2) {
-            // Update trial history to mark previous trial as completed
             const trialHistory = [...get().trialHistory]
             const currentTrialIndex = trialHistory.length - 1
+            const alreadyCounted =
+              currentTrialIndex >= 0 &&
+              trialHistory[currentTrialIndex].completed === true
+
+            // Update trial history (completeTrialCourse may have already done this)
             if (currentTrialIndex >= 0 && previousWeekStartDate) {
-              const today = new Date().toISOString().split("T")[0]
+              const today = getLocalDateISO()
               trialHistory[currentTrialIndex] = {
                 ...trialHistory[currentTrialIndex],
                 endDate: today,
@@ -364,14 +406,16 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
               set({ trialHistory })
             }
 
-            // Increment trial count
-            set({ completedTrialCourses: currentTrialCount + 1 })
+            // Only increment if completeTrialCourse hasn't already (avoids double-count after Trial 1)
+            if (!alreadyCounted) {
+              set({ completedTrialCourses: currentTrialCount + 1 })
+            }
           } else if (previousWeekStartDate) {
             // Trial wasn't completed, but still record it in history
             const trialHistory = [...get().trialHistory]
             const currentTrialIndex = trialHistory.length - 1
             if (currentTrialIndex >= 0) {
-              const today = new Date().toISOString().split("T")[0]
+              const today = getLocalDateISO()
               trialHistory[currentTrialIndex] = {
                 ...trialHistory[currentTrialIndex],
                 endDate: today,
@@ -437,7 +481,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
             const trialHistory = [...get().trialHistory]
             const currentTrialIndex = trialHistory.length - 1
             if (currentTrialIndex >= 0) {
-              const today = new Date().toISOString().split("T")[0]
+              const today = getLocalDateISO()
               trialHistory[currentTrialIndex] = {
                 ...trialHistory[currentTrialIndex],
                 endDate: today,
@@ -451,14 +495,19 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
 
         grantLifetimeAccess: (method: "paid" | "scholarship") => {
           if (method === "scholarship") {
-            // Scholarships are 1 year access, not lifetime
-            const oneYearFromNow = new Date()
-            oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1)
+            // Monthly pass: 30 days; user can reapply after grant ends (paywall → Monthly Course Pass again)
+            const thirtyDaysFromNow = new Date()
+            thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
+            const expiryIso = thirtyDaysFromNow.toISOString()
             set({
-              hasLifetimeAccess: true, // Still bypasses time gates for the year
+              hasLifetimeAccess: true, // Bypasses time gates for the 30-day period
               paymentStatus: method,
-              scholarshipExpiryDate: oneYearFromNow.toISOString(),
+              scholarshipExpiryDate: expiryIso,
             })
+            // Fire-and-forget: persist to Firestore for cross-device/session
+            getUserId()
+              .then((id) => updateUserScholarshipStatus(id, expiryIso))
+              .catch(() => {})
           } else {
             // Paid access is lifetime
             set({
@@ -525,19 +574,49 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
 
         setLifetimeChosenTimegateJourney: (value: boolean) =>
           set({ lifetimeChosenTimegateJourney: value }),
+        clearLifetimeCourseForNewStart: () =>
+          set({
+            courseStartDate: null,
+            lifetimeChosenTimegateJourney: false,
+            journeyStarted: false,
+            journeyWeekStartDate: null,
+            completedChakras: [],
+            participatedDays: [],
+            allChakrasCompleted: false,
+          }),
         setDevOpenPaywall: (value: boolean) => set({ devOpenPaywall: value }),
 
         // Developer actions
         clearAllCompleted: () => set({ completedChakras: [] }),
         _setAllCompleted: (value: boolean) =>
           set({ allChakrasCompleted: value }),
+
+        resetOnboarding: () =>
+          set({
+            hasCompletedHeroOnboarding: false,
+            courseStartDate: null,
+            initialOpenDate: null,
+            journeyStarted: false,
+            journeyWeekStartDate: null,
+            completedChakras: [],
+            participatedDays: [],
+            allChakrasCompleted: false,
+            hasLifetimeAccess: false,
+            paymentStatus: "pending" as PaymentStatus,
+            scholarshipExpiryDate: null,
+            completedTrialCourses: 0,
+            trialHistory: [],
+            userChoseTrial2: false,
+            userChoseSovereignDepart: false,
+            userChoseGentleDepart: false,
+          }),
       }
     },
     {
       name: "chakra-journey-storage",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (state) => {
-        const { lifetimeChosenTimegateJourney, devOpenPaywall, ...rest } = state
+        const { devOpenPaywall, openPaywallFromGraceReturn, ...rest } = state
         return rest
       },
       onRehydrateStorage: () => (state) => {
@@ -557,10 +636,10 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
               })
             }
           }
-          // Migration: existing users who already have courseStartDate are treated as having completed hero onboarding
-          if (state.courseStartDate && !state.hasCompletedHeroOnboarding) {
-            useChakraJourneyStore.setState({ hasCompletedHeroOnboarding: true })
-          }
+          // REMOVED: Migration that auto-set hasCompletedHeroOnboarding from courseStartDate.
+          // That caused users with persisted courseStartDate (e.g. from dev testing) to skip
+          // WelcomeScreen and DateSelection entirely. Flow is now: Splash → WelcomeScreen →
+          // DateSelection → Begin → ChakraHome. Use "Reset onboarding" in dev to clear state.
         }
       },
     },

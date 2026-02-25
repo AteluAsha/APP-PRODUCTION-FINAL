@@ -9,6 +9,9 @@ interface SoundBathButtonProps {
   title: string // Main title for the button
   subtitle: string // Subtitle for the button
   isLoading?: boolean // Show loading state
+  error?: Error | null // When set, show "Unable to load" and disable
+  /** When true, show pause icon; otherwise play. For tuning fork play/pause. */
+  isPlaying?: boolean
 }
 
 const SoundBathButton: React.FC<SoundBathButtonProps> = ({
@@ -17,7 +20,16 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
   title,
   subtitle,
   isLoading = false,
+  error = null,
+  isPlaying = false,
 }) => {
+  const hasError = !!error
+  const disabled = isLoading || hasError
+  const subtitleText = hasError
+    ? "Unable to load. Check connection."
+    : isLoading
+      ? "Preparing..."
+      : subtitle
   return (
     <Pressable
       style={{
@@ -29,9 +41,16 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
         backgroundColor: "rgba(0,0,0,0.125)",
       }}
       onPress={onPress}
-      disabled={isLoading}
+      disabled={disabled}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 32, paddingVertical: 8 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginLeft: 32,
+          paddingVertical: 8,
+        }}
+      >
         <View
           style={{
             borderWidth: 1,
@@ -43,15 +62,32 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
             justifyContent: "center",
           }}
         >
-          <Ionicons name="play" size={12} color="white" style={{ marginLeft: 2 }} />
+          <Ionicons
+            name={isPlaying ? "pause" : "play"}
+            size={isPlaying ? 14 : 12}
+            color="white"
+            style={!isPlaying ? { marginLeft: 2 } : undefined}
+          />
         </View>
 
-        <View style={{ flexDirection: "column", marginLeft: 16, flex: 1, maxWidth: "70%" }}>
+        <View
+          style={{
+            flexDirection: "column",
+            marginLeft: 16,
+            flex: 1,
+            maxWidth: "70%",
+          }}
+        >
           <AppText
             font="koh-santepheap"
             size="sm"
             numberOfLines={1}
-            style={{ marginBottom: 4, letterSpacing: 1, fontSize: 13, color: "#ffffff" }}
+            style={{
+              marginBottom: 4,
+              letterSpacing: 1,
+              fontSize: 13,
+              color: "#ffffff",
+            }}
           >
             {title}
           </AppText>
@@ -59,9 +95,13 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
             font="instrument-italic"
             size="xs"
             numberOfLines={1}
-            style={{ opacity: isLoading ? 0.5 : 1, fontSize: 11, color: "#ffffff" }}
+            style={{
+              opacity: disabled ? 0.7 : 1,
+              fontSize: 11,
+              color: hasError ? "rgba(251,191,36,0.95)" : "#ffffff",
+            }}
           >
-            {isLoading ? "Preparing..." : subtitle}
+            {subtitleText}
           </AppText>
         </View>
       </View>

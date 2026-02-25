@@ -11,11 +11,11 @@
  * Requires: npm install sharp (or already in devDependencies)
  */
 
-const fs = require('fs')
-const path = require('path')
+const fs = require("fs")
+const path = require("path")
 
-const ASSETS_DIR = path.join(__dirname, '..', 'assets')
-const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg'])
+const ASSETS_DIR = path.join(__dirname, "..", "assets")
+const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg"])
 const MAX_WIDTH_PX = 2048
 
 function getImagePaths(dir, acc = []) {
@@ -33,22 +33,28 @@ function getImagePaths(dir, acc = []) {
 }
 
 async function main() {
-  const sharp = require('sharp')
+  const sharp = require("sharp")
 
   const assetsDir = path.resolve(ASSETS_DIR)
   if (!fs.existsSync(assetsDir)) {
-    console.error('[compress-images] ./assets not found.')
+    console.error("[compress-images] ./assets not found.")
     process.exit(1)
   }
 
   const files = getImagePaths(assetsDir)
   if (files.length === 0) {
-    console.log('[compress-images] No .png / .jpg / .jpeg files found under ./assets')
+    console.log(
+      "[compress-images] No .png / .jpg / .jpeg files found under ./assets",
+    )
     return
   }
 
-  console.log('[compress-images] Aggressive compression – ./assets only (backups not touched)\n')
-  console.log(`Settings: resize if width > ${MAX_WIDTH_PX}px | PNG lossy (quality 80, palette) | JPEG quality 75\n`)
+  console.log(
+    "[compress-images] Aggressive compression – ./assets only (backups not touched)\n",
+  )
+  console.log(
+    `Settings: resize if width > ${MAX_WIDTH_PX}px | PNG lossy (quality 80, palette) | JPEG quality 75\n`,
+  )
   console.log(`Found ${files.length} image(s).\n`)
 
   let totalBefore = 0
@@ -75,17 +81,19 @@ async function main() {
 
       // Resize if wider than MAX_WIDTH_PX (maintain aspect ratio)
       if (width > MAX_WIDTH_PX) {
-        pipeline = pipeline.resize(MAX_WIDTH_PX, null, { withoutEnlargement: true })
+        pipeline = pipeline.resize(MAX_WIDTH_PX, null, {
+          withoutEnlargement: true,
+        })
       }
 
-      if (ext === '.png') {
+      if (ext === ".png") {
         // Lossy: palette + quality 80 (Sharp uses lowest colours needed for this quality; keeps alpha)
         pipeline = pipeline.png({
           quality: 80,
           palette: true,
           compressionLevel: 9,
           effort: 10,
-          dither: 1.0
+          dither: 1.0,
         })
       } else {
         pipeline = pipeline.jpeg({ quality: 75, mozjpeg: true })
@@ -103,9 +111,11 @@ async function main() {
       const beforeMB = (beforeBytes / 1024 / 1024).toFixed(2)
       const afterMB = (afterSize / 1024 / 1024).toFixed(2)
       const savedMB = ((beforeBytes - afterSize) / 1024 / 1024).toFixed(2)
-      const resized = width > MAX_WIDTH_PX ? ` [resized from ${width}px]` : ''
+      const resized = width > MAX_WIDTH_PX ? ` [resized from ${width}px]` : ""
       console.log(`${rel}${resized}`)
-      console.log(`  Before: ${beforeMB} MB  →  After: ${afterMB} MB  (saved ${savedMB} MB)`)
+      console.log(
+        `  Before: ${beforeMB} MB  →  After: ${afterMB} MB  (saved ${savedMB} MB)`,
+      )
     } catch (err) {
       totalAfter += beforeBytes
       failures.push({ rel, error: err.message })
@@ -114,7 +124,7 @@ async function main() {
   }
 
   const totalSavedMB = (totalBefore - totalAfter) / 1024 / 1024
-  console.log('\n--- Summary ---')
+  console.log("\n--- Summary ---")
   console.log(`Total Before: ${(totalBefore / 1024 / 1024).toFixed(2)} MB`)
   console.log(`Total After:  ${(totalAfter / 1024 / 1024).toFixed(2)} MB`)
   console.log(`Total saved:  ${totalSavedMB.toFixed(2)} MB`)
@@ -124,6 +134,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('[compress-images]', e)
+  console.error("[compress-images]", e)
   process.exit(1)
 })

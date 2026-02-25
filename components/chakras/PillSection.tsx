@@ -17,35 +17,43 @@ export const PillSection = ({
     onPress(pill)
     addHapticFeedback(HapticStrength.Light)
   }
+  const rowStyle = {
+    flexDirection: "row" as const,
+    flexWrap: "nowrap" as const,
+    marginHorizontal: 16,
+    marginVertical: 28,
+    gap: 8,
+  }
+  const pillStyle = { flex: 1, minWidth: 0 }
   return (
-    <View className="flex-row flex-wrap mx-4 my-7 justify-center">
+    <View style={rowStyle}>
       <Pill
         content={content.pills.frequency.pillTitle}
         onPress={() => {
           onPressWithHapticFeedback(PillType.FREQUENCY)
         }}
-        className="mr-3"
+        style={pillStyle}
       />
       <Pill
         content={content.pills.seedMantra.pillTitle}
         onPress={() => {
           onPressWithHapticFeedback(PillType.SEED_MANTRA)
         }}
-        className="mr-3"
+        style={pillStyle}
       />
       <Pill
         content={content.pills.identityStatement.pillTitle}
         onPress={() => {
           onPressWithHapticFeedback(PillType.IDENTITY_STATEMENT)
         }}
-        className="mr-3"
+        style={pillStyle}
       />
       <Pill
         content={"Chakras"}
         onPress={() => {
           onPressWithHapticFeedback(PillType.CHAKRAS)
         }}
-        className="mr-3"
+        style={pillStyle}
       />
     </View>
   )

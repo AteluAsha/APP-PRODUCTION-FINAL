@@ -34,7 +34,7 @@ export const chakraContent: Record<Chakra, Content> = {
           "The 396 Hz frequency, known as the 'Liberation Frequency,' can help you find your way back to a place of safety and stability within, allowing you to feel grounded and supported as you navigate life's challenges.\n\nListen to this pure tone when you need to release fear and guilt, and any shadows related to your survival.",
         modalTitle: "Root Chakra • 396 Hz",
         modalContent:
-          "The Anchor of Safety\n\nThis frequency vibrates at the level of the skeletal system, spine, and adrenal glands. It is the sonic antidote to fear and guilt. By soothing the \"fight or flight\" response, it physically grounds your nervous system, turning panic into presence and survival anxiety into stability.\n\nRegulates: Adrenals, lower back, legs, immune system.\n\nHeals: Fear, guilt, lack of focus, feeling \"unsafe.\"",
+          'The Anchor of Safety\n\nThis frequency vibrates at the level of the skeletal system, spine, and adrenal glands. It is the sonic antidote to fear and guilt. By soothing the "fight or flight" response, it physically grounds your nervous system, turning panic into presence and survival anxiety into stability.\n\nRegulates: Adrenals, lower back, legs, immune system.\n\nHeals: Fear, guilt, lack of focus, feeling "unsafe."',
       },
       identityStatement: {
         pillTitle: '"I am"',
@@ -73,6 +73,8 @@ export const chakraContent: Record<Chakra, Content> = {
     goodbye: {
       content: "My Root Is Awake",
       chakraImage: require("@/assets/images/root.png"),
+      closingMessage: "Wonderful work, lovely soul. Your roots are stronger.",
+      closingSubline: "Tomorrow, the Sacral invites you to feel and flow.",
     },
     integration: "Today, we bring our authentic self into the outward world",
     yoga: {
@@ -82,6 +84,7 @@ export const chakraContent: Record<Chakra, Content> = {
       body: "This is the perfect starting place. Tadasana is not just standing; it is an active exchange with gravity. By rooting your feet down, you signal safety to your nervous system.",
       somaticCue:
         "Press your feet gently into the floor. Don't just hold yourself up; feel the earth holding you.",
+      poseUrl: "https://pocketyoga.com/pose/MountainArmsSide",
     },
     soundBath: {
       title: "Root Chakra - 396 Hz",
@@ -109,9 +112,9 @@ export const chakraContent: Record<Chakra, Content> = {
         "Planting your feet on the ground to reconnect with the battery of the Earth.",
       audio: {
         title: "THE POWER OF CREATION",
-        author: "ERIN",
-        duration: 0,
-        source: 0,
+        author: "Asha",
+        duration: 549000, // 9:09 – hero audio from Firebase AncestralWisdomAudioFiles_Days_1_7
+        source: { uri: "" }, // Resolved at runtime via useAncestralWisdomAudio
         authorColor: "#FFDEBA",
       },
       dailyActivity: [
@@ -218,6 +221,10 @@ export const chakraContent: Record<Chakra, Content> = {
     goodbye: {
       content: "My Sacral Is Awake",
       chakraImage: require("@/assets/images/sacral.png"),
+      closingMessage:
+        "Wonderful work, lovely soul. Your creative flow is awakening.",
+      closingSubline:
+        "Tomorrow, the Solar Plexus invites you to claim your power.",
     },
     integration: "Today, we bring our authentic self into the outward world",
     yoga: {
@@ -254,10 +261,10 @@ export const chakraContent: Record<Chakra, Content> = {
       dailyActivitySubline:
         "Holding two opposing truths at once to return to the unity of the heart.",
       audio: {
-        title: "THE POWER OF CREATION",
-        author: "ERIN",
-        duration: 0,
-        source: 0,
+        title: "THE AUTHENTIC SELF",
+        author: "Asha",
+        duration: 477000, // 7:57 – hero audio from Firebase AncestralWisdomAudioFiles_Days_1_7
+        source: { uri: "" }, // Resolved at runtime via useAncestralWisdomAudio
         authorColor: "#FFDEBA",
       },
       dailyActivity: [
@@ -325,7 +332,7 @@ export const chakraContent: Record<Chakra, Content> = {
           "528 Hz brings transformation and miracles, repairing DNA and promoting healing. This frequency helps to restore balance and harmony within the body and mind. It is often used to clear negative energy and promote feelings of peace and well-being.",
         modalTitle: "Solar Plexus • 528 Hz",
         modalContent:
-          "The Miracle Tone\n\nKnown as the frequency of transformation, 528 Hz resonates with the digestive system, pancreas, and liver. It brings coherence to your \"gut instinct,\" repairing willpower and self-worth. It turns the energy of stress into the fuel of confidence.\n\nRegulates: Stomach, digestion, metabolism, liver.\n\nHeals: Low self-esteem, digestive issues, lack of purpose, victim mentality.",
+          'The Miracle Tone\n\nKnown as the frequency of transformation, 528 Hz resonates with the digestive system, pancreas, and liver. It brings coherence to your "gut instinct," repairing willpower and self-worth. It turns the energy of stress into the fuel of confidence.\n\nRegulates: Stomach, digestion, metabolism, liver.\n\nHeals: Low self-esteem, digestive issues, lack of purpose, victim mentality.',
       },
       identityStatement: {
         pillTitle: '"I do"',
@@ -364,6 +371,9 @@ export const chakraContent: Record<Chakra, Content> = {
     goodbye: {
       content: "My Solar Plexus Is Awake",
       chakraImage: require("@/assets/images/solar.png"),
+      closingMessage:
+        "Wonderful work, lovely soul. Your inner fire burns brighter.",
+      closingSubline: "Tomorrow, the Heart invites you to open and receive.",
     },
     integration: "Today, we bring our authentic self into the outward world",
     yoga: {
@@ -373,6 +383,7 @@ export const chakraContent: Record<Chakra, Content> = {
       body: 'Twisting physically "wrings out" the stagnation in the gut, where we store stress. It restores mobility to the core, igniting your internal fire without aggression.',
       somaticCue:
         "Initiate the twist from your belly button, not your shoulders. Feel the strength of your own center rotating you.",
+      poseUrl: "https://pocketyoga.com/pose/MarichiIII",
     },
     soundBath: {
       title: "Solar Plexus - 528 Hz",
@@ -399,10 +410,10 @@ export const chakraContent: Record<Chakra, Content> = {
       dailyActivitySubline:
         'Transforming the "constant doer" into the conscious creator.',
       audio: {
-        title: "THE POWER OF CREATION",
-        author: "ERIN",
-        duration: 0,
-        source: 0,
+        title: "THE EGO HEART RAILROAD",
+        author: "Asha",
+        duration: 720000, // 12:00 – hero audio from Firebase AncestralWisdomAudioFiles_Days_1_7
+        source: { uri: "" }, // Resolved at runtime via useAncestralWisdomAudio
         authorColor: "#FFDEBA",
       },
       dailyActivity: [
@@ -509,6 +520,8 @@ export const chakraContent: Record<Chakra, Content> = {
     goodbye: {
       content: "My Heart Is Awake",
       chakraImage: require("@/assets/images/heart.png"),
+      closingMessage: "Wonderful work, lovely soul. Your heart is opening.",
+      closingSubline: "Tomorrow, the Throat invites you to speak your truth.",
     },
     integration: "Today, we bring our authentic self into the outward world",
     yoga: {
@@ -518,6 +531,7 @@ export const chakraContent: Record<Chakra, Content> = {
       body: "The heart opens best when it feels safe, not forced. Using a pillow or block allows you to surrender completely to gravity, physically exposing the chest while fully supported.",
       somaticCue:
         'Lie back and do nothing. Let your chest lift passively. You are not "trying" to open; you are allowing it to happen.',
+      poseUrl: "https://pocketyoga.com/pose/FishPreparation",
     },
     soundBath: {
       title: "Heart Chakra - 639 Hz",
@@ -545,10 +559,10 @@ export const chakraContent: Record<Chakra, Content> = {
       dailyActivitySubline:
         "Moving from the chaotic noise of the head to the steady beat of the heart.",
       audio: {
-        title: "THE POWER OF CREATION",
-        author: "ERIN",
-        duration: 0,
-        source: 0,
+        title: "Awakening The Heart Mind",
+        author: "Asha",
+        duration: 660000, // 11:00 – hero audio from Firebase AncestralWisdomAudioFiles_Days_1_7
+        source: { uri: "" }, // Resolved at runtime via useAncestralWisdomAudio
         authorColor: "#FFDEBA",
       },
       dailyActivity: [
@@ -613,7 +627,7 @@ export const chakraContent: Record<Chakra, Content> = {
           "741 Hz promotes expression, clear communication, and intuition. This frequency helps to release blockages, enhance articulation, and inspire creativity.",
         modalTitle: "Throat Chakra • 741 Hz",
         modalContent:
-          "The Detoxifier\n\nResonating with the thyroid, neck, and jaw, this frequency is about purity and truth. It acts as a solvent, \"cleaning\" the cells of toxins—both physical pollutants and unspoken lies. It clears the channel so your inner voice matches your outer reality.\n\nRegulates: Thyroid, throat, neck, mouth, ears.\n\nHeals: Inability to speak up, thyroid issues, toxicity, mental fog.",
+          'The Detoxifier\n\nResonating with the thyroid, neck, and jaw, this frequency is about purity and truth. It acts as a solvent, "cleaning" the cells of toxins—both physical pollutants and unspoken lies. It clears the channel so your inner voice matches your outer reality.\n\nRegulates: Thyroid, throat, neck, mouth, ears.\n\nHeals: Inability to speak up, thyroid issues, toxicity, mental fog.',
       },
       identityStatement: {
         pillTitle: '"I speak"',
@@ -652,15 +666,19 @@ export const chakraContent: Record<Chakra, Content> = {
     goodbye: {
       content: "My Throat Is Awake",
       chakraImage: require("@/assets/images/throat.png"),
+      closingMessage:
+        "Wonderful work, lovely soul. Your voice is finding its way.",
+      closingSubline: "Tomorrow, the Third Eye invites you to see clearly.",
     },
     integration: "Today, we bring our authentic self into the outward world",
     yoga: {
       chakraDay: "Throat Day",
-      pose: "Seated Neck Release",
+      pose: "Seated Neck Release (Sukhasana)",
       essence: "I speak through softness.",
       body: "Tension in the neck strangles our truth. We clear the throat channel not by pushing, but by softening the muscles that guard our voice.",
       somaticCue:
         'Drop your ear to your shoulder and move slowly. Breathe into the side of your neck until you feel the "no" dissolve into a "yes."',
+      poseUrl: "https://www.youtube.com/watch?v=zLvJD7iKVhw",
     },
     soundBath: {
       title: "Throat Chakra - 741 Hz",
@@ -687,10 +705,10 @@ export const chakraContent: Record<Chakra, Content> = {
       dailyActivitySubline:
         "Tuning your instrument so your internal voice matches your external reality.",
       audio: {
-        title: "THE POWER OF CREATION",
-        author: "ERIN",
-        duration: 0,
-        source: 0,
+        title: "THE POWER OF VIBRATION",
+        author: "Asha",
+        duration: 720000, // 12:00 – hero audio from Firebase AncestralWisdomAudioFiles_Days_1_7
+        source: { uri: "" }, // Resolved at runtime via useAncestralWisdomAudio
         authorColor: "#FFDEBA",
       },
       dailyActivity: [
@@ -738,7 +756,7 @@ export const chakraContent: Record<Chakra, Content> = {
     wordsOfWisdom:
       '"Trust your intuition. It\'s the whisper of your soul guiding you towards your highest potential. Open your third eye to the unseen realms and discover the wisdom that lies within."',
     affirmationText:
-      "I release the mind of self, and open my eyes to the Universe.",
+      "I release the mind of self,\nand open my eyes to the Universe.",
     elements: {
       background: require("@/assets/images/elementsthirdeye.png"),
       sanskrit: "Ajna",
@@ -760,7 +778,7 @@ export const chakraContent: Record<Chakra, Content> = {
           "852 Hz enhances intuition, wisdom, and spiritual connection. This frequency helps to clear mental fog, awaken the third eye, and connect with your higher self.",
         modalTitle: "Third Eye • 852 Hz",
         modalContent:
-          "The Awakening of Intuition\n\nThis pitch stimulates the pineal gland and the optical center of the brain. It cuts through the noise of over-thinking to reveal the \"hidden order\" of things. It shifts you from intellectual processing to intuitive knowing, wiping the mental lens clean.\n\nRegulates: Brain, eyes, pineal gland, neurological balance.\n\nHeals: Mental exhaustion, confusion, headaches, lack of vision.",
+          'The Awakening of Intuition\n\nThis pitch stimulates the pineal gland and the optical center of the brain. It cuts through the noise of over-thinking to reveal the "hidden order" of things. It shifts you from intellectual processing to intuitive knowing, wiping the mental lens clean.\n\nRegulates: Brain, eyes, pineal gland, neurological balance.\n\nHeals: Mental exhaustion, confusion, headaches, lack of vision.',
       },
       identityStatement: {
         pillTitle: '"I see"',
@@ -799,6 +817,9 @@ export const chakraContent: Record<Chakra, Content> = {
     goodbye: {
       content: "My Third Eye Is Awake",
       chakraImage: require("@/assets/images/thirdeye.png"),
+      closingMessage:
+        "Wonderful work, lovely soul. Your inner vision is clearing.",
+      closingSubline: "Tomorrow, the Crown invites you to connect with spirit.",
     },
     integration: "Today, we bring our authentic self into the outward world",
     yoga: {
@@ -808,6 +829,7 @@ export const chakraContent: Record<Chakra, Content> = {
       body: "The Third Eye awakens through darkness and pressure. Resting your forehead on the earth triggers a reflex that instantly quiets the brain, turning your gaze inward.",
       somaticCue:
         "Let your forehead become heavy on the mat. Soften your eyes behind your closed lids and watch the space between your brows.",
+      poseUrl: "https://pocketyoga.com/pose/ChildTraditional",
     },
     soundBath: {
       title: "Third Eye (Ajna) - 852 Hz",
@@ -834,10 +856,10 @@ export const chakraContent: Record<Chakra, Content> = {
       dailyActivitySubline:
         "Realizing that the clarity you create outside reflects the clarity you feel inside.",
       audio: {
-        title: "THE POWER OF CREATION",
-        author: "ERIN",
-        duration: 0,
-        source: 0,
+        title: "LISTENING TO THE COSMOS",
+        author: "Asha",
+        duration: 660000, // 11:00 – hero audio from Firebase AncestralWisdomAudioFiles_Days_1_7
+        source: { uri: "" }, // Resolved at runtime via useAncestralWisdomAudio
         authorColor: "#FFDEBA",
       },
       dailyActivity: [
@@ -906,7 +928,7 @@ export const chakraContent: Record<Chakra, Content> = {
           "963 Hz promotes spiritual connection, enlightenment, and a sense of oneness with the universe. This frequency helps to activate the crown chakra and access higher states of consciousness.",
         modalTitle: "Crown Chakra • 963 Hz",
         modalContent:
-          "The Frequency of Oneness\n\nThis is the sound of the Universe itself. It interacts with the entire central nervous system and the pituitary gland. It dissolves the illusion of separation, resetting the body to its original, perfect state of being. It is the \"return to Spirit.\"\n\nRegulates: Central nervous system, pituitary gland, cerebral cortex.\n\nHeals: Disconnection, spiritual depression, rigid identity, isolation.",
+          'The Frequency of Oneness\n\nThis is the sound of the Universe itself. It interacts with the entire central nervous system and the pituitary gland. It dissolves the illusion of separation, resetting the body to its original, perfect state of being. It is the "return to Spirit."\n\nRegulates: Central nervous system, pituitary gland, cerebral cortex.\n\nHeals: Disconnection, spiritual depression, rigid identity, isolation.',
       },
       identityStatement: {
         pillTitle: '"I understand"',
@@ -945,6 +967,10 @@ export const chakraContent: Record<Chakra, Content> = {
     goodbye: {
       content: "My Crown Is Awake",
       chakraImage: require("@/assets/images/crown.png"),
+      closingMessage:
+        "Wonderful work, lovely soul. You have completed the journey.",
+      closingSubline:
+        "All seven chakras are awake. Rest, integrate, and return whenever you need.",
     },
     integration: "Today, we bring our authentic self into the outward world",
     yoga: {
@@ -954,6 +980,7 @@ export const chakraContent: Record<Chakra, Content> = {
       body: 'The Crown cannot be "done"; it can only be received. This is the practice of stopping. When the body becomes still, the boundaries of the self dissolve into the whole.',
       somaticCue:
         "Let your body lie heavy, but keep your awareness light. There is nothing left to do. You are simply here.",
+      poseUrl: "https://www.youtube.com/watch?v=TcO40hEcVl4",
     },
     soundBath: {
       title: "Crown Chakra - 963 Hz",
@@ -980,10 +1007,10 @@ export const chakraContent: Record<Chakra, Content> = {
       dailyActivitySubline:
         "Dissolving the ceiling of the ego to remember the vastness of the Soul.",
       audio: {
-        title: "THE POWER OF CREATION",
-        author: "ERIN",
-        duration: 0,
-        source: 0,
+        title: "THE MEADOW OF THE SOUL",
+        author: "Asha",
+        duration: 420000, // 7:00 – hero audio from Firebase AncestralWisdomAudioFiles_Days_1_7
+        source: { uri: "" }, // Resolved at runtime via useAncestralWisdomAudio
         authorColor: "#FFDEBA",
       },
       dailyActivity: [

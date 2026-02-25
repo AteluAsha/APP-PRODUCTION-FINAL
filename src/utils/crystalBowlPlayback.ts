@@ -1,15 +1,20 @@
 /**
  * Crystal Bowl & Long Audio Playback Utility
  *
- * Long audio (Crystal Bowl ~1 hr, Embodiment) causes choppy playback when
- * streamed. We always play from a local file: full file preferred, then
- * "head" (first ~3 min) so the start is never stuttery. Critical for somatic/UX.
+ * PRODUCTION RULE: Once a file is on device (localUri or getLocalAudioUri),
+ * playback uses it only. Never stream from URL when local file exists — prevents
+ * cutoff under high traffic or network drop. Audio should never cut off once downloaded.
+ *
+ * Long audio (Crystal Bowl ~1 hr, Embodiment) causes choppy playback when streamed.
+ * We always play from a local file: full file preferred, then "head" (first ~3 min)
+ * so the start is never stuttery. Critical for somatic/UX.
  */
 
 import { AVPlaybackSource } from "expo-av"
 import {
   getLocalAudioUri,
   getLocalAudioHeadUri,
+  getLocalAudioHeadUriWithMinSize,
   downloadAndCacheAudio,
   downloadAndCacheAudioResumable,
   downloadAudioHead,
@@ -45,6 +50,11 @@ export async function prepareLongAudioForPlay(
     useResumableForBackgroundFull = false,
   } = options
 
+  // Local-first: once downloaded, always use local — no stream, no cutoff
+  if (localUri) return { uri: localUri }
+  const full = await getLocalAudioUri(audioId)
+  if (full) return { uri: full }
+
   const startBackgroundFullDownload = (): void => {
     if (!url) return
     if (useResumableForBackgroundFull) {
@@ -52,15 +62,6 @@ export async function prepareLongAudioForPlay(
     } else {
       downloadAndCacheAudio(url, audioId).catch(() => {})
     }
-  }
-
-  if (localUri) {
-    return { uri: localUri }
-  }
-
-  const full = await getLocalAudioUri(audioId)
-  if (full) {
-    return { uri: full }
   }
 
   if (requireFullDownload) {
@@ -124,27 +125,41 @@ export async function prepareLongAudioForPlay(
 
 /**
  * Prepare Crystal Bowl audio for playback (all 7 chakras).
- * Stream-first: if we have a Firebase URL, play from URL immediately so playback
- * always works. Use cached full file when present. Start full resumable download
- * in background for next time. Avoids head/truncated-AAC issues on iOS.
+ * Prefer local file (full or head) so playback is seamless when downloaded.
+ * When full is not cached: try head (cached or download) so the start is never
+ * streamed; start full resumable download in background. Fall back to stream only
+ * if head is unavailable.
  */
 export async function prepareCrystalBowlForPlay(
   input: CrystalBowlSourceInput,
 ): Promise<AVPlaybackSource> {
   const { url, localUri, audioId, fallback } = input
 
-  if (localUri) {
-    return { uri: localUri }
-  }
-
+  // Local-first: once downloaded, never stream (no cutoff)
+  if (localUri) return { uri: localUri }
   const full = await getLocalAudioUri(audioId)
-  if (full) {
-    return { uri: full }
-  }
+  if (full) return { uri: full }
 
+  // Prefer head (first ~3 min) so start is local – no stream stutter. Use min size so we never return a truncated head (~30s cutoff).
+  let head = await getLocalAudioHeadUriWithMinSize(audioId)
+  if (head) {
+    if (url) downloadAndCacheAudioResumable(url, audioId).catch(() => {})
+    return { uri: head }
+  }
   if (url) {
-    downloadAndCacheAudioResumable(url, audioId).catch(() => {})
-    return { uri: url }
+    try {
+      head = await downloadAudioHead(url, audioId)
+      downloadAndCacheAudioResumable(url, audioId).catch(() => {})
+      return { uri: head }
+    } catch (e) {
+      if (__DEV__) {
+        console.warn(
+          "[prepareCrystalBowlForPlay] Head failed, streaming from URL:",
+          e,
+        )
+      }
+      return { uri: url }
+    }
   }
 
   return fallback

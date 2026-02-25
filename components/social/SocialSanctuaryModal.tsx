@@ -28,10 +28,7 @@ import {
   Platform,
   Image,
 } from "react-native"
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
 import {
@@ -47,8 +44,10 @@ import {
   isWisdomEngineAvailable,
 } from "@/src/services/wisdomEngine"
 import { moderateReflection } from "@/src/services/sentinel"
+import { getUserProfile, type UserProfile } from "@/src/services/profileService"
 import { useRouter } from "expo-router"
 import { TreeOfLifeIcon } from "./TreeOfLifeIcon"
+import { ProfilePreviewModal } from "@/components/profile/ProfilePreviewModal"
 
 interface SocialSanctuaryModalProps {
   visible: boolean
@@ -58,6 +57,8 @@ interface SocialSanctuaryModalProps {
   onOpenAnuaChat?: () => void // Callback to open Anua chat
   isLimitedMode?: boolean // When true, only Anua works, others show previews
   onShowCommunityPreview?: (type: "share" | "halls") => void // Callback to show preview modal
+  /** APP1 (Trial): false = hide "Share with Community" button. APP2 (Lifetime): true = show it. */
+  showShareWithCommunity?: boolean
 }
 
 const DAY_NAMES = [
@@ -87,6 +88,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
   onOpenAnuaChat,
   isLimitedMode = false,
   onShowCommunityPreview,
+  showShareWithCommunity = true,
 }) => {
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -103,6 +105,13 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
   const [message, setMessage] = useState("")
   const [isAnonymous, setIsAnonymous] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [profileMap, setProfileMap] = useState<Record<string, UserProfile>>({})
+  const [profilePreview, setProfilePreview] = useState<{
+    userId: string
+    displayName?: string
+    avatarUrl?: string
+    location?: string
+  } | null>(null)
 
   useEffect(() => {
     setPostChakraDay(chakraDay)
@@ -132,6 +141,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
         (updatedReflections) => {
           setReflections(updatedReflections)
           setIsLoading(false)
+          loadProfilesForReflections(updatedReflections)
         },
       )
       setIsLoading(true)
@@ -161,16 +171,35 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
     }
   }
 
+  const loadProfilesForReflections = async (reflections: SanctuaryReflection[]) => {
+    const ids = [...new Set(reflections.map((r) => r.userId))]
+    const results = await Promise.all(
+      ids.map(async (userId) => {
+        try {
+          const profile = await getUserProfile(userId)
+          return profile ? { userId, profile } : null
+        } catch {
+          return null
+        }
+      }),
+    )
+    const next: Record<string, UserProfile> = {}
+    results.forEach((r) => {
+      if (r) next[r.userId] = r.profile
+    })
+    setProfileMap((prev) => ({ ...prev, ...next }))
+  }
+
   const loadTopReflections = async () => {
     setIsLoadingHighlights(true)
     try {
       const top = await getTopReflections(chakraDay)
       setTopReflections(top)
+      await loadProfilesForReflections(top)
     } catch (err) {
       if (__DEV__) {
         console.error("Error loading top reflections:", err)
       }
-      // Don't show error to user, just leave topReflections as empty
     } finally {
       setIsLoadingHighlights(false)
     }
@@ -265,8 +294,19 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
               borderBottomColor: "rgba(31, 41, 55, 0.5)",
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <AppText font="koh-santepheap" size="2xl" style={{ color: "#ffffff" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <AppText
+                font="cormorant-regular"
+                size="2xl"
+                style={{ color: "#ffffff", letterSpacing: 1.2 }}
+              >
                 Social Sanctuary
               </AppText>
               <Pressable
@@ -359,85 +399,89 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                     />
                   </Pressable>
 
-                  {/* Community buttons - Show in ALL modes, but disabled in limited mode */}
-                  {/* Share with Community Button */}
-                  <Pressable
-                    onPress={() => {
-                      if (isLimitedMode) {
-                        if (onShowCommunityPreview) {
-                          onShowCommunityPreview("share")
+                  {/* Community buttons - Share with Community: APP2 (Lifetime) only; Social Sanctuary: both APP1 and APP2 */}
+                  {showShareWithCommunity && (
+                    <Pressable
+                      onPress={() => {
+                        if (isLimitedMode) {
+                          if (onShowCommunityPreview) {
+                            onShowCommunityPreview("share")
+                          }
+                        } else {
+                          setView("community")
                         }
-                      } else {
-                        setView("community")
-                      }
-                    }}
-                    style={{
-                      opacity: isLimitedMode ? 0.5 : 1,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 16,
-                      backgroundColor: "rgba(135, 174, 115, 0.1)",
-                      borderWidth: 1.5,
-                      borderColor: isLimitedMode
-                        ? "rgba(135, 174, 115, 0.2)"
-                        : "rgba(135, 174, 115, 0.3)",
-                      borderRadius: 20,
-                      padding: 16,
-                      shadowColor: "#87AE73",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: isLimitedMode ? 0.1 : 0.2,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }}
-                  >
-                    <View
+                      }}
                       style={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 28,
-                        backgroundColor: "rgba(135, 174, 115, 0.2)",
-                        borderWidth: 1.5,
-                        borderColor: "rgba(135, 174, 115, 0.4)",
-                        justifyContent: "center",
+                        opacity: isLimitedMode ? 0.5 : 1,
+                        flexDirection: "row",
                         alignItems: "center",
+                        gap: 16,
+                        backgroundColor: "rgba(135, 174, 115, 0.1)",
+                        borderWidth: 1.5,
+                        borderColor: isLimitedMode
+                          ? "rgba(135, 174, 115, 0.2)"
+                          : "rgba(135, 174, 115, 0.3)",
+                        borderRadius: 20,
+                        padding: 16,
+                        shadowColor: "#87AE73",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: isLimitedMode ? 0.1 : 0.2,
+                        shadowRadius: 8,
+                        elevation: 4,
                       }}
                     >
-                      <TreeOfLifeIcon size={32} color="#A8C99A" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <AppText
-                        font="instrument-bold"
-                        size="base"
-                        style={{ color: "#ffffff", marginBottom: 2 }}
+                      <View
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 28,
+                          backgroundColor: "rgba(135, 174, 115, 0.2)",
+                          borderWidth: 1.5,
+                          borderColor: "rgba(135, 174, 115, 0.4)",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
                       >
-                        Share with Community
-                      </AppText>
-                      {isLimitedMode ? (
+                        <TreeOfLifeIcon size={32} color="#A8C99A" />
+                      </View>
+                      <View style={{ flex: 1 }}>
                         <AppText
-                          font="instrument-regular"
-                          size="sm"
-                          style={{ color: "rgba(255,255,255,0.5)", fontStyle: "italic" }}
+                          font="instrument-bold"
+                          size="base"
+                          style={{ color: "#ffffff", marginBottom: 2 }}
                         >
-                          Available once your course begins
+                          Share with Community
                         </AppText>
-                      ) : (
-                        <AppText
-                          font="instrument-regular"
-                          size="sm"
-                          style={{ color: "rgba(255,255,255,0.7)" }}
-                        >
-                          Share your reflections
-                        </AppText>
-                      )}
-                    </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color="rgba(255, 255, 255, 0.6)"
-                    />
-                  </Pressable>
+                        {isLimitedMode ? (
+                          <AppText
+                            font="instrument-regular"
+                            size="sm"
+                            style={{
+                              color: "rgba(255,255,255,0.5)",
+                              fontStyle: "italic",
+                            }}
+                          >
+                            Available once your course begins
+                          </AppText>
+                        ) : (
+                          <AppText
+                            font="instrument-regular"
+                            size="sm"
+                            style={{ color: "rgba(255,255,255,0.7)" }}
+                          >
+                            Share your reflections
+                          </AppText>
+                        )}
+                      </View>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={20}
+                        color="rgba(255, 255, 255, 0.6)"
+                      />
+                    </Pressable>
+                  )}
 
-                  {/* Social Sanctuary (full halls view) */}
+                  {/* Social Sanctuary (full halls view) - APP1 and APP2 */}
                   <Pressable
                     onPress={() => {
                       if (isLimitedMode) {
@@ -492,9 +536,9 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                     </View>
                     <View style={{ flex: 1 }}>
                       <AppText
-                        font="instrument-bold"
+                        font="cormorant-regular"
                         size="base"
-                        style={{ color: "#ffffff", marginBottom: 2 }}
+                        style={{ color: "#ffffff", marginBottom: 2, letterSpacing: 0.5 }}
                       >
                         Social Sanctuary
                       </AppText>
@@ -502,7 +546,10 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                         <AppText
                           font="instrument-regular"
                           size="sm"
-                          style={{ color: "rgba(255,255,255,0.5)", fontStyle: "italic" }}
+                          style={{
+                            color: "rgba(255,255,255,0.5)",
+                            fontStyle: "italic",
+                          }}
                         >
                           Available once your course begins
                         </AppText>
@@ -527,12 +574,18 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                 {/* Community Highlights - Earth Tones Design */}
                 {topReflections.length > 0 && (
                   <View style={{ marginTop: 16 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginBottom: 16,
+                      }}
+                    >
                       <Ionicons name="heart" size={18} color="#A8C99A" />
                       <AppText
-                        font="koh-santepheap"
+                        font="cormorant-regular"
                         size="lg"
-                        style={{ marginLeft: 8, color: "#ffffff" }}
+                        style={{ marginLeft: 8, color: "#ffffff", letterSpacing: 0.5 }}
                       >
                         Community Highlights
                       </AppText>
@@ -554,16 +607,90 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                             elevation: 3,
                           }}
                         >
-                          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                            <AppText
-                              font="instrument-medium"
-                              size="base"
-                              style={{ color: "#D4C5A9" }}
-                            >
-                              {reflection.isAnonymous
-                                ? "Anonymous Soul"
-                                : "Soul"}
-                            </AppText>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              marginBottom: 12,
+                            }}
+                          >
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              {reflection.isAnonymous ? (
+                                <View
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 14,
+                                    backgroundColor: "rgba(255,255,255,0.1)",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <Ionicons name="person" size={14} color="rgba(255,255,255,0.4)" />
+                                </View>
+                              ) : (
+                                <Pressable
+                                  onPress={() => {
+                                    if (reflection.userId) {
+                                      setProfilePreview({
+                                        userId: reflection.userId,
+                                        displayName: profileMap[reflection.userId]?.displayName,
+                                        avatarUrl: profileMap[reflection.userId]?.avatarUrl,
+                                        location: profileMap[reflection.userId]?.location,
+                                      })
+                                    }
+                                  }}
+                                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                                  hitSlop={8}
+                                >
+                                  {profileMap[reflection.userId]?.avatarUrl ? (
+                                    <Image
+                                      source={{ uri: profileMap[reflection.userId].avatarUrl }}
+                                      style={{
+                                        width: 28,
+                                        height: 28,
+                                        borderRadius: 14,
+                                        backgroundColor: "rgba(255,255,255,0.08)",
+                                      }}
+                                    />
+                                  ) : (
+                                    <View
+                                      style={{
+                                        width: 28,
+                                        height: 28,
+                                        borderRadius: 14,
+                                        backgroundColor: "rgba(255,255,255,0.1)",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                      }}
+                                    >
+                                      <Ionicons name="person" size={14} color="rgba(255,255,255,0.4)" />
+                                    </View>
+                                  )}
+                                </Pressable>
+                              )}
+                              <View>
+                                <AppText
+                                  font="instrument-medium"
+                                  size="base"
+                                  style={{ color: "#D4C5A9" }}
+                                >
+                                  {reflection.isAnonymous
+                                    ? "Anonymous Soul"
+                                    : (profileMap[reflection.userId]?.displayName || "Soul")}
+                                </AppText>
+                                {!reflection.isAnonymous && profileMap[reflection.userId]?.location ? (
+                                  <AppText
+                                    font="instrument-regular"
+                                    size="xs"
+                                    style={{ color: "rgba(255,255,255,0.5)", marginTop: 1 }}
+                                  >
+                                    {profileMap[reflection.userId].location}
+                                  </AppText>
+                                ) : null}
+                              </View>
+                            </View>
                             <AppText
                               font="instrument-regular"
                               size="xs"
@@ -573,11 +700,14 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                             </AppText>
                           </View>
                           <AppText
-                            font="instrument-regular"
+                            font="cormorant-italic"
                             size="base"
-                            style={{ color: "rgba(255,255,255,0.9)", lineHeight: 24, fontStyle: "italic" }}
+                            style={{
+                              color: "rgba(255,255,255,0.95)",
+                              lineHeight: 26,
+                            }}
                           >
-                            "{reflection.message}"
+                            {reflection.message}
                           </AppText>
                         </View>
                       ))}
@@ -592,19 +722,37 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
           {view === "community" && (
             <>
               {/* Back Button */}
-              <View style={{ paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#1f2937" }}>
+              <View
+                style={{
+                  paddingHorizontal: 24,
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#1f2937",
+                }}
+              >
                 <Pressable
                   onPress={() => setView("options")}
                   style={{ flexDirection: "row", alignItems: "center" }}
                 >
                   <Ionicons name="arrow-back" size={20} color="white" />
-                  <AppText font="instrument-medium" size="base" style={{ color: "#ffffff", marginLeft: 8 }}>
+                  <AppText
+                    font="instrument-medium"
+                    size="base"
+                    style={{ color: "#ffffff", marginLeft: 8 }}
+                  >
                     Back to Options
                   </AppText>
                 </Pressable>
               </View>
 
-              <View style={{ paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#1f2937" }}>
+              <View
+                style={{
+                  paddingHorizontal: 24,
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#1f2937",
+                }}
+              >
                 <AppText
                   font="instrument-regular"
                   size="xs"
@@ -640,7 +788,9 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                           font="instrument-medium"
                           size="xs"
                           style={{
-                            color: isSelected ? "#E8E0F5" : "rgba(255,255,255,0.6)",
+                            color: isSelected
+                              ? "#E8E0F5"
+                              : "rgba(255,255,255,0.6)",
                           }}
                         >
                           {dayName.slice(0, 3)} · {CHAKRA_NAMES[index]}
@@ -652,14 +802,27 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
               </View>
 
               {/* How posting works */}
-              <View style={{ paddingHorizontal: 24, paddingVertical: 12, backgroundColor: "rgba(17, 24, 39, 0.3)", borderBottomWidth: 1, borderBottomColor: "#1f2937" }}>
+              <View
+                style={{
+                  paddingHorizontal: 24,
+                  paddingVertical: 12,
+                  backgroundColor: "rgba(17, 24, 39, 0.3)",
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#1f2937",
+                }}
+              >
                 <AppText
                   font="instrument-regular"
                   size="sm"
-                  style={{ color: "#9ca3af", textAlign: "center", lineHeight: 20 }}
+                  style={{
+                    color: "#9ca3af",
+                    textAlign: "center",
+                    lineHeight: 20,
+                  }}
                 >
-                  This is how you post to Social Sanctuary. Share below to submit
-                  to the shared space; you can reply to others in the halls.
+                  This is how you post to Social Sanctuary. Share below to
+                  submit to the shared space; you can reply to others in the
+                  halls.
                 </AppText>
               </View>
 
@@ -675,7 +838,14 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                 showsVerticalScrollIndicator={true}
               >
                 {isLoading ? (
-                  <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80 }}>
+                  <View
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingVertical: 80,
+                    }}
+                  >
                     <ActivityIndicator size="large" color="#9333ea" />
                     <AppText
                       font="instrument-regular"
@@ -696,9 +866,19 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                     </AppText>
                     <Pressable
                       onPress={loadReflections}
-                      style={{ marginTop: 16, backgroundColor: "rgba(126, 34, 206, 0.5)", borderRadius: 12, padding: 12, alignSelf: "center" }}
+                      style={{
+                        marginTop: 16,
+                        backgroundColor: "rgba(126, 34, 206, 0.5)",
+                        borderRadius: 12,
+                        padding: 12,
+                        alignSelf: "center",
+                      }}
                     >
-                      <AppText font="instrument-medium" size="base" style={{ color: "#ffffff" }}>
+                      <AppText
+                        font="instrument-medium"
+                        size="base"
+                        style={{ color: "#ffffff" }}
+                      >
                         Retry
                       </AppText>
                     </Pressable>
@@ -709,7 +889,11 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                     <AppText
                       font="instrument-regular"
                       size="base"
-                      style={{ color: "#9ca3af", marginTop: 16, textAlign: "center" }}
+                      style={{
+                        color: "#9ca3af",
+                        marginTop: 16,
+                        textAlign: "center",
+                      }}
                     >
                       No reflections yet.{"\n"}Be the first to share your
                       experience.
@@ -728,14 +912,88 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                           borderColor: "#1f2937",
                         }}
                       >
-                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                          <AppText
-                            font="instrument-medium"
-                            size="base"
-                            style={{ color: "#d1d5db" }}
-                          >
-                            {reflection.isAnonymous ? "Anonymous Soul" : "Soul"}
-                          </AppText>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            {reflection.isAnonymous ? (
+                              <View
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: 14,
+                                  backgroundColor: "rgba(255,255,255,0.1)",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <Ionicons name="person" size={14} color="rgba(255,255,255,0.4)" />
+                              </View>
+                            ) : (
+                              <Pressable
+                                onPress={() => {
+                                  if (reflection.userId) {
+                                    setProfilePreview({
+                                      userId: reflection.userId,
+                                      displayName: profileMap[reflection.userId]?.displayName,
+                                      avatarUrl: profileMap[reflection.userId]?.avatarUrl,
+                                      location: profileMap[reflection.userId]?.location,
+                                    })
+                                  }
+                                }}
+                                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                                hitSlop={8}
+                              >
+                                {profileMap[reflection.userId]?.avatarUrl ? (
+                                  <Image
+                                    source={{ uri: profileMap[reflection.userId].avatarUrl }}
+                                    style={{
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: 14,
+                                      backgroundColor: "rgba(255,255,255,0.08)",
+                                    }}
+                                  />
+                                ) : (
+                                  <View
+                                    style={{
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: 14,
+                                      backgroundColor: "rgba(255,255,255,0.1)",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                    }}
+                                  >
+                                    <Ionicons name="person" size={14} color="rgba(255,255,255,0.4)" />
+                                  </View>
+                                )}
+                              </Pressable>
+                            )}
+                            <View>
+                              <AppText
+                                font="cormorant-italic"
+                                size="base"
+                                style={{ color: "rgba(255, 255, 255, 0.7)" }}
+                              >
+                                {reflection.isAnonymous ? "Anonymous Soul" : (profileMap[reflection.userId]?.displayName || "Soul")}
+                              </AppText>
+                              {!reflection.isAnonymous && profileMap[reflection.userId]?.location ? (
+                                <AppText
+                                  font="instrument-regular"
+                                  size="xs"
+                                  style={{ color: "#6b7280", marginTop: 1 }}
+                                >
+                                  {profileMap[reflection.userId].location}
+                                </AppText>
+                              ) : null}
+                            </View>
+                          </View>
                           <AppText
                             font="instrument-regular"
                             size="xs"
@@ -744,13 +1002,29 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                             {formatTimestamp(reflection.timestamp)}
                           </AppText>
                         </View>
-                        <AppText
-                          font="instrument-regular"
-                          size="base"
-                          style={{ color: "#ffffff", lineHeight: 24 }}
-                        >
-                          {reflection.message}
-                        </AppText>
+                        {reflection.message.length > 0 ? (
+                          <AppText
+                            font="cormorant-italic"
+                            size="base"
+                            style={{ color: "#ffffff", lineHeight: 26 }}
+                          >
+                            {reflection.message}
+                          </AppText>
+                        ) : null}
+                        {reflection.imageUrl ? (
+                          <Image
+                            source={{ uri: reflection.imageUrl }}
+                            style={{
+                              width: "100%",
+                              maxWidth: 240,
+                              aspectRatio: 4 / 3,
+                              borderRadius: 12,
+                              marginTop: 8,
+                              backgroundColor: "rgba(255,255,255,0.06)",
+                            }}
+                            resizeMode="cover"
+                          />
+                        ) : null}
                       </View>
                     ))}
                   </View>
@@ -767,7 +1041,13 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                   marginBottom: Math.max(insets.bottom, 24) + 48,
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginBottom: 12,
+                  }}
+                >
                   <Pressable
                     onPress={() => setIsAnonymous(!isAnonymous)}
                     style={{ flexDirection: "row", alignItems: "center" }}
@@ -786,7 +1066,13 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                     </AppText>
                   </Pressable>
                 </View>
-                <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-end",
+                    gap: 8,
+                  }}
+                >
                   <TextInput
                     value={message}
                     onChangeText={(text) => {
@@ -796,7 +1082,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                       }
                     }}
                     placeholder="Share your reflection..."
-                    placeholderTextColor="#6b7280"
+                    placeholderTextColor="rgba(255, 255, 255, 0.45)"
                     multiline
                     maxLength={500}
                     style={{
@@ -805,6 +1091,9 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                       borderRadius: 12,
                       padding: 16,
                       color: "#ffffff",
+                      fontSize: 17,
+                      lineHeight: 26,
+                      fontFamily: "CormorantGaramondItalic",
                       borderWidth: 1,
                       borderColor: "#1f2937",
                       minHeight: 80,
@@ -842,6 +1131,14 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
           )}
         </KeyboardAvoidingView>
       </SafeAreaView>
+      <ProfilePreviewModal
+        visible={!!profilePreview}
+        onClose={() => setProfilePreview(null)}
+        userId={profilePreview?.userId ?? ""}
+        displayName={profilePreview?.displayName}
+        avatarUrl={profilePreview?.avatarUrl}
+        location={profilePreview?.location}
+      />
     </Modal>
   )
 }

@@ -20,6 +20,7 @@ const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
     <Image
       source={source}
       resizeMode="contain"
+      className={className}
       style={[
         {
           width: width,

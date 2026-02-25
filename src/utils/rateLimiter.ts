@@ -95,7 +95,7 @@ export const RATE_LIMITS = {
     windowMs: 60 * 1000, // per minute
   },
   firebase: {
-    maxRequests: 100, // 100 requests
+    maxRequests: 150, // 150 requests per minute (Firestore reads are cheap)
     windowMs: 60 * 1000, // per minute
   },
 } as const

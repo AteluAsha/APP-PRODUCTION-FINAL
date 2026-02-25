@@ -19,13 +19,24 @@ const TextButtonSection: React.FC<TextButtonSectionProps> = ({
 }) => {
   return (
     <View style={{ marginBottom: 32 }}>
-      <AppText font="instrument-regular" size="sm" style={{ marginBottom: 8, fontSize: 14, color: "#ffffff" }}>
+      <AppText
+        font="instrument-regular"
+        size="sm"
+        style={{ marginBottom: 8, fontSize: 14, color: "#ffffff" }}
+      >
         {heading}
       </AppText>
-      <AppText font="instrument-regular" size="sm" style={{ marginBottom: 24, color: "#ffffff" }}>
+      <AppText
+        font="instrument-regular"
+        size="sm"
+        style={{ marginBottom: 24, color: "#ffffff" }}
+      >
         {description}
       </AppText>
       <Pressable
+        onPress={onPress}
+        delayPressIn={0}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         style={{
           borderWidth: 1,
           borderColor: "rgba(255,255,255,0.38)",
@@ -35,12 +46,19 @@ const TextButtonSection: React.FC<TextButtonSectionProps> = ({
           marginTop: 8,
           backgroundColor: "rgba(0,0,0,0.125)",
         }}
-        onPress={onPress}
       >
-        <AppText font="instrument-medium" size="xs" style={{ textAlign: "center", color: "#ffffff" }}>
+        <AppText
+          font="instrument-medium"
+          size="xs"
+          style={{ textAlign: "center", color: "#ffffff" }}
+        >
           {buttonText}
         </AppText>
-        <AppText font="instrument-regular" size="lg" style={{ textAlign: "center", color: "#ffffff" }}>
+        <AppText
+          font="instrument-regular"
+          size="lg"
+          style={{ textAlign: "center", color: "#ffffff" }}
+        >
           {buttonSubText}
         </AppText>
       </Pressable>

@@ -37,9 +37,33 @@ You are an expert in TypeScript, React Native, Expo, and Mobile UI development.
 - /assets - Static assets (images, fonts)
 - /constants - App constants and configuration
 
+## Production Safety (Pre-App Store Launch)
+
+- **Scope confirmation:** Before making changes that affect more files or code than the immediate task, ask the user for confirmation. This includes: refactors spanning multiple components, navigation/routing changes beyond the target screen, store or hook changes that ripple across the app, and any modification touching 3+ files.
+- **AudioPlayer close:** AudioPlayer X button ALWAYS navigates back to the previous screen. Entry points must use `router.push` (not `replace`) so the stack is preserved.
+
 ## Protected Paths
 
-- **app/backups/** – Pre-compression copy of assets. Safety net for image compression. Do not delete, and do not include in builds; it is excluded via .easignore.
+- **android/_backups/** – Pre-compression copy of assets. Safety net for image compression. Do not delete, and do not include in builds; it is excluded via .easignore.
+
+## Pathway / timegate logic
+
+- **Three doors after DateSelection (trial only):** Door 1 – Fresh (Trial 1) → ChakraHome → Waiting room. Door 2 – Trial 2 begins → ChakraHome → Waiting room. Door 3 – Both trials end → SimpleGraceTransition → paywall → ChakraHub. Lifetime users do not use these doors (WelcomeScreen → ChakraHub).
+- **Sequence cards (trial-only):** SimpleGraceTransition, GraceOfThePresence, RestingBlessing, SealOfTheInitiate, JourneySummaryGift, CommitmentGate may only appear in the trial pathway. They must never be shown to Lifetime users; do not remove or bypass the `hasLifetimeAccess` check in `shouldShowCommitmentGate` (ChakraHome).
+
+## Production: Firebase & Audio (Hero core, fail-safes)
+
+- **Firebase Storage paths:** Single source of truth is `constants/firebaseStoragePaths.ts`. Hooks (useTuningForkAudio, useCrystalBowlAudio, useEmbodimentAudio, useAncestralWisdomAudio) must use these folder names; filenames stay in sync with Storage bucket (case-sensitive).
+- **Firebase init:** Graceful when config missing (no crash). Rate limiting (`rateLimiter`), retry with backoff (`audioRetry`), and URL cache (`audioCache`) protect high-traffic and transient failures.
+- **Audio playback – local-first (locked):** Once a file is on device (localUri or getLocalAudioUri), playback must use it only. Never stream from URL when local file exists. Implemented in `crystalBowlPlayback.ts` and `audioDownload.ts`; do not bypass. Audio should never cut off once downloaded.
+- **Download/cache:** Cache dir is `FileSystem.cacheDirectory/audio/`. Full-file and "head" (first ~3 min) cache supported; long files use resumable download. Tuning fork / crystal bowl / embodiment hooks check local first, then Firebase URL.
+- **APP1 vs APP2 audio (no overlap):** Trial (APP1) never sets `audioOrigin === "music-room"` – AudioLibrary redirects trial to ChakraHome, so only lifetime can use Frequency of Gnosis / setSourceWithPlaylist. Trial audio is always "other" (embodiment, SoundBath, Head to Heart from chakra day). When user is on full-screen AudioPlayer, only AudioPlayer owns the track; MusicRoomAudioManager and OtherOriginAudioManager must not play (they unload / skip init when pathname is AudioPlayer). Trial: no mini player (PermanentMenuBar returns null); on leaving AudioPlayer, reset() clears store. Lifetime: mini player for both origins; no reset on leave so playback can continue.
+
+## Locked / Hero Designs (Do Not Redesign)
+
+- **App icon (home screen):** Soul School app icon on the phone MUST always be black background with color wheel logo. Never white background. Single source in production: `assets/images/ChakraWheel_ONBLACK_300DPI.png`, set via `APP_ICON_BLACK` in `app.config.js` (icon, ios.icon, android.adaptiveIcon.foregroundImage). Do not replace with 7chakras.png or any white-background asset for the app icon.
+- **Hero splash screen (SplashScreenReveal):** Must always use `SoulSchool_HERO_Logo.png`. Never replace it with `SoulSchool_Error_HeroLogo.png` or any other image. Single source: `components/SplashScreenReveal.tsx`.
+- **Goodbye pages (days 1–7):** `components/chakras/GoodbyeModal.tsx` is the single source for all goodbye/completion screens. Design is locked and mastered: top separator; day name (e.g. "Monday Root Day") in cormorant-regular label style; identity "I Am" and hero quote "I am, I exist, I belong." in hero affirmation style (cormorant-italic, 28px, 0.82 white); smaller chakra ball (88px); closing message in gentle cormorant-italic; thin bottom separator; bottom section with gold separator, gift card + spacing, "Open Your Gift", tomorrow preview line + time, Home button. No "Affirmation" label; no "Your chakra cards are collected in the Gallery" line. Do not change layout, typography, or section structure without explicit user request.
 
 ## TypeScript Usage
 
@@ -308,6 +332,13 @@ You are an expert in TypeScript, React Native, Expo, and Mobile UI development.
 - Request confirmation that changes work correctly before proceeding with related modifications
 - Break large tasks into smaller, manageable chunks that can be tested independently
 - Prioritize fixing one issue completely before moving to the next
+
+## Metro and real-time updates (mandatory – final production workflow)
+
+- **NEVER rebuild without syncing to Metro.** Any iOS build must run with Metro in the same flow so the app loads the JS bundle from Metro. Use `npx expo run:ios` (build + install + Metro in one process). Never run a build that leaves the app disconnected from Metro; testing is pointless if the app is not loading the latest bundle.
+- **Reinstall / app deleted from simulator:** If the app was removed from the simulator, run `npx expo run:ios` from the project root (with `env -u CI` so reload is enabled). That reinstalls the app and starts Metro; keep that terminal running so the app stays connected for real-time updates.
+- **After any UI or runtime code change:** (1) Ensure Metro is running (same terminal as `expo run:ios`, or `npx expo start --clear`). (2) Tell the user to reload: Cmd+R in simulator or shake → Reload (or press `r` in the Metro terminal). Do not assume reload happened; make it explicit. Without this, edits are "updating to nothing."
+- **Clean / full reset:** Kill Expo, Metro, and Node; clear node_modules/.cache, .expo, ios/build, DerivedData for the app, Watchman; then run `env -u CI npx expo run:ios` so the app and Metro run together. Do not do a clean build without starting Metro in the same step.
 
 ## Documentation Formatting
 

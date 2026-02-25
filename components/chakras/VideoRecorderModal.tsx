@@ -32,12 +32,15 @@ interface VideoRecorderModalProps {
   visible: boolean
   onClose: () => void
   onVideoRecorded?: (videoUri: string) => void
+  /** Called when user completes share flow (e.g. after Sharing.shareAsync). Use to navigate away. */
+  onComplete?: () => void
 }
 
 export const VideoRecorderModal: React.FC<VideoRecorderModalProps> = ({
   visible,
   onClose,
   onVideoRecorded,
+  onComplete,
 }) => {
   const [permission, requestPermission] = useCameraPermissions()
   const [isRecording, setIsRecording] = useState(false)
@@ -123,10 +126,10 @@ export const VideoRecorderModal: React.FC<VideoRecorderModalProps> = ({
 
   const handleCopyLink = async () => {
     const appStoreLink = Platform.select({
-      ios: "https://apps.apple.com/app/soul-school-7-chakras", // Placeholder
+      ios: "https://apps.apple.com/app/soul-school-7-chakras", // PENDING: replace when published
       android:
-        "https://play.google.com/store/apps/details?id=com.sevenchakras.SevenChakras", // Placeholder
-      default: "https://soulschool.app", // Placeholder
+        "https://play.google.com/store/apps/details?id=com.sevenchakras.SevenChakras", // PENDING: replace when published
+      default: "https://www.soulschool.app/community",
     })
 
     await Clipboard.setStringAsync(appStoreLink || "")
@@ -181,9 +184,10 @@ ${appStoreLink}
         UTI: "public.movie", // iOS
       })
 
-      // After sharing, show subtle link option
+      // After sharing, show subtle link option and notify completion
       setIsSharing(false)
       setShowLinkOption(true)
+      onComplete?.()
     } catch (error) {
       if (__DEV__) {
         console.error("Error sharing video:", error)
@@ -471,6 +475,19 @@ ${appStoreLink}
                   )}
                 </Pressable>
               </View>
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={{
+                  color: "rgba(255,255,255,0.4)",
+                  textAlign: "center",
+                  marginTop: 16,
+                  fontStyle: "italic",
+                }}
+              >
+                We do not store or keep any of your expressions. They only exist
+                in this now moment.
+              </AppText>
             </>
           )}
         </View>

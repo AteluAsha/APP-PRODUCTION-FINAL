@@ -23,6 +23,7 @@ import { checkRateLimit, waitForRateLimit } from "@/src/utils/rateLimiter"
 import { getCachedAudioUrl, setCachedAudioUrl } from "@/src/utils/audioCache"
 import { retryWithBackoff, isRetryableError } from "@/src/utils/audioRetry"
 import { getLocalAudioUri } from "@/src/utils/audioDownload"
+import { FIREBASE_TUNING_FORK_FOLDER } from "@/constants/firebaseStoragePaths"
 // Audio import removed - duration extraction disabled to prevent crashes
 // Duration will be determined by the audio player when it loads
 
@@ -30,6 +31,7 @@ import { getLocalAudioUri } from "@/src/utils/audioDownload"
  * Map chakras to their tuning fork audio filenames
  * Firebase: gs://soul-school-367ee.firebasestorage.app/TuningForkAudio
  */
+
 const CHAKRA_TO_TUNING_FORK_FILE: Record<Chakra, string> = {
   [Chakra.ROOT]: "Day1_396hz_plus256_TuningFork.aac",
   [Chakra.SACRAL]: "Day2_417hz_tuningfork.aac",
@@ -40,7 +42,7 @@ const CHAKRA_TO_TUNING_FORK_FILE: Record<Chakra, string> = {
   [Chakra.CROWN]: "Day7_963hz_tuningfork.aac",
 }
 
-const STORAGE_FOLDER = "TuningForkAudio"
+const STORAGE_FOLDER = FIREBASE_TUNING_FORK_FOLDER
 
 export interface TuningForkAudioState {
   url: string | null

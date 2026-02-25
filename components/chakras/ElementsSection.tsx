@@ -14,7 +14,7 @@ const ElementsSection = ({ chakra }: { chakra: Chakra }) => {
     <ResponsiveImage
       source={elements.background}
       width={width}
-      style={{ marginTop: 24 }}
+      style={{ width: "100%", marginTop: 24 }}
     />
   )
 }

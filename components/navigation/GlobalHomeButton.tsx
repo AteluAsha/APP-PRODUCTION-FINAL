@@ -61,7 +61,6 @@ export const GlobalHomeButton: React.FC = () => {
     pathname?.includes("index")
 
   // Check if we're on ChakraHome (which shows WaitingScreen when conditions are met)
-  // Hide GlobalHomeButton when on ChakraHome in trial mode (waiting screen context)
   const isChakraHome =
     pathname === "/(chakras)" ||
     pathname === "/(chakras)/" ||
@@ -70,10 +69,13 @@ export const GlobalHomeButton: React.FC = () => {
     pathname?.includes("/ChakraHome") ||
     isRootChakrasRoute
 
-  // Hide chakra icon on waiting screen - it's redundant (Learn About Chakras button does the same thing)
-  const shouldHideOnWaitingScreen = isChakraHome || isRootChakrasRoute
+  // Hide chakra icon on ChakraHome for trial users (redundant with Learn About Chakras).
+  // For lifetime in course mode, show it – takes them to ChakraHub (lifetime home).
+  const shouldHideOnWaitingScreen =
+    (isChakraHome || isRootChakrasRoute) && !hasLifetimeAccess
 
   // EARLY RETURN - Most important check first
+  // Hide on AudioPlayer for distraction-free embodiment listening
   if (
     segments.includes("Chakras101") ||
     segments.includes("CommitmentGate") ||
@@ -81,6 +83,7 @@ export const GlobalHomeButton: React.FC = () => {
     segments.includes("EnergyExchange") ||
     segments.includes("DateSelection") ||
     segments.includes("TribeChat") ||
+    segments.includes("AudioPlayer") ||
     pathname?.includes("/Chakras101") ||
     pathname?.includes("/CommitmentGate") ||
     pathname?.includes("/DevPaywall") ||
@@ -89,6 +92,8 @@ export const GlobalHomeButton: React.FC = () => {
     pathname?.includes("DateSelection") ||
     pathname?.includes("/TribeChat") ||
     pathname?.includes("TribeChat") ||
+    pathname?.includes("/AudioPlayer") ||
+    pathname?.includes("AudioPlayer") ||
     isWelcomeScreen ||
     shouldHideOnWaitingScreen || // Hide when waiting screen is shown
     !pathname || // Safety: hide if pathname is undefined
@@ -127,8 +132,13 @@ export const GlobalHomeButton: React.FC = () => {
       return
     }
     if (isHomeScreen) {
-      // On home screen (trial or post-paywall), navigate to Chakras 101
-      router.push("/(chakras)/Chakras101")
+      // Lifetime on ChakraHome (course mode): chakra icon → ChakraHub
+      // Trial/ChakraHub: chakra icon → Chakras 101
+      if (hasLifetimeAccess && isChakraHome) {
+        router.replace("/(chakras)/ChakraHub")
+      } else {
+        router.push("/(chakras)/Chakras101")
+      }
     } else {
       // On other screens, navigate to respective home screen
       // Trial screens → trial homepage (ChakraHome with progressive reveal)

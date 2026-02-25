@@ -1,5 +1,11 @@
 import React, { useState } from "react"
-import { View, Pressable, ActivityIndicator, ScrollView, Image } from "react-native"
+import {
+  View,
+  Pressable,
+  ActivityIndicator,
+  ScrollView,
+  Image,
+} from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
@@ -371,7 +377,7 @@ export const RevenueCatPaywall = ({
           {false && ( // Feature flag - set to true when ready to activate
             <Pressable
               onPress={() => {
-                router.push("/(chakras)/Donate")
+                router.push("/(chakras)/Contribute")
                 addHapticFeedback(HapticStrength.Light)
               }}
               style={{ marginTop: 8 }}

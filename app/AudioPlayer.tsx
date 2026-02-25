@@ -1,7 +1,18 @@
 import { ActionBar } from "@/components/ActionBar"
-import { useCallback, useEffect, useRef } from "react"
-import { useState } from "react"
-import { View, TouchableHighlight } from "react-native"
+import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  View,
+  TouchableHighlight,
+  Pressable,
+  Platform,
+  Modal,
+} from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated"
 import {
   Audio,
   AVPlaybackStatus,
@@ -10,52 +21,87 @@ import {
   InterruptionModeAndroid,
 } from "expo-av"
 import { useRouter } from "expo-router"
+import { useFocusEffect } from "@react-navigation/native"
+import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
-import { Ionicons } from "@expo/vector-icons"
+import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
+import { Ionicons, Feather } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
 import { PlayerProgressBar } from "@/components/chakras/PlayerProgressBar"
-import RadialGradientAnimation from "@/components/chakras/RadialGradientAnimation"
+import { PulsingChakraBall } from "@/components/chakras/PulsingChakraBall"
+import { JourneyNotesView } from "@/components/chakras/JourneyNotesView"
+import { getChakraImage } from "@/constants/chakras/chakraConstants"
 import Rewind10 from "@/assets/svg/rewind10.svg"
 import Forward10 from "@/assets/svg/forward10.svg"
-import { performIntroRitual } from "@/src/services/anuaRitualService"
+import { stopAnuaAudio } from "@/src/services/elevenlabs"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { ICON } from "@/constants/layout"
 import {
   otherOriginTrackRef,
   getSourceSignature,
 } from "@/src/services/otherOriginTrackRef"
+import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet"
 
-/** Hz → chakra color (hex) for audio player visual */
-const HERTZ_TO_CHAKRA_COLOR: Record<number, string> = {
-  396: "#DC2626", // Root – red
-  417: "#EA580C", // Sacral – orange
-  528: "#FCD34D", // Solar Plexus – yellow
-  639: "#10B981", // Heart – green
-  741: "#3B82F6", // Throat – blue
-  852: "#6366F1", // Third Eye – indigo
-  963: "#9333EA", // Crown – purple
+const FALLBACK_DAY_INDEX = 5 // Third Eye
+
+/** Hz → day index (0–6) for chakra ball image */
+const HERTZ_TO_DAY_INDEX: Record<number, number> = {
+  396: 0,
+  417: 1,
+  528: 2,
+  639: 3,
+  741: 4,
+  852: 5,
+  963: 6,
 }
 
-const FALLBACK_COLOR = "#6366F1" // Third Eye – neutral when Hz unknown
+/** Chakra color (hex) → day index when set from store (e.g. ChakraTemplate) */
+const CHAKRA_COLOR_TO_DAY_INDEX: Record<string, number> = {
+  "#DC2626": 0,
+  "#EA580C": 1,
+  "#FCD34D": 2,
+  "#10B981": 3,
+  "#3B82F6": 4,
+  "#6366F1": 5,
+  "#9333EA": 6,
+}
 
-function parseHzFromMetadata(metadata: {
+function parseHzToDayIndex(metadata: {
   title: string
   author: string
-}): string {
+}): number {
   const text = `${metadata.title} ${metadata.author}`
   const match = text.match(/(\d{3})\s*[Hh]z/i)
-  if (!match) return FALLBACK_COLOR
+  if (!match) return FALLBACK_DAY_INDEX
   const hz = parseInt(match[1], 10)
-  return HERTZ_TO_CHAKRA_COLOR[hz] ?? FALLBACK_COLOR
+  return HERTZ_TO_DAY_INDEX[hz] ?? FALLBACK_DAY_INDEX
 }
+
+const CONTROLS_HIDE_DELAY_MS = 3000
+/** Brief wait before showing "No audio selected" so delayed setSource (180ms) and navigation can run */
+const NO_AUDIO_GRACE_MS = 2500
 
 const AudioPlayer = () => {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
+  const markChakraCompleted = useChakraJourneyStore(
+    (s) => s.markChakraCompleted,
+  )
   const source = useCurrentAudioStore((state) => state.source)
   const metadata = useCurrentAudioStore((state) => state.metadata)
   const prefs = useCurrentAudioStore((state) => state.prefs)
   const audioOrigin = useCurrentAudioStore((state) => state.audioOrigin)
   const reset = useCurrentAudioStore((state) => state.reset)
+  const setPlaying = useCurrentAudioStore((state) => state.setPlaying)
+  const storeChakraColor = useCurrentAudioStore((state) => state.chakraColor)
+  const dayIndex =
+    storeChakraColor &&
+    CHAKRA_COLOR_TO_DAY_INDEX[storeChakraColor] !== undefined
+      ? CHAKRA_COLOR_TO_DAY_INDEX[storeChakraColor]
+      : metadata
+        ? parseHzToDayIndex(metadata)
+        : FALLBACK_DAY_INDEX
 
   // ALL HOOKS MUST BE DECLARED BEFORE ANY CONDITIONAL RETURNS
   // This ensures React hooks are always called in the same order on every render
@@ -65,10 +111,58 @@ const AudioPlayer = () => {
   const [positionMs, setPosition] = useState(0)
   const [durationMs, setDuration] = useState<number>(metadata?.durationMs || 0)
   const [justFinished, setJustFinished] = useState(false)
-  const introRitualTriggered = useRef(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false)
+  const [showNoAudioMessage, setShowNoAudioMessage] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [notesSheetOpenKey, setNotesSheetOpenKey] = useState(0)
+  const notesSheetRef = useRef<BottomSheetModal>(null)
+  const controlsHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
+  const noAudioGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isLoadedRef = useRef(false)
   const lastSourceRef = useRef<AVPlaybackSource | null>(null)
   const lastAppliedStorePlayingRef = useRef<boolean | null>(null)
+  const lastStatusUpdateTimeRef = useRef(0)
+  /** 80% = dot only: mark day complete for homescreen; no routing, no goodbye. Reset when source changes. */
+  const embodimentEightyPercentRef = useRef(false)
+  const PROGRESS_UPDATE_INTERVAL_MS = 500
+  /** Prevents double createAsync when effect runs twice (e.g. Strict Mode); Master Embodiment must never echo */
+  const initializingTrackRef = useRef(false)
+  /** Ref to current track. Only stop/unload on: user close, pause, leave screen (focus cleanup), or track end. No other system may stop playback. */
+  const trackRef = useRef<Audio.Sound | undefined>(undefined)
+
+  useEffect(() => {
+    trackRef.current = track
+    return () => {
+      trackRef.current = undefined
+    }
+  }, [track])
+
+  // When store is empty, wait briefly before showing "No audio selected" so delayed setSourceWithPlaylist (180ms) can run
+  useEffect(() => {
+    const empty = !source || !metadata || !prefs
+    if (empty) {
+      if (noAudioGraceTimerRef.current) return
+      noAudioGraceTimerRef.current = setTimeout(() => {
+        noAudioGraceTimerRef.current = null
+        setShowNoAudioMessage(true)
+      }, NO_AUDIO_GRACE_MS)
+    } else {
+      if (noAudioGraceTimerRef.current) {
+        clearTimeout(noAudioGraceTimerRef.current)
+        noAudioGraceTimerRef.current = null
+      }
+      setShowNoAudioMessage(false)
+    }
+    return () => {
+      if (noAudioGraceTimerRef.current) {
+        clearTimeout(noAudioGraceTimerRef.current)
+        noAudioGraceTimerRef.current = null
+      }
+    }
+  }, [source, metadata, prefs])
 
   // Define callbacks - safe to call even if source/metadata/prefs are null
   const seekToPosition = useCallback(
@@ -81,9 +175,11 @@ const AudioPlayer = () => {
     [track],
   )
 
+  // Completion and navigation are driven only by track end (didJustFinish). No progress threshold
+  // affects audio or navigation. 80% is dot-only: mark day complete for homescreen.
   const onPlaybackStatusUpdate = useCallback(
     async (status: AVPlaybackStatus) => {
-      if (!metadata) return // Safe guard
+      if (!metadata) return
 
       if (status.isLoaded) {
         isLoadedRef.current = true
@@ -93,25 +189,39 @@ const AudioPlayer = () => {
           status.durationMillis && status.durationMillis > 0
             ? status.durationMillis
             : metadata?.durationMs || 0
-        setPosition(status.positionMillis)
-        setDuration(duration)
+        const playing = !!status.isPlaying
+
+        // Throttle position/duration updates to reduce UI flicker (every 500ms)
+        const now = Date.now()
+        const shouldUpdateProgress =
+          status.didJustFinish ||
+          playing !== lastAppliedStorePlayingRef.current ||
+          now - lastStatusUpdateTimeRef.current >= PROGRESS_UPDATE_INTERVAL_MS
+        if (shouldUpdateProgress) {
+          lastStatusUpdateTimeRef.current = now
+          setPosition(status.positionMillis)
+          setDuration(duration)
+        }
 
         if (status.didJustFinish) {
           setJustFinished(true)
         }
 
-        // Keep store in sync for mini player (origin "other")
-        const playing = !!status.isPlaying
+        // 80% = dot only: auto-check complete box so chakra shows dot on homescreen. No setCompletedChakra, no navigation.
+        if (
+          !hasLifetimeAccess &&
+          prefs?.isIntroAudio === true &&
+          (audioOrigin === "other" || audioOrigin === "full-player") &&
+          duration > 0 &&
+          status.positionMillis >= 0.8 * duration &&
+          !embodimentEightyPercentRef.current
+        ) {
+          embodimentEightyPercentRef.current = true
+          markChakraCompleted(dayIndex)
+        }
+
         setPlaying(playing)
         lastAppliedStorePlayingRef.current = playing
-
-        // Auto-play when loaded if we're in loading state
-        // This handles the case where audio finishes loading after initialization
-        if (isLoading && track && !isPlaying && isLoadedRef.current) {
-          await track.playAsync()
-          setIsPlaying(true)
-          setIsLoading(false)
-        }
       } else {
         if (status.error) {
           if (__DEV__) {
@@ -120,13 +230,42 @@ const AudioPlayer = () => {
         }
       }
     },
-    [metadata, isLoading, track, isPlaying, setPlaying],
+    [
+      metadata,
+      setPlaying,
+      hasLifetimeAccess,
+      prefs?.isIntroAudio,
+      audioOrigin,
+      dayIndex,
+      markChakraCompleted,
+    ],
   )
 
   const initializeTrack = useCallback(async () => {
-    if (!source || !prefs) return // Safe guard
+    if (!source || !prefs) return
+    if (initializingTrackRef.current) return
+    initializingTrackRef.current = true
+    setLoadError(null)
+
+    // Never call createAsync with empty or invalid URI — prevents "sound is not loaded" and crashes
+    const hasUri = typeof source === "object" && source !== null && "uri" in source
+    const uriStr = hasUri && typeof (source as { uri?: unknown }).uri === "string"
+      ? (source as { uri: string }).uri
+      : ""
+    const uriInvalid = hasUri && (!uriStr || uriStr.trim() === "")
+    const isAsset = typeof source === "number"
+    if (uriInvalid && !isAsset) {
+      setTrack(undefined)
+      setIsLoading(false)
+      isLoadedRef.current = false
+      initializingTrackRef.current = false
+      setLoadError("Invalid audio source.")
+      return
+    }
 
     try {
+      stopAnuaAudio().catch(() => {})
+
       isLoadedRef.current = false
       setIsLoading(true)
 
@@ -148,6 +287,7 @@ const AudioPlayer = () => {
       )
 
       setTrack(sound)
+      await sound.setProgressUpdateIntervalAsync(PROGRESS_UPDATE_INTERVAL_MS)
       await sound.setIsLoopingAsync(prefs.shouldLoop || false)
       await sound.setVolumeAsync(1)
       await new Promise((resolve) => setTimeout(resolve, 100))
@@ -156,31 +296,40 @@ const AudioPlayer = () => {
       if (status.isLoaded) {
         isLoadedRef.current = true
         setIsLoading(false)
+        setLoadError(null)
         await sound.playAsync()
         setIsPlaying(true)
       } else {
         setIsLoading(true)
       }
     } catch (error) {
-      const errorToLog =
-        error instanceof Error ? error : new Error(String(error))
-
-      // Log to Sentry
-      const { captureException } = require("@/src/services/sentry")
-      captureException(errorToLog, {
-        component: "AudioPlayer",
-        operation: "initializeTrack",
-        hasSource: !!source,
-        hasPrefs: !!prefs,
-      })
-
       if (__DEV__) {
         console.error("AudioPlayer: Error creating sound:", error)
+      }
+      try {
+        const { captureException } = require("@/src/services/sentry")
+        captureException(
+          error instanceof Error ? error : new Error(String(error)),
+          { component: "AudioPlayer", operation: "initializeTrack" },
+        )
+      } catch (_) {
+        // Never let Sentry cause a crash
       }
       setTrack(undefined)
       setIsPlaying(false)
       setIsLoading(false)
       isLoadedRef.current = false
+      const msg =
+        error instanceof Error
+          ? error.message
+          : String(error)
+      const friendly =
+        msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network")
+          ? "Unable to load audio. Check your connection and try again."
+          : "Unable to load audio. Try again or close."
+      setLoadError(friendly)
+    } finally {
+      initializingTrackRef.current = false
     }
   }, [onPlaybackStatusUpdate, source, prefs])
 
@@ -199,11 +348,68 @@ const AudioPlayer = () => {
     }
   }, [source, track])
 
-  // When origin is "other" (embodiment etc.), do NOT reset on leave so the mini player
-  // can show and user can close/pause from there. Reset only when they tap Close in mini player.
-  const setPlaying = useCurrentAudioStore((state) => state.setPlaying)
+  // Only stop on user leave (screen revert). Trial: stop when leaving. Lifetime + non-intro: mini player continues.
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        const state = useCurrentAudioStore.getState()
+        const isIntroAudio =
+          (state.audioOrigin === "other" ||
+            state.audioOrigin === "full-player") &&
+          state.prefs?.isIntroAudio
+        const trialMustStop = !hasLifetimeAccess
+        if (isIntroAudio || trialMustStop) {
+          stopAnuaAudio().catch(() => {})
+          const currentTrack = trackRef.current
+          if (currentTrack) {
+            currentTrack
+              .stopAsync()
+              .then(() => currentTrack.unloadAsync().catch(() => {}))
+              .catch(() => {})
+          }
+          reset()
+        }
+      }
+    }, [reset, hasLifetimeAccess]),
+  )
+
+  /** Single path for closing player and navigating. Awaits stop+unload before reset+navigate to prevent double-play. */
+  const closePlayerAndNavigate = useCallback(
+    async (options?: { replaceToChakraHome?: boolean }) => {
+      stopAnuaAudio().catch((e) => {
+        if (__DEV__) console.warn("AudioPlayer: stopAnuaAudio on close:", e)
+      })
+      const currentTrack = trackRef.current
+      if (currentTrack) {
+        try {
+          await currentTrack.stopAsync()
+          await currentTrack.unloadAsync()
+        } catch (e) {
+          if (__DEV__)
+            console.warn("AudioPlayer: closePlayerAndNavigate unload error:", e)
+        }
+        setTrack(undefined)
+        setIsPlaying(false)
+        setIsLoading(false)
+        isLoadedRef.current = false
+      }
+      reset()
+      if (options?.replaceToChakraHome) {
+        router.replace("/(chakras)/ChakraHome")
+      } else {
+        if (router.canGoBack()) {
+          router.back()
+        } else {
+          router.replace("/(chakras)/ChakraHub")
+        }
+      }
+    },
+    [reset, router],
+  )
+
   const storeIsPlaying = useCurrentAudioStore((state) => state.isPlaying)
 
+  // AudioPlayer never routes to goodbye. Only mark day complete and close/back. Goodbye is shown only by the course page (ChakraHome).
   useEffect(() => {
     if (!prefs) return // Safe guard
 
@@ -211,25 +417,40 @@ const AudioPlayer = () => {
       setJustFinished(false)
       const advanced = useCurrentAudioStore.getState().advanceToNext()
       if (!advanced) {
+        const isOtherOrFullPlayer =
+          audioOrigin === "other" || audioOrigin === "full-player"
+        // Embodiment intro (isIntroAudio): close for both trial and lifetime. Course intro ritual never plays here — only in waiting room first Anua open.
+        if (isOtherOrFullPlayer && prefs.isIntroAudio === true) {
+          if (!hasLifetimeAccess) markChakraCompleted(dayIndex)
+          closePlayerAndNavigate().catch((e) => {
+            if (__DEV__) console.warn("AudioPlayer: closePlayerAndNavigate:", e)
+          })
+          return
+        }
+        // Single "other" / "full-player" track (e.g. Head to Heart): auto-close and return to previous screen
+        if (isOtherOrFullPlayer && !prefs.isIntroAudio) {
+          closePlayerAndNavigate().catch((e) => {
+            if (__DEV__) console.warn("AudioPlayer: closePlayerAndNavigate:", e)
+          })
+          return
+        }
         seekToPosition(0)
         track?.pauseAsync()
         setIsPlaying(false)
-
-        if (prefs.isIntroAudio && !introRitualTriggered.current) {
-          introRitualTriggered.current = true
-          performIntroRitual().catch((error) => {
-            if (__DEV__) {
-              console.error(
-                "AudioPlayer: Error performing Intro Ritual:",
-                error,
-              )
-            }
-          })
-        }
       }
       // If advanced, the store update triggers re-render and source effect loads next track
     }
-  }, [justFinished, seekToPosition, track, prefs])
+  }, [
+    justFinished,
+    seekToPosition,
+    track,
+    prefs,
+    audioOrigin,
+    hasLifetimeAccess,
+    dayIndex,
+    markChakraCompleted,
+    closePlayerAndNavigate,
+  ])
 
   // Re-initialize whenever source or prefs change (critical for track switching)
   useEffect(() => {
@@ -239,10 +460,16 @@ const AudioPlayer = () => {
     if (sourceChanged) {
       lastSourceRef.current = source
       lastAppliedStorePlayingRef.current = null
+      embodimentEightyPercentRef.current = false
+      setLoadError(null)
     }
 
     const runInit = async () => {
-      if (track && sourceChanged) {
+      // Full-player (Master Embodiment, Head to Heart): always unload any existing track first so we never play two at once (echo).
+      const mustUnload =
+        track &&
+        (sourceChanged || audioOrigin === "full-player")
+      if (mustUnload) {
         try {
           await track.unloadAsync()
         } catch (e) {
@@ -253,7 +480,6 @@ const AudioPlayer = () => {
         setIsLoading(false)
         isLoadedRef.current = false
       }
-      introRitualTriggered.current = false
       isLoadedRef.current = false
 
       if (audioOrigin === "other") {
@@ -262,18 +488,24 @@ const AudioPlayer = () => {
         if (ref && ref.sourceSignature === sig) {
           otherOriginTrackRef.current = null
           setTrack(ref.sound)
-          const status = await ref.sound.getStatusAsync()
-          if (status.isLoaded) {
-            isLoadedRef.current = true
-            setIsLoading(false)
-            setIsPlaying(status.isPlaying)
-            setPosition(status.positionMillis)
-            if (status.durationMillis) setDuration(status.durationMillis)
+          try {
+            const status = await ref.sound.getStatusAsync()
+            if (status.isLoaded) {
+              isLoadedRef.current = true
+              setIsLoading(false)
+              setIsPlaying(status.isPlaying)
+              setPosition(status.positionMillis)
+              if (status.durationMillis) setDuration(status.durationMillis)
+            }
+          } catch (e) {
+            if (__DEV__) console.warn("AudioPlayer: getStatusAsync (other) failed:", e)
+            setIsLoading(true)
           }
           return
         }
       }
 
+      if (initializingTrackRef.current) return
       setIsLoading(true)
       await initializeTrack()
     }
@@ -294,7 +526,6 @@ const AudioPlayer = () => {
         setIsPlaying(false)
         setIsLoading(false)
         isLoadedRef.current = false
-        introRitualTriggered.current = false
       }
     }
   }, [source, prefs, audioOrigin])
@@ -311,12 +542,142 @@ const AudioPlayer = () => {
     }
   }, [audioOrigin, storeIsPlaying, track])
 
+  const showControls = useCallback(() => {
+    setControlsVisible(true)
+    if (controlsHideTimerRef.current) {
+      clearTimeout(controlsHideTimerRef.current)
+      controlsHideTimerRef.current = null
+    }
+    controlsHideTimerRef.current = setTimeout(() => {
+      setControlsVisible(false)
+      controlsHideTimerRef.current = null
+    }, CONTROLS_HIDE_DELAY_MS)
+  }, [])
+
+  const bottomBarOpacity = useSharedValue(1)
+  useEffect(() => {
+    bottomBarOpacity.value = withTiming(controlsVisible ? 1 : 0, {
+      duration: 300,
+    })
+  }, [controlsVisible, bottomBarOpacity])
+
+  // On mobile: start hide timer after open so controls fade when idle
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      const t = setTimeout(
+        () => setControlsVisible(false),
+        CONTROLS_HIDE_DELAY_MS,
+      )
+      return () => clearTimeout(t)
+    }
+  }, [])
+
+  const animatedBottomBarStyle = useAnimatedStyle(() => ({
+    opacity: bottomBarOpacity.value,
+  }))
+
+  const performClose = useCallback(async () => {
+    setShowExitConfirmModal(false)
+    await closePlayerAndNavigate()
+  }, [closePlayerAndNavigate])
+
+  const handleCloseX = useCallback(() => {
+    addHapticFeedback(HapticStrength.Light)
+    if (!hasLifetimeAccess) {
+      setShowExitConfirmModal(true)
+    } else {
+      performClose()
+    }
+  }, [hasLifetimeAccess, performClose])
+
+  /** When there is no source (empty/error state), X always closes immediately — no exit confirm modal (modal is not rendered in that branch). */
+  const handleCloseXNoSource = useCallback(() => {
+    addHapticFeedback(HapticStrength.Light)
+    performClose()
+  }, [performClose])
+
+  const handleConfirmClose = useCallback(() => {
+    addHapticFeedback(HapticStrength.Light)
+    performClose()
+  }, [performClose])
+
+  const handleBottomBarPress = useCallback(() => {
+    showControls()
+  }, [showControls])
+
+  const handleControlPress = useCallback(
+    (fn: () => void | Promise<void>) => {
+      showControls()
+      fn()
+    },
+    [showControls],
+  )
+
   // NOW we can check for missing data and return early
   // All hooks have been declared above, so React's hook order is preserved
+
+  if (source && metadata && prefs && loadError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
+        <ActionBar
+          useXButton={true}
+          xButtonPosition="left"
+          onXPress={handleCloseXNoSource}
+        />
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 }}
+        >
+          <AppText
+            font="instrument-regular"
+            size="lg"
+            className="text-white text-center"
+          >
+            {loadError}
+          </AppText>
+          <View style={{ flexDirection: "row", marginTop: 24, gap: 16 }}>
+            <Pressable
+              onPress={() => {
+                setLoadError(null)
+                initializeTrack()
+              }}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                backgroundColor: "rgba(255,255,255,0.2)",
+                borderRadius: 12,
+              }}
+            >
+              <AppText font="instrument-regular" size="base" style={{ color: "#fff" }}>
+                Retry
+              </AppText>
+            </Pressable>
+            <Pressable
+              onPress={handleCloseXNoSource}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                borderRadius: 12,
+              }}
+            >
+              <AppText font="instrument-regular" size="base" style={{ color: "#fff" }}>
+                Close
+              </AppText>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    )
+  }
+
   if (!source || !metadata || !prefs) {
     return (
       <View style={{ flex: 1, backgroundColor: "#000" }}>
-        <ActionBar useXButton={true} xButtonPosition="left" onXPress={() => { addHapticFeedback(HapticStrength.Light); router.replace("/(chakras)") }} />
+        <ActionBar
+          useXButton={true}
+          xButtonPosition="left"
+          onXPress={handleCloseXNoSource}
+        />
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
@@ -325,8 +686,28 @@ const AudioPlayer = () => {
             size="lg"
             className="text-white text-center px-4"
           >
-            No audio selected. Please select an audio file to play.
+            {showNoAudioMessage
+              ? "No audio selected. Please select an audio file to play."
+              : "Loading…"}
           </AppText>
+          <Pressable
+            onPress={handleCloseXNoSource}
+            style={{
+              marginTop: 24,
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              backgroundColor: "rgba(255,255,255,0.15)",
+              borderRadius: 12,
+            }}
+          >
+            <AppText
+              font="instrument-regular"
+              size="base"
+              style={{ color: "#fff" }}
+            >
+              Close
+            </AppText>
+          </Pressable>
         </View>
       </View>
     )
@@ -366,31 +747,48 @@ const AudioPlayer = () => {
     }
   }
 
-  // Use explicit chakra color when set (e.g. embodiment from chakra day); else derive from metadata Hz
-  const storeChakraColor = useCurrentAudioStore((state) => state.chakraColor)
-  const chakraColor = storeChakraColor ?? parseHzFromMetadata(metadata)
-
-  const handleCloseX = useCallback(() => {
-    if (audioOrigin !== "other") {
-      reset()
-    }
-    router.replace("/(chakras)")
-  }, [audioOrigin, reset, router])
-
   return (
-    <View style={{ flex: 1 }} pointerEvents="box-none">
-      <RadialGradientAnimation primaryColor={chakraColor} />
-      <ActionBar useXButton={true} xButtonPosition="left" onXPress={handleCloseX} />
-      <View
-        style={{
-          flex: 1,
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          marginTop: 4,
-          marginHorizontal: 16,
-        }}
+    <>
+    <View style={{ flex: 1, backgroundColor: "#000" }} pointerEvents="box-none">
+      <ActionBar
+        useXButton={true}
+        xButtonPosition="left"
+        onXPress={handleCloseX}
+      />
+
+      {/* Tap anywhere (or hover on web) to show play/pause and progress bar */}
+      <Pressable
+        style={{ flex: 1 }}
+        onPress={handleBottomBarPress}
+        onPointerEnter={
+          Platform.OS === "web" ? handleBottomBarPress : undefined
+        }
+        onPointerLeave={
+          Platform.OS === "web"
+            ? () => {
+                if (controlsHideTimerRef.current) {
+                  clearTimeout(controlsHideTimerRef.current)
+                }
+                setControlsVisible(false)
+              }
+            : undefined
+        }
       >
-        <View style={{ flexDirection: "column", alignItems: "center", marginBottom: 24 }}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          <PulsingChakraBall
+            source={
+              dayIndex === 5
+                ? require("@/assets/images/ajna.png")
+                : getChakraImage(dayIndex)
+            }
+          />
           <AppText
             font="instrument-regular"
             size="xl"
@@ -405,24 +803,71 @@ const AudioPlayer = () => {
           >
             {metadata.author}
           </AppText>
+          {isLoading && (
+            <AppText
+              font="instrument-regular"
+              size="base"
+              style={{
+                marginTop: 16,
+                color: "rgba(255,255,255,0.85)",
+                textAlign: "center",
+              }}
+            >
+              Preparing audio…
+            </AppText>
+          )}
         </View>
-        <View style={{ flexDirection: "column", alignItems: "center" }}>
+      </Pressable>
+
+      {/* Bottom bar - play/pause, slider; always present, opacity shows/hides; tap bar or screen to reveal */}
+      <Pressable
+        onPress={handleBottomBarPress}
+        onPointerEnter={
+          Platform.OS === "web" ? handleBottomBarPress : undefined
+        }
+        onPointerLeave={
+          Platform.OS === "web"
+            ? () => {
+                if (controlsHideTimerRef.current) {
+                  clearTimeout(controlsHideTimerRef.current)
+                }
+                setControlsVisible(false)
+              }
+            : undefined
+        }
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          minHeight: 100,
+          paddingHorizontal: 24,
+          paddingBottom: Math.max(insets.bottom, 24),
+          paddingTop: 20,
+          backgroundColor: "rgba(0,0,0,0.6)",
+          justifyContent: "center",
+        }}
+      >
+        <Animated.View style={[{ width: "100%" }, animatedBottomBarStyle]}>
           <PlayerProgressBar
             durationMs={durationMs}
             positionMs={positionMs}
-            seekToPosition={seekToPosition}
+            seekToPosition={async (ms) => {
+              showControls()
+              await seekToPosition(ms)
+            }}
           />
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              marginBottom: 48,
+              justifyContent: "center",
               gap: ICON.controlsGap,
             }}
           >
             <TouchableHighlight
               style={{ padding: 8 }}
-              onPress={rewind10}
+              onPress={() => handleControlPress(rewind10)}
               underlayColor="transparent"
             >
               <Rewind10
@@ -432,7 +877,7 @@ const AudioPlayer = () => {
               />
             </TouchableHighlight>
             <TouchableHighlight
-              onPress={togglePlayPause}
+              onPress={() => handleControlPress(togglePlayPause)}
               underlayColor="transparent"
               style={{
                 width: ICON.playPauseCircle,
@@ -453,7 +898,7 @@ const AudioPlayer = () => {
             </TouchableHighlight>
             <TouchableHighlight
               style={{ padding: 8 }}
-              onPress={forward10}
+              onPress={() => handleControlPress(forward10)}
               underlayColor="transparent"
             >
               <Forward10
@@ -463,9 +908,164 @@ const AudioPlayer = () => {
               />
             </TouchableHighlight>
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Pressable>
+
+      {/* Notes Along the Way (white feather) - toggles with player bar (same opacity + reasoning) */}
+      {audioOrigin === "full-player" && (
+        <Animated.View
+          style={[
+            {
+              position: "absolute",
+              left: 16,
+              bottom: Math.max(insets.bottom, 12),
+              width: 36,
+              height: 36,
+              alignItems: "center",
+              justifyContent: "center",
+            },
+            animatedBottomBarStyle,
+          ]}
+          pointerEvents={controlsVisible ? "auto" : "none"}
+        >
+          <Pressable
+            onPress={() => {
+              addHapticFeedback(HapticStrength.Light)
+              setNotesSheetOpenKey((k) => k + 1)
+              notesSheetRef.current?.present()
+            }}
+            style={{ flex: 1, width: "100%", alignItems: "center", justifyContent: "center" }}
+            accessibilityLabel="Notes Along the Way"
+            accessibilityHint="Tap to jot down something from your healing session"
+          >
+            <Feather name="feather" size={17} color="#ffffff" />
+          </Pressable>
+        </Animated.View>
+      )}
     </View>
+
+    {/* Notes Along the Way - bottom sheet (full-player only) */}
+    <BottomSheetModal
+      ref={notesSheetRef}
+      index={1}
+      snapPoints={["50%", "90%"]}
+      enablePanDownToClose
+      backdropComponent={(props) => (
+        <BottomSheetBackdrop {...props} opacity={0.6} />
+      )}
+      backgroundStyle={{
+        backgroundColor: "rgba(20, 20, 22, 0.98)",
+      }}
+      handleIndicatorStyle={{ backgroundColor: "rgba(255,255,255,0.4)" }}
+    >
+      <JourneyNotesView
+        theme="player"
+        sheetOpenKey={notesSheetOpenKey}
+        contextChakraDay={dayIndex}
+        onOpenFullPage={() => {
+          notesSheetRef.current?.dismiss()
+          setTimeout(
+            () =>
+              router.push(
+                `/(chakras)/NotesAlongTheWay?contextDay=${dayIndex}`,
+              ),
+            300,
+          )
+        }}
+        onSendToAnua={(content) => {
+          notesSheetRef.current?.dismiss()
+          setTimeout(
+            () => useAnuaChatStore.getState().open({ initialMessage: content }),
+            200,
+          )
+        }}
+      />
+    </BottomSheetModal>
+
+    {/* Trial: exit confirmation modal */}
+    <Modal
+      visible={showExitConfirmModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowExitConfirmModal(false)}
+    >
+      <Pressable
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.85)",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 24,
+        }}
+        onPress={() => setShowExitConfirmModal(false)}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: "rgba(28, 32, 38, 0.98)",
+            borderRadius: 16,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: "rgba(168, 201, 154, 0.35)",
+            maxWidth: 320,
+          }}
+        >
+          <AppText
+            font="instrument-regular"
+            size="base"
+            style={{
+              color: "rgba(255,255,255,0.9)",
+              textAlign: "center",
+              marginBottom: 24,
+              lineHeight: 24,
+            }}
+          >
+            In your trial, audio stops when you leave this screen.
+          </AppText>
+          <View style={{ flexDirection: "row", gap: 12, justifyContent: "center" }}>
+            <Pressable
+              onPress={() => setShowExitConfirmModal(false)}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 20,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: "rgba(168, 201, 154, 0.5)",
+                backgroundColor: "rgba(168, 201, 154, 0.15)",
+              }}
+            >
+              <AppText
+                font="instrument-medium"
+                size="sm"
+                style={{ color: "rgba(255,255,255,0.95)" }}
+              >
+                Stay in the moment
+              </AppText>
+            </Pressable>
+            <Pressable
+              onPress={handleConfirmClose}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 20,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: "rgba(168, 201, 154, 0.5)",
+                backgroundColor: "rgba(168, 201, 154, 0.35)",
+              }}
+            >
+              <AppText
+                font="instrument-medium"
+                size="sm"
+                style={{ color: "rgba(255,255,255,0.95)" }}
+              >
+                Move along
+              </AppText>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+    </>
   )
 }
 

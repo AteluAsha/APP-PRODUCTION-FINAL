@@ -9,8 +9,59 @@
 
 import { Platform, Linking, Share } from "react-native"
 import * as Clipboard from "expo-clipboard"
+import { APP_STORE_URLS } from "@/constants/sharing"
 
 export const SHARE_TITLE = "Join me on Soul School"
+
+/** App store link for current platform (for invite messages). */
+export function getAppStoreLink(): string {
+  return (
+    Platform.select({
+      ios: APP_STORE_URLS.ios,
+      android: APP_STORE_URLS.android,
+      default: "https://soulschool.app",
+    }) || "https://soulschool.app"
+  )
+}
+
+/** Generate referral link; optional ref param for future referral system. */
+export function generateReferralLink(referralCode?: string): string {
+  const baseUrl = "https://soulschool.app/invite"
+  return referralCode ? `${baseUrl}?ref=${referralCode}` : baseUrl
+}
+
+/** Invite copy for modals (single source of truth). */
+export const INVITE_OPENING_COPY =
+  "Invite people to your exact journey. They'll join your Tribe and be with you in tribe chat along the 7 chakra path."
+export const INVITE_PREVIEW_LABEL = "Your invite"
+export const INVITE_PREVIEW_HINT =
+  "Tap Share to send, or copy the link below."
+
+/** Generate invite message (heart-minded, Soul School voice). */
+export function generateInviteMessage(options: {
+  startDate?: string
+  referralLink?: string
+  personalMessage?: string
+  senderSoulSchoolId?: string
+}): string {
+  const { startDate, referralLink, personalMessage, senderSoulSchoolId } =
+    options
+  const appLink = referralLink ?? getAppStoreLink()
+  const defaultOpening =
+    "I'm walking a 7-day chakra journey with Soul School and would love you to join me — your presence would make the path richer."
+  let message = personalMessage ?? defaultOpening
+  if (startDate) {
+    message += `\n\nI'm beginning on ${startDate}.`
+  } else {
+    message += `\n\nWhenever you're ready, you can begin your own journey from self to soul.`
+  }
+  message += `\n\nSoul School — healing through connection:\n${appLink}`
+  message += `\n\nWith you in spirit. ✨`
+  if (senderSoulSchoolId) {
+    message += `\n\nSoul School ID: ${senderSoulSchoolId}`
+  }
+  return message
+}
 
 /** Ordered list of destination ids for the picker (single source of truth) */
 export const SHARE_DESTINATION_IDS = [

@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Social Sanctuary Collection
+    // Social Sanctuary Collection (reflections + reactions, removedAt for self-governance)
     match /social_sanctuary/{reflectionId} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasAll(['userId', 'chakraDay', 'message', 'timestamp', 'isAnonymous'])
@@ -12,7 +12,16 @@ service cloud.firestore {
                     && request.resource.data.message.size() <= 500
                     && request.resource.data.timestamp is timestamp
                     && request.resource.data.isAnonymous is bool;
-      allow update, delete: if false;
+      allow update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // Sanctuary user data (hidden refs, popup count, totalLessReceived, sanctuaryBlockedAt)
+    // Users write their own doc for hidden list and popup count; any auth user may update
+    // another user's totalLessReceived/sanctuaryBlockedAt when reacting "less" (self-governance)
+    match /sanctuary_user_data/{userId} {
+      allow read, create, update: if request.auth != null;
+      allow delete: if false;
     }
 
     // Voice Sanctuary Collection
@@ -75,6 +84,32 @@ service cloud.firestore {
                    && request.resource.data.status in ['connected', 'pending']
                    && request.resource.data.invitedAt is string;
       allow update: if true;
+      allow delete: if false;
+    }
+
+    // Scholarship Requests – audit trail for 501(c)(3) compliance
+    match /scholarship_requests/{requestId} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasAll(['userId', 'reason', 'timestamp'])
+                   && request.resource.data.userId is string
+                   && request.resource.data.reason is string
+                   && request.resource.data.reason.size() <= 500
+                   && request.resource.data.timestamp is timestamp;
+      allow update, delete: if false;
+    }
+
+    // Soul Signatures – claimed Soul Signatures for uniqueness
+    match /soul_signatures/{signature} {
+      allow read: if true;
+      allow create: if request.resource.data.claimedAt is timestamp;
+      allow update, delete: if false;
+    }
+
+    // Users – scholarship status persistence (isScholarshipUser, scholarshipExpiryDate)
+    match /users/{userId} {
+      allow read: if false;
+      allow create, update: if request.resource.data.keys().hasAll(['isScholarshipUser'])
+                             && request.resource.data.isScholarshipUser is bool;
       allow delete: if false;
     }
 

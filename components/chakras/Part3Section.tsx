@@ -6,7 +6,7 @@ import { chakraContent } from "@/constants/chakras/content"
 
 const Part3Section = ({ chakra }: { chakra: Chakra }) => {
   return (
-    <View style={{ marginTop: 32 }}>
+    <View style={{ marginTop: 24 }}>
       <SectionHeader
         subtitle="— PART III —"
         title="INTEGRATION"
@@ -15,10 +15,10 @@ const Part3Section = ({ chakra }: { chakra: Chakra }) => {
       <View
         style={{
           height: 1,
-          backgroundColor: "#8E8E8E",
           width: 64,
+          backgroundColor: "#8E8E8E",
           alignSelf: "center",
-          marginBottom: 32,
+          marginBottom: 24,
         }}
       />
       <YogaSection chakra={chakra} />

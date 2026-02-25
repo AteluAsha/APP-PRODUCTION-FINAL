@@ -3,9 +3,14 @@
  *
  * Manages time-based access control for chakra content.
  *
- * ARCHITECTURE: "Two Apps in One"
- * - APP_1 (Trial): Timegates enforce progressive reveal (day-by-day unlock)
- * - APP_2 (Lifetime): All timegates bypassed (full access)
+ * Three paths (entry is in app/(chakras)/index.tsx):
+ * - Trial, no courseStartDate: index → WelcomeScreen (path selection) → DateSelection → ChakraHome (waiting room) → course opens.
+ * - Trial, courseStartDate set: index → ChakraHome directly (waiting room or main home per shouldShowWaitingScreen).
+ * - Lifetime: index → ChakraHub directly.
+ *
+ * Timegate logic here applies ONLY after the user is in (ChakraHome or ChakraHub).
+ * APP_1 (Trial): Timegates enforce progressive reveal (day-by-day unlock).
+ * APP_2 (Lifetime): All timegates bypassed (full access); unless lifetimeChosenTimegateJourney (somatic journey).
  *
  * In development mode (__DEV__ === true), all timegates are bypassed for testing.
  */

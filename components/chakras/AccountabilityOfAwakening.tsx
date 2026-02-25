@@ -14,6 +14,7 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { Ionicons } from "@expo/vector-icons"
 import { useShallow } from "zustand/react/shallow"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
+import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { CHAKRA_NAMES, DAY_NAMES } from "@/constants/chakras/chakraConstants"
 
 export const AccountabilityOfAwakening = () => {
@@ -59,7 +60,10 @@ export const AccountabilityOfAwakening = () => {
       <ActionBar />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 24, paddingBottom: 60 }}
+        contentContainerStyle={{
+          padding: 24,
+          paddingBottom: 60 + SCROLL_BREATHING_BOTTOM_PADDING,
+        }}
         showsVerticalScrollIndicator={false}
       >
         <View style={{ maxWidth: 400, alignSelf: "center", width: "100%" }}>

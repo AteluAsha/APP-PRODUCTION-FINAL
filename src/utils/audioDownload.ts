@@ -1,9 +1,9 @@
 /**
  * Audio Download Utility
  *
- * Handles downloading and caching audio files locally for offline playback.
- * Supports full-file cache and "head" cache (first ~3 min) for instant smooth
- * playback and somatic experience.
+ * PRODUCTION: Playback always prefers local file (getLocalAudioUri / localUri)
+ * when available. Callers (prepareLongAudioForPlay, hooks) must check local first
+ * so audio never cuts off once downloaded. Cache dir: FileSystem.cacheDirectory/audio/
  */
 
 import * as FileSystem from "expo-file-system"
@@ -13,6 +13,9 @@ const HEAD_SUFFIX = "_head"
 
 /** ~3 min of AAC at ~64–128 kbps: use 2.5 MB to be safe */
 export const AUDIO_HEAD_BYTES = 2.5 * 1024 * 1024
+
+/** Minimum head file size to accept; below this we throw or return null so callers fall back to full download or stream (avoids ~30s cutoff). */
+const MIN_HEAD_BYTES = 500 * 1024
 
 const BASE64_CHARS =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -24,23 +27,40 @@ function bytesToBase64(bytes: Uint8Array): string {
     const b = bytes[i + 1]
     const c = bytes[i + 2]
     result += BASE64_CHARS[a >> 2]
-    result += BASE64_CHARS[((a & 3) << 4) | (b ?? 0) >> 4]
-    result += b !== undefined ? BASE64_CHARS[((b & 15) << 2) | (c ?? 0) >> 6] : "="
+    result += BASE64_CHARS[((a & 3) << 4) | ((b ?? 0) >> 4)]
+    result +=
+      b !== undefined ? BASE64_CHARS[((b & 15) << 2) | ((c ?? 0) >> 6)] : "="
     result += c !== undefined ? BASE64_CHARS[c & 63] : "="
   }
   return result
 }
 
-/** Avoid double .aac when audioId already includes extension (e.g. crystal_bowl_ROOT_Day1_....aac) */
-function getFullPath(audioId: string): string {
-  const hasExt = audioId.toLowerCase().endsWith(".aac")
-  return hasExt ? `${CACHE_DIR}${audioId}` : `${CACHE_DIR}${audioId}.aac`
+/** Extensions we treat as "has extension" so we don't append .aac (e.g. Day1 Hero2.mov, other .aac) */
+const AUDIO_EXTENSIONS = [".aac", ".mov", ".m4a", ".mp3"]
+
+function audioIdHasExtension(audioId: string): boolean {
+  const lower = audioId.toLowerCase()
+  return AUDIO_EXTENSIONS.some((ext) => lower.endsWith(ext))
 }
 
+function audioIdBaseWithoutExtension(audioId: string): string {
+  const lower = audioId.toLowerCase()
+  for (const ext of AUDIO_EXTENSIONS) {
+    if (lower.endsWith(ext)) return audioId.slice(0, -ext.length)
+  }
+  return audioId
+}
+
+/** Full-file cache path: preserve .mov/.aac/etc so Day 1 Hero2.mov and others work. */
+function getFullPath(audioId: string): string {
+  return audioIdHasExtension(audioId)
+    ? `${CACHE_DIR}${audioId}`
+    : `${CACHE_DIR}${audioId}.aac`
+}
+
+/** Head cache: first ~3 min stored as .aac for consistent playback. */
 function getHeadPath(audioId: string): string {
-  const base = audioId.toLowerCase().endsWith(".aac")
-    ? audioId.slice(0, -4)
-    : audioId
+  const base = audioIdBaseWithoutExtension(audioId)
   return `${CACHE_DIR}${base}${HEAD_SUFFIX}.aac`
 }
 
@@ -82,6 +102,32 @@ export async function getLocalAudioHeadUri(
     if (__DEV__) {
       console.warn(
         `[audioDownload] Error checking local audio head for ${audioId}:`,
+        error,
+      )
+    }
+    return null
+  }
+}
+
+/**
+ * Like getLocalAudioHeadUri but returns null if head file is smaller than minBytes.
+ * Use for long tracks (e.g. crystal bowl) so we never return a truncated head that would cut off early.
+ */
+export async function getLocalAudioHeadUriWithMinSize(
+  audioId: string,
+  minBytes: number = MIN_HEAD_BYTES,
+): Promise<string | null> {
+  try {
+    const fileUri = getHeadPath(audioId)
+    const fileInfo = await FileSystem.getInfoAsync(fileUri, { size: true })
+    if (!fileInfo.exists) return null
+    const size = (fileInfo as { size?: number }).size ?? 0
+    if (size < minBytes) return null
+    return fileUri
+  } catch (error) {
+    if (__DEV__) {
+      console.warn(
+        `[audioDownload] Error checking local audio head size for ${audioId}:`,
         error,
       )
     }
@@ -231,8 +277,26 @@ export async function downloadAudioHead(
       encoding: FileSystem.EncodingType.Base64,
     })
 
+    const fileInfo = await FileSystem.getInfoAsync(fileUri, { size: true })
+    const size = (fileInfo as { size?: number })?.size ?? 0
+    if (size < MIN_HEAD_BYTES) {
+      try {
+        await FileSystem.deleteAsync(fileUri)
+      } catch (_) {
+        /* ignore */
+      }
+      if (__DEV__) {
+        console.warn(
+          `[audioDownload] Head file too small (${size} bytes), rejecting so caller can use full download or stream`,
+        )
+      }
+      throw new Error(
+        `Head download too small (${size} bytes), need at least ${MIN_HEAD_BYTES}`,
+      )
+    }
+
     if (__DEV__) {
-      console.log(`[audioDownload] Audio head cached: ${audioId}`)
+      console.log(`[audioDownload] Audio head cached: ${audioId} (${size} bytes)`)
     }
 
     return fileUri

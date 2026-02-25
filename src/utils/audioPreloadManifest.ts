@@ -13,8 +13,9 @@ import { getLocalAudioHeadUri, downloadAudioHead } from "./audioDownload"
 import { checkRateLimit, waitForRateLimit } from "./rateLimiter"
 
 const CRYSTAL_BOWL_FOLDER = "crystal_Bowl_Meditation_Audio"
+// Must match CHAKRA_TO_CRYSTAL_BOWL_FILE in hooks/useCrystalBowlAudio.ts (only these 7 hero files).
 const CRYSTAL_BOWL_FILES: Record<Chakra, string> = {
-  [Chakra.ROOT]: "Day1_396hz_CrystalBowl_FrequencyHealing.aac",
+  [Chakra.ROOT]: "Day1_396hz_CrystalBowlSoundBath_Hero2.mov",
   [Chakra.SACRAL]: "Day2_417hz_1Hour_CrystalBowl_SoundBath.aac",
   [Chakra.SOLAR_PLEXUS]: "Day3_528hz_CrystalBowl_1Hour_SoundBath.aac",
   [Chakra.HEART]: "Day4_639hz_CrystalBowl_Meditation_FrequencyHealing.aac",
@@ -24,6 +25,7 @@ const CRYSTAL_BOWL_FILES: Record<Chakra, string> = {
 }
 
 const TUNING_FORK_FOLDER = "TuningForkAudio"
+// Must match CHAKRA_TO_TUNING_FORK_FILE in hooks/useTuningForkAudio.ts to avoid drift.
 const TUNING_FORK_FILES: Record<Chakra, string> = {
   [Chakra.ROOT]: "Day1_396hz_plus256_TuningFork.aac",
   [Chakra.SACRAL]: "Day2_417hz_tuningfork.aac",
@@ -34,7 +36,8 @@ const TUNING_FORK_FILES: Record<Chakra, string> = {
   [Chakra.CROWN]: "Day7_963hz_tuningfork.aac",
 }
 
-const EMBODIMENT_FOLDER = "Course Audio - MASTER EMBODIMENT - 7 Chakras in 7 Days"
+const EMBODIMENT_FOLDER =
+  "Course Audio - MASTER EMBODIMENT - 7 Chakras in 7 Days"
 const EMBODIMENT_FILES: Record<Chakra, string | string[]> = {
   [Chakra.ROOT]: "Day1_RootChakraEmbodiment_SoulSchool.aac",
   [Chakra.SACRAL]: "Day2_SacralChakraEmbodiment_SoulSchool.aac",
