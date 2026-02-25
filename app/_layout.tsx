@@ -20,7 +20,8 @@ import { useColorScheme } from "@/hooks/useColorScheme"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
 import { usePreloadAssets } from "@/hooks/usePreloadAssets"
-import { View, Platform, LogBox } from "react-native"
+import { View, Platform, LogBox, BackHandler } from "react-native"
+import { useRouter, usePathname } from "expo-router"
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av"
 import * as SplashScreen from "expo-splash-screen"
 import { useChakraWeekTransition } from "@/hooks/useChakraWeekTransition"
@@ -59,6 +60,8 @@ export default function RootLayout() {
   const colorScheme = useColorScheme()
   const [showHeroLogo, setShowHeroLogo] = useState(true)
   const [assetsReady, setAssetsReady] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
 
   // Keep native splash until we explicitly hide it (backup to splash-keeper).
   useEffect(() => {
@@ -97,6 +100,16 @@ export default function RootLayout() {
           interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
           shouldDuckAndroid: true,
         })
+        if (Platform.OS === "android") {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+            interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+            shouldDuckAndroid: true,
+            playThroughEarpieceAndroid: false,
+          })
+        }
       } catch (e) {
         if (__DEV__) {
           console.warn("[RootLayout] Audio setup skipped:", e)
@@ -291,6 +304,19 @@ export default function RootLayout() {
     })
     return () => subscription.remove()
   }, [])
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+    const onBack = () => {
+      if (pathname?.includes("AudioPlayer")) {
+        router.back()
+        return true
+      }
+      return false
+    }
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBack)
+    return () => sub.remove()
+  }, [pathname, router])
 
   useEffect(() => {
     if ((fontsLoaded || fontsError) && imagesLoaded && audiosLoaded) {
