@@ -6,7 +6,7 @@
  */
 
 import React from "react"
-import { View, ScrollView } from "react-native"
+import { View, ScrollView, Platform, Pressable } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
 import { ActionBar } from "@/components/ActionBar"
@@ -16,16 +16,28 @@ import { useShallow } from "zustand/react/shallow"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { CHAKRA_NAMES, DAY_NAMES } from "@/constants/chakras/chakraConstants"
+import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 
 export const AccountabilityOfAwakening = () => {
-  const [getAccountabilityStats, hasEverCompletedChakra] =
-    useChakraJourneyStore(
-      useShallow((state) => [
-        state.getAccountabilityStats,
-        state.hasEverCompletedChakra,
-      ]),
-    )
-
+  const [
+    getAccountabilityStats,
+    hasEverCompletedChakra,
+    recomputeAccountabilityFromHistory,
+  ] = useChakraJourneyStore(
+    useShallow((state) => [
+      state.getAccountabilityStats,
+      state.hasEverCompletedChakra,
+      state.recomputeAccountabilityFromHistory,
+    ]),
+  )
+  useChakraJourneyStore(
+    useShallow((s) => ({
+      t: s.trialHistory,
+      d: s.totalDaysParticipated,
+      c: s.totalChakrasCompleted,
+      q: s.quizCompletions,
+    })),
+  )
   const stats = getAccountabilityStats()
 
   const formatDate = (dateString: string) => {
@@ -61,18 +73,60 @@ export const AccountabilityOfAwakening = () => {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
-          padding: 24,
+          paddingHorizontal: 24,
+          paddingTop: Platform.OS === "android" ? 40 : 24,
           paddingBottom: 60 + SCROLL_BREATHING_BOTTOM_PADDING,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ maxWidth: 400, alignSelf: "center", width: "100%" }}>
-          {/* Header */}
-          <View className="items-center mb-10">
+        <View
+          style={{
+            maxWidth: 400,
+            alignSelf: "center",
+            width: "100%",
+            paddingVertical: Platform.OS === "android" ? 16 : 0,
+          }}
+        >
+          {/* Header – more space on Android for visual harmony */}
+          <View
+            style={{
+              alignItems: "center",
+              marginBottom: Platform.OS === "android" ? 28 : 40,
+              position: "relative",
+            }}
+          >
+            <Pressable
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Light)
+                recomputeAccountabilityFromHistory()
+              }}
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                padding: 8,
+                opacity: 0.6,
+              }}
+              hitSlop={12}
+              accessibilityLabel="Refresh progress"
+              accessibilityHint="Rechecks all progress meters from your journey history"
+            >
+              <Ionicons
+                name="refresh"
+                size={20}
+                color="rgba(212, 197, 169, 0.7)"
+              />
+            </Pressable>
             <AppText
               font="instrument-regular"
               size="xs"
-              className="text-center mb-2"
+              className="text-center"
+              style={{
+                marginBottom: 8,
+                color: "rgba(168, 201, 154, 0.5)",
+                letterSpacing: 3,
+                textTransform: "uppercase",
+              }}
               style={{
                 color: "rgba(168, 201, 154, 0.5)",
                 letterSpacing: 3,
@@ -84,8 +138,9 @@ export const AccountabilityOfAwakening = () => {
             <AppText
               font="koh-santepheap"
               size="2xl"
-              className="text-center mb-1"
+              className="text-center"
               style={{
+                marginBottom: 6,
                 color: "rgba(232, 223, 208, 0.95)",
                 textShadowColor: "rgba(0,0,0,0.8)",
                 textShadowOffset: { width: 0, height: 1 },
@@ -104,8 +159,13 @@ export const AccountabilityOfAwakening = () => {
             </AppText>
           </View>
 
-          {/* Hero: Heart Meter – glowing on black */}
-          <View className="items-center mb-14">
+          {/* Hero: Heart Meter – glowing on black, respaced for Android */}
+          <View
+            style={{
+              alignItems: "center",
+              marginBottom: Platform.OS === "android" ? 32 : 56,
+            }}
+          >
             {/* Glow behind heart – subtle bg helps shadow render on iOS */}
             <View
               style={{
@@ -145,8 +205,8 @@ export const AccountabilityOfAwakening = () => {
             <AppText
               font="instrument-bold"
               size="3xl"
-              className="mt-4"
               style={{
+                marginTop: Platform.OS === "android" ? 20 : 16,
                 color: "rgba(232, 223, 208, 0.98)",
                 textShadowColor: "rgba(0,0,0,0.5)",
                 textShadowOffset: { width: 0, height: 1 },
@@ -158,8 +218,10 @@ export const AccountabilityOfAwakening = () => {
             <AppText
               font="instrument-regular"
               size="sm"
-              className="mt-1"
-              style={{ color: "rgba(168, 201, 154, 0.85)" }}
+              style={{
+                marginTop: Platform.OS === "android" ? 8 : 4,
+                color: "rgba(168, 201, 154, 0.85)",
+              }}
             >
               Heart Opening
             </AppText>
@@ -170,7 +232,7 @@ export const AccountabilityOfAwakening = () => {
                 flexDirection: "row",
                 justifyContent: "center",
                 alignItems: "center",
-                marginTop: 20,
+                marginTop: Platform.OS === "android" ? 28 : 20,
                 gap: 6,
               }}
             >
@@ -199,27 +261,31 @@ export const AccountabilityOfAwakening = () => {
             <AppText
               font="instrument-italic"
               size="xs"
-              className="text-center mt-4 px-6"
-              style={{ color: "rgba(168, 201, 154, 0.75)" }}
+              className="text-center px-6"
+              style={{
+                marginTop: Platform.OS === "android" ? 24 : 16,
+                color: "rgba(168, 201, 154, 0.75)",
+              }}
             >
               {getEncouragement()}
             </AppText>
           </View>
 
-          {/* Stats – on black, refined, no panel */}
+          {/* Stats – on black, refined, more spacing on Android */}
           <View
             style={{
               borderTopWidth: 1,
               borderTopColor: "rgba(139, 115, 85, 0.12)",
-              paddingTop: 20,
-              marginBottom: 24,
+              paddingTop: Platform.OS === "android" ? 28 : 20,
+              marginBottom: Platform.OS === "android" ? 32 : 24,
             }}
           >
             <View
               style={{
                 flexDirection: "row",
                 justifyContent: "space-between",
-                paddingVertical: 12,
+                alignItems: "center",
+                paddingVertical: Platform.OS === "android" ? 16 : 12,
                 borderBottomWidth: 1,
                 borderBottomColor: "rgba(139, 115, 85, 0.06)",
               }}
@@ -243,7 +309,8 @@ export const AccountabilityOfAwakening = () => {
               style={{
                 flexDirection: "row",
                 justifyContent: "space-between",
-                paddingVertical: 12,
+                alignItems: "center",
+                paddingVertical: Platform.OS === "android" ? 16 : 12,
                 borderBottomWidth: 1,
                 borderBottomColor: "rgba(139, 115, 85, 0.06)",
               }}
@@ -267,7 +334,8 @@ export const AccountabilityOfAwakening = () => {
               style={{
                 flexDirection: "row",
                 justifyContent: "space-between",
-                paddingVertical: 12,
+                alignItems: "center",
+                paddingVertical: Platform.OS === "android" ? 16 : 12,
                 borderBottomWidth: 1,
                 borderBottomColor: "rgba(139, 115, 85, 0.06)",
               }}
@@ -292,7 +360,8 @@ export const AccountabilityOfAwakening = () => {
                 style={{
                   flexDirection: "row",
                   justifyContent: "space-between",
-                  paddingVertical: 12,
+                  alignItems: "center",
+                  paddingVertical: Platform.OS === "android" ? 16 : 12,
                 }}
               >
                 <AppText
@@ -313,14 +382,14 @@ export const AccountabilityOfAwakening = () => {
             )}
           </View>
 
-          {/* Trial History – on black, minimal */}
+          {/* Trial History – on black, minimal, more top space on Android */}
           {stats.trialHistory.length > 0 && (
-            <View>
+            <View style={{ marginTop: Platform.OS === "android" ? 8 : 0 }}>
               <AppText
                 font="instrument-bold"
                 size="xs"
-                className="mb-3"
                 style={{
+                  marginBottom: Platform.OS === "android" ? 16 : 12,
                   color: "rgba(212, 197, 169, 0.6)",
                   letterSpacing: 2,
                   textTransform: "uppercase",
@@ -394,6 +463,77 @@ export const AccountabilityOfAwakening = () => {
                         ))}
                     </View>
                   )}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Intellectual Embodiment – Quiz results (newest first) */}
+          {stats.quizCompletions && stats.quizCompletions.length > 0 && (
+            <View
+              style={{
+                marginTop: Platform.OS === "android" ? 24 : 20,
+                borderTopWidth: 1,
+                borderTopColor: "rgba(139, 115, 85, 0.12)",
+                paddingTop: Platform.OS === "android" ? 24 : 20,
+              }}
+            >
+              <AppText
+                font="instrument-bold"
+                size="xs"
+                style={{
+                  marginBottom: Platform.OS === "android" ? 14 : 10,
+                  color: "rgba(212, 197, 169, 0.6)",
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                }}
+              >
+                Intellectual Embodiment
+              </AppText>
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={{
+                  marginBottom: 12,
+                  color: "rgba(168, 201, 154, 0.5)",
+                }}
+              >
+                Quiz results
+              </AppText>
+              {[...stats.quizCompletions].reverse().map((entry, index) => (
+                <View
+                  key={`${entry.date}-${entry.day}-${index}`}
+                  style={{
+                    paddingVertical: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "rgba(139, 115, 85, 0.08)",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={{ color: "rgba(212, 197, 169, 0.6)" }}
+                    >
+                      {formatDate(entry.date + "T00:00:00")}
+                      {entry.day >= 1 &&
+                        entry.day <= 7 &&
+                        ` · ${CHAKRA_NAMES[entry.day - 1]}`}
+                    </AppText>
+                    <AppText
+                      font="instrument-bold"
+                      size="sm"
+                      style={{ color: "rgba(168, 201, 154, 0.95)" }}
+                    >
+                      {entry.score} / {entry.total}
+                    </AppText>
+                  </View>
                 </View>
               ))}
             </View>

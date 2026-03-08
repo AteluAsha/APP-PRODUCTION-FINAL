@@ -9,7 +9,8 @@ import { AudioRowWithBackground } from "@/components/chakras/AudioRowWithBackgro
 import { Chakra } from "@/types/chakras/Chakra"
 import FormattedText from "@/components/FormattedText"
 import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
-import { useAncestralWisdomAudio } from "@/hooks/useAncestralWisdomAudio"
+import { useAncestralWisdomAudio, getHeadToHeartAudioId } from "@/hooks/useAncestralWisdomAudio"
+import { prepareLongAudioForPlay } from "@/src/utils/crystalBowlPlayback"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { getDayFromChakra } from "@/utils/chakraMapping"
 import ParallaxScrollView from "@/components/ParallaxScrollView"
@@ -24,7 +25,7 @@ const HeadToHeart = () => {
   const chakra = searchParams.chakra as Chakra
   const chakraContentEntry = chakraContent[chakra]
   const content = chakraContentEntry.headtoheart
-  const { source, isLoading } = useAncestralWisdomAudio(chakra)
+  const { source, url, localUri, isLoading } = useAncestralWisdomAudio(chakra)
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
@@ -157,6 +158,20 @@ const HeadToHeart = () => {
                 author={content.audio.author}
                 durationMs={content.audio.duration}
                 audioSource={source}
+                getAudioSource={
+                  url ?? localUri
+                    ? async () =>
+                        prepareLongAudioForPlay(
+                          {
+                            url: url ?? null,
+                            localUri: localUri ?? null,
+                            audioId: getHeadToHeartAudioId(chakra),
+                            fallback: { uri: url ?? localUri ?? "" },
+                          },
+                          { requireFullDownload: true },
+                        )
+                    : undefined
+                }
                 authorColor={content.audio.authorColor}
                 isIntroAudio={false}
                 chakraColor={getChakraColor(getDayFromChakra(chakra))}

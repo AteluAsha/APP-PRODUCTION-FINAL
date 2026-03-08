@@ -6,11 +6,12 @@
  * ActionBarAnimated still uses scrollRef for scroll-triggered header bar.
  */
 import { type PropsWithChildren, type ReactElement } from "react"
-import { View } from "react-native"
+import { View, Platform } from "react-native"
 import Animated, {
   AnimatedRef,
   AnimatedScrollViewProps,
 } from "react-native-reanimated"
+import { SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 
 type Props = PropsWithChildren<{
   headerImage: ReactElement
@@ -37,6 +38,7 @@ export default function ParallaxScrollView({
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
         {...scrollViewProps}
+        {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
       >
         {/* Hero - part of scroll, not overlay */}
         {headerImage}

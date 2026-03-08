@@ -11,7 +11,7 @@
  */
 
 import React, { useMemo } from "react"
-import { View, ScrollView, Pressable } from "react-native"
+import { View, ScrollView, Pressable, Platform } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import Animated, { FadeIn } from "react-native-reanimated"
 import { useRouter } from "expo-router"
@@ -20,7 +20,11 @@ import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { formatDate } from "@/utils/date"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import {
+  SCROLL_BREATHING_BOTTOM_PADDING,
+  SCROLL_ANDROID_SMOOTH_PROPS,
+  SOMATIC_CONTENT_FADE_MS,
+} from "@/constants/layout"
 
 const STILLNESS_BG = "#0f1210"
 
@@ -44,7 +48,7 @@ export default function SimpleGraceTransitionScreen() {
 
   return (
     <Animated.View
-      entering={FadeIn.duration(800)}
+      entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)}
       style={{ flex: 1, backgroundColor: STILLNESS_BG }}
     >
       <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
@@ -75,6 +79,7 @@ export default function SimpleGraceTransitionScreen() {
             alignItems: "center",
           }}
           showsVerticalScrollIndicator={false}
+          {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
         >
           <AppText
             font="cormorant-italic"

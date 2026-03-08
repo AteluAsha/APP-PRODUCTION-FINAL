@@ -94,6 +94,9 @@ android {
         versionCode 1
         versionName "1.0.0"
     }
+    // Play Store: Use EAS Build with production profile for submissions; EAS injects the upload
+    // keystore. For local release builds, set android.releaseStoreFile, android.releaseStorePassword,
+    // android.releaseKeyAlias, android.releaseKeyPassword in gradle.properties or env.
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -101,15 +104,23 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (project.hasProperty('android.releaseStoreFile')) {
+                storeFile file(project.property('android.releaseStoreFile'))
+                storePassword project.findProperty('android.releaseStorePassword') ?: ''
+                keyAlias project.findProperty('android.releaseKeyAlias') ?: ''
+                keyPassword project.findProperty('android.releaseKeyPassword') ?: ''
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig project.hasProperty('android.releaseStoreFile')
+                ? signingConfigs.release
+                : signingConfigs.debug
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

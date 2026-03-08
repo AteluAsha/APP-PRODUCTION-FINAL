@@ -60,6 +60,14 @@ interface ChakraJourneyState {
     completed: boolean // Whether all 7 days were completed
   }[]
 
+  // Intellectual Embodiment – quiz completions (date + result only) for Accountability of Awakening
+  quizCompletions: {
+    date: string // YYYY-MM-DD
+    day: number // 1-7 (chakra day)
+    score: number
+    total: number
+  }[]
+
   // Friend Invite Tracking
   // List of first names of friends invited (for display on waiting room)
   invitedFriends: string[] // Array of first names
@@ -119,7 +127,21 @@ interface ChakraJourneyState {
       daysParticipated: number[]
       completed: boolean
     }[]
+    quizCompletions: {
+      date: string
+      day: number
+      score: number
+      total: number
+    }[]
   }
+  recordQuizCompletion: (payload: {
+    date: string
+    day: number
+    score: number
+    total: number
+  }) => void
+  /** Recompute totalDaysParticipated and totalChakrasCompleted from trialHistory so progress meters stay in sync. */
+  recomputeAccountabilityFromHistory: () => void
 
   // Friend invite actions
   addInvitedFriend: (firstName: string) => void
@@ -191,6 +213,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         totalDaysParticipated: 0,
         totalChakrasCompleted: 0,
         trialHistory: [],
+        quizCompletions: [],
         invitedFriends: [],
         lifetimeChosenTimegateJourney: false,
         userChoseTrial2: false,
@@ -557,7 +580,28 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
             completedTrials: state.completedTrialCourses,
             currentTrialProgress,
             trialHistory: state.trialHistory,
+            quizCompletions: state.quizCompletions ?? [],
           }
+        },
+
+        recordQuizCompletion: (payload) => {
+          set((state) => ({
+            quizCompletions: [...state.quizCompletions, payload],
+          }))
+        },
+
+        recomputeAccountabilityFromHistory: () => {
+          const state = get()
+          let totalDays = 0
+          const chakraSet = new Set<number>()
+          for (const trial of state.trialHistory) {
+            totalDays += trial.daysParticipated.length
+            trial.daysParticipated.forEach((d) => chakraSet.add(d))
+          }
+          set({
+            totalDaysParticipated: totalDays,
+            totalChakrasCompleted: chakraSet.size,
+          })
         },
 
         // Friend invite actions
@@ -606,6 +650,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
             scholarshipExpiryDate: null,
             completedTrialCourses: 0,
             trialHistory: [],
+            quizCompletions: [],
             userChoseTrial2: false,
             userChoseSovereignDepart: false,
             userChoseGentleDepart: false,

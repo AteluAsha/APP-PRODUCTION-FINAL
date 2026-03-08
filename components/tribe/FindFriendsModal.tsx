@@ -34,13 +34,19 @@ import { ShareDestinationPicker } from "@/components/sharing/ShareDestinationPic
 export interface FindFriendsModalProps {
   visible: boolean
   onClose: () => void
+  /** Formatted for message (e.g. "Monday, March 3, 2025"). */
   startDate?: string
+  /** ISO YYYY-MM-DD for invite link so invitee syncs to same journey week. */
+  courseStartDateISO?: string
+  referralCode?: string
 }
 
 export function FindFriendsModal({
   visible,
   onClose,
   startDate,
+  courseStartDateISO,
+  referralCode,
 }: FindFriendsModalProps) {
   const [status, setStatus] = useState<
     | "idle"
@@ -56,7 +62,7 @@ export function FindFriendsModal({
   const [showCopied, setShowCopied] = useState(false)
   const [showSharePicker, setShowSharePicker] = useState(false)
 
-  const referralLink = generateReferralLink()
+  const referralLink = generateReferralLink(referralCode, courseStartDateISO)
   const inviteMessage = generateInviteMessage({ startDate, referralLink })
 
   const loadContacts = useCallback(async () => {

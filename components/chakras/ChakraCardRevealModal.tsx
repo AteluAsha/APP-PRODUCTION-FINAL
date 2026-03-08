@@ -1,5 +1,12 @@
 import React, { useEffect, useCallback } from "react"
-import { View, Modal, Pressable, Dimensions } from "react-native"
+import {
+  View,
+  Modal,
+  Pressable,
+  TouchableOpacity,
+  Dimensions,
+  Platform,
+} from "react-native"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
@@ -17,8 +24,9 @@ import { ChakraCard } from "@/components/chakras/GalleryOfGnosis/ChakraCard"
 import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
 import { ActionBar } from "@/components/ActionBar"
+import { TOUCH } from "@/constants/layout"
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window")
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window")
 
 interface ChakraCardRevealModalProps {
   visible: boolean
@@ -31,6 +39,15 @@ interface ChakraCardRevealModalProps {
  *
  * Reveals the chakra card reward when user opens their gift
  * Shows a beautiful animation and then displays the card
+ *
+ * ANDROID WHITE BOX ROOT CAUSE (when opening from Goodbye "Open Your Gift"):
+ * With <Modal transparent>, the modal window does not use a custom backdrop; the first
+ * child must paint the entire surface. We had no backgroundColor on the first child
+ * (GestureHandlerRootView) or on SafeAreaView. On Android, unpainted areas (e.g. left
+ * safe-area inset, or the window's default drawable) show the platform default, which
+ * is white — hence the "weird white box" or curved strip to the left of the hero
+ * affirmation. Fix: set explicit backgroundColor on the modal root and SafeAreaView
+ * so the modal surface is fully defined and the platform default never shows.
  */
 export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
   visible,
@@ -103,6 +120,18 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
     }, 550)
   }, [handleClose, router])
 
+  // On Android, Modal can render with wrong bounds; give root explicit full-screen size
+  // so content never appears off-screen (fixes "white frame button box" and unresponsive buttons).
+  const rootStyle =
+    Platform.OS === "android"
+      ? {
+          flex: 1,
+          width: SCREEN_WIDTH,
+          height: SCREEN_HEIGHT,
+          backgroundColor: "#000" as const,
+        }
+      : { flex: 1, backgroundColor: "#000" as const }
+
   return (
     <Modal
       visible={visible}
@@ -111,8 +140,11 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+      <GestureHandlerRootView style={rootStyle}>
+        <SafeAreaView
+          style={{ flex: 1, backgroundColor: "#000" }}
+          edges={["top", "left", "right"]}
+        >
           <View
             style={{
               flex: 1,
@@ -209,6 +241,7 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
 
               {/* Action buttons - positioned at bottom */}
               <View
+                pointerEvents="box-none"
                 style={{
                   flexDirection: "row",
                   width: "100%",
@@ -217,31 +250,142 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
                   gap: 16,
                 }}
               >
-                <Pressable
-                  onPress={handleClose}
-                  style={{
-                    paddingHorizontal: 24,
-                    paddingVertical: 12,
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.3)",
-                    borderRadius: 9999,
-                  }}
-                >
-                  <AppText
-                    font="instrument-regular"
-                    size="base"
+                {Platform.OS === "android" ? (
+                  <TouchableOpacity
+                    onPress={handleClose}
+                    hitSlop={TOUCH.hitSlop}
+                    activeOpacity={TOUCH.activeOpacity}
                     style={{
-                      color: "rgba(255,255,255,0.85)",
-                      textShadowColor: "rgba(0, 0, 0, 0.5)",
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 4,
+                      paddingHorizontal: 24,
+                      paddingVertical: 12,
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.3)",
+                      borderRadius: 9999,
                     }}
                   >
-                    Close
-                  </AppText>
-                </Pressable>
-                <Pressable
-                  onPress={handleViewInGallery}
+                    <AppText
+                      font="instrument-regular"
+                      size="base"
+                      style={{
+                        color: "rgba(255,255,255,0.85)",
+                        textShadowColor: "rgba(0, 0, 0, 0.5)",
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 4,
+                      }}
+                    >
+                      Close
+                    </AppText>
+                  </TouchableOpacity>
+                ) : (
+                  <Pressable
+                    onPress={handleClose}
+                    style={{
+                      paddingHorizontal: 24,
+                      paddingVertical: 12,
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.3)",
+                      borderRadius: 9999,
+                    }}
+                  >
+                    <AppText
+                      font="instrument-regular"
+                      size="base"
+                      style={{
+                        color: "rgba(255,255,255,0.85)",
+                        textShadowColor: "rgba(0, 0, 0, 0.5)",
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 4,
+                      }}
+                    >
+                      Close
+                    </AppText>
+                  </Pressable>
+                )}
+                {Platform.OS === "android" ? (
+                  <TouchableOpacity
+                    onPress={handleViewInGallery}
+                    hitSlop={TOUCH.hitSlop}
+                    activeOpacity={TOUCH.activeOpacity}
+                    style={{
+                      borderRadius: 24,
+                      overflow: "hidden",
+                      shadowColor: "rgba(168, 201, 154, 0.4)",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 12,
+                      elevation: 6,
+                    }}
+                  >
+                    <LinearGradient
+                      colors={[
+                        "rgba(0, 0, 0, 0.6)",
+                        "rgba(139, 115, 85, 0.25)",
+                        "rgba(168, 201, 154, 0.15)",
+                        "rgba(0, 0, 0, 0.5)",
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      locations={[0, 0.3, 0.7, 1]}
+                      style={{
+                        borderRadius: 24,
+                        paddingVertical: 14,
+                        paddingHorizontal: 28,
+                        borderWidth: 1,
+                        borderColor: "rgba(168, 201, 154, 0.3)",
+                        backgroundColor: "rgba(0, 0, 0, 0.4)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {/* Subtle gradient light overlay */}
+                      <LinearGradient
+                        colors={[
+                          "rgba(255, 255, 255, 0.1)",
+                          "rgba(168, 201, 154, 0.08)",
+                          "transparent",
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 0, y: 1 }}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          borderRadius: 24,
+                        }}
+                      />
+                      {/* Subtle inner glow hint */}
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: "40%",
+                          left: "25%",
+                          right: "25%",
+                          height: "20%",
+                          backgroundColor: "rgba(168, 201, 154, 0.2)",
+                          borderRadius: 12,
+                          opacity: 0.5,
+                        }}
+                      />
+                      <AppText
+                        font="instrument-medium"
+                        size="base"
+                        style={{
+                          color: "rgba(255,255,255,0.95)",
+                          zIndex: 10,
+                          letterSpacing: 0.8,
+                          textShadowColor: "rgba(168, 201, 154, 0.5)",
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 8,
+                        }}
+                      >
+                        View in Gallery
+                      </AppText>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ) : (
+                  <Pressable
+                    onPress={handleViewInGallery}
                   style={{
                     borderRadius: 24,
                     overflow: "hidden",
@@ -319,6 +463,7 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
                     </AppText>
                   </LinearGradient>
                 </Pressable>
+                )}
               </View>
             </View>
           </View>

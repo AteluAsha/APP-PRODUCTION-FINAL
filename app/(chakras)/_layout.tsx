@@ -1,19 +1,20 @@
 import React from "react"
+import { View } from "react-native"
 import { Stack } from "expo-router"
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
-import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { SafeAreaProvider } from "react-native-safe-area-context"
+import { SOMATIC_SCREEN_TRANSITION_MS } from "@/constants/layout"
 
 const ChakrasLayout = () => {
   return (
     <SafeAreaProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
         <BottomSheetModalProvider>
           <Stack
             screenOptions={{
               headerShown: false,
               animation: "fade",
-              animationDuration: 320,
+              animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
             }}
           >
             <Stack.Screen name="index" />
@@ -24,7 +25,16 @@ const ChakrasLayout = () => {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
-                animationDuration: 320,
+                animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen
+              name="AnuaChat"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
                 gestureEnabled: true,
               }}
             />
@@ -41,11 +51,12 @@ const ChakrasLayout = () => {
             <Stack.Screen name="EnergyExchange" />
             <Stack.Screen name="AccountabilityOfAwakening" />
             <Stack.Screen name="GalleryOfGnosis" />
+            <Stack.Screen name="GiftChakra" />
             <Stack.Screen name="NotesAlongTheWay" />
             <Stack.Screen name="Contribute" />
           </Stack>
         </BottomSheetModalProvider>
-      </GestureHandlerRootView>
+      </View>
     </SafeAreaProvider>
   )
 }

@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Image,
   useWindowDimensions,
+  Platform,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useLocalSearchParams, useRouter } from "expo-router"
@@ -28,7 +29,8 @@ import {
   getChakraName,
   getChakraImage,
 } from "@/constants/chakras/chakraConstants"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
+import { getLocalDateISO } from "@/utils/date"
 
 // Import quiz data
 const quizData = require("@/assets/data/ChakraQuizzes/chakra_quizzes.json")
@@ -185,6 +187,13 @@ export default function QuizScreen() {
       setShowRationale(false)
       addHapticFeedback(HapticStrength.Light)
     } else {
+      const dayNum = parseInt(day || "1", 10)
+      useChakraJourneyStore.getState().recordQuizCompletion({
+        date: getLocalDateISO(new Date()),
+        day: dayNum,
+        score,
+        total: quiz.questions.length,
+      })
       setIsComplete(true)
       addHapticFeedback(HapticStrength.Medium)
     }
@@ -323,6 +332,7 @@ export default function QuizScreen() {
 
         <ScrollView
           style={{ flex: 1 }}
+          {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
           contentContainerStyle={{
             flexGrow: 1,
             minHeight: windowHeight - insets.top - insets.bottom,
@@ -628,12 +638,13 @@ export default function QuizScreen() {
       <ScrollView
         ref={scrollViewRef}
         style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 12,
           paddingBottom: 20 + SCROLL_BREATHING_BOTTOM_PADDING,
         }}
-        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <Animated.View
@@ -887,43 +898,74 @@ export default function QuizScreen() {
                           >
                             {option.text}
                           </AppText>
-                          {showFeedback && isSelected && (
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 8,
-                                marginLeft: 12,
-                              }}
-                            >
-                              <AppText
-                                font="instrument-medium"
-                                size="sm"
+                          {showFeedback && isSelected &&
+                            (optionIsCorrect ? (
+                              <View
                                 style={{
-                                  color: optionIsCorrect
-                                    ? "rgba(168, 201, 154, 0.95)"
-                                    : "rgba(212, 197, 169, 0.9)",
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  marginLeft: 12,
                                 }}
                               >
-                                {optionIsCorrect
-                                  ? "Resonant"
-                                  : "Explore further"}
-                              </AppText>
-                              <Ionicons
-                                name={
-                                  optionIsCorrect
-                                    ? "checkmark-circle"
-                                    : "compass"
-                                }
-                                size={20}
-                                color={
-                                  optionIsCorrect
-                                    ? "rgba(168, 201, 154, 0.9)"
-                                    : "rgba(212, 197, 169, 0.8)"
-                                }
-                              />
-                            </View>
-                          )}
+                                <AppText
+                                  font="instrument-medium"
+                                  size="sm"
+                                  style={{
+                                    color: "rgba(168, 201, 154, 0.95)",
+                                  }}
+                                >
+                                  Resonant
+                                </AppText>
+                                <Ionicons
+                                  name="checkmark-circle"
+                                  size={20}
+                                  color="rgba(168, 201, 154, 0.9)"
+                                />
+                              </View>
+                            ) : (
+                              <Pressable
+                                onPress={() => {
+                                  addHapticFeedback(HapticStrength.Light)
+                                  setTimeout(() => {
+                                    const dayParam = day ?? "1"
+                                    const quizChakraDay = Math.max(
+                                      0,
+                                      parseInt(dayParam, 10) - 1,
+                                    )
+                                    const initialMessage =
+                                      `In the Mirror of Embodiment reflection: «${currentQuestion.question}» I wasn't sure; I had thought something like: ${option.text}. I'd like to understand this better—can you explain briefly?`
+                                    useAnuaChatStore.getState().open({
+                                      initialMessage,
+                                      chakraDayOverride: quizChakraDay,
+                                    })
+                                  }, 200)
+                                }}
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  marginLeft: 12,
+                                }}
+                                accessibilityLabel="Explore further with Anua"
+                                accessibilityHint="Opens a short conversation with Anua about this reflection"
+                              >
+                                <AppText
+                                  font="instrument-medium"
+                                  size="sm"
+                                  style={{
+                                    color: "rgba(212, 197, 169, 0.9)",
+                                  }}
+                                >
+                                  Explore further
+                                </AppText>
+                                <Ionicons
+                                  name="compass"
+                                  size={20}
+                                  color="rgba(212, 197, 169, 0.8)"
+                                />
+                              </Pressable>
+                            ))}
                         </View>
                       </LinearGradient>
                     </Pressable>

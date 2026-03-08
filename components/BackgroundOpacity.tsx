@@ -43,9 +43,9 @@ const BackgroundOpacity = ({
         />
       )}
 
-      {/* Background Opacity Overlay — box-none so taps pass through to buttons */}
+      {/* Background Opacity Overlay — none so it never blocks taps (Android ignores box-none). */}
       <View
-        pointerEvents="box-none"
+        pointerEvents="none"
         style={{
           position: "absolute",
           top: 0,

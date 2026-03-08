@@ -1,4 +1,5 @@
-import { View, ScrollView, Pressable } from "react-native"
+import { View, Pressable, Platform } from "react-native"
+import { ScrollView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import PulsingButton from "@/components/chakras/PulsingButton"
 import Animated, { FadeIn, FadeOut, Easing } from "react-native-reanimated"
@@ -45,7 +46,16 @@ import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
 import { FirstMondayPresenceModal } from "@/components/presence/FirstMondayPresenceModal"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { useStoreRehydration } from "@/hooks/useStoreRehydration"
-import { TRIAL_HOME_ROOT_CHAKRA, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import {
+  TRIAL_HOME_ROOT_CHAKRA,
+  SCROLL_BREATHING_BOTTOM_PADDING,
+  SOMATIC_FADE_IN_MS,
+} from "@/constants/layout"
+import { storage } from "@/src/services/firebase"
+import {
+  getAudioPreloadStarted,
+  setAudioPreloadStarted,
+} from "@/src/utils/audioPreloadGuard"
 
 /**
  * APP_1 (Trial): Trial Home Screen
@@ -178,8 +188,6 @@ export const ChakraHome = () => {
 
   /** Track which days we have already shown GoodbyeModal this session. Course page is the only place that shows goodbye. */
   const goodbyeShownForDaysRef = useRef<Set<number>>(new Set())
-  /** Skip goodbye on first focus (app launch). Only show goodbye when returning to ChakraHome (e.g. from AudioPlayer). */
-  const hasFocusedChakraHomeBeforeRef = useRef(false)
 
   const storeRehydrationReady = useStoreRehydration((s) =>
     s.safetyPassed ? true : s.journeyRehydrated && s.firstLaunchRehydrated,
@@ -404,7 +412,8 @@ export const ChakraHome = () => {
     setOpenPaywallFromGraceReturn,
   ])
 
-  // First Monday presence: when user first sees main home (no waiting) on or after course start, show once
+  // First Monday presence: only when user has not entered anything before (profile not yet completed).
+  // Show once when they first see main home (no waiting). If they already completed it, go direct to chakra home.
   useEffect(() => {
     if (
       !showWaitingScreen &&
@@ -417,6 +426,31 @@ export const ChakraHome = () => {
     }
   }, [showWaitingScreen, hasReachedStartDate, hasCompletedFirstMondayPresence])
 
+  // Start HERO course audio preload when trial user sees main home (not waiting room).
+  // Ensures dev-bypass path also gets preload so embodiment/meditation etc. load faster on real device.
+  useEffect(() => {
+    if (hasLifetimeAccess || !journeyStarted || showWaitingScreen) return
+    let cancelled = false
+    getAudioPreloadStarted().then((alreadyStarted) => {
+      if (cancelled || alreadyStarted) return
+      setAudioPreloadStarted().then(() => {
+        import("@/src/utils/audioPreloadManifest").then(
+          ({ preloadAllAudioHeads, preloadAllAudioFullFiles }) => {
+            if (cancelled) return
+            preloadAllAudioHeads(storage)
+              .then(() => {
+                if (!cancelled) return preloadAllAudioFullFiles(storage)
+              })
+              .catch(() => {})
+          },
+        )
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [showWaitingScreen, journeyStarted, hasLifetimeAccess])
+
   useEffect(() => {
     // Bookkeeping when completedChakra is set (from day screen or from focus when returning with completed day).
     if (completedChakra) {
@@ -425,22 +459,6 @@ export const ChakraHome = () => {
       markChakraCompleted(chakraDayIndex)
     }
   }, [completedChakra, markChakraCompleted])
-
-  // Goodbye is shown only by the course page. Only on return focus (not first focus on launch), when current day is completed and we haven't shown goodbye yet.
-  useFocusEffect(
-    useCallback(() => {
-      if (!hasFocusedChakraHomeBeforeRef.current) {
-        hasFocusedChakraHomeBeforeRef.current = true
-        return
-      }
-      if (
-        completedChakras.includes(currentDay) &&
-        !goodbyeShownForDaysRef.current.has(currentDay)
-      ) {
-        setCompletedChakra(getChakraFromDay(currentDay))
-      }
-    }, [currentDay, completedChakras, setCompletedChakra]),
-  )
 
   // Memoize chakra data - only recalculate when chakrasData changes
   // Data comes sorted by day (0-6: Root to Crown)
@@ -622,11 +640,12 @@ export const ChakraHome = () => {
 
   // Waiting room. Route wrapper redirects trial users without courseStartDate to WelcomeScreen.
   // Path selection after first date only via hamburger "Return to Soul School Course Selection".
+  // pointerEvents="box-none" so the wrapper never captures touches; only WaitingScreen (and its overlays) receive them (fixes Android stuck layer).
   const needsWaiting =
     !storeRehydrationReady || showWaitingScreen
   if (needsWaiting) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#000000" }}>
+      <View style={{ flex: 1, backgroundColor: "#000000" }} pointerEvents="box-none">
         {showWaitingScreen && (
           <WaitingScreen
             onPreviewPress={handlePreviewPress}
@@ -671,7 +690,7 @@ export const ChakraHome = () => {
   if (chakrasError) {
     return (
       <Animated.View
-        entering={FadeIn.duration(1200).easing(Easing.out(Easing.ease))}
+        entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
         style={{
           flex: 1,
           justifyContent: "center",
@@ -708,130 +727,15 @@ export const ChakraHome = () => {
 
   return (
     <Animated.View
-      entering={FadeIn.duration(1400).easing(Easing.out(Easing.ease))}
+      entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
       style={{ flex: 1 }}
     >
       <SafeAreaView
         style={{ flex: 1, backgroundColor: "#000000" }}
         edges={["top", "bottom"]}
+        pointerEvents="box-none"
       >
-        {/* APP_2 (Lifetime) → APP_1 (Trial) Switch: Hamburger menu to return to App 2 */}
-        {hasLifetimeAccess && (
-          <Pressable
-            onPress={() => {
-              addHapticFeedback(HapticStrength.Light)
-              useChakraJourneyStore
-                .getState()
-                .setLifetimeChosenTimegateJourney(false)
-              router.replace("/(chakras)/ChakraHub")
-            }}
-            style={{
-              position: "absolute",
-              top: 60,
-              left: 16,
-              zIndex: 1000,
-              width: 44,
-              height: 44,
-              justifyContent: "center",
-              alignItems: "center",
-              backgroundColor: "rgba(0, 0, 0, 0.7)",
-              borderRadius: 22,
-              borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.2)",
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel="Return to Hub"
-            accessibilityHint="Tap to return to your sacred space"
-          >
-            <View style={{ gap: 4 }}>
-              <View
-                style={{
-                  width: 20,
-                  height: 2,
-                  backgroundColor: "rgba(255, 255, 255, 0.9)",
-                  borderRadius: 1,
-                }}
-              />
-              <View
-                style={{
-                  width: 20,
-                  height: 2,
-                  backgroundColor: "rgba(255, 255, 255, 0.9)",
-                  borderRadius: 1,
-                }}
-              />
-              <View
-                style={{
-                  width: 20,
-                  height: 2,
-                  backgroundColor: "rgba(255, 255, 255, 0.9)",
-                  borderRadius: 1,
-                }}
-              />
-            </View>
-          </Pressable>
-        )}
-        {/* Chakra 101 icon – top right, above dev controls. Trial only when journey started. */}
-        {!hasLifetimeAccess && journeyStarted && (
-          <Pressable
-            onPress={() => {
-              addHapticFeedback(HapticStrength.Light)
-              router.push("/(chakras)/Chakras101")
-            }}
-            style={{
-              position: "absolute",
-              top: Math.max(insets.top, 8) + 12,
-              right: 16,
-              zIndex: 100,
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: "rgba(0, 0, 0, 0.7)",
-              borderWidth: 1,
-              borderColor: "rgba(135, 174, 115, 0.4)",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel="Chakras 101"
-            accessibilityHint="Learn about the 7 chakras"
-          >
-            <Image
-              source={require("@/assets/images/7chakras.png")}
-              style={{ width: 24, height: 24 }}
-              resizeMode="contain"
-            />
-          </Pressable>
-        )}
-
-        {/* Hamburger – Profile (name, photo, Soul School ID). Left side where it belongs. */}
-        <Pressable
-          onPress={() => {
-            addHapticFeedback(HapticStrength.Light)
-            useProfileSheetStore.getState().open()
-          }}
-          style={{
-            position: "absolute",
-            top: Math.max(insets.top, 8) + 12,
-            left: 16,
-            zIndex: 100,
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            borderWidth: 1,
-            borderColor: "rgba(255, 255, 255, 0.15)",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityLabel="Profile menu"
-          accessibilityHint="View your profile and Soul School ID"
-        >
-          <Ionicons name="menu" size={22} color="rgba(255, 255, 255, 0.9)" />
-        </Pressable>
-
-        {/* ScrollView - root chakra position LOCKED via constants/layout.ts (TRIAL_HOME_ROOT_CHAKRA) */}
+        {/* ScrollView first so overlays rendered after it receive touches on Android */}
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
@@ -987,6 +891,121 @@ export const ChakraHome = () => {
           {!(completedTrialCourses === 2 && !hasLifetimeAccess) &&
             renderChakraDisplay()}
         </ScrollView>
+
+        {/* Overlays after ScrollView so they receive touches on Android */}
+        {hasLifetimeAccess && (
+          <Pressable
+            onPress={() => {
+              addHapticFeedback(HapticStrength.Light)
+              useChakraJourneyStore
+                .getState()
+                .setLifetimeChosenTimegateJourney(false)
+              router.replace("/(chakras)/ChakraHub")
+            }}
+            style={{
+              position: "absolute",
+              top: 60,
+              left: 16,
+              zIndex: 1000,
+              width: 44,
+              height: 44,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "rgba(0, 0, 0, 0.7)",
+              borderRadius: 22,
+              borderWidth: 1,
+              borderColor: "rgba(255, 255, 255, 0.2)",
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Return to Hub"
+            accessibilityHint="Tap to return to your sacred space"
+          >
+            <View style={{ gap: 4 }}>
+              <View
+                style={{
+                  width: 20,
+                  height: 2,
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  borderRadius: 1,
+                }}
+              />
+              <View
+                style={{
+                  width: 20,
+                  height: 2,
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  borderRadius: 1,
+                }}
+              />
+              <View
+                style={{
+                  width: 20,
+                  height: 2,
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  borderRadius: 1,
+                }}
+              />
+            </View>
+          </Pressable>
+        )}
+        {!hasLifetimeAccess && journeyStarted && (
+          <Pressable
+            onPress={() => {
+              addHapticFeedback(HapticStrength.Light)
+              router.push("/(chakras)/Chakras101")
+            }}
+            style={{
+              position: "absolute",
+              top: Math.max(insets.top, 8) + 12,
+              right: 16,
+              zIndex: 100,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "rgba(0, 0, 0, 0.7)",
+              borderWidth: 1,
+              borderColor: "rgba(135, 174, 115, 0.4)",
+              justifyContent: "center",
+              alignItems: "center",
+              ...(Platform.OS === "android" && { elevation: 10 }),
+            }}
+            hitSlop={Platform.OS === "android" ? { top: 16, bottom: 16, left: 16, right: 16 } : { top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Chakras 101"
+            accessibilityHint="Learn about the 7 chakras"
+          >
+            <Image
+              source={require("@/assets/images/7chakras.png")}
+              style={{ width: 24, height: 24 }}
+              resizeMode="contain"
+            />
+          </Pressable>
+        )}
+        <Pressable
+          onPress={() => {
+            addHapticFeedback(HapticStrength.Light)
+            useProfileSheetStore.getState().open()
+          }}
+          style={{
+            position: "absolute",
+            top: Math.max(insets.top, 8) + 12,
+            left: 16,
+            zIndex: 100,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            borderWidth: 1,
+            borderColor: "rgba(255, 255, 255, 0.15)",
+            justifyContent: "center",
+            alignItems: "center",
+            ...(Platform.OS === "android" && { elevation: 10 }),
+          }}
+          hitSlop={Platform.OS === "android" ? { top: 16, bottom: 16, left: 16, right: 16 } : { top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel="Profile menu"
+          accessibilityHint="View your profile and Soul School ID"
+        >
+          <Ionicons name="menu" size={22} color="rgba(255, 255, 255, 0.9)" />
+        </Pressable>
 
         {/* Note: Anua access is handled globally by FloatingNavButtons */}
 

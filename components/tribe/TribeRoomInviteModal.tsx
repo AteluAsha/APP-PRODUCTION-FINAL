@@ -24,7 +24,10 @@ export interface TribeRoomInviteModalProps {
   visible: boolean
   onClose: () => void
   roomId?: string
+  /** Formatted for message (e.g. "Monday, March 3, 2025"). */
   startDate?: string
+  /** ISO YYYY-MM-DD for invite link so invitee syncs to same journey week. */
+  courseStartDateISO?: string
   referralCode?: string
   onInviteSent?: () => void
   onFindFriends?: () => void
@@ -34,11 +37,12 @@ export function TribeRoomInviteModal({
   visible,
   onClose,
   startDate,
+  courseStartDateISO,
   referralCode,
   onInviteSent,
   onFindFriends,
 }: TribeRoomInviteModalProps) {
-  const referralLink = generateReferralLink(referralCode)
+  const referralLink = generateReferralLink(referralCode, courseStartDateISO)
   const inviteMessage = generateInviteMessage({ startDate, referralLink })
 
   const handleSystemShare = async () => {

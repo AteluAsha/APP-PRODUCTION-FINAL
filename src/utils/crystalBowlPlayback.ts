@@ -82,7 +82,9 @@ export async function prepareLongAudioForPlay(
     return fallback
   }
 
-  let head = await getLocalAudioHeadUri(audioId)
+  // Master Embodiment and Head to Heart must call with requireFullDownload: true so this head path is never used for them (avoids 1:05 truncated playback).
+  // Use min size so we never return a truncated head (~30s cutoff); matches prepareCrystalBowlForPlay.
+  let head = await getLocalAudioHeadUriWithMinSize(audioId)
   if (head) {
     startBackgroundFullDownload()
     return { uri: head }

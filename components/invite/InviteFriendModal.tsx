@@ -14,6 +14,8 @@ import {
   Modal,
   View,
   Pressable,
+  TouchableOpacity,
+  Platform,
   StyleSheet,
   Image,
   ScrollView,
@@ -33,13 +35,17 @@ import {
 import { ShareDestinationList } from "@/components/sharing/ShareDestinationPicker"
 import { getUserId } from "@/src/services/userId"
 import { useTribeFriends } from "@/hooks/useTribeFriends"
+import { TOUCH } from "@/constants/layout"
 
 const HERO_ICON = require("@/assets/images/ChakraWheel_ONBLACK_300DPI.png")
 
 interface InviteFriendModalProps {
   visible: boolean
   onClose: () => void
+  /** Formatted for message (e.g. "Monday, March 3, 2025"). */
   startDate?: string
+  /** ISO YYYY-MM-DD for invite link so invitee syncs to same journey week. */
+  courseStartDateISO?: string
   referralCode?: string
   onInviteSent?: () => void
 }
@@ -50,16 +56,19 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
   visible,
   onClose,
   startDate,
+  courseStartDateISO,
   referralCode,
   onInviteSent,
 }) => {
   const [senderSoulSchoolId, setSenderSoulSchoolId] = useState<string | null>(
     null,
   )
+  const [modalKey, setModalKey] = useState(0)
   const { addPendingInvite } = useTribeFriends(TRIAL_TRIBE_ROOM_ID, visible)
 
   useEffect(() => {
     if (visible) {
+      setModalKey((k) => k + 1)
       getUserId().then(setSenderSoulSchoolId)
     } else {
       setSenderSoulSchoolId(null)
@@ -67,7 +76,10 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
   }, [visible])
 
   const effectiveRefCode = referralCode ?? senderSoulSchoolId ?? undefined
-  const referralLink = generateReferralLink(effectiveRefCode)
+  const referralLink = generateReferralLink(
+    effectiveRefCode,
+    courseStartDateISO,
+  )
   const inviteMessage = generateInviteMessage({
     startDate,
     referralLink,
@@ -100,10 +112,12 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
 
   return (
     <Modal
+      key={`invite-modal-${modalKey}`}
       visible={visible}
       transparent
       animationType="fade"
       onRequestClose={handleClose}
+      {...(Platform.OS === "android" && { statusBarTranslucent: true })}
     >
       <View style={styles.overlay} pointerEvents="box-none">
         <Pressable
@@ -138,17 +152,32 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
               >
                 Build Your Tribe
               </AppText>
-              <Pressable
-                onPress={handleClose}
-                hitSlop={12}
-                style={styles.closeButton}
-              >
-                <Ionicons
-                  name="close"
-                  size={20}
-                  color="rgba(255,255,255,0.6)"
-                />
-              </Pressable>
+              {Platform.OS === "android" ? (
+                <TouchableOpacity
+                  onPress={handleClose}
+                  hitSlop={TOUCH.hitSlop}
+                  activeOpacity={TOUCH.activeOpacity}
+                  style={styles.closeButton}
+                >
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color="rgba(255,255,255,0.6)"
+                  />
+                </TouchableOpacity>
+              ) : (
+                <Pressable
+                  onPress={handleClose}
+                  hitSlop={12}
+                  style={styles.closeButton}
+                >
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color="rgba(255,255,255,0.6)"
+                  />
+                </Pressable>
+              )}
             </View>
 
             {/* Opening: same as Add to Room for consistency */}
@@ -176,32 +205,6 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
               >
                 {INVITE_PREVIEW_HINT}
               </AppText>
-              {senderSoulSchoolId ? (
-                <>
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={styles.soulSchoolIdLabel}
-                  >
-                    Soul School ID
-                  </AppText>
-                  <AppText
-                    font="instrument-bold"
-                    style={styles.soulSchoolIdValue}
-                    numberOfLines={2}
-                    selectable
-                  >
-                    {senderSoulSchoolId}
-                  </AppText>
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={styles.useThisCodeLine}
-                  >
-                    Use this code to join them in Tribe Chat.
-                  </AppText>
-                </>
-              ) : null}
               <ScrollView
                 style={styles.previewScroll}
                 nestedScrollEnabled
@@ -225,20 +228,52 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
             </View>
 
             {/* Primary Share */}
-            <Pressable
-              onPress={handleSystemShare}
-              style={styles.primaryShareButton}
-            >
-              <LinearGradient
-                colors={[
-                  "rgba(135, 174, 115, 0.4)",
-                  "rgba(135, 174, 115, 0.22)",
-                  "rgba(6, 182, 212, 0.15)",
-                ]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.primaryShareButtonInner}
+            {Platform.OS === "android" ? (
+              <TouchableOpacity
+                onPress={handleSystemShare}
+                hitSlop={TOUCH.hitSlop}
+                activeOpacity={TOUCH.activeOpacity}
+                style={styles.primaryShareButton}
               >
+                <LinearGradient
+                  colors={[
+                    "rgba(135, 174, 115, 0.4)",
+                    "rgba(135, 174, 115, 0.22)",
+                    "rgba(6, 182, 212, 0.15)",
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.primaryShareButtonInner}
+                >
+                  <Ionicons
+                    name="share-social"
+                    size={20}
+                    color="rgba(255,255,255,0.95)"
+                  />
+                  <AppText
+                    font="instrument-semibold"
+                    size="base"
+                    style={styles.primaryShareLabel}
+                  >
+                    Share
+                  </AppText>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <Pressable
+                onPress={handleSystemShare}
+                style={styles.primaryShareButton}
+              >
+                <LinearGradient
+                  colors={[
+                    "rgba(135, 174, 115, 0.4)",
+                    "rgba(135, 174, 115, 0.22)",
+                    "rgba(6, 182, 212, 0.15)",
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.primaryShareButtonInner}
+                >
                 <Ionicons
                   name="share-social"
                   size={18}
@@ -254,6 +289,7 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
                 </AppText>
               </LinearGradient>
             </Pressable>
+            )}
 
             <ShareDestinationList
               message={inviteMessage}

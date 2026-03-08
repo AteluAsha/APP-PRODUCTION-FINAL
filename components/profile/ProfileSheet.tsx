@@ -549,6 +549,13 @@ export const ProfileSheet: React.FC = () => {
                     )}
                   </Pressable>
                 </View>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={styles.cacheNote}
+                >
+                  Audio is downloaded for offline listening; avoid clearing app cache for the best experience.
+                </AppText>
                 <Pressable
                   onPress={() => {
                     addHapticFeedback(HapticStrength.Light)
@@ -1049,6 +1056,12 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(255,255,255,0.06)",
   },
   idLabel: { color: "rgba(255,255,255,0.45)", marginBottom: 8, fontSize: 11 },
+  cacheNote: {
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "center",
+    marginTop: 20,
+    paddingHorizontal: 8,
+  },
   requestNewIdBtn: {
     marginTop: 8,
     paddingVertical: 4,

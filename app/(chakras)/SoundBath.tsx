@@ -1,7 +1,6 @@
 import { ActionBar } from "@/components/ActionBar"
 import SoundBathButton from "@/components/chakras/SoundBathButton"
 import CrystalBowlButton from "@/components/chakras/CrystalBowlButton"
-import ResponsiveImageBackground from "@/components/ResponsiveImageBackground"
 import { AppText } from "@/components/AppText"
 import { HapticStrength } from "@/utils/haptic"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
@@ -10,16 +9,17 @@ import { Audio } from "expo-av"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { View, ScrollView, useWindowDimensions } from "react-native"
+import { View, ScrollView, ImageBackground, Platform, Dimensions } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
 import BackgroundOpacity from "@/components/BackgroundOpacity"
 import { isValidChakra } from "@/utils/validation"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { useCrystalBowlAudio } from "@/hooks/useCrystalBowlAudio"
+import { useCrystalBowlAudio, getCrystalBowlFileName } from "@/hooks/useCrystalBowlAudio"
 import { useTuningForkAudio, getTuningForkHertz } from "@/hooks/useTuningForkAudio"
-import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { prepareCrystalBowlForPlay } from "@/src/utils/crystalBowlPlayback"
+import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { getDayFromChakra } from "@/utils/chakraMapping"
 
@@ -27,7 +27,6 @@ const SoundBath = () => {
   const searchParams = useLocalSearchParams()
   const chakraParam = searchParams.chakra as string | undefined
   const router = useRouter()
-  const { width } = useWindowDimensions()
   const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
 
   // Default to ROOT chakra if not valid
@@ -89,6 +88,10 @@ const SoundBath = () => {
     if (!uri || typeof uri !== "string" || uri.trim() === "") return
     addHapticFeedback(HapticStrength.Light)
 
+    if (isCurrentCrystalBowl && isPlaying) {
+      setPlaying(false)
+    }
+
     const s = tuningForkSoundRef.current
     if (s) {
       const status = await s.getStatusAsync()
@@ -105,8 +108,12 @@ const SoundBath = () => {
     try {
       const { sound } = await Audio.Sound.createAsync(
         { uri },
-        { shouldPlay: true },
+        {
+          shouldPlay: true,
+          ...(Platform.OS === "android" && { androidImplementation: "MediaPlayer" }),
+        },
       )
+      await sound.setVolumeAsync(1)
       tuningForkSoundRef.current = sound
       setTuningForkPlaying(true)
       sound.setOnPlaybackStatusUpdate((status) => {
@@ -120,7 +127,7 @@ const SoundBath = () => {
       if (__DEV__) console.warn("[SoundBath] Tuning fork play failed:", e)
       setTuningForkPlaying(false)
     }
-  }, [tuningForkAudio.localUri, tuningForkAudio.url])
+  }, [tuningForkAudio.localUri, tuningForkAudio.url, isCurrentCrystalBowl, isPlaying, setPlaying])
 
   const handleCrystalBowlPress = useCallback(async () => {
     if (isCurrentCrystalBowl && isPlaying) {
@@ -128,13 +135,37 @@ const SoundBath = () => {
       addHapticFeedback(HapticStrength.Light)
       return
     }
-    const uri = crystalBowlAudio.localUri || crystalBowlAudio.url
-    if (!uri || typeof uri !== "string" || uri.trim() === "") return
+    if (!crystalBowlAudio.url && !crystalBowlAudio.localUri) return
+
+    const s = tuningForkSoundRef.current
+    if (s) {
+      try {
+        await s.stopAsync()
+        await s.unloadAsync()
+      } catch (_) {}
+      tuningForkSoundRef.current = null
+      setTuningForkPlaying(false)
+    }
 
     setCrystalBowlPreparing(true)
     addHapticFeedback(HapticStrength.Light)
     try {
-      setSource({ uri }, "other")
+      const audioId = `crystal_bowl_${chakra}_${getCrystalBowlFileName(chakra)}`
+      const source = await prepareCrystalBowlForPlay({
+        url: crystalBowlAudio.url ?? null,
+        localUri: crystalBowlAudio.localUri ?? null,
+        audioId,
+        fallback: { uri: crystalBowlAudio.url || "" },
+      })
+      const uriStr =
+        typeof source === "object" && source !== null && "uri" in source
+          ? (source as { uri: string }).uri
+          : ""
+      if (!uriStr || typeof uriStr !== "string" || uriStr.trim() === "") {
+        if (__DEV__) console.warn("[SoundBath] Crystal bowl prepare returned no URI")
+        return
+      }
+      setSource(source, "other")
       setMetadata({
         durationMs: 3600000,
         title: crystalBowlTitle,
@@ -167,26 +198,46 @@ const SoundBath = () => {
   // Don't render anything if the chakra is invalid
   if (!isValidChakra(chakraParam)) return null
 
-  return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ActionBar useXButton={true} xButtonPosition="left" />
-      <ResponsiveImageBackground
-        source={require("@/assets/images/soundhealingbg.png")}
-        width={width}
-        style={{ marginTop: 64, alignItems: "center" }}
-      >
-        <BackgroundOpacity
-          topGradientHeight={20}
-          bottomGradientHeight={20}
-          backgroundOpacity={0.7}
-        />
+  // Background must sit BEHIND content (hero + scroll). On Android, ImageBackground can composite
+  // its image on top of children; use explicit layer order: background first (zIndex 0), content on top (zIndex 1).
+  const { height: screenHeight } = Dimensions.get("window")
+  const backgroundLayerStyle = {
+    position: "absolute" as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+    ...(Platform.OS === "android" && { elevation: 0, minHeight: screenHeight }),
+  }
+  const contentLayerStyle = {
+    flex: 1,
+    zIndex: 1,
+    ...(Platform.OS === "android" && { elevation: 1 }),
+  }
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
-          }}
-        >
+  return (
+    <View style={{ flex: 1, minHeight: Platform.OS === "android" ? screenHeight : undefined }}>
+      <ImageBackground
+        source={require("@/assets/images/soundhealingbg.png")}
+        style={[{ flex: 1 }, backgroundLayerStyle]}
+        resizeMode="cover"
+      />
+      <SafeAreaView style={contentLayerStyle} edges={["top"]} pointerEvents="box-none">
+        {/* Scroll content first so ActionBar overlay receives touches on Android */}
+        <View style={{ flex: 1, marginTop: 52 }} pointerEvents="box-none">
+          <BackgroundOpacity
+            topGradientHeight={0}
+            bottomGradientHeight={0}
+            backgroundOpacity={0.7}
+          />
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
+            contentContainerStyle={{
+              paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
+            }}
+          >
           <AppText
             font="instrument-regular"
             size="xl"
@@ -373,9 +424,11 @@ const SoundBath = () => {
             You don't need to reach for alignment, you simply relax into it. Let
             yourself exhale and unfold back into place.
           </AppText>
-        </ScrollView>
-      </ResponsiveImageBackground>
-    </SafeAreaView>
+          </ScrollView>
+        </View>
+        <ActionBar useXButton={true} xButtonPosition="left" />
+      </SafeAreaView>
+    </View>
   )
 }
 

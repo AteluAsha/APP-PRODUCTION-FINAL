@@ -9,8 +9,11 @@ import { getUserId } from "@/src/services/userId"
 import {
   getPendingInviteRef,
   applyPendingInviteRef,
+  getPendingInviteStartDate,
+  clearPendingInviteStartDate,
 } from "@/src/services/inviteRefStorage"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
+import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 
 export function InviteRefApplier() {
   const applied = useRef(false)
@@ -32,6 +35,18 @@ export function InviteRefApplier() {
         avatar ?? undefined,
       )
       if (ok) applied.current = true
+
+      if (cancelled) return
+      const startDateISO = await getPendingInviteStartDate()
+      if (!startDateISO) return
+      const parsed = new Date(startDateISO + "T00:00:00")
+      if (Number.isNaN(parsed.getTime())) return
+      const { courseStartDate, setCourseStartDate, startJourney } =
+        useChakraJourneyStore.getState()
+      if (courseStartDate) return
+      setCourseStartDate(startDateISO)
+      startJourney(startDateISO)
+      await clearPendingInviteStartDate()
     })()
     return () => {
       cancelled = true

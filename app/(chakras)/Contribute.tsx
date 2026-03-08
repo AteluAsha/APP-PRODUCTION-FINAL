@@ -23,7 +23,7 @@ import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
 import { PRODUCT_IDS } from "@/src/services/revenuecat"
 import { CONTRIBUTE_URL } from "@/constants/sharing"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 
 const PRESET_AMOUNTS = [7, 11, 22, 55] as const
 
@@ -92,11 +92,12 @@ export default function Contribute() {
       >
         <ScrollView
           style={{ flex: 1, backgroundColor: "#000" }}
+          showsVerticalScrollIndicator={false}
+          {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
           contentContainerStyle={{
             padding: 32,
             paddingBottom: 32 + SCROLL_BREATHING_BOTTOM_PADDING,
           }}
-          showsVerticalScrollIndicator={false}
         >
           <View
             style={{ alignItems: "center", maxWidth: 400, alignSelf: "center" }}

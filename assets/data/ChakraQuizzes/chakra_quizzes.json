@@ -42,19 +42,19 @@
             "rationale": "396 Hz vibrates at a low, dense frequency that helps turn grief into joy and liberates guilt and fear."
           },
           {
-            "text": "528 Hz, the frequency used for transformation and willpower.",
+            "text": "528 Hz",
             "isCorrect": false,
-            "rationale": "This is the frequency of miracles (Solar Plexus)."
+            "rationale": "That frequency serves transformation and renewal; this question points to another tone."
           },
           {
-            "text": "417 Hz, the frequency used to undo situations and facilitate change.",
+            "text": "417 Hz",
             "isCorrect": false,
-            "rationale": "This is for undoing situations (Sacral)."
+            "rationale": "That frequency supports release and change; this question points to the one that grounds."
           },
           {
-            "text": "639 Hz, the frequency used for connection and harmony.",
+            "text": "639 Hz",
             "isCorrect": false,
-            "rationale": "This is for connection (Heart)."
+            "rationale": "That frequency supports connection; this question points to the one that frees fear."
           }
         ]
       },
@@ -96,17 +96,17 @@
           {
             "text": "Guilt, which freezes the flow of pleasure and creativity.",
             "isCorrect": false,
-            "rationale": "Guilt blocks the Sacral Chakra."
+            "rationale": "Guilt touches the flow of creativity; this question points to the foundation."
           },
           {
             "text": "Shame, which undermines personal power and confidence.",
             "isCorrect": false,
-            "rationale": "Shame blocks the Solar Plexus."
+            "rationale": "Shame touches personal power; this question points to the body's base."
           },
           {
             "text": "Grief, which can close the heart and restrict love.",
             "isCorrect": false,
-            "rationale": "Grief blocks the Heart."
+            "rationale": "Grief touches another center deeply; this question points to the body's foundation."
           }
         ]
       },
@@ -122,17 +122,17 @@
           {
             "text": "Regulating digestion and blood sugar.",
             "isCorrect": false,
-            "rationale": "That is the Pancreas."
+            "rationale": "That gland serves digestion and vitality; this question points to the body's survival center."
           },
           {
             "text": "Governing reproduction and sexual development.",
             "isCorrect": false,
-            "rationale": "That is the Gonads."
+            "rationale": "That gland governs creativity and flow; this question points to another center."
           },
           {
             "text": "Regulating metabolism and energy.",
             "isCorrect": false,
-            "rationale": "That is the Thyroid."
+            "rationale": "That gland supports expression and metabolism; this question points to the foundation."
           }
         ]
       },
@@ -148,17 +148,17 @@
           {
             "text": "Direct energy to open the heart center.",
             "isCorrect": false,
-            "rationale": "That is 'YAM'."
+            "rationale": "Another mantra carries that vibration; this question points to a different seed sound."
           },
           {
             "text": "Direct energy to clear the throat center.",
             "isCorrect": false,
-            "rationale": "That is 'HAM'."
+            "rationale": "Another mantra carries that vibration; this question points to a different seed sound."
           },
           {
             "text": "Direct energy to awaken the third eye.",
             "isCorrect": false,
-            "rationale": "That is 'OM'."
+            "rationale": "Another mantra carries that vibration; this question points to a different seed sound."
           }
         ]
       },
@@ -174,17 +174,17 @@
           {
             "text": "Water (the element of emotional flow and creativity).",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "That flow belongs to another center; your body knows the difference."
           },
           {
             "text": "Fire (the element of transformation and willpower).",
             "isCorrect": false,
-            "rationale": "Solar Plexus."
+            "rationale": "That fire burns in another center; this reflection invites a different quality."
           },
           {
             "text": "Air (the element of breath and connection).",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           }
         ]
       },
@@ -200,17 +200,17 @@
           {
             "text": "A strong sense of psychic intuition and inner vision.",
             "isCorrect": false,
-            "rationale": "This is an upper-center trait."
+            "rationale": "That quality lives in the upper centers; this question points to the body's foundation."
           },
           {
             "text": "Emotional volatility and difficulty regulating feelings.",
             "isCorrect": false,
-            "rationale": "This is a flow imbalance."
+            "rationale": "That points to the flow of emotion and creativity; this question points to another center."
           },
           {
             "text": "A need to control others and dominate situations.",
             "isCorrect": false,
-            "rationale": "This is a power imbalance."
+            "rationale": "That touches personal power and will; this question points to another center."
           }
         ]
       },
@@ -226,17 +226,17 @@
           {
             "text": "A circle representing wholeness and unity.",
             "isCorrect": false,
-            "rationale": "This represents wholeness (Crown)."
+            "rationale": "That symbol carries the crown's wholeness; this question points to another center."
           },
           {
             "text": "A crescent moon representing water and the tides.",
             "isCorrect": false,
-            "rationale": "This represents water (Sacral)."
+            "rationale": "That element flows through the sacral; this question points to another center."
           },
           {
             "text": "A Star of David representing the balance of spirit and matter.",
             "isCorrect": false,
-            "rationale": "This represents the balance of Heart."
+            "rationale": "That balance lives in the heart; this question points to another center."
           }
         ]
       },
@@ -257,7 +257,7 @@
           {
             "text": "Sleeping on the floor to connect with the earth.",
             "isCorrect": false,
-            "rationale": "Helpful, but not the definition."
+            "rationale": "A supportive practice; this reflection points to the specific definition of Earthing."
           },
           {
             "text": "Planting a garden and tending to the soil.",
@@ -271,24 +271,24 @@
         "question": "When you say the Root affirmation aloud, which phrase claims your right to exist?",
         "options": [
           {
-            "text": "I am. I exist. I belong.",
+            "text": "I am, I exist, I belong.",
             "isCorrect": true,
             "rationale": "This affirmation claims your right to take up space and be safe."
           },
           {
-            "text": "I feel. I flow.",
+            "text": "I feel, I flow, I create.",
             "isCorrect": false,
-            "rationale": "Sacral Affirmation."
+            "rationale": "A beautiful affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I do. I act.",
+            "text": "Through my truth, I find my soul fire.",
             "isCorrect": false,
-            "rationale": "Solar Plexus Affirmation."
+            "rationale": "A powerful affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I see.",
+            "text": "My heart is open; my love is unconditional.",
             "isCorrect": false,
-            "rationale": "Third Eye Affirmation."
+            "rationale": "A tender affirmation that belongs to another day; each center has its own voice."
           }
         ]
       }
@@ -313,17 +313,17 @@
           {
             "text": "Root Support.",
             "isCorrect": false,
-            "rationale": "Muladhara."
+            "rationale": "That is the Root's Sanskrit name; this question points to another center."
           },
           {
             "text": "City of Jewels.",
             "isCorrect": false,
-            "rationale": "Manipura."
+            "rationale": "That is the Solar Plexus's Sanskrit name; this question points to another center."
           },
           {
-            "text": "The Void (not a standard Sanskrit name for a center).",
+            "text": "The Void.",
             "isCorrect": false,
-            "rationale": "Not a chakra translation."
+            "rationale": "A meaningful phrase; this question points to the Sanskrit translation of this chakra's name."
           }
         ]
       },
@@ -365,17 +365,17 @@
           {
             "text": "Fear, which blocks our foundation and safety.",
             "isCorrect": false,
-            "rationale": "Blocks the Root."
+            "rationale": "That can tighten the foundation; this question points to another center's shadow."
           },
           {
             "text": "Shame, which blocks personal power.",
             "isCorrect": false,
-            "rationale": "Blocks the Solar Plexus."
+            "rationale": "That can dim personal power; this question points to another center's shadow."
           },
           {
             "text": "Grief, which can close the heart and restrict love.",
             "isCorrect": false,
-            "rationale": "Blocks the Heart."
+            "rationale": "That can close the heart space; this question points to another center's shadow."
           }
         ]
       },
@@ -391,17 +391,17 @@
           {
             "text": "Fire, which is associated with willpower and transformation.",
             "isCorrect": false,
-            "rationale": "Solar Plexus."
+            "rationale": "That fire burns in another center; this reflection invites a different quality."
           },
           {
             "text": "Earth, which is associated with grounding and stability.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "Air, which is associated with breath and connection.",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           }
         ]
       },
@@ -415,19 +415,19 @@
             "rationale": "417 Hz cleanses traumatic experiences and clears destructive influences from the cells."
           },
           {
-            "text": "396 Hz, the frequency used to liberate fear and ground.",
+            "text": "396 Hz",
             "isCorrect": false,
-            "rationale": "Root frequency."
+            "rationale": "That frequency serves grounding and release; this question points to a different tone."
           },
           {
-            "text": "528 Hz, the frequency of miracles and transformation.",
+            "text": "528 Hz",
             "isCorrect": false,
-            "rationale": "Solar Plexus frequency."
+            "rationale": "That frequency serves transformation and will; this question points to a different tone."
           },
           {
-            "text": "639 Hz, the frequency used for connection and harmony.",
+            "text": "639 Hz",
             "isCorrect": false,
-            "rationale": "Heart frequency."
+            "rationale": "That frequency serves connection and harmony; this question points to a different tone."
           }
         ]
       },
@@ -443,17 +443,17 @@
           {
             "text": "The throat.",
             "isCorrect": false,
-            "rationale": "That is 'HAM'."
+            "rationale": "Another mantra carries that vibration; this question points to a different seed sound."
           },
           {
             "text": "The chest and heart center.",
             "isCorrect": false,
-            "rationale": "That is 'YAM'."
+            "rationale": "Another mantra carries that vibration; this question points to a different seed sound."
           },
           {
             "text": "The base of the spine and pelvic floor.",
             "isCorrect": false,
-            "rationale": "That is 'LAM'."
+            "rationale": "Another mantra carries that vibration; this question points to a different seed sound."
           }
         ]
       },
@@ -495,7 +495,7 @@
           {
             "text": "To hide from people and avoid being seen.",
             "isCorrect": false,
-            "rationale": "It is about transformation, not hiding."
+            "rationale": "Transformation is this center's gift; this question points to why we use this syllable."
           },
           {
             "text": "To forget mistakes and erase the past entirely.",
@@ -505,7 +505,7 @@
           {
             "text": "To look mysterious and create intrigue.",
             "isCorrect": false,
-            "rationale": "Not the spiritual goal."
+            "rationale": "A worthy aim; this question points to the specific spiritual goal of this chakra."
           }
         ]
       },
@@ -521,17 +521,17 @@
           {
             "text": "The Adrenal glands, which support survival and grounding.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "The Thyroid gland, which supports metabolism and expression.",
             "isCorrect": false,
-            "rationale": "Throat."
+            "rationale": "That expression lives in another center; listen for where it resonates."
           },
           {
             "text": "The Pineal gland, which supports intuition and light response.",
             "isCorrect": false,
-            "rationale": "Crown."
+            "rationale": "That quality opens at the crown; this question points to another center."
           }
         ]
       },
@@ -547,15 +547,15 @@
           {
             "text": "A square representing earth and grounding.",
             "isCorrect": false,
-            "rationale": "Earth/Root."
+            "rationale": "Earth grounds the Root; this question points to another element for this center."
           },
           {
             "text": "A triangle representing fire and willpower.",
             "isCorrect": false,
-            "rationale": "Fire/Solar."
+            "rationale": "Fire fuels the Solar Plexus; this question points to another element for this center."
           },
           {
-            "text": "A lotus, which is a general symbol but not specific to this center.",
+            "text": "A lotus.",
             "isCorrect": false,
             "rationale": "General chakra symbol, but the Moon is specific to the center."
           }
@@ -566,24 +566,24 @@
         "question": "The Affirmation for Day 2 is:",
         "options": [
           {
-            "text": "I feel. I flow. I create.",
+            "text": "I feel, I flow, I create.",
             "isCorrect": true,
             "rationale": "This affirms the permission to feel emotions and use that energy for creation."
           },
           {
-            "text": "I am. I exist. I belong.",
+            "text": "I am, I exist, I belong.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "A grounding affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I love. I forgive.",
+            "text": "Through my truth, I find my soul fire.",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A powerful affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I know. I understand.",
+            "text": "My heart is open; my love is unconditional.",
             "isCorrect": false,
-            "rationale": "Crown."
+            "rationale": "A tender affirmation that belongs to another day; each center has its own voice."
           }
         ]
       }
@@ -606,19 +606,19 @@
             "rationale": "'Mani' means gem. It represents the sparkling brilliance of your personal power."
           },
           {
-            "text": "Sun Center (conceptually true, but not the literal Sanskrit translation).",
+            "text": "Sun Center.",
             "isCorrect": false,
             "rationale": "Conceptually true, but not the translation."
           },
           {
-            "text": "Fire House (a common misconception about Manipura).",
+            "text": "Fire House.",
             "isCorrect": false,
-            "rationale": "Inaccurate."
+            "rationale": "This reflection invites you to feel into the teaching more deeply; the body holds the truth."
           },
           {
-            "text": "Golden Wheel (another center uses wheel imagery).",
+            "text": "Golden Wheel.",
             "isCorrect": false,
-            "rationale": "Inaccurate."
+            "rationale": "This reflection invites you to feel into the teaching more deeply; the body holds the truth."
           }
         ]
       },
@@ -634,17 +634,17 @@
           {
             "text": "Mind, Body, and Spirit (the general wellness triad).",
             "isCorrect": false,
-            "rationale": "General wellness triad."
+            "rationale": "A supportive framework; this question points to the specific triad for this chakra."
           },
           {
             "text": "Past, Present, and Future (the time triad).",
             "isCorrect": false,
-            "rationale": "Time triad."
+            "rationale": "Time is part of the picture; this question points to the body-mind triad for this center."
           },
           {
             "text": "Id, Ego, and Superego (the Freudian psychological triad).",
             "isCorrect": false,
-            "rationale": "Freudian triad."
+            "rationale": "Psychology offers one map; this question points to the chakra's own triad."
           }
         ]
       },
@@ -658,19 +658,19 @@
             "rationale": "It repairs DNA and facilitates deep transformative healing."
           },
           {
-            "text": "417 Hz, the frequency used to undo situations.",
+            "text": "417 Hz",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "That flow belongs to another center; your body knows the difference."
           },
           {
-            "text": "639 Hz, the frequency used for connection.",
+            "text": "639 Hz",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           },
           {
-            "text": "741 Hz, the frequency used for purification and expression.",
+            "text": "741 Hz",
             "isCorrect": false,
-            "rationale": "Throat."
+            "rationale": "That expression lives in another center; listen for where it resonates."
           }
         ]
       },
@@ -686,17 +686,17 @@
           {
             "text": "We are victims of fate and cannot change our circumstances.",
             "isCorrect": false,
-            "rationale": "Victimhood blocks this chakra."
+            "rationale": "Victimhood can dim our power; this question points to the law that frees it."
           },
           {
             "text": "We must control others to get the results we want.",
             "isCorrect": false,
-            "rationale": "Control is a shadow aspect."
+            "rationale": "Control is one shadow of this center; the law itself points to conscious choice."
           },
           {
             "text": "Everything is accidental and random.",
             "isCorrect": false,
-            "rationale": "Nothing is accidental to the Solar Plexus."
+            "rationale": "The law of this center invites us to see cause and effect; randomness points elsewhere."
           }
         ]
       },
@@ -712,17 +712,17 @@
           {
             "text": "Grounding and stability.",
             "isCorrect": false,
-            "rationale": "LAM."
+            "rationale": "That seed sound grounds; this question points to another mantra."
           },
           {
             "text": "Compassion and heart opening.",
             "isCorrect": false,
-            "rationale": "YAM."
+            "rationale": "That seed sound opens the heart; this question points to another mantra."
           },
           {
             "text": "Intuition and cosmic connection.",
             "isCorrect": false,
-            "rationale": "OM."
+            "rationale": "That seed sound reaches the crown; this question points to another mantra."
           }
         ]
       },
@@ -738,17 +738,17 @@
           {
             "text": "Earth (the element of grounding and stability).",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "Water (the element of emotion and flow).",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "That flow belongs to another center; your body knows the difference."
           },
           {
             "text": "Air (the element of breath and connection).",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           }
         ]
       },
@@ -764,17 +764,17 @@
           {
             "text": "Respiration and the lungs.",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           },
           {
             "text": "Reproduction and the gonads.",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "That flow belongs to another center; your body knows the difference."
           },
           {
             "text": "Thinking and higher cognition.",
             "isCorrect": false,
-            "rationale": "Crown/Third Eye."
+            "rationale": "That quality opens in the upper centers; this question points to another region."
           }
         ]
       },
@@ -790,17 +790,17 @@
           {
             "text": "Excessive crying and emotional overwhelm.",
             "isCorrect": false,
-            "rationale": "Heart/Sacral."
+            "rationale": "That quality lives in the heart or sacral flow; this question points to another center."
           },
           {
             "text": "Spacey-ness and disconnection from the body.",
             "isCorrect": false,
-            "rationale": "Crown."
+            "rationale": "That quality opens at the crown; this question points to another center."
           },
           {
             "text": "Hoarding and fear of scarcity.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           }
         ]
       },
@@ -816,17 +816,17 @@
           {
             "text": "A square representing earth and grounding.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "A circle representing wholeness and unity.",
             "isCorrect": false,
-            "rationale": "Crown."
+            "rationale": "That quality opens at the crown; this question points to another center."
           },
           {
             "text": "A star or hexagram representing spirit and matter.",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           }
         ]
       },
@@ -840,19 +840,19 @@
             "rationale": "Authenticity is the fuel for the inner fire."
           },
           {
-            "text": "I am safe. I belong.",
+            "text": "I am, I exist, I belong.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "A grounding affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I feel. I flow.",
+            "text": "I feel, I flow, I create.",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "A beautiful affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I see. I perceive.",
+            "text": "I release the mind of self, and open my eyes to the Universe.",
             "isCorrect": false,
-            "rationale": "Third Eye."
+            "rationale": "An intuitive affirmation that belongs to another day; each center has its own voice."
           }
         ]
       },
@@ -868,17 +868,17 @@
           {
             "text": "It is rude and may offend the listener.",
             "isCorrect": false,
-            "rationale": "True, but not the energetic reason."
+            "rationale": "A true effect; this question points to the specific energetic reason in the teaching."
           },
           {
             "text": "It hurts the voice and expression.",
             "isCorrect": false,
-            "rationale": "Inaccurate."
+            "rationale": "This reflection invites you to feel into the teaching more deeply; the body holds the truth."
           },
           {
             "text": "It lowers your vibration to 396 Hz frequency.",
             "isCorrect": false,
-            "rationale": "Inaccurate."
+            "rationale": "This reflection invites you to feel into the teaching more deeply; the body holds the truth."
           }
         ]
       }
@@ -901,19 +901,19 @@
             "rationale": "It refers to the eternal hum of the universe that is not caused by two things striking together."
           },
           {
-            "text": "Loving Center (a descriptive phrase for the heart, but not the Sanskrit translation).",
+            "text": "Loving Center.",
             "isCorrect": false,
-            "rationale": "Descriptive, but not the name."
+            "rationale": "A beautiful description; this question points to the Sanskrit name for this center."
           },
           {
             "text": "Purification.",
             "isCorrect": false,
-            "rationale": "Vishuddha."
+            "rationale": "That is the Throat's Sanskrit name; this question points to another center."
           },
           {
             "text": "Thousand Petaled.",
             "isCorrect": false,
-            "rationale": "Sahasrara."
+            "rationale": "That is the Crown's Sanskrit name; this question points to another center."
           }
         ]
       },
@@ -929,17 +929,17 @@
           {
             "text": "To always be happy.",
             "isCorrect": false,
-            "rationale": "This is spiritual bypassing."
+            "rationale": "Bypassing skips the body; this question points to what truly supports the Throat."
           },
           {
             "text": "To control our emotions.",
             "isCorrect": false,
-            "rationale": "This blocks the heart."
+            "rationale": "That can narrow the heart; this question points to what supports the Throat."
           },
           {
             "text": "That time is linear.",
             "isCorrect": false,
-            "rationale": "Rhythm is cyclical."
+            "rationale": "Rhythm moves in cycles; this question points to the specific role of this gland."
           }
         ]
       },
@@ -955,12 +955,12 @@
           {
             "text": "Soul love is weaker and Ego love is stronger in the world.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Ego love is only for family while Soul love is for strangers.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Soul love has no boundaries and gives without discernment.",
@@ -979,19 +979,19 @@
             "rationale": "It heals relationships and reconnects fractured parts of the self."
           },
           {
-            "text": "528 Hz, the frequency of miracles used for the Solar Plexus.",
+            "text": "528 Hz",
             "isCorrect": false,
-            "rationale": "Solar Plexus."
+            "rationale": "That fire burns in another center; this reflection invites a different quality."
           },
           {
-            "text": "741 Hz, the frequency used to purify and open expression.",
+            "text": "741 Hz",
             "isCorrect": false,
-            "rationale": "Throat."
+            "rationale": "That expression lives in another center; listen for where it resonates."
           },
           {
-            "text": "852 Hz, the frequency used to awaken the Third Eye and intuition.",
+            "text": "852 Hz",
             "isCorrect": false,
-            "rationale": "Third Eye."
+            "rationale": "That sight awakens in another center; this question points to a different gift."
           }
         ]
       },
@@ -1007,17 +1007,17 @@
           {
             "text": "The throat and vocal cords.",
             "isCorrect": false,
-            "rationale": "HAM."
+            "rationale": "That seed sound clears the throat; this question points to another mantra."
           },
           {
             "text": "The hips and lower abdomen.",
             "isCorrect": false,
-            "rationale": "VAM."
+            "rationale": "That seed sound stirs the sacral; this question points to another mantra."
           },
           {
             "text": "The head and crown.",
             "isCorrect": false,
-            "rationale": "OM."
+            "rationale": "That seed sound reaches the crown; this question points to another mantra."
           }
         ]
       },
@@ -1033,13 +1033,13 @@
           {
             "text": "The Adrenal glands.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
-          { "text": "The Gonads.", "isCorrect": false, "rationale": "Sacral." },
+          { "text": "The Gonads.", "isCorrect": false, "rationale": "That flow belongs to another center; your body knows the difference." },
           {
             "text": "The Thyroid gland.",
             "isCorrect": false,
-            "rationale": "Throat."
+            "rationale": "That expression lives in another center; listen for where it resonates."
           }
         ]
       },
@@ -1055,17 +1055,17 @@
           {
             "text": "The four directions.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "The flow of water.",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "That flow belongs to another center; your body knows the difference."
           },
           {
             "text": "Infinite oneness.",
             "isCorrect": false,
-            "rationale": "Crown."
+            "rationale": "That quality opens at the crown; this question points to another center."
           }
         ]
       },
@@ -1081,17 +1081,17 @@
           {
             "text": "Digestive issues and stomach discomfort.",
             "isCorrect": false,
-            "rationale": "Solar Plexus."
+            "rationale": "That fire burns in another center; this reflection invites a different quality."
           },
           {
             "text": "Sore throat and thyroid imbalance.",
             "isCorrect": false,
-            "rationale": "Throat."
+            "rationale": "That expression lives in another center; listen for where it resonates."
           },
           {
             "text": "Back pain and adrenal fatigue.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           }
         ]
       },
@@ -1107,17 +1107,17 @@
           {
             "text": "Red Jasper, which supports grounding and stability.",
             "isCorrect": false,
-            "rationale": "Grounding."
+            "rationale": "Grounding lives in the Root; this question points to another quality for this center."
           },
           {
             "text": "Citrine, which supports willpower and the Solar Plexus.",
             "isCorrect": false,
-            "rationale": "Willpower."
+            "rationale": "Willpower burns in the Solar Plexus; this question points to another quality."
           },
           {
             "text": "Clear Quartz, which supports clarity and amplification of intention.",
             "isCorrect": false,
-            "rationale": "Clarity."
+            "rationale": "Clarity opens at the Third Eye; this question points to another quality for this center."
           }
         ]
       },
@@ -1133,17 +1133,17 @@
           {
             "text": "Always smiling and showing a positive face to the world.",
             "isCorrect": false,
-            "rationale": "Artificial."
+            "rationale": "Artificial light has a different quality; this question points to what supports this center."
           },
           {
             "text": "Giving everyone what they want and never saying no.",
             "isCorrect": false,
-            "rationale": "Lack of boundaries."
+            "rationale": "Boundaries protect this center; this question points to another shadow that dims it."
           },
           {
             "text": "Never getting angry or expressing difficult emotions.",
             "isCorrect": false,
-            "rationale": "Repression."
+            "rationale": "Repression can block the flow here; this question points to another shadow for this center."
           }
         ]
       },
@@ -1152,21 +1152,25 @@
         "question": "The Affirmation for Day 4 is:",
         "options": [
           {
-            "text": "My heart is open. My love is unconditional.",
+            "text": "My heart is open; my love is unconditional.",
             "isCorrect": true,
             "rationale": "It sets the intention for a limitless flow of compassion."
           },
           {
-            "text": "I feel. I flow.",
+            "text": "I speak with purity, compassion, and truth.",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "A clear affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I speak my truth.",
+            "text": "I am, I exist, I belong.",
             "isCorrect": false,
-            "rationale": "Throat."
+            "rationale": "A grounding affirmation that belongs to another day; each center has its own voice."
           },
-          { "text": "I understand.", "isCorrect": false, "rationale": "Crown." }
+          {
+            "text": "I feel, I flow, I create.",
+            "isCorrect": false,
+            "rationale": "A beautiful affirmation that belongs to another day; each center has its own voice."
+          }
         ]
       }
     ]
@@ -1188,19 +1192,19 @@
             "rationale": "Truth acts as a filter, purifying the ego's distortions before they are spoken."
           },
           {
-            "text": "Great Sound (a common misconception about the Throat's Sanskrit name).",
+            "text": "Great Sound.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
-            "text": "Blue Lotus (a symbolic association but not the literal translation).",
+            "text": "Blue Lotus.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Command Center.",
             "isCorrect": false,
-            "rationale": "Ajna."
+            "rationale": "That is the Third Eye's Sanskrit name; this question points to another center."
           }
         ]
       },
@@ -1216,17 +1220,17 @@
           {
             "text": "Speak loudly to be heard so that your message carries across the room.",
             "isCorrect": false,
-            "rationale": "Volume is not vibration."
+            "rationale": "Volume and vibration are different; this question points to what truly clears the Throat."
           },
           {
             "text": "Silence is the only truth and words always distort reality.",
             "isCorrect": false,
-            "rationale": "Expression is also truth."
+            "rationale": "Expression carries truth; this question points to the specific key for this center."
           },
           {
             "text": "Gravity holds us down and keeps us anchored to the earth.",
             "isCorrect": false,
-            "rationale": "Physics law, not energetic."
+            "rationale": "Physics describes one layer; this question points to the energetic law for this center."
           }
         ]
       },
@@ -1242,17 +1246,17 @@
           {
             "text": "The head and the intellect alone.",
             "isCorrect": false,
-            "rationale": "This is intellectual/egoic speech."
+            "rationale": "The mind can speak without the body; this question points to what frees the Throat."
           },
           {
             "text": "The throat only, without support from the body.",
             "isCorrect": false,
-            "rationale": "This creates a thin, anxious voice."
+            "rationale": "Tension can thin the voice; this question points to what allows it to resonate fully."
           },
           {
             "text": "Outside yourself, from what others expect you to say.",
             "isCorrect": false,
-            "rationale": "Inauthentic."
+            "rationale": "When we hide our truth, the voice loses depth; this question points to what restores it."
           }
         ]
       },
@@ -1266,19 +1270,19 @@
             "rationale": "It cleanses toxins and awakens intuition/expression."
           },
           {
-            "text": "639 Hz, the frequency used for connection and harmony.",
+            "text": "639 Hz",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           },
           {
-            "text": "852 Hz, the frequency used to awaken the Third Eye and intuition.",
+            "text": "852 Hz",
             "isCorrect": false,
-            "rationale": "Third Eye."
+            "rationale": "That sight awakens in another center; this question points to a different gift."
           },
           {
-            "text": "963 Hz, the frequency of the gods associated with the Crown.",
+            "text": "963 Hz",
             "isCorrect": false,
-            "rationale": "Crown."
+            "rationale": "That quality opens at the crown; this question points to another center."
           }
         ]
       },
@@ -1294,17 +1298,17 @@
           {
             "text": "Ham (like the food), with a flat, short vowel sound.",
             "isCorrect": false,
-            "rationale": "Too flat."
+            "rationale": "A flat tone can mean the Throat is held; this question points to the quality that opens it."
           },
           {
             "text": "Home, with the mouth only partly open.",
             "isCorrect": false,
-            "rationale": "Close, but not open enough."
+            "rationale": "An opening quality; this question points to the one that most fully frees the Throat."
           },
           {
             "text": "Hymn, with the sound held too far forward in the mouth.",
             "isCorrect": false,
-            "rationale": "Too closed."
+            "rationale": "When the Throat is closed, expression narrows; this question points to what opens it."
           }
         ]
       },
@@ -1346,17 +1350,17 @@
           {
             "text": "How fast to talk and the ideal pace for each conversation.",
             "isCorrect": false,
-            "rationale": "Irrelevant."
+            "rationale": "This reflection invites you to feel into what this center needs; your body knows."
           },
           {
             "text": "How to yell effectively when we need to be heard.",
             "isCorrect": false,
-            "rationale": "Irrelevant."
+            "rationale": "This reflection invites you to feel into what this center needs; your body knows."
           },
           {
             "text": "Grammar rules and the correct structure of sentences.",
             "isCorrect": false,
-            "rationale": "Irrelevant."
+            "rationale": "This reflection invites you to feel into what this center needs; your body knows."
           }
         ]
       },
@@ -1372,17 +1376,17 @@
           {
             "text": "Blood sugar and digestion.",
             "isCorrect": false,
-            "rationale": "Pancreas."
+            "rationale": "That gland supports digestion and vitality; this question points to the rhythm keeper."
           },
           {
             "text": "Adrenaline and the fight-or-flight response.",
             "isCorrect": false,
-            "rationale": "Adrenals."
+            "rationale": "Those glands support survival and stress response; this question points to another."
           },
           {
             "text": "Sleep and circadian rhythm.",
             "isCorrect": false,
-            "rationale": "Pineal."
+            "rationale": "That gland supports inner vision; this question points to the body's rhythm keeper."
           }
         ]
       },
@@ -1398,17 +1402,17 @@
           {
             "text": "Fear, which blocks our foundation and survival energy.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "Grief, which can close the heart and restrict love.",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           },
           {
             "text": "Illusion, which distorts the vision of the Third Eye.",
             "isCorrect": false,
-            "rationale": "Third Eye."
+            "rationale": "That sight awakens in another center; this question points to a different gift."
           }
         ]
       },
@@ -1424,17 +1428,17 @@
           {
             "text": "Earth Triangle, representing grounding and stability.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "Upward Triangle, representing fire and the Solar Plexus.",
             "isCorrect": false,
-            "rationale": "Fire."
+            "rationale": "Fire transforms the Solar Plexus; this question points to another element for this center."
           },
           {
             "text": "Infinite Lotus, representing the Crown and thousand petals.",
             "isCorrect": false,
-            "rationale": "Crown."
+            "rationale": "That quality opens at the crown; this question points to another center."
           }
         ]
       },
@@ -1443,17 +1447,25 @@
         "question": "The Affirmation for Day 5 is:",
         "options": [
           {
-            "text": "I release the mind - and speak my truth.",
+            "text": "I speak with purity, compassion, and truth.",
             "isCorrect": true,
-            "rationale": "It affirms the power of authentic expression over mental narrative."
+            "rationale": "It affirms the power of authentic expression and the Throat's intention."
           },
           {
-            "text": "I am loud and my voice dominates the room.",
+            "text": "I release the mind of self, and open my eyes to the Universe.",
             "isCorrect": false,
-            "rationale": "Not the goal."
+            "rationale": "An intuitive affirmation that belongs to another day; each center has its own voice."
           },
-          { "text": "I see.", "isCorrect": false, "rationale": "Third Eye." },
-          { "text": "I understand.", "isCorrect": false, "rationale": "Crown." }
+          {
+            "text": "My heart is open; my love is unconditional.",
+            "isCorrect": false,
+            "rationale": "A tender affirmation that belongs to another day; each center has its own voice."
+          },
+          {
+            "text": "I awaken my inner child - and surround myself with light.",
+            "isCorrect": false,
+            "rationale": "A beautiful crown affirmation; this question points to the one for this day's center."
+          }
         ]
       }
     ]
@@ -1475,19 +1487,19 @@
             "rationale": "It is the center of command where we direct our reality through vision."
           },
           {
-            "text": "All-Seeing (a descriptive term for vision, but not the Sanskrit translation).",
+            "text": "All-Seeing.",
             "isCorrect": false,
-            "rationale": "Descriptive, not translation."
+            "rationale": "A meaningful description; this question points to the Sanskrit translation of this chakra."
           },
           {
-            "text": "The Void (a concept from other traditions, not the meaning of Ajna).",
+            "text": "The Void.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
-            "text": "Lotus of Light (symbolic imagery but not the literal translation).",
+            "text": "Lotus of Light.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       },
@@ -1501,19 +1513,19 @@
             "rationale": "Our outer reality mirrors our inner state."
           },
           {
-            "text": "What goes around comes around (the Law of Cause and Effect).",
+            "text": "What goes around comes around.",
             "isCorrect": false,
-            "rationale": "Cause and Effect."
+            "rationale": "That law governs the Solar Plexus; this question points to another universal law."
           },
           {
-            "text": "To be or not to be (a philosophical question, not an energetic law).",
+            "text": "To be or not to be.",
             "isCorrect": false,
-            "rationale": "Shakespeare."
+            "rationale": "A timeless phrase; this question points to the triad that belongs to this chakra."
           },
           {
-            "text": "I think therefore I am (a mind-focused statement, not Correspondence).",
+            "text": "I think therefore I am.",
             "isCorrect": false,
-            "rationale": "Descartes."
+            "rationale": "A famous formulation; this question points to the triad for this center."
           }
         ]
       },
@@ -1529,17 +1541,17 @@
           {
             "text": "The Ego TV (the mind's narrow, story-driven channel).",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "The Body Radio (sensation and physical awareness only).",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
-            "text": "The Internet of Things (external technology, not inner vision).",
+            "text": "The Internet of Things.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       },
@@ -1553,19 +1565,19 @@
             "rationale": "It returns us to spiritual order and awakens intuition."
           },
           {
-            "text": "741 Hz, the frequency used to purify and open expression.",
+            "text": "741 Hz",
             "isCorrect": false,
-            "rationale": "Throat."
+            "rationale": "That expression lives in another center; listen for where it resonates."
           },
           {
-            "text": "963 Hz, the frequency of the gods associated with the Crown.",
+            "text": "963 Hz",
             "isCorrect": false,
-            "rationale": "Crown."
+            "rationale": "That quality opens at the crown; this question points to another center."
           },
           {
-            "text": "432 Hz, a general healing frequency not specific to the Third Eye.",
+            "text": "432 Hz.",
             "isCorrect": false,
-            "rationale": "General healing."
+            "rationale": "A supportive frequency; this question points to the one named for the Third Eye."
           }
         ]
       },
@@ -1581,17 +1593,17 @@
           {
             "text": "Silence and the absence of all vibration.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
-            "text": "One hand clapping (a koan about paradox, not the mantra's meaning).",
+            "text": "One hand clapping.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Earth and the grounding element.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       },
@@ -1607,17 +1619,17 @@
           {
             "text": "The Thyroid gland.",
             "isCorrect": false,
-            "rationale": "Throat."
+            "rationale": "That expression lives in another center; listen for where it resonates."
           },
           {
             "text": "The Adrenal glands.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "The Pancreas.",
             "isCorrect": false,
-            "rationale": "Solar Plexus."
+            "rationale": "That fire burns in another center; this reflection invites a different quality."
           }
         ]
       },
@@ -1633,17 +1645,17 @@
           {
             "text": "Hyperventilation and rapid, shallow breathing.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Throat clearing and vocalization to open the voice.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Digestion and the processing of food in the gut.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       },
@@ -1659,17 +1671,17 @@
           {
             "text": "Fear, which blocks our foundation and survival energy.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "Guilt, which freezes the flow of pleasure and creativity.",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "That flow belongs to another center; your body knows the difference."
           },
           {
             "text": "Grief, which can close the heart and restrict love.",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           }
         ]
       },
@@ -1685,17 +1697,17 @@
           {
             "text": "Hallucinations and an overactive imagination.",
             "isCorrect": false,
-            "rationale": "Excessive Third Eye."
+            "rationale": "Too much focus above can unground us; this question points to what restores balance."
           },
           {
             "text": "Over-emotionality and difficulty regulating feelings.",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "That flow belongs to another center; your body knows the difference."
           },
           {
             "text": "Hoarding and fear of scarcity.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           }
         ]
       },
@@ -1704,13 +1716,25 @@
         "question": "The Affirmation for Day 6 is:",
         "options": [
           {
-            "text": "I release the limitations of self. I open my mind to the Universe.",
+            "text": "I release the mind of self, and open my eyes to the Universe.",
             "isCorrect": true,
             "rationale": "It moves identity from the small ego to the infinite awareness."
           },
-          { "text": "The past.", "isCorrect": false, "rationale": "Sacral." },
-          { "text": "My voice.", "isCorrect": false, "rationale": "Throat." },
-          { "text": "My fears.", "isCorrect": false, "rationale": "Root." }
+          {
+            "text": "I speak with purity, compassion, and truth.",
+            "isCorrect": false,
+            "rationale": "A clear affirmation that belongs to another day; each center has its own voice."
+          },
+          {
+            "text": "I awaken my inner child - and surround myself with light.",
+            "isCorrect": false,
+            "rationale": "A beautiful crown affirmation; this question points to the one for this day's center."
+          },
+          {
+            "text": "Through my truth, I find my soul fire.",
+            "isCorrect": false,
+            "rationale": "A powerful affirmation that belongs to another day; each center has its own voice."
+          }
         ]
       },
       {
@@ -1725,17 +1749,17 @@
           {
             "text": "A Circle, representing wholeness and unity.",
             "isCorrect": false,
-            "rationale": "Crown."
+            "rationale": "That quality opens at the crown; this question points to another center."
           },
           {
             "text": "A Square, representing earth and grounding.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "A Moon, representing water and the tides.",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "That flow belongs to another center; your body knows the difference."
           }
         ]
       }
@@ -1758,19 +1782,19 @@
             "rationale": "It represents infinite potential and the expansion of consciousness."
           },
           {
-            "text": "Brain Nerves (a literal anatomical term, not the Sanskrit meaning).",
+            "text": "Brain Nerves.",
             "isCorrect": false,
-            "rationale": "Literal, not the meaning."
+            "rationale": "The literal sense is one layer; this question points to the deeper meaning in the teaching."
           },
           {
-            "text": "Lifetimes (a concept from reincarnation, not the name).",
+            "text": "Lifetimes.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
-            "text": "Big Flower (a casual description, not the actual translation).",
+            "text": "Big Flower.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       },
@@ -1783,16 +1807,16 @@
             "isCorrect": true,
             "rationale": "Consciousness is the fundamental fabric of reality."
           },
-          { "text": "All is love.", "isCorrect": false, "rationale": "Heart." },
+          { "text": "All is love.", "isCorrect": false, "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you." },
           {
             "text": "Survival of the fittest.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
-            "text": "Energy follows attention (related, but not the Law of Mentalism).",
+            "text": "Energy follows attention.",
             "isCorrect": false,
-            "rationale": "Related, but not the law."
+            "rationale": "A related truth; this reflection points to the law named in the question."
           }
         ]
       },
@@ -1808,17 +1832,17 @@
           {
             "text": "There is no difference; they are the same thing.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Self Mind is smarter and more logical than Soul Mind.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Soul Mind is for the dead; Self Mind is for the living.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       },
@@ -1832,19 +1856,19 @@
             "rationale": "It reconnects us to the original, perfect state of Spirit."
           },
           {
-            "text": "852 Hz, the frequency used to awaken the Third Eye and intuition.",
+            "text": "852 Hz",
             "isCorrect": false,
-            "rationale": "Third Eye."
+            "rationale": "That sight awakens in another center; this question points to a different gift."
           },
           {
-            "text": "432 Hz, a general healing frequency not specific to the Crown.",
+            "text": "432 Hz.",
             "isCorrect": false,
-            "rationale": "General."
+            "rationale": "A well-known frequency; this question points to the one named in the teaching."
           },
           {
-            "text": "528 Hz, the frequency of miracles used for the Solar Plexus.",
+            "text": "528 Hz",
             "isCorrect": false,
-            "rationale": "Solar."
+            "rationale": "That frequency serves another center; this reflection points to a different tone."
           }
         ]
       },
@@ -1860,17 +1884,17 @@
           {
             "text": "Spelling preference; both spellings mean the same thing.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "It is louder and therefore more powerful when chanted.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "It is whispered to keep the Crown energy subtle and secret.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       },
@@ -1886,17 +1910,17 @@
           {
             "text": "Material security and the right to be here.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "Emotional bonds and romantic love.",
             "isCorrect": false,
-            "rationale": "Heart."
+            "rationale": "A beautiful quality that lives in another center; feel where this reflection leads you."
           },
           {
             "text": "Personal power and achievement.",
             "isCorrect": false,
-            "rationale": "Solar Plexus."
+            "rationale": "That fire burns in another center; this reflection invites a different quality."
           }
         ]
       },
@@ -1912,17 +1936,17 @@
           {
             "text": "Money and scarcity.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "That grounding lives in the body's foundation; this question points to another center."
           },
           {
             "text": "Sex and desire.",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "That flow belongs to another center; your body knows the difference."
           },
           {
             "text": "Power and control.",
             "isCorrect": false,
-            "rationale": "Solar."
+            "rationale": "That frequency serves another center; this reflection points to a different tone."
           }
         ]
       },
@@ -1938,17 +1962,17 @@
           {
             "text": "Builds muscle and strengthens the physical body.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Grounds energy into the earth.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Opens the hips and releases the lower body.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       },
@@ -1964,17 +1988,17 @@
           {
             "text": "Light bulbs or sources of physical light in the room.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "The five senses (sight, sound, touch, taste, smell).",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "The five fingers on each hand (hand mudras).",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       },
@@ -1983,24 +2007,24 @@
         "question": "The Affirmation for Day 7 is:",
         "options": [
           {
-            "text": "I am open, I am free, I am one with all.",
+            "text": "I awaken my inner child - and surround myself with light.",
             "isCorrect": true,
-            "rationale": "It affirms freedom from the illusion of separation."
+            "rationale": "It affirms the Crown's connection to innocence and light."
           },
           {
-            "text": "I am safe. I belong.",
+            "text": "I am, I exist, I belong.",
             "isCorrect": false,
-            "rationale": "Root."
+            "rationale": "A grounding affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I speak my truth.",
+            "text": "I speak with purity, compassion, and truth.",
             "isCorrect": false,
-            "rationale": "Throat."
+            "rationale": "A clear affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I feel. I flow.",
+            "text": "I feel, I flow, I create.",
             "isCorrect": false,
-            "rationale": "Sacral."
+            "rationale": "A beautiful affirmation that belongs to another day; each center has its own voice."
           }
         ]
       },
@@ -2016,17 +2040,17 @@
           {
             "text": "Triangle.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
             "text": "Square (representing earth and grounding).",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           },
           {
-            "text": "Cross (a symbol from other traditions, not Crown geometry).",
+            "text": "Cross.",
             "isCorrect": false,
-            "rationale": "Incorrect."
+            "rationale": "This reflection invites you to feel more deeply; every choice is an invitation to deepen."
           }
         ]
       }

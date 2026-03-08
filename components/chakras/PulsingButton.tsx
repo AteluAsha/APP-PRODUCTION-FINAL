@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from "react"
-import { Dimensions, ImageSourcePropType, Pressable } from "react-native"
+import { Dimensions, ImageSourcePropType, Pressable, Platform } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 
@@ -20,6 +20,7 @@ const PulsingButton = ({
   className,
   small = false,
   smallDivisor,
+  isBottomChakra = false,
 }: {
   source: ImageSourcePropType
   isAnimating: boolean
@@ -28,6 +29,8 @@ const PulsingButton = ({
   small?: boolean
   /** When small is true, use this divisor for size (smaller = larger balls). e.g. 7.8 for lifetime hub. */
   smallDivisor?: number
+  /** When true (e.g. Root at bottom of stack), use larger Android hitSlop for easier tap. */
+  isBottomChakra?: boolean
 }) => {
   const insets = useSafeAreaInsets()
   const screenHeight = Dimensions.get("window").height
@@ -73,14 +76,24 @@ const PulsingButton = ({
     onPress()
   }, [onPress])
 
+  const hitSlop =
+    Platform.OS === "android"
+      ? isBottomChakra
+        ? { top: 36, bottom: 36, left: 36, right: 36 }
+        : { top: 28, bottom: 28, left: 28, right: 28 }
+      : { top: 15, bottom: 15, left: 15, right: 15 }
+
   return (
     <Pressable
       onPress={handlePress}
       className={className}
-      // Larger hit area for easier tapping
-      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-      // Disable press opacity to avoid visual lag
-      android_ripple={null}
+      hitSlop={hitSlop}
+      style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+      android_ripple={
+        Platform.OS === "android"
+          ? { color: "rgba(255, 255, 255, 0.25)", borderless: false }
+          : undefined
+      }
     >
       <Animated.View style={animatedStyle}>
         <Animated.Image

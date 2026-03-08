@@ -193,11 +193,19 @@ export const useAncestralWisdomAudio = (chakra: Chakra) => {
 
         await setCachedAudioUrl(cacheKey, url)
 
+        // Prefer local file if it exists (e.g. downloaded in background)
+        let localUri: string | null = null
+        try {
+          localUri = await getLocalAudioUri(audioId)
+        } catch {
+          // ignore
+        }
+
         if (isMounted) {
           setState({
-            source: { uri: url },
+            source: localUri ? { uri: localUri } : { uri: url },
             url,
-            localUri: null,
+            localUri,
             isLoading: false,
             error: null,
           })

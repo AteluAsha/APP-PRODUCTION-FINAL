@@ -1,7 +1,7 @@
 import React from "react"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
-import { View } from "react-native"
+import { View, Platform } from "react-native"
 
 export const HeaderSection = ({
   headerHeight,
@@ -54,8 +54,8 @@ export const HeaderSection = ({
           font="cormorant-regular"
           style={{
             marginTop: 4,
-            fontSize: 26,
-            lineHeight: 32,
+            fontSize: Platform.OS === "android" ? 28 : 26,
+            lineHeight: Platform.OS === "android" ? 34 : 32,
             fontWeight: "600",
             color: "#ffffff",
             textShadowColor: "rgba(0,0,0,0.75)",
@@ -69,7 +69,7 @@ export const HeaderSection = ({
           font="cormorant-italic"
           style={{
             marginTop: 4,
-            fontSize: 13,
+            fontSize: Platform.OS === "android" ? 15 : 13,
             letterSpacing: 0.3,
             color: "rgba(255,255,255,0.95)",
             textShadowColor: "rgba(0,0,0,0.75)",

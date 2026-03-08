@@ -11,6 +11,7 @@ import { collection, doc, setDoc } from "firebase/firestore"
 import { db } from "./firebase"
 
 const KEY_PENDING_INVITE_REF = "pending_invite_ref"
+const KEY_PENDING_INVITE_START = "pending_invite_start"
 const DEFAULT_ROOM_ID = "global-trial-tribe"
 
 export async function setPendingInviteRef(ref: string): Promise<void> {
@@ -23,6 +24,19 @@ export async function getPendingInviteRef(): Promise<string | null> {
 
 export async function clearPendingInviteRef(): Promise<void> {
   await AsyncStorage.removeItem(KEY_PENDING_INVITE_REF)
+}
+
+/** Store inviter's journey start date (ISO YYYY-MM-DD) from invite link so invitee can sync to same week. */
+export async function setPendingInviteStartDate(startDateISO: string): Promise<void> {
+  await AsyncStorage.setItem(KEY_PENDING_INVITE_START, startDateISO)
+}
+
+export async function getPendingInviteStartDate(): Promise<string | null> {
+  return AsyncStorage.getItem(KEY_PENDING_INVITE_START)
+}
+
+export async function clearPendingInviteStartDate(): Promise<void> {
+  await AsyncStorage.removeItem(KEY_PENDING_INVITE_START)
 }
 
 /**

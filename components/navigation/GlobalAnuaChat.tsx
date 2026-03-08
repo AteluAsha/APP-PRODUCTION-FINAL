@@ -1,41 +1,30 @@
 /**
- * Global Anua Chat - Renders AnuaChatModal from store
+ * Global Anua Chat - Opens Anua as a full-screen route
  *
- * Single instance rendered in root layout. Opened from Notes, Sanctuary,
- * or anywhere via useAnuaChatStore.open({ initialMessage? })
+ * When useAnuaChatStore.open() is called, we navigate to /(chakras)/AnuaChat so the
+ * chat runs in the same view hierarchy (fixes Android Modal touch issues). Entry
+ * points (Notes, Sanctuary, Quiz, etc.) only call open(); this component handles
+ * navigation. Close is handled by the AnuaChat screen (router.back() + close()).
  */
 
-import React, { useCallback } from "react"
+import React, { useEffect, useRef } from "react"
+import { useRouter } from "expo-router"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
-import { AnuaChatModal } from "@/components/social/AnuaChatModal"
-import { getCurrentDayOfWeek } from "@/utils/date"
-import { getChakraName } from "@/constants/chakras/chakraConstants"
-import { stopAnuaAudio } from "@/src/services/elevenlabs"
 
 export const GlobalAnuaChat = () => {
   const isOpen = useAnuaChatStore((s) => s.isOpen)
-  const initialMessage = useAnuaChatStore((s) => s.initialMessage)
-  const isWaitingRoom = useAnuaChatStore((s) => s.isWaitingRoom)
-  const chakraDayOverride = useAnuaChatStore((s) => s.chakraDayOverride)
-  const close = useAnuaChatStore((s) => s.close)
+  const router = useRouter()
+  const hasNavigatedRef = useRef(false)
 
-  const currentDay =
-    chakraDayOverride !== null ? chakraDayOverride : getCurrentDayOfWeek()
-  const chakraName = getChakraName(currentDay)
+  useEffect(() => {
+    if (isOpen && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true
+      router.push("/(chakras)/AnuaChat")
+    }
+    if (!isOpen) {
+      hasNavigatedRef.current = false
+    }
+  }, [isOpen, router])
 
-  const handleClose = useCallback(() => {
-    stopAnuaAudio()
-    close()
-  }, [close])
-
-  return (
-    <AnuaChatModal
-      visible={isOpen}
-      onClose={handleClose}
-      chakraDay={currentDay}
-      chakraName={chakraName}
-      isWaitingRoom={isWaitingRoom}
-      initialMessage={initialMessage}
-    />
-  )
+  return null
 }

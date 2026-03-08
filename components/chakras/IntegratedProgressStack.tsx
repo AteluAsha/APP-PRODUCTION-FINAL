@@ -9,8 +9,9 @@
  * APP_2 (Lifetime) uses ChakraHub instead.
  */
 
-import React from "react"
-import { View, StyleSheet, Image } from "react-native"
+import React, { useState, useEffect } from "react"
+import { View, StyleSheet, Image, Platform, useWindowDimensions } from "react-native"
+import { Ionicons } from "@expo/vector-icons"
 import { tv } from "tailwind-variants"
 import { AppText } from "@/components/AppText"
 import PulsingButton from "@/components/chakras/PulsingButton"
@@ -32,6 +33,8 @@ import {
   getChakraColor,
 } from "@/constants/chakras/chakraConstants"
 import { TRIAL_HOME_ROOT_CHAKRA } from "@/constants/layout"
+import { getTimeRemaining } from "@/utils/date"
+import { formatCountdown } from "@/utils/format"
 
 interface IntegratedProgressStackProps {
   currentDay: number
@@ -124,14 +127,41 @@ export const IntegratedProgressStack = ({
   router,
 }: IntegratedProgressStackProps) => {
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
   // Find current chakra data
   const currentChakraData = chakraData.find(({ day }) => day === currentDay)
 
   // APP_1 (Trial): Root chakra position LOCKED via constants/layout.ts (TRIAL_HOME_ROOT_CHAKRA)
   const bottomPadding = TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING
 
+  // Next-day preview: midnight countdown when there is a tomorrow (currentDay < 6)
+  const [midnightCountdown, setMidnightCountdown] = useState({
+    hours: "00",
+    minutes: "00",
+    seconds: "00",
+  })
+  useEffect(() => {
+    if (currentDay >= 6) return
+    const calculateMidnight = () => {
+      const now = new Date()
+      const tomorrow = new Date(now)
+      tomorrow.setDate(now.getDate() + 1)
+      tomorrow.setHours(0, 0, 0, 0)
+      setMidnightCountdown(formatCountdown(getTimeRemaining(tomorrow)))
+    }
+    calculateMidnight()
+    const interval = setInterval(calculateMidnight, 1000)
+    return () => clearInterval(interval)
+  }, [currentDay])
+
+  // Android: minHeight pins Root chakra to viewport bottom so stack stays lower and centered
   return (
-    <View style={{ flex: 1 }}>
+    <View
+      style={{
+        flex: 1,
+        ...(Platform.OS === "android" && { minHeight: windowHeight }),
+      }}
+    >
       {/* Chakra stack - Root stays at bottom, progressive reveal upward */}
       <View
         style={{
@@ -223,6 +253,9 @@ export const IntegratedProgressStack = ({
                   width: "100%",
                   marginBottom: 2,
                   position: "relative",
+                  ...(Platform.OS === "android" && chakraDay === 0 && {
+                    paddingBottom: 24,
+                  }),
                 }}
               >
                 {/* APP_1 (Trial): Title display logic
@@ -287,20 +320,20 @@ export const IntegratedProgressStack = ({
                   </View>
                 )}
 
-                {/* Teaser title - show next day's title after completing current day */}
+                {/* Teaser title + next-day preview box - after completing current day */}
                 {isTeaserPosition && (
                   <View
                     style={{
                       position: "absolute",
-                      bottom: "100%", // Position above the teaser chakra ball
+                      bottom: "100%",
                       left: 0,
                       right: 0,
                       alignItems: "center",
                       zIndex: 10,
-                      marginBottom: 12, // Space between title and ball
+                      marginBottom: 12,
                     }}
                   >
-                    {/* Teaser title: Cormorant font, full brightness (opacity on container for dimmed effect) */}
+                    {/* Teaser title: Cormorant font (opacity on container for dimmed effect) */}
                     <View
                       style={{
                         flexDirection: "row",
@@ -340,6 +373,35 @@ export const IntegratedProgressStack = ({
                       >
                         {" "}
                         – {getChakraName(chakraDay)} Day
+                      </AppText>
+                    </View>
+                    {/* Soft preview: opens at midnight countdown */}
+                    <View
+                      style={{
+                        marginTop: 10,
+                        paddingVertical: 8,
+                        paddingHorizontal: 14,
+                        borderRadius: 12,
+                        backgroundColor: "rgba(255, 255, 255, 0.08)",
+                        borderWidth: 1,
+                        borderColor: "rgba(255, 255, 255, 0.12)",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.65)" />
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={{
+                          color: "rgba(255,255,255,0.7)",
+                          textShadowColor: "rgba(0, 0, 0, 0.5)",
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 2,
+                        }}
+                      >
+                        Opens at midnight {midnightCountdown.hours}:{midnightCountdown.minutes}:{midnightCountdown.seconds}
                       </AppText>
                     </View>
                   </View>
@@ -397,6 +459,7 @@ export const IntegratedProgressStack = ({
                       chakraDay <= currentDay &&
                       !isTeaserPosition
                     }
+                    isBottomChakra={chakraDay === 0}
                     onPress={() => {
                       // APP_1 (Trial): Accessibility rules
                       // - Can always click current day (day of week)

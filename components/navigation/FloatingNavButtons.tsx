@@ -8,8 +8,15 @@
  * Anua opens Sanctuary (Talk to Anua, Share, Community)
  */
 
-import React, { useState } from "react"
-import { View, Pressable, StyleSheet, Image } from "react-native"
+import React, { useState, useEffect } from "react"
+import {
+  View,
+  Pressable,
+  StyleSheet,
+  Image,
+  Platform,
+  BackHandler,
+} from "react-native"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -27,7 +34,9 @@ import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet"
 import { JourneyNotesView } from "@/components/chakras/JourneyNotesView"
 import { usePillBottomSheetStore } from "@/hooks/usePillBottomSheetStore"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
+import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { CommunityFeaturePreviewModal } from "@/components/chakras/CommunityFeaturePreviewModal"
+import { ANDROID_PRESS_DELAY_MS } from "@/constants/layout"
 
 export const FloatingNavButtons = () => {
   const router = useRouter()
@@ -44,6 +53,17 @@ export const FloatingNavButtons = () => {
   const [previewFeatureType, setPreviewFeatureType] = useState<
     "share" | "halls"
   >("share")
+  const [isNotesSheetOpen, setIsNotesSheetOpen] = useState(false)
+
+  // Escape hatch: Android back button dismisses Notes sheet when open so user is never stuck.
+  useEffect(() => {
+    if (Platform.OS !== "android" || !isNotesSheetOpen) return
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      notesSheetRef.current?.dismiss()
+      return true
+    })
+    return () => sub.remove()
+  }, [isNotesSheetOpen])
 
   // Get lifetime access status - determines positioning and behavior
   const hasLifetimeAccess = useChakraJourneyStore(
@@ -55,9 +75,15 @@ export const FloatingNavButtons = () => {
     (state) => state.isVisible,
   )
   const isMenuOpen = useMenuBarStore((state) => state.isMenuOpen)
+  const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
 
   // APP_2 (Lifetime): Hide FloatingNavButtons - Notes and Anua are in PermanentMenuBar
   if (hasLifetimeAccess) {
+    return null
+  }
+
+  // Goodbye modal open: hide so nav doesn't block modal touches (back, home, open gift)
+  if (isGoodbyeVisible) {
     return null
   }
 
@@ -75,7 +101,9 @@ export const FloatingNavButtons = () => {
   const contextChakraDay =
     getContextChakraDayFromRoute(pathname, segments) ?? currentDay
 
-  // Don't show on certain screens, when pill bottom sheet is open, or when menu is open
+  // Don't show on certain screens, when pill bottom sheet is open, or when menu is open.
+  // Course pages 1-7 ([chakra]: root, sacral, solar, heart, throat, thirdeye, crown) are NOT in
+  // shouldHide – FloatingNavButtons are shown on all chakra day screens.
   // Use both pathname and segments for reliable detection
   // WelcomeScreen is the index route - check segments array for empty or just ['(chakras)']
   const segmentsLength: number = segments.length
@@ -115,6 +143,8 @@ export const FloatingNavButtons = () => {
     segments.includes("DateSelection") ||
     segments.includes("TribeChat") ||
     segments.includes("QuizScreen") ||
+    segments.includes("AnuaChat") ||
+    segments.includes("GiftChakra") ||
     pathname?.includes("/AudioPlayer") ||
     pathname?.includes("/CommitmentGate") ||
     pathname?.includes("/DevPaywall") ||
@@ -126,6 +156,13 @@ export const FloatingNavButtons = () => {
     pathname?.includes("TribeChat") ||
     pathname?.includes("/QuizScreen") ||
     pathname?.includes("QuizScreen") ||
+    pathname?.includes("/AnuaChat") ||
+    pathname?.includes("AnuaChat") ||
+    pathname === "AnuaChat" ||
+    (segments.length > 0 && segments[segments.length - 1] === "AnuaChat") ||
+    pathname?.includes("/GiftChakra") ||
+    pathname?.includes("GiftChakra") ||
+    (segments.length > 0 && segments[segments.length - 1] === "GiftChakra") ||
     isWaitingScreen || // CRITICAL: Hide on waiting screen (root chakras route OR ChakraHome)
     isPillBottomSheetVisible ||
     isMenuOpen ||
@@ -144,9 +181,16 @@ export const FloatingNavButtons = () => {
     notesSheetRef.current?.present()
   }
 
-  // Open Sanctuary (Talk to Anua, Share, Community) - only Waiting Room opens chat directly
+  // Open Sanctuary: on Android go direct to Anua chat (skip modal so touches work). iOS shows modal.
   const handleOpenAnua = () => {
     addHapticFeedback(HapticStrength.Light)
+    if (Platform.OS === "android") {
+      useAnuaChatStore.getState().open({
+        isWaitingRoom: shouldUseLimitedMode,
+        chakraDayOverride: contextChakraDay ?? undefined,
+      })
+      return
+    }
     setIsSanctuaryModalVisible(true)
   }
 
@@ -181,6 +225,7 @@ export const FloatingNavButtons = () => {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel="Notes Along the Way"
             accessibilityHint="Tap to view and add your journey notes"
+            {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
           >
             <Ionicons name="leaf" size={20} color="#87AE73" />
           </Pressable>
@@ -190,6 +235,7 @@ export const FloatingNavButtons = () => {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel="Tribe Chat"
             accessibilityHint="Connect with people you invited to the journey"
+            {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
           >
             <Ionicons
               name="chatbubble-ellipses"
@@ -212,7 +258,12 @@ export const FloatingNavButtons = () => {
           <AppText
             font="instrument-regular"
             size="xs"
-            style={{ color: "#ffffff", marginBottom: 4 }}
+            style={{
+              color: "rgba(255,255,255,0.88)",
+              marginBottom: 4,
+              fontSize: 11,
+              letterSpacing: 0.5,
+            }}
           >
             sanctuary
           </AppText>
@@ -230,6 +281,7 @@ export const FloatingNavButtons = () => {
             }}
             accessibilityLabel="Anua Sanctuary"
             accessibilityHint="Tap to connect with Anua and the community"
+            {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
           >
             <Image
               source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
@@ -291,6 +343,7 @@ export const FloatingNavButtons = () => {
           index={1}
           snapPoints={["50%", "90%"]}
           enablePanDownToClose
+          onChange={(index) => setIsNotesSheetOpen(index >= 0)}
           backdropComponent={(props) => (
             <BottomSheetBackdrop {...props} opacity={0.6} />
           )}
@@ -344,6 +397,7 @@ export const FloatingNavButtons = () => {
           },
         ]}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
       >
         <Ionicons name="leaf" size={20} color="#87AE73" />
       </Pressable>
@@ -361,7 +415,12 @@ export const FloatingNavButtons = () => {
         <AppText
           font="instrument-regular"
           size="xs"
-          className="text-white mb-1"
+          style={{
+            color: "rgba(255,255,255,0.88)",
+            marginBottom: 4,
+            fontSize: 11,
+            letterSpacing: 0.5,
+          }}
         >
           sanctuary
         </AppText>
@@ -377,6 +436,7 @@ export const FloatingNavButtons = () => {
             shadowRadius: 12,
             elevation: 8,
           }}
+          {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
         >
           <Image
             source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
@@ -431,44 +491,45 @@ export const FloatingNavButtons = () => {
         featureType="halls"
       />
 
-      {/* Notes Bottom Sheet - Default 2/3 open, dimmed backdrop */}
-      <BottomSheetModal
-        ref={notesSheetRef}
-        index={1}
-        snapPoints={["50%", "90%"]}
-        enablePanDownToClose
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop {...props} opacity={0.6} />
-        )}
-        backgroundStyle={styles.bottomSheetBackground}
-        handleIndicatorStyle={styles.handleIndicator}
-      >
-        <JourneyNotesView
-          sheetOpenKey={notesSheetOpenKey}
-          contextChakraDay={contextChakraDay}
-          onOpenFullPage={() => {
-            notesSheetRef.current?.dismiss()
-            setTimeout(
-              () =>
-                router.push(
-                  `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
-                ),
-              300,
-            )
-          }}
-          onSendToAnua={(content) => {
-            notesSheetRef.current?.dismiss()
-            setTimeout(
-              () =>
-                useAnuaChatStore.getState().open({ initialMessage: content }),
-              200,
-            )
-          }}
-        />
-      </BottomSheetModal>
-    </>
-  )
-}
+        {/* Notes Bottom Sheet - Default 2/3 open, dimmed backdrop */}
+        <BottomSheetModal
+          ref={notesSheetRef}
+          index={1}
+          snapPoints={["50%", "90%"]}
+          enablePanDownToClose
+          onChange={(index) => setIsNotesSheetOpen(index >= 0)}
+          backdropComponent={(props) => (
+            <BottomSheetBackdrop {...props} opacity={0.6} />
+          )}
+          backgroundStyle={styles.bottomSheetBackground}
+          handleIndicatorStyle={styles.handleIndicator}
+        >
+          <JourneyNotesView
+            sheetOpenKey={notesSheetOpenKey}
+            contextChakraDay={contextChakraDay}
+            onOpenFullPage={() => {
+              notesSheetRef.current?.dismiss()
+              setTimeout(
+                () =>
+                  router.push(
+                    `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
+                  ),
+                300,
+              )
+            }}
+            onSendToAnua={(content) => {
+              notesSheetRef.current?.dismiss()
+              setTimeout(
+                () =>
+                  useAnuaChatStore.getState().open({ initialMessage: content }),
+                200,
+              )
+            }}
+          />
+        </BottomSheetModal>
+      </>
+    )
+  }
 
 const styles = StyleSheet.create({
   button: {

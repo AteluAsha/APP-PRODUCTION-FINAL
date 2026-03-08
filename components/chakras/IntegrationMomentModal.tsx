@@ -4,9 +4,12 @@
  * Full-screen modal shown when the user taps the integration card on a chakra day.
  * Black background, one unique image per day (location/scenic), title in Hero Affirmation style.
  * X close on left for UX consistency. Content sized to fit one phone screen when possible.
+ *
+ * Performance (Android): Shell (background + close button) renders immediately when visible;
+ * heavy content (image + text) is deferred by one frame so the modal feels instant.
  */
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import {
   Modal,
   View,
@@ -14,6 +17,7 @@ import {
   ScrollView,
   useWindowDimensions,
   Image,
+  Platform,
 } from "react-native"
 import {
   SafeAreaView,
@@ -32,6 +36,8 @@ const TITLE_FONT_SIZE = 26
 const TITLE_LINE_HEIGHT = 34
 const BODY_LINE_HEIGHT = 22
 const BODY_FONT_SIZE = 14
+/** Defer content so modal shell paints first (reduces perceived slow load on Android). */
+const CONTENT_DEFER_MS = Platform.OS === "android" ? 48 : 32
 
 export function IntegrationMomentModal({
   visible,
@@ -44,7 +50,17 @@ export function IntegrationMomentModal({
 }) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const insets = useSafeAreaInsets()
-  const content = getIntegrationMomentContent(dayIndex)
+  const [showContent, setShowContent] = useState(false)
+
+  useEffect(() => {
+    if (visible) {
+      const t = setTimeout(() => setShowContent(true), CONTENT_DEFER_MS)
+      return () => clearTimeout(t)
+    }
+    setShowContent(false)
+  }, [visible])
+
+  const content = showContent ? getIntegrationMomentContent(dayIndex) : null
   const chakra = getChakraFromDay(dayIndex)
   const imageSource = chakraContent[chakra]?.locationImage
 
@@ -55,7 +71,7 @@ export function IntegrationMomentModal({
     onClose()
   }
 
-  if (!content) return null
+  if (!visible) return null
 
   const imageMaxHeight = screenHeight * IMAGE_MAX_HEIGHT_RATIO
 
@@ -100,60 +116,70 @@ export function IntegrationMomentModal({
               </Pressable>
             </View>
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{
-                flexGrow: 1,
-                paddingBottom: 24,
-              }}
-            >
-              {imageSource ? (
-                <View
-                  style={{
-                    alignItems: "center",
-                    marginBottom: 16,
-                    maxHeight: imageMaxHeight,
-                  }}
-                >
-                  <Image
-                    source={imageSource}
-                    resizeMode="contain"
+            {showContent && content ? (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{
+                  flexGrow: 1,
+                  paddingBottom: 24,
+                }}
+              >
+                {imageSource ? (
+                  <View
                     style={{
-                      width: screenWidth - CONTENT_PADDING_H * 2,
+                      alignItems: "center",
+                      marginBottom: 16,
                       maxHeight: imageMaxHeight,
                     }}
-                  />
-                </View>
-              ) : null}
+                  >
+                    <View
+                      style={{
+                        width: screenWidth - CONTENT_PADDING_H * 2,
+                        maxHeight: imageMaxHeight,
+                        backgroundColor: "rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <Image
+                        source={imageSource}
+                        resizeMode="contain"
+                        style={{
+                          width: screenWidth - CONTENT_PADDING_H * 2,
+                          maxHeight: imageMaxHeight,
+                        }}
+                      />
+                    </View>
+                  </View>
+                ) : null}
 
-              <AppText
-                font="cormorant-italic"
-                style={{
-                  color: "rgba(255,255,255,0.88)",
-                  fontSize: TITLE_FONT_SIZE,
-                  lineHeight: TITLE_LINE_HEIGHT,
-                  marginBottom: 16,
-                  textAlign: "center",
-                  paddingHorizontal: 8,
-                }}
-              >
-                {content.title}
-              </AppText>
+                <AppText
+                  font="cormorant-italic"
+                  style={{
+                    color: "rgba(255,255,255,0.88)",
+                    fontSize: TITLE_FONT_SIZE,
+                    lineHeight: TITLE_LINE_HEIGHT,
+                    marginBottom: 16,
+                    textAlign: "center",
+                    paddingHorizontal: 8,
+                  }}
+                >
+                  {content.title}
+                </AppText>
 
-              <AppText
-                font="instrument-regular"
-                size="sm"
-                style={{
-                  color: "rgba(255,255,255,0.82)",
-                  fontSize: BODY_FONT_SIZE,
-                  lineHeight: BODY_LINE_HEIGHT,
-                  letterSpacing: 0.15,
-                  paddingHorizontal: 4,
-                }}
-              >
-                {content.body}
-              </AppText>
-            </ScrollView>
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={{
+                    color: "rgba(255,255,255,0.82)",
+                    fontSize: BODY_FONT_SIZE,
+                    lineHeight: BODY_LINE_HEIGHT,
+                    letterSpacing: 0.15,
+                    paddingHorizontal: 4,
+                  }}
+                >
+                  {content.body}
+                </AppText>
+              </ScrollView>
+            ) : null}
           </View>
         </SafeAreaView>
       </View>

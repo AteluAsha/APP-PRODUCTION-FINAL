@@ -110,8 +110,13 @@ export const SocialSanctuaryIcon: React.FC<SocialSanctuaryIconProps> = ({
         <AppText
           font="instrument-regular"
           size="xs"
-          className="text-white mb-1"
-          style={{ textAlign: "right" }}
+          style={{
+            textAlign: "right",
+            color: "rgba(255,255,255,0.88)",
+            marginBottom: 4,
+            fontSize: 11,
+            letterSpacing: 0.5,
+          }}
         >
           sanctuary
         </AppText>

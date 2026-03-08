@@ -21,7 +21,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
 import { LinearGradient } from "expo-linear-gradient"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { ActionBar } from "@/components/ActionBar"
 import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
@@ -179,7 +179,7 @@ export default function NotesAlongTheWay() {
               value={noteText}
               onChangeText={handleTextChange}
               placeholder={`Share your reflections for ${displayDayName}...`}
-              placeholderTextColor="rgba(135, 174, 115, 0.5)"
+              placeholderTextColor="rgba(255, 255, 255, 0.7)"
               multiline
               maxLength={1000}
               style={styles.textInput}
@@ -257,6 +257,7 @@ export default function NotesAlongTheWay() {
           <ScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
+            {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
             contentContainerStyle={styles.scrollContent}
           >
             {Object.entries(notesByDay)
@@ -354,28 +355,29 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     marginBottom: 16,
     gap: 12,
-    minHeight: 100,
+    minHeight: 112,
   },
   inputGradient: {
     flex: 1,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 16,
+    borderWidth: 1,
     borderColor: "rgba(135, 174, 115, 0.3)",
     overflow: "hidden",
   },
   textInput: {
     flex: 1,
     backgroundColor: "transparent",
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     color: "#FFFFFF",
-    minHeight: 100,
+    minHeight: 112,
     maxHeight: 200,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 20,
     fontFamily: "InstrumentRegular",
   },
   addButton: {

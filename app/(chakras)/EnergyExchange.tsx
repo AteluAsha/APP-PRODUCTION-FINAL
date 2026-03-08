@@ -1,5 +1,12 @@
 import React, { useState } from "react"
-import { View, Pressable, ScrollView, Linking, StyleSheet } from "react-native"
+import {
+  View,
+  Pressable,
+  ScrollView,
+  Linking,
+  StyleSheet,
+  Platform,
+} from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"

@@ -24,10 +24,17 @@ export function getAppStoreLink(): string {
   )
 }
 
-/** Generate referral link; optional ref param for future referral system. */
-export function generateReferralLink(referralCode?: string): string {
+/** Generate referral link; optional ref and start (inviter journey start ISO) so invitee can sync to same week. */
+export function generateReferralLink(
+  referralCode?: string,
+  startDateISO?: string,
+): string {
   const baseUrl = "https://soulschool.app/invite"
-  return referralCode ? `${baseUrl}?ref=${referralCode}` : baseUrl
+  if (!referralCode && !startDateISO) return baseUrl
+  const params = new URLSearchParams()
+  if (referralCode) params.set("ref", referralCode)
+  if (startDateISO) params.set("start", startDateISO)
+  return `${baseUrl}?${params.toString()}`
 }
 
 /** Invite copy for modals (single source of truth). */

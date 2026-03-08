@@ -14,6 +14,7 @@ import {
   ScrollView,
   TextInput,
   Pressable,
+  TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -21,6 +22,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   Alert,
+  Dimensions,
 } from "react-native"
 import {
   SafeAreaView,
@@ -44,7 +46,10 @@ import {
   generateDailyTransmission,
   isWisdomEngineAvailable,
 } from "@/src/services/wisdomEngine"
+import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { LinearGradient } from "expo-linear-gradient"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { TOUCH } from "@/constants/layout"
 
 /** Max characters for one Anua message; well under Gemini input token limit. */
 const ANUA_INPUT_MAX_LENGTH = 25000
@@ -133,13 +138,28 @@ interface ChatMessage {
   timestamp: Date
 }
 
-export const AnuaChatModal: React.FC<AnuaChatModalProps> = ({
-  visible,
+/** Props for the shared Anua chat UI (used by both Modal and Route). */
+export interface AnuaChatPageProps {
+  onClose: () => void
+  chakraDay: number
+  chakraName: string
+  isWaitingRoom?: boolean
+  initialMessage?: string | null
+  /** When inside Modal on Android, pass height from Modal onShow; otherwise null. */
+  androidModalHeight?: number | null
+}
+
+/**
+ * Anua chat UI: state, logic, and content. Renders without Modal so it can be used
+ * as a full-screen route (fixes Android touch issues) or inside AnuaChatModal.
+ */
+export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
   onClose,
   chakraDay,
   chakraName,
   isWaitingRoom = false,
   initialMessage = null,
+  androidModalHeight = null,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
@@ -161,36 +181,24 @@ export const AnuaChatModal: React.FC<AnuaChatModalProps> = ({
   const recordingDurationRef = useRef(0)
 
   // Load daily transmission asynchronously (non-blocking) - optional feature
-  // This loads in the background and doesn't block the chat from opening
   useEffect(() => {
-    if (visible) {
-      // Defer loading to not block initial render
-      const timeoutId = setTimeout(() => {
-        // Load in background without blocking UI
-        if (isWisdomEngineAvailable() && !dailyTransmission) {
-          generateDailyTransmission(chakraDay)
-            .then((transmission) => {
-              if (transmission) {
-                setDailyTransmission(transmission)
-              }
-            })
-            .catch((err) => {
-              // Silently fail - daily transmission is optional
-              if (__DEV__) {
-                console.warn(
-                  "Daily transmission loading failed (optional):",
-                  err,
-                )
-              }
-            })
-        }
-      }, 1000) // Delay to ensure chat opens quickly first
-
-      return () => clearTimeout(timeoutId)
-    } else {
+    const timeoutId = setTimeout(() => {
+      if (isWisdomEngineAvailable() && !dailyTransmission) {
+        generateDailyTransmission(chakraDay)
+          .then((transmission) => {
+            if (transmission) setDailyTransmission(transmission)
+          })
+          .catch((err) => {
+            if (__DEV__)
+              console.warn("Daily transmission loading failed (optional):", err)
+          })
+      }
+    }, 1000)
+    return () => {
+      clearTimeout(timeoutId)
       setDailyTransmission(null)
     }
-  }, [visible, chakraDay]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chakraDay]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Core send logic - reusable for manual send and initialMessage
   const sendMessage = useCallback(
@@ -513,86 +521,73 @@ export const AnuaChatModal: React.FC<AnuaChatModalProps> = ({
     }
   }, [sendVoiceMessage])
 
+  // On unmount, stop recording if active
   useEffect(() => {
-    if (!visible && isRecording && recordingRef.current) {
-      recordingRef.current.stopAndUnloadAsync().catch(() => {})
-      recordingRef.current = null
-      setIsRecording(false)
+    return () => {
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {})
+        recordingRef.current = null
+      }
     }
-  }, [visible, isRecording])
+  }, [])
 
-  // Initialize with Anua's greeting when modal opens
+  // Initialize with Anua's greeting on mount
   useEffect(() => {
-    if (visible && messages.length === 0) {
-      initialMessageSentRef.current = false
-      let greetingText: string
+    initialMessageSentRef.current = false
+    let greetingText: string
 
-      if (isWaitingRoom) {
-        // Waiting room: More informative, trial-focused, educational about all chakras
-        const waitingRoomGreetings = [
-          `Hello, beautiful soul. I'm Anua, your guide for this 7-day chakra journey. I'm here to help you prepare and explore before your journey begins.
+    if (isWaitingRoom) {
+      const waitingRoomGreetings = [
+        `Hello, beautiful soul. I'm Anua, your guide for this 7-day chakra journey. I'm here to help you prepare and explore before your journey begins.
 
 The 7 chakras are energy centers that run from your root to your crown, each holding unique wisdom and healing. As you wait, I'd love to understand where you are on this path.
 
 How are you feeling as you prepare for this journey? What do you already know about the chakras, and what draws you to explore them?`,
 
-          `Hello, beautiful soul. I'm Anua, your guide. You're about to embark on a profound 7-day journey through your energy body—from your root foundation to your crown connection.
+        `Hello, beautiful soul. I'm Anua, your guide. You're about to embark on a profound 7-day journey through your energy body—from your root foundation to your crown connection.
 
 Before we begin, I'd love to learn about you. How familiar are you with meditation and breathing work? Have you explored your energy body before? What intentions are you bringing to this journey?`,
 
-          `Hello, beautiful soul. I'm Anua. You're preparing for a sacred journey through all 7 chakras—each one a gateway to deeper awareness and healing.
+        `Hello, beautiful soul. I'm Anua. You're preparing for a sacred journey through all 7 chakras—each one a gateway to deeper awareness and healing.
 
 I'm here to help you prepare. Tell me: What do you know about the relationship between ego and awareness? How do you experience your soul's presence in your daily life? What draws you to this work?`,
 
-          `Hello, beautiful soul. I'm Anua, your guide for this 7-day chakra journey. Each chakra holds ancient wisdom—from the grounding energy of your root to the divine connection of your crown.
+        `Hello, beautiful soul. I'm Anua, your guide for this 7-day chakra journey. Each chakra holds ancient wisdom—from the grounding energy of your root to the divine connection of your crown.
 
 As you prepare, I'd love to understand your starting point. How do you currently connect with your body's energy? Have you worked with meditation, breathwork, or somatic practices? What are you hoping to discover about yourself?`,
+      ]
+      greetingText =
+        waitingRoomGreetings[
+          Math.floor(Math.random() * waitingRoomGreetings.length)
         ]
-
-        greetingText =
-          waitingRoomGreetings[
-            Math.floor(Math.random() * waitingRoomGreetings.length)
-          ]
-      } else {
-        // Regular chat: Wise question (not day-specific)
-        const wiseQuestions = [
-          "What is your heart asking you to remember today?",
-          "What truth is ready to emerge from within you?",
-          "Where in your body do you feel the call to listen more deeply?",
-          "What question has been quietly waiting for you to ask?",
-          "What does your soul want you to know right now?",
-          "Where do you feel the invitation to soften and open?",
-          "What wisdom is your body holding that your mind hasn't yet heard?",
-          "What wants to be felt, not just thought about?",
-        ]
-
-        const randomQuestion =
-          wiseQuestions[Math.floor(Math.random() * wiseQuestions.length)]
-        greetingText = `Hello, beautiful soul. I'm Anua, your guide on this journey. ${randomQuestion}`
-      }
-
-      const greeting: ChatMessage = {
-        id: "greeting",
-        text: greetingText,
-        isUser: false,
-        timestamp: new Date(),
-      }
-      setMessages([greeting])
-
-      // Anua never auto-speaks on launch except: waiting room first open plays course intro once (below).
-    } else if (!visible) {
-      setMessages([])
-      setInputText("")
-      setError(null)
-      initialMessageSentRef.current = false
-      waitingRoomCourseIntroStartedRef.current = false
+    } else {
+      const wiseQuestions = [
+        "What is your heart asking you to remember today?",
+        "What truth is ready to emerge from within you?",
+        "Where in your body do you feel the call to listen more deeply?",
+        "What question has been quietly waiting for you to ask?",
+        "What does your soul want you to know right now?",
+        "Where do you feel the invitation to soften and open?",
+        "What wisdom is your body holding that your mind hasn't yet heard?",
+        "What wants to be felt, not just thought about?",
+      ]
+      const randomQuestion =
+        wiseQuestions[Math.floor(Math.random() * wiseQuestions.length)]
+      greetingText = `Hello, beautiful soul. I'm Anua, your guide on this journey. ${randomQuestion}`
     }
-  }, [visible, isWaitingRoom, initialMessage])
 
-  // Course intro: only when opening Anua from waiting room, and only the first time ever (persisted).
+    const greeting: ChatMessage = {
+      id: "greeting",
+      text: greetingText,
+      isUser: false,
+      timestamp: new Date(),
+    }
+    setMessages([greeting])
+  }, [isWaitingRoom])
+
+  // Course intro: only when in waiting room, and only the first time ever (persisted).
   useEffect(() => {
-    if (!visible || !isWaitingRoom || waitingRoomCourseIntroStartedRef.current)
-      return
+    if (!isWaitingRoom || waitingRoomCourseIntroStartedRef.current) return
     waitingRoomCourseIntroStartedRef.current = true
     let cancelled = false
     AsyncStorage.getItem(HAS_PLAYED_WAITING_ROOM_COURSE_INTRO_KEY).then(
@@ -618,22 +613,20 @@ As you prepare, I'd love to understand your starting point. How do you currently
     return () => {
       cancelled = true
     }
-  }, [visible, isWaitingRoom])
+  }, [isWaitingRoom])
 
   // Auto-send initialMessage (e.g. from Notes "Send thought to Anua") - runs after greeting
   useEffect(() => {
     if (
-      !visible ||
       !initialMessage?.trim() ||
       initialMessageSentRef.current ||
-      isLoading
+      isLoading ||
+      messages.length < 1
     )
       return
-    if (messages.length < 1) return // Wait for greeting
-
     initialMessageSentRef.current = true
     sendMessage(initialMessage)
-  }, [visible, initialMessage, messages.length, isLoading, sendMessage])
+  }, [initialMessage, messages.length, isLoading, sendMessage])
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -652,15 +645,42 @@ As you prepare, I'd love to understand your starting point. How do you currently
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-      statusBarTranslucent={false}
+  const errorFallbackPage = (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: "#000",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 20,
+      }}
     >
-      <SafeAreaProvider>
+      <AppText
+        font="instrument-regular"
+        size="base"
+        style={{ color: "rgba(255,255,255,0.9)", textAlign: "center", marginBottom: 16 }}
+      >
+        Something went wrong
+      </AppText>
+      <Pressable
+        onPress={onClose}
+        style={{
+          backgroundColor: "rgba(135, 174, 115, 0.4)",
+          paddingHorizontal: 24,
+          paddingVertical: 12,
+          borderRadius: 8,
+        }}
+      >
+        <AppText font="instrument-medium" size="base" style={{ color: "#fff" }}>
+          Close
+        </AppText>
+      </Pressable>
+    </View>
+  )
+
+  return (
+    <SafeAreaProvider style={{ flex: 1 }} pointerEvents="box-none">
+      <ErrorBoundary fallback={errorFallbackPage}>
         <AnuaChatContent
           onClose={onClose}
           useVoice={useVoice}
@@ -678,8 +698,154 @@ As you prepare, I'd love to understand your starting point. How do you currently
           isRecording={isRecording}
           onStartRecording={startRecording}
           onStopRecordingAndSend={stopRecordingAndSend}
+          androidModalHeight={androidModalHeight}
         />
-      </SafeAreaProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
+  )
+}
+
+export const AnuaChatModal: React.FC<AnuaChatModalProps> = ({
+  visible,
+  onClose,
+  chakraDay,
+  chakraName,
+  isWaitingRoom = false,
+  initialMessage = null,
+}) => {
+  const [contentReady, setContentReady] = useState(false)
+  const [androidModalHeight, setAndroidModalHeight] = useState<number | null>(null)
+  const fallbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!visible) {
+      setContentReady(false)
+      setAndroidModalHeight(null)
+      if (fallbackTimeoutRef.current != null) {
+        clearTimeout(fallbackTimeoutRef.current)
+        fallbackTimeoutRef.current = null
+      }
+      return
+    }
+    if (Platform.OS === "ios") {
+      setContentReady(true)
+      return
+    }
+    fallbackTimeoutRef.current = setTimeout(() => {
+      fallbackTimeoutRef.current = null
+      setContentReady(true)
+    }, 600)
+    return () => {
+      if (fallbackTimeoutRef.current != null) {
+        clearTimeout(fallbackTimeoutRef.current)
+        fallbackTimeoutRef.current = null
+      }
+    }
+  }, [visible])
+
+  const errorFallback = (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: "#000",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 20,
+      }}
+    >
+      <AppText
+        font="instrument-regular"
+        size="base"
+        style={{ color: "rgba(255,255,255,0.9)", textAlign: "center", marginBottom: 16 }}
+      >
+        Something went wrong
+      </AppText>
+      <Pressable
+        onPress={onClose}
+        style={{
+          backgroundColor: "rgba(135, 174, 115, 0.4)",
+          paddingHorizontal: 24,
+          paddingVertical: 12,
+          borderRadius: 8,
+        }}
+      >
+        <AppText font="instrument-medium" size="base" style={{ color: "#fff" }}>
+          Close
+        </AppText>
+      </Pressable>
+    </View>
+  )
+
+  const windowDimensions = Dimensions.get("window")
+  const showContent = Platform.OS !== "android" || contentReady
+
+  return (
+    <Modal
+      visible={visible}
+      animationType={Platform.OS === "android" ? "fade" : "slide"}
+      presentationStyle={Platform.OS === "android" ? "fullScreen" : "pageSheet"}
+      onRequestClose={onClose}
+      onShow={() => {
+        if (Platform.OS === "android") {
+          if (fallbackTimeoutRef.current != null) {
+            clearTimeout(fallbackTimeoutRef.current)
+            fallbackTimeoutRef.current = null
+          }
+          setContentReady(true)
+          setAndroidModalHeight(Dimensions.get("window").height)
+        }
+      }}
+      statusBarTranslucent={Platform.OS === "android"}
+    >
+      <GestureHandlerRootView
+        style={[
+          { flex: 1, backgroundColor: "#000" },
+          Platform.OS === "android" && {
+            width: windowDimensions.width,
+            height: windowDimensions.height,
+            minWidth: windowDimensions.width,
+            minHeight: windowDimensions.height,
+            position: "absolute",
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+          },
+        ]}
+        {...(Platform.OS === "android" && { unstable_forceActive: true })}
+      >
+        <View
+          pointerEvents="box-none"
+          style={{ flex: 1 }}
+          collapsable={false}
+        >
+          <SafeAreaProvider style={{ flex: 1 }} pointerEvents="box-none">
+            <ErrorBoundary fallback={errorFallback}>
+              {showContent ? (
+                <AnuaChatPage
+                  onClose={onClose}
+                  chakraDay={chakraDay}
+                  chakraName={chakraName}
+                  isWaitingRoom={isWaitingRoom}
+                  initialMessage={initialMessage}
+                  androidModalHeight={androidModalHeight}
+                />
+              ) : (
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#000",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <ActivityIndicator size="large" color="rgba(135, 174, 115, 0.8)" />
+                </View>
+              )}
+            </ErrorBoundary>
+          </SafeAreaProvider>
+        </View>
+      </GestureHandlerRootView>
     </Modal>
   )
 }
@@ -702,6 +868,8 @@ const AnuaChatContent: React.FC<{
   isRecording: boolean
   onStartRecording: () => void
   onStopRecordingAndSend: () => void
+  /** On Android, set from Modal onShow so scroll area gets known-good height (forces re-layout). */
+  androidModalHeight?: number | null
 }> = ({
   onClose,
   useVoice,
@@ -719,16 +887,22 @@ const AnuaChatContent: React.FC<{
   isRecording,
   onStartRecording,
   onStopRecordingAndSend,
+  androidModalHeight,
 }) => {
   const { height: windowHeight } = useWindowDimensions()
   const insets = useSafeAreaInsets()
+  // On Android inside Modal, use known-good height from onShow when available; else Dimensions.get("window") so scroll area has valid height.
+  const effectiveHeight =
+    Platform.OS === "android"
+      ? (androidModalHeight ?? Dimensions.get("window").height)
+      : (windowHeight ?? Dimensions.get("window").height)
   // Min height so scroll content fills the viewport and messages anchor at bottom (like Tribe Chat)
   const headerH = 88
   const voiceToggleH = isElevenLabsAvailable() ? 52 : 0
   const inputRowH = 100
   const scrollMinHeight = Math.max(
     200,
-    windowHeight -
+    (effectiveHeight ?? 0) -
       insets.top -
       insets.bottom -
       headerH -
@@ -742,28 +916,68 @@ const AnuaChatContent: React.FC<{
       edges={["top", "bottom"]}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        {/* Header */}
+        {/* Black top-fill to eliminate grey safe-area artifact (e.g. Android) */}
         <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top,
+            backgroundColor: "#000000",
+            zIndex: 0,
+            ...(Platform.OS === "android" && { elevation: 0 }),
+          }}
+          pointerEvents="none"
+        />
+        {/* Header: left side only; close button is in its own top-most layer below. */}
+        <View
+          pointerEvents={Platform.OS === "android" ? "box-none" : "box-none"}
+          collapsable={Platform.OS !== "android"}
           style={{
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
             paddingHorizontal: 24,
             paddingVertical: 16,
             borderBottomWidth: 1,
             borderBottomColor: "#1f2937",
+            ...(Platform.OS === "android" && {
+              zIndex: 10,
+              elevation: 10,
+              backgroundColor: "#000000",
+            }),
           }}
         >
-          <View style={{ flex: 1, flexDirection: "row", alignItems: "center" }}>
-            <Image
-              source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
-              resizeMode="contain"
-              style={{ width: 48, height: 48, marginRight: 12 }}
-            />
+          <View
+            style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
+            pointerEvents={Platform.OS === "android" ? "none" : "box-none"}
+            {...(Platform.OS === "android" && {
+              focusable: false,
+              importantForAccessibility: "no-hide-descendants" as const,
+            })}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                marginRight: 12,
+                backgroundColor: "transparent",
+              }}
+              {...(Platform.OS === "android" && {
+                focusable: false,
+                importantForAccessibility: "no" as const,
+              })}
+            >
+              <Image
+                source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
+                resizeMode="contain"
+                style={{ width: 48, height: 48, backgroundColor: "transparent" }}
+              />
+            </View>
             <View style={{ flex: 1 }}>
               <AppText
                 font="instrument-bold"
@@ -778,10 +992,38 @@ const AnuaChatContent: React.FC<{
                 style={{ color: "#9ca3af", marginTop: 4 }}
               >
                 Your guide for the journey
+                {__DEV__ && Platform.OS === "android" ? " · Android" : ""}
               </AppText>
             </View>
           </View>
-          <Pressable onPress={onClose} style={{ padding: 8 }}>
+        </View>
+
+        {/* Close button: dedicated top-most layer so it always receives touches (Android). */}
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            top: insets.top,
+            right: 16,
+            zIndex: 9999,
+            ...(Platform.OS === "android" && { elevation: 9999 }),
+          }}
+        >
+          <Pressable
+            onPress={onClose}
+            style={{
+              padding: 8,
+              ...(Platform.OS === "android" && {
+                minWidth: 48,
+                minHeight: 48,
+                justifyContent: "center",
+                alignItems: "center",
+              }),
+            }}
+            hitSlop={TOUCH.hitSlop}
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+          >
             <Ionicons name="close" size={28} color="white" />
           </Pressable>
         </View>
@@ -796,43 +1038,81 @@ const AnuaChatContent: React.FC<{
               borderBottomColor: "#1f2937",
             }}
           >
-            <Pressable
-              onPress={() => setUseVoice(!useVoice)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Ionicons
-                  name={useVoice ? "volume-high" : "chatbubble-outline"}
-                  size={20}
-                  color={useVoice ? "#9333ea" : "#6b7280"}
-                />
+            {Platform.OS === "android" ? (
+              <TouchableOpacity
+                onPress={() => setUseVoice(!useVoice)}
+                hitSlop={TOUCH.hitSlop}
+                activeOpacity={TOUCH.activeOpacity}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons
+                    name={useVoice ? "volume-high" : "chatbubble-outline"}
+                    size={20}
+                    color={useVoice ? "#9333ea" : "#6b7280"}
+                  />
+                  <AppText
+                    font="instrument-regular"
+                    size="sm"
+                    style={{ color: "#9ca3af", marginLeft: 8 }}
+                  >
+                    {useVoice ? "Voice mode" : "Text only"}
+                  </AppText>
+                </View>
                 <AppText
                   font="instrument-regular"
-                  size="sm"
-                  style={{ color: "#9ca3af", marginLeft: 8 }}
+                  size="xs"
+                  style={{ color: "#6b7280" }}
                 >
-                  {useVoice ? "Voice mode" : "Text only"}
+                  Tap to switch
                 </AppText>
-              </View>
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                style={{ color: "#6b7280" }}
+              </TouchableOpacity>
+            ) : (
+              <Pressable
+                onPress={() => setUseVoice(!useVoice)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
               >
-                Tap to switch
-              </AppText>
-            </Pressable>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons
+                    name={useVoice ? "volume-high" : "chatbubble-outline"}
+                    size={20}
+                    color={useVoice ? "#9333ea" : "#6b7280"}
+                  />
+                  <AppText
+                    font="instrument-regular"
+                    size="sm"
+                    style={{ color: "#9ca3af", marginLeft: 8 }}
+                  >
+                    {useVoice ? "Voice mode" : "Text only"}
+                  </AppText>
+                </View>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{ color: "#6b7280" }}
+                >
+                  Tap to switch
+                </AppText>
+              </Pressable>
+            )}
           </View>
         )}
 
-        {/* Messages: Chat starts at bottom above input (like Tribe Chat); quote at top; scroll up for older */}
+        {/* Messages: Chat starts at bottom above input (like Tribe Chat); quote at top; scroll up for older. Android: zIndex/elevation 0 so header stays on top for touch. */}
         <ScrollView
           ref={scrollViewRef as React.RefObject<ScrollView>}
-          style={{ flex: 1 }}
+          style={{
+            flex: 1,
+            ...(Platform.OS === "android" && { zIndex: 0, elevation: 0 }),
+          }}
           contentContainerStyle={{
             flexGrow: 1,
             minHeight: scrollMinHeight,
@@ -1094,52 +1374,108 @@ const AnuaChatContent: React.FC<{
             selectTextOnFocus={false}
             contextMenuHidden
           />
-          <Pressable
-            onPress={isRecording ? onStopRecordingAndSend : onStartRecording}
-            disabled={isLoading}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: isRecording
-                ? "rgba(220, 38, 38, 0.4)"
-                : "rgba(135, 174, 115, 0.2)",
-              borderWidth: 1,
-              borderColor: isRecording
-                ? "rgba(220, 38, 38, 0.6)"
-                : "rgba(135, 174, 115, 0.4)",
-              justifyContent: "center",
-              alignItems: "center",
-              opacity: isLoading ? 0.5 : 1,
-            }}
-          >
-            {isRecording ? (
-              <Ionicons name="stop" size={20} color="rgba(255,255,255,0.95)" />
-            ) : (
-              <Ionicons name="mic" size={20} color="rgba(255,255,255,0.95)" />
-            )}
-          </Pressable>
-          <Pressable
-            onPress={handleSend}
-            disabled={!inputText.trim() || isLoading}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: "rgba(135, 174, 115, 0.25)",
-              borderWidth: 1,
-              borderColor: "rgba(135, 174, 115, 0.5)",
-              justifyContent: "center",
-              alignItems: "center",
-              opacity: !inputText.trim() || isLoading ? 0.5 : 1,
-            }}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="rgba(255,255,255,0.95)" />
-            ) : (
-              <Ionicons name="send" size={20} color="rgba(255,255,255,0.95)" />
-            )}
-          </Pressable>
+          {Platform.OS === "android" ? (
+            <TouchableOpacity
+              onPress={isRecording ? onStopRecordingAndSend : onStartRecording}
+              disabled={isLoading}
+              hitSlop={TOUCH.hitSlop}
+              activeOpacity={TOUCH.activeOpacity}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: isRecording
+                  ? "rgba(220, 38, 38, 0.4)"
+                  : "rgba(135, 174, 115, 0.2)",
+                borderWidth: 1,
+                borderColor: isRecording
+                  ? "rgba(220, 38, 38, 0.6)"
+                  : "rgba(135, 174, 115, 0.4)",
+                justifyContent: "center",
+                alignItems: "center",
+                opacity: isLoading ? 0.5 : 1,
+              }}
+            >
+              {isRecording ? (
+                <Ionicons name="stop" size={20} color="rgba(255,255,255,0.95)" />
+              ) : (
+                <Ionicons name="mic" size={20} color="rgba(255,255,255,0.95)" />
+              )}
+            </TouchableOpacity>
+          ) : (
+            <Pressable
+              onPress={isRecording ? onStopRecordingAndSend : onStartRecording}
+              disabled={isLoading}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: isRecording
+                  ? "rgba(220, 38, 38, 0.4)"
+                  : "rgba(135, 174, 115, 0.2)",
+                borderWidth: 1,
+                borderColor: isRecording
+                  ? "rgba(220, 38, 38, 0.6)"
+                  : "rgba(135, 174, 115, 0.4)",
+                justifyContent: "center",
+                alignItems: "center",
+                opacity: isLoading ? 0.5 : 1,
+              }}
+            >
+              {isRecording ? (
+                <Ionicons name="stop" size={20} color="rgba(255,255,255,0.95)" />
+              ) : (
+                <Ionicons name="mic" size={20} color="rgba(255,255,255,0.95)" />
+              )}
+            </Pressable>
+          )}
+          {Platform.OS === "android" ? (
+            <TouchableOpacity
+              onPress={handleSend}
+              disabled={!inputText.trim() || isLoading}
+              hitSlop={TOUCH.hitSlop}
+              activeOpacity={TOUCH.activeOpacity}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: "rgba(135, 174, 115, 0.25)",
+                borderWidth: 1,
+                borderColor: "rgba(135, 174, 115, 0.5)",
+                justifyContent: "center",
+                alignItems: "center",
+                opacity: !inputText.trim() || isLoading ? 0.5 : 1,
+              }}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="rgba(255,255,255,0.95)" />
+              ) : (
+                <Ionicons name="send" size={20} color="rgba(255,255,255,0.95)" />
+              )}
+            </TouchableOpacity>
+          ) : (
+            <Pressable
+              onPress={handleSend}
+              disabled={!inputText.trim() || isLoading}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: "rgba(135, 174, 115, 0.25)",
+                borderWidth: 1,
+                borderColor: "rgba(135, 174, 115, 0.5)",
+                justifyContent: "center",
+                alignItems: "center",
+                opacity: !inputText.trim() || isLoading ? 0.5 : 1,
+              }}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="rgba(255,255,255,0.95)" />
+              ) : (
+                <Ionicons name="send" size={20} color="rgba(255,255,255,0.95)" />
+              )}
+            </Pressable>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

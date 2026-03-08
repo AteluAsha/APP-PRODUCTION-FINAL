@@ -8,7 +8,14 @@
  */
 
 import React, { useMemo, useState, useCallback } from "react"
-import { View, Image, ScrollView, Pressable } from "react-native"
+import {
+  View,
+  Image,
+  ScrollView,
+  Pressable,
+  Platform,
+  Modal,
+} from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { AppText } from "@/components/AppText"
@@ -20,7 +27,10 @@ import { formatDate, getLocalDateISO, getNextMondayDate } from "@/utils/date"
 import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { getChakraName } from "@/constants/chakras/chakraConstants"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import {
+  SCROLL_BREATHING_BOTTOM_PADDING,
+  SCROLL_ANDROID_SMOOTH_PROPS,
+} from "@/constants/layout"
 import { DAY_NAMES, CHAKRA_NAMES } from "@/constants/chakras/chakraConstants"
 import {
   scheduleJourneyReminders,
@@ -56,6 +66,7 @@ export default function DateSelectionScreen() {
   const [selectedDateISO, setSelectedDateISO] = useState<string | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showPickDateReminder, setShowPickDateReminder] = useState(false)
 
   const { setFirstLaunchComplete } = useFirstLaunchStore()
   const {
@@ -104,13 +115,15 @@ export default function DateSelectionScreen() {
   }, [])
 
   // Begin Your Journey: three doors for trial users (Lifetime does not use these—they go WelcomeScreen → ChakraHub).
-  // Door 1 – Fresh (Trial 1): completedTrialCourses === 0 → ChakraHome → Waiting room, then main home.
-  // Door 2 – Trial 2 begins: completedTrialCourses === 1 → ChakraHome → Waiting room (or main home if start date reached).
-  // Door 3 – Both trials end: completedTrialCourses >= 2 → SimpleGraceTransition → Continue → ChakraHome (paywall) → ChakraHub after purchase.
-  // Use completedTrialCourses (canonical), not trialHistory.length.
+  // If no start date has been confirmed, show reminder to choose a Monday (Android & iOS).
   const handleBeginJourney = useCallback(() => {
     addHapticFeedback(HapticStrength.Medium)
     const state = useChakraJourneyStore.getState()
+    if (!state.courseStartDate) {
+      setShowPickDateReminder(true)
+      return
+    }
+
     const bothTrialsActuallyCompleted =
       !state.hasLifetimeAccess && state.completedTrialCourses >= 2
 
@@ -119,7 +132,6 @@ export default function DateSelectionScreen() {
       setFirstLaunchComplete()
     }
 
-    // Lifetime: mark course mode so ChakraHome shows waiting room / trial root instead of redirecting to ChakraHub
     if (state.hasLifetimeAccess) {
       state.setLifetimeChosenTimegateJourney(true)
     }
@@ -150,29 +162,14 @@ export default function DateSelectionScreen() {
     >
       <View
         style={{ width: "100%", flex: 1, maxWidth: 512, alignSelf: "center" }}
+        pointerEvents="box-none"
       >
-        {/* Back button - top left */}
-        <Pressable
-          onPress={handleBack}
-          style={{
-            position: "absolute",
-            top: 48,
-            left: 24,
-            zIndex: 10,
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: "rgba(255,255,255,0.05)",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ionicons name="arrow-back" size={20} color="#ffffff" />
-        </Pressable>
+        {/* ScrollView first so back button overlay receives touches on Android */}
 
         <ScrollView
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
+          {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
           contentContainerStyle={{
             paddingHorizontal: 24,
             paddingTop: 80,
@@ -340,33 +337,51 @@ export default function DateSelectionScreen() {
               elevation: 4,
             }}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons
-                name="heart"
-                size={18}
-                color="rgba(135, 174, 115, 1)"
-                style={{ marginRight: 10 }}
-              />
-              <AppText
-                font="instrument-medium"
-                size="sm"
+            <View style={{ width: "100%", alignItems: "center" }}>
+              <View
                 style={{
-                  textAlign: "center",
-                  color: "rgba(135, 174, 115, 1)",
-                  flex: 0,
+                  flexDirection: "row",
+                  alignItems: "center",
                 }}
               >
-                Invite a friend to join your journey
-              </AppText>
+                <Ionicons
+                  name="heart"
+                  size={18}
+                  color="rgba(135, 174, 115, 1)"
+                  style={{ marginRight: 10 }}
+                />
+                <AppText
+                  font="instrument-medium"
+                  size="sm"
+                  style={{
+                    color: "rgba(135, 174, 115, 1)",
+                  }}
+                >
+                  Invite a friend to join your journey
+                </AppText>
+              </View>
             </View>
           </Pressable>
         </ScrollView>
+
+        {/* Back button overlay after ScrollView so it receives touches on Android */}
+        <Pressable
+          onPress={handleBack}
+          style={{
+            position: "absolute",
+            top: 48,
+            left: 24,
+            zIndex: 10,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: "rgba(255,255,255,0.05)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="arrow-back" size={20} color="#ffffff" />
+        </Pressable>
 
         {/* Fixed Footer with Begin button */}
         <View
@@ -433,6 +448,87 @@ export default function DateSelectionScreen() {
         onClose={() => setShowInviteModal(false)}
         startDate={displayStartDate}
       />
+
+      {/* Reminder when tapping Begin without having chosen a start date (Android & iOS) */}
+      <Modal
+        visible={showPickDateReminder}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPickDateReminder(false)}
+        statusBarTranslucent
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.85)",
+            paddingHorizontal: 24,
+          }}
+          onPress={() => setShowPickDateReminder(false)}
+        >
+          <Pressable
+            style={{
+              width: "100%",
+              maxWidth: 320,
+              padding: 24,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "rgba(135, 174, 115, 0.4)",
+              backgroundColor: "rgba(20, 20, 20, 0.98)",
+              alignItems: "center",
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <AppText
+              font="instrument-bold"
+              size="lg"
+              style={{
+                color: "#ffffff",
+                marginBottom: 16,
+                textAlign: "center",
+              }}
+            >
+              Choose a Monday to begin
+            </AppText>
+            <AppText
+              font="instrument-regular"
+              size="sm"
+              style={{
+                color: "rgba(255,255,255,0.88)",
+                textAlign: "center",
+                lineHeight: 22,
+                marginBottom: 24,
+              }}
+            >
+              This course aligns with the 7 days of the week for somatic alchemy.
+              Please choose a Monday on which to begin, then continue on the path.
+            </AppText>
+            <Pressable
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Light)
+                setShowPickDateReminder(false)
+              }}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 12,
+                backgroundColor: "rgba(135, 174, 115, 0.35)",
+                borderWidth: 1,
+                borderColor: "rgba(135, 174, 115, 0.6)",
+              }}
+            >
+              <AppText
+                font="instrument-medium"
+                size="sm"
+                style={{ color: "#ffffff" }}
+              >
+                OK
+              </AppText>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   )
 }

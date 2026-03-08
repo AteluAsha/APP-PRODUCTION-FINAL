@@ -18,7 +18,8 @@
  */
 
 import React from "react"
-import { View, Image, Pressable, ScrollView, Platform } from "react-native"
+import { View, Image, Pressable, Platform } from "react-native"
+import { ScrollView } from "react-native-gesture-handler"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -29,7 +30,10 @@ import {
 } from "@/utils/date"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { formatCountdown } from "@/utils/format"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import {
+  SCROLL_BREATHING_BOTTOM_PADDING,
+  SCROLL_ANDROID_SMOOTH_PROPS,
+} from "@/constants/layout"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import Animated, {
@@ -170,18 +174,25 @@ export const WaitingScreen = ({
     setShowCommunicationModal(false)
   }
 
-  // Auto-start preload of first ~3 min of all audio when user reaches waiting room (once per device)
+  // Auto-start preload when user reaches waiting room (once per device): heads first (fast), then full files in background for bulletproof playback once past waiting room.
+  // Set guard only when we're about to start heads so dev-bypass before preload starts leaves guard unset and ChakraHome can run preload.
   useEffect(() => {
     let cancelled = false
     getAudioPreloadStarted().then((alreadyStarted) => {
       if (cancelled || alreadyStarted) return
-      setAudioPreloadStarted().then(() => {
-        import("@/src/utils/audioPreloadManifest").then(
-          ({ preloadAllAudioHeads }) => {
-            if (!cancelled) preloadAllAudioHeads(storage).catch(() => {})
-          },
-        )
-      })
+      import("@/src/utils/audioPreloadManifest").then(
+        ({ preloadAllAudioHeads, preloadAllAudioFullFiles }) => {
+          if (cancelled) return
+          setAudioPreloadStarted().then(() => {
+            if (cancelled) return
+            preloadAllAudioHeads(storage)
+              .then(() => {
+                if (!cancelled) return preloadAllAudioFullFiles(storage)
+              })
+              .catch(() => {})
+          })
+        },
+      )
     })
     return () => {
       cancelled = true
@@ -260,403 +271,8 @@ export const WaitingScreen = ({
   // Ask a Friend: Below For Deepest Embodiment
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      {/* Back Button - Clean arrow only, no background or circles - MUST be above ScrollView */}
-      <Pressable
-        onPress={handleBackToDateSelection}
-        style={{
-          position: "absolute",
-          top: Math.max(insets.top, 16) + 8,
-          left: 16,
-          zIndex: 10002,
-          padding: 8,
-          backgroundColor: "transparent",
-        }}
-        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-        accessibilityLabel="Back"
-        accessibilityHint="Return to date selection"
-      >
-        <Ionicons name="arrow-back" size={24} color="rgba(255, 255, 255, 1)" />
-      </Pressable>
-
-      {/* Exit course mode button - Lifetime only, fixed at bottom of screen */}
-      {hasLifetimeAccess && onExitCourseMode && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            paddingBottom: Math.max(insets.bottom, 16) + 8,
-            paddingHorizontal: 24,
-            alignItems: "center",
-            zIndex: 10001,
-          }}
-        >
-          <Pressable
-            onPress={() => {
-              addHapticFeedback(HapticStrength.Medium)
-              onExitCourseMode()
-            }}
-            style={{
-              borderRadius: 12,
-              overflow: "hidden",
-              shadowColor: "#2a2520",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.4,
-              shadowRadius: 6,
-              elevation: 4,
-            }}
-          >
-            <LinearGradient
-              colors={[
-                "rgba(194, 178, 128, 0.35)",
-                "rgba(168, 154, 110, 0.28)",
-                "rgba(139, 126, 90, 0.35)",
-              ]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 20,
-                borderWidth: 1,
-                borderColor: "rgba(194, 178, 128, 0.5)",
-                borderRadius: 12,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <LinearGradient
-                colors={[
-                  "rgba(255, 255, 255, 0.12)",
-                  "rgba(255, 255, 255, 0.02)",
-                  "transparent",
-                ]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: "50%",
-                  borderTopLeftRadius: 12,
-                  borderTopRightRadius: 12,
-                }}
-              />
-              <AppText
-                font="instrument-medium"
-                size="sm"
-                style={{
-                  color: "rgba(255,255,255,0.95)",
-                  textAlign: "center",
-                  letterSpacing: 0.3,
-                }}
-              >
-                Exit course mode
-              </AppText>
-            </LinearGradient>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Trial: fixed bottom block - Deepest Embodiment + Build Your Tribe + icon bar. When user has friends (future), show Tribe Chat instead. */}
-      {!hasLifetimeAccess && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            paddingBottom: Math.max(insets.bottom, 4) + 20,
-            zIndex: 10001,
-          }}
-        >
-          {/* Deepest Embodiment + Build Your Tribe - compact, slightly narrower/smaller */}
-          <View style={{ paddingHorizontal: 28, paddingBottom: 16 }}>
-            <View
-              style={{
-                width: "100%",
-                borderRadius: 8,
-                paddingVertical: 8,
-                paddingHorizontal: 10,
-                backgroundColor: "rgba(0, 0, 0, 0.4)",
-                borderWidth: 1,
-                borderColor: "rgba(6, 182, 212, 0.5)",
-                shadowColor: "rgba(6, 182, 212, 0.2)",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.4,
-                shadowRadius: 6,
-                marginBottom: 12,
-              }}
-            >
-              <View
-                style={{ alignItems: "center", width: "100%", minWidth: 0 }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 3,
-                  }}
-                >
-                  <Ionicons
-                    name="headset"
-                    size={14}
-                    color="rgba(6, 182, 212, 0.8)"
-                    style={{ marginRight: 4 }}
-                  />
-                  <AppText
-                    font="instrument-medium"
-                    size="xs"
-                    style={{
-                      color: "rgba(255,255,255,0.9)",
-                      textAlign: "center",
-                    }}
-                  >
-                    For Deepest Embodiment
-                  </AppText>
-                </View>
-                <AppText
-                  font="instrument-regular"
-                  size="xs"
-                  style={{
-                    color: "rgba(255,255,255,0.85)",
-                    lineHeight: 18,
-                    fontStyle: "italic",
-                    textAlign: "center",
-                  }}
-                >
-                  This course is designed for somatic gnosis that works best when
-                  you awaken 1 hour before your day and sit with your earphones
-                  and remove all distractions.
-                </AppText>
-              </View>
-            </View>
-            {courseStartDate && (
-              <>
-                <Pressable
-                  onPress={handleInviteFriend}
-                  style={{
-                    marginBottom: 12,
-                    borderRadius: 8,
-                    overflow: "hidden",
-                    borderWidth: 1,
-                    borderColor: "rgba(135, 174, 115, 0.45)",
-                  }}
-                >
-                  <LinearGradient
-                    colors={[
-                      "rgba(135, 174, 115, 0.18)",
-                      "rgba(135, 174, 115, 0.1)",
-                      "rgba(6, 182, 212, 0.06)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      padding: 8,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons
-                      name="person-add"
-                      size={14}
-                      color="rgba(135, 174, 115, 0.95)"
-                      style={{ marginRight: 5 }}
-                    />
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={{
-                        color: "rgba(255,255,255,0.9)",
-                        textAlign: "center",
-                      }}
-                    >
-                      Build Your Tribe
-                    </AppText>
-                  </LinearGradient>
-                </Pressable>
-              </>
-            )}
-          </View>
-          {/* Menu bar: Preview, Chakras 101, Tribe, Anua – compact, aligned, pushed down */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "flex-end",
-              paddingHorizontal: 16,
-              gap: 20,
-              marginTop: 12,
-            }}
-          >
-            {onPreviewPress && (
-              <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
-                <AppText
-                  font="instrument-regular"
-                  size="xs"
-                  style={{
-                    color: "rgba(255,255,255,0.7)",
-                    textAlign: "center",
-                    marginBottom: 4,
-                    fontSize: 10,
-                    height: 14,
-                  }}
-                  numberOfLines={1}
-                >
-                  Preview
-                </AppText>
-                <Pressable
-                  onPress={onPreviewPress}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: "rgba(0, 0, 0, 0.6)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityLabel="Preview Course"
-                >
-                  <Image
-                    source={
-                      chakraContent[Chakra.SOLAR_PLEXUS].chakraHeaderImage
-                    }
-                    style={{ width: 32, height: 32, opacity: 0.95 }}
-                    resizeMode="contain"
-                  />
-                </Pressable>
-              </View>
-            )}
-            {onLearnAboutChakrasPress && (
-              <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
-                <AppText
-                  font="instrument-regular"
-                  size="xs"
-                  style={{
-                    color: "rgba(255,255,255,0.7)",
-                    textAlign: "center",
-                    marginBottom: 4,
-                    fontSize: 10,
-                    height: 14,
-                  }}
-                  numberOfLines={1}
-                >
-                  Chakras 101
-                </AppText>
-                <Pressable
-                  onPress={onLearnAboutChakrasPress}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: "rgba(0, 0, 0, 0.6)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityLabel="Chakras 101"
-                >
-                  <Image
-                    source={require("@/assets/images/7chakras.png")}
-                    style={{ width: 32, height: 32, opacity: 0.95 }}
-                    resizeMode="contain"
-                  />
-                </Pressable>
-              </View>
-            )}
-            <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                style={{
-                  color: "rgba(255,255,255,0.7)",
-                  textAlign: "center",
-                  marginBottom: 4,
-                  fontSize: 10,
-                  height: 14,
-                }}
-                numberOfLines={1}
-              >
-                tribe
-              </AppText>
-              <Pressable
-                onPress={() => {
-                  addHapticFeedback(HapticStrength.Light)
-                  router.push("/(chakras)/TribeChat")
-                }}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: "rgba(0, 0, 0, 0.7)",
-                  borderWidth: 1,
-                  borderColor: "rgba(135, 174, 115, 0.5)",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  shadowColor: "#87AE73",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 6,
-                  elevation: 6,
-                }}
-              >
-                <Ionicons
-                  name="chatbubble-ellipses"
-                  size={22}
-                  color="rgba(135, 174, 115, 0.95)"
-                />
-              </Pressable>
-            </View>
-            <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                style={{
-                  color: "rgba(255,255,255,0.7)",
-                  textAlign: "center",
-                  marginBottom: 4,
-                  fontSize: 10,
-                  height: 14,
-                }}
-                numberOfLines={1}
-              >
-                Anua
-              </AppText>
-              <Pressable
-                onPress={handleAnuaPress}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  overflow: "hidden",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  shadowColor: "#9D4EDD",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.4,
-                  shadowRadius: 8,
-                  elevation: 8,
-                }}
-              >
-                <Image
-                  source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
-                  style={{ width: 32, height: 32, borderRadius: 16 }}
-                  resizeMode="cover"
-                />
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Mysterious background chakra images - subtle, layered */}
+    <View style={{ flex: 1, backgroundColor: "#000000" }} pointerEvents="box-none">
+      {/* Mysterious background chakra images - subtle, layered (first so it stays behind) */}
       <View
         style={{
           position: "absolute",
@@ -700,6 +316,7 @@ export const WaitingScreen = ({
         })}
       </View>
 
+      {/* ScrollView from RNGH so fixed overlays (back, bottom block) receive touches on Android */}
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
@@ -715,8 +332,8 @@ export const WaitingScreen = ({
             : { flexDirection: "column" }), // Trial: top section + centered clock block
         }}
         showsVerticalScrollIndicator={false}
-        style={{ zIndex: 1 }}
-        pointerEvents="box-none"
+        style={{ zIndex: 0, flex: 1 }}
+        {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
       >
         {hasLifetimeAccess ? (
           <>
@@ -1044,7 +661,14 @@ export const WaitingScreen = ({
                 </View>
               </View>
               {courseStartDate && (
-                <View style={{ width: "100%", paddingHorizontal: 16 }}>
+                <View
+                  style={{
+                    width: "100%",
+                    paddingHorizontal: 16,
+                    marginTop: 16,
+                    marginBottom: 16,
+                  }}
+                >
                   <Pressable
                     onPress={handleInviteFriend}
                     style={{
@@ -1396,11 +1020,413 @@ export const WaitingScreen = ({
         )}
       </ScrollView>
 
+      {/* Overlays rendered after ScrollView so they receive touches on Android (RNGH ScrollView + elevation) */}
+      <Pressable
+        onPress={handleBackToDateSelection}
+        style={{
+          position: "absolute",
+          top: Math.max(insets.top, 16) + 8,
+          left: 16,
+          zIndex: 10002,
+          padding: 8,
+          backgroundColor: "transparent",
+          ...(Platform.OS === "android" && { elevation: 10003 }),
+        }}
+        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        accessibilityLabel="Back"
+        accessibilityHint="Return to date selection"
+      >
+        <Ionicons name="arrow-back" size={24} color="rgba(255, 255, 255, 1)" />
+      </Pressable>
+
+      {hasLifetimeAccess && onExitCourseMode && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            paddingBottom: Math.max(insets.bottom, 16) + 8,
+            paddingHorizontal: 24,
+            alignItems: "center",
+            zIndex: 10001,
+            ...(Platform.OS === "android" && { elevation: 10002 }),
+          }}
+          pointerEvents="auto"
+          collapsable={false}
+        >
+          <Pressable
+            onPress={() => {
+              addHapticFeedback(HapticStrength.Medium)
+              onExitCourseMode()
+            }}
+            style={{
+              borderRadius: 12,
+              overflow: "hidden",
+              shadowColor: "#2a2520",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.4,
+              shadowRadius: 6,
+              elevation: 4,
+            }}
+          >
+            <LinearGradient
+              colors={[
+                "rgba(194, 178, 128, 0.35)",
+                "rgba(168, 154, 110, 0.28)",
+                "rgba(139, 126, 90, 0.35)",
+              ]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 20,
+                borderWidth: 1,
+                borderColor: "rgba(194, 178, 128, 0.5)",
+                borderRadius: 12,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <LinearGradient
+                colors={[
+                  "rgba(255, 255, 255, 0.12)",
+                  "rgba(255, 255, 255, 0.02)",
+                  "transparent",
+                ]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "50%",
+                  borderTopLeftRadius: 12,
+                  borderTopRightRadius: 12,
+                }}
+              />
+              <AppText
+                font="instrument-medium"
+                size="sm"
+                style={{
+                  color: "rgba(255,255,255,0.95)",
+                  textAlign: "center",
+                  letterSpacing: 0.3,
+                }}
+              >
+                Exit course mode
+              </AppText>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      )}
+
+      {!hasLifetimeAccess && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            paddingBottom: Math.max(insets.bottom, 4) + 20,
+            zIndex: 10001,
+            ...(Platform.OS === "android" && { elevation: 10002 }),
+          }}
+          pointerEvents="auto"
+          collapsable={false}
+        >
+          <View style={{ paddingHorizontal: 28, paddingBottom: 16 }}>
+            <View
+              style={{
+                width: "100%",
+                borderRadius: 8,
+                paddingVertical: 8,
+                paddingHorizontal: 10,
+                backgroundColor: "rgba(0, 0, 0, 0.4)",
+                borderWidth: 1,
+                borderColor: "rgba(6, 182, 212, 0.5)",
+                shadowColor: "rgba(6, 182, 212, 0.2)",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.4,
+                shadowRadius: 6,
+                marginBottom: 12,
+              }}
+            >
+              <View
+                style={{ alignItems: "center", width: "100%", minWidth: 0 }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 3,
+                  }}
+                >
+                  <Ionicons
+                    name="headset"
+                    size={14}
+                    color="rgba(6, 182, 212, 0.8)"
+                    style={{ marginRight: 4 }}
+                  />
+                  <AppText
+                    font="instrument-medium"
+                    size="xs"
+                    style={{
+                      color: "rgba(255,255,255,0.9)",
+                      textAlign: "center",
+                    }}
+                  >
+                    For Deepest Embodiment
+                  </AppText>
+                </View>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{
+                    color: "rgba(255,255,255,0.85)",
+                    lineHeight: 18,
+                    fontStyle: "italic",
+                    textAlign: "center",
+                  }}
+                >
+                  This course is designed for somatic gnosis that works best when
+                  you awaken 1 hour before your day and sit with your earphones
+                  and remove all distractions.
+                </AppText>
+              </View>
+            </View>
+            {courseStartDate && (
+              <>
+                <Pressable
+                  onPress={handleInviteFriend}
+                  style={{
+                    marginTop: 16,
+                    marginBottom: 16,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    borderWidth: 1,
+                    borderColor: "rgba(135, 174, 115, 0.45)",
+                    ...(Platform.OS === "android" && { zIndex: 10003, elevation: 10003 }),
+                  }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <LinearGradient
+                    colors={[
+                      "rgba(135, 174, 115, 0.18)",
+                      "rgba(135, 174, 115, 0.1)",
+                      "rgba(6, 182, 212, 0.06)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      padding: 8,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add"
+                      size={14}
+                      color="rgba(135, 174, 115, 0.95)"
+                      style={{ marginRight: 5 }}
+                    />
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={{
+                        color: "rgba(255,255,255,0.9)",
+                        textAlign: "center",
+                      }}
+                    >
+                      Build Your Tribe
+                    </AppText>
+                  </LinearGradient>
+                </Pressable>
+              </>
+            )}
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "flex-end",
+              paddingHorizontal: 16,
+              gap: 20,
+              marginTop: 12,
+            }}
+          >
+            {onPreviewPress && (
+              <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{
+                    color: "rgba(255,255,255,0.7)",
+                    textAlign: "center",
+                    marginBottom: 4,
+                    fontSize: 10,
+                    height: 14,
+                  }}
+                  numberOfLines={1}
+                >
+                  Preview
+                </AppText>
+                <Pressable
+                  onPress={onPreviewPress}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: "rgba(0, 0, 0, 0.6)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                  accessibilityLabel="Preview Course"
+                >
+                  <Image
+                    source={
+                      chakraContent[Chakra.SOLAR_PLEXUS].chakraHeaderImage
+                    }
+                    style={{ width: 32, height: 32, opacity: 0.95 }}
+                    resizeMode="contain"
+                  />
+                </Pressable>
+              </View>
+            )}
+            {onLearnAboutChakrasPress && (
+              <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{
+                    color: "rgba(255,255,255,0.7)",
+                    textAlign: "center",
+                    marginBottom: 4,
+                    fontSize: 10,
+                    height: 14,
+                  }}
+                  numberOfLines={1}
+                >
+                  Chakras 101
+                </AppText>
+                <Pressable
+                  onPress={onLearnAboutChakrasPress}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: "rgba(0, 0, 0, 0.6)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                  accessibilityLabel="Chakras 101"
+                >
+                  <Image
+                    source={require("@/assets/images/7chakras.png")}
+                    style={{ width: 32, height: 32, opacity: 0.95 }}
+                    resizeMode="contain"
+                  />
+                </Pressable>
+              </View>
+            )}
+            <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  textAlign: "center",
+                  marginBottom: 4,
+                  fontSize: 10,
+                  height: 14,
+                }}
+                numberOfLines={1}
+              >
+                tribe
+              </AppText>
+              <Pressable
+                onPress={() => {
+                  addHapticFeedback(HapticStrength.Light)
+                  router.push("/(chakras)/TribeChat")
+                }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: "rgba(0, 0, 0, 0.7)",
+                  borderWidth: 1,
+                  borderColor: "rgba(135, 174, 115, 0.5)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  shadowColor: "#87AE73",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 6,
+                  elevation: 6,
+                }}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={22}
+                  color="rgba(135, 174, 115, 0.95)"
+                />
+              </Pressable>
+            </View>
+            <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  textAlign: "center",
+                  marginBottom: 4,
+                  fontSize: 10,
+                  height: 14,
+                }}
+                numberOfLines={1}
+              >
+                Anua
+              </AppText>
+              <Pressable
+                onPress={handleAnuaPress}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  overflow: "hidden",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  shadowColor: "#9D4EDD",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
+              >
+                <Image
+                  source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
+                  style={{ width: 32, height: 32, borderRadius: 16 }}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Invite Friend Modal - Beautiful custom design matching app style */}
       <InviteFriendModal
         visible={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         startDate={formattedDate}
+        courseStartDateISO={courseStartDate ?? undefined}
         onInviteSent={() => {
           // Add friend to list when invite is sent
           const friendLabel = `Friend ${invitedFriends.length + 1}`

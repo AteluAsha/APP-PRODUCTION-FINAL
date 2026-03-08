@@ -294,6 +294,7 @@ export const synthesizeAnuaVoice = async (
         shouldPlay: false,
         isLooping: false,
         rate: 1.0, // Normal pace for calm, stable delivery
+        ...(Platform.OS === "android" && { androidImplementation: "MediaPlayer" }),
       },
     )
 

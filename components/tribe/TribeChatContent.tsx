@@ -198,15 +198,17 @@ export function TribeChatContent({
     setShowInviteModal(false)
   }, [addInvitedFriend])
 
+  const displayNameForSend = presenceDisplayName || SENDER_NAME
+
   const handleSend = useCallback(async () => {
     const trimmed = inputText.trim()
     if (!trimmed || sending) return
     addHapticFeedback(HapticStrength.Light)
     setSending(true)
-    const result = await sendMessage(trimmed, SENDER_NAME)
+    const result = await sendMessage(trimmed, displayNameForSend)
     setSending(false)
     if (result.ok) setInputText("")
-  }, [inputText, sendMessage, sending])
+  }, [inputText, sendMessage, sending, displayNameForSend])
 
   return (
     <SafeAreaProvider>
@@ -614,7 +616,7 @@ export function TribeChatContent({
                       <MessageRow
                         key={item.id}
                         item={item}
-                        isPrimaryUser={item.senderName === SENDER_NAME}
+                        isPrimaryUser={item.senderName === (presenceDisplayName || SENDER_NAME)}
                       />
                     ))
                   )}
@@ -707,6 +709,7 @@ export function TribeChatContent({
         visible={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         startDate={formattedDate}
+        courseStartDateISO={courseStartDate ?? undefined}
         onInviteSent={handleInviteSent}
         onFindFriends={() => {
           setShowInviteModal(false)
@@ -717,6 +720,7 @@ export function TribeChatContent({
         visible={showFindFriendsModal}
         onClose={() => setShowFindFriendsModal(false)}
         startDate={formattedDate}
+        courseStartDateISO={courseStartDate ?? undefined}
       />
       <TribeFriendsMenu
         visible={showFriendsMenu}

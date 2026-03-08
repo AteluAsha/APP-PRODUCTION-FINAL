@@ -6,6 +6,7 @@ import {
   Pressable,
   Platform,
   Modal,
+  ActivityIndicator,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Animated, {
@@ -36,6 +37,7 @@ import Forward10 from "@/assets/svg/forward10.svg"
 import { stopAnuaAudio } from "@/src/services/elevenlabs"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { ICON } from "@/constants/layout"
+import { isEmulatorOrSimulator } from "@/constants/emulator"
 import {
   otherOriginTrackRef,
   getSourceSignature,
@@ -123,6 +125,7 @@ const AudioPlayer = () => {
   const noAudioGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isLoadedRef = useRef(false)
   const lastSourceRef = useRef<AVPlaybackSource | null>(null)
+  const lastSourceSignatureRef = useRef<string | null>(null)
   const lastAppliedStorePlayingRef = useRef<boolean | null>(null)
   const lastStatusUpdateTimeRef = useRef(0)
   /** 80% = dot only: mark day complete for homescreen; no routing, no goodbye. Reset when source changes. */
@@ -132,9 +135,12 @@ const AudioPlayer = () => {
   const initializingTrackRef = useRef(false)
   /** Ref to current track. Only stop/unload on: user close, pause, leave screen (focus cleanup), or track end. No other system may stop playback. */
   const trackRef = useRef<Audio.Sound | undefined>(undefined)
+  /** Reset when source/track changes so first loaded status always updates progress bar (no throttle). */
+  const hasAppliedFirstStatusRef = useRef(false)
 
   useEffect(() => {
     trackRef.current = track
+    hasAppliedFirstStatusRef.current = false
     return () => {
       trackRef.current = undefined
     }
@@ -164,15 +170,30 @@ const AudioPlayer = () => {
     }
   }, [source, metadata, prefs])
 
+  // Sync duration from metadata when we have source so progress bar shows total even before first status (e.g. Android durationMillis delay)
+  useEffect(() => {
+    if (!source || !metadata?.durationMs) return
+    setDuration((prev) =>
+      metadata.durationMs && metadata.durationMs > 0 && prev === 0
+        ? metadata.durationMs
+        : prev,
+    )
+  }, [source, metadata?.durationMs])
+
   // Define callbacks - safe to call even if source/metadata/prefs are null
   const seekToPosition = useCallback(
-    async (newPositionMs: number) => {
+    async (newPositionMs: number, wasPlaying?: boolean) => {
       if (track) {
         await track.setPositionAsync(newPositionMs)
         setPosition(newPositionMs)
+        if (Platform.OS === "android" && wasPlaying) {
+          await track.playAsync()
+          setIsPlaying(true)
+          setPlaying(true)
+        }
       }
     },
-    [track],
+    [track, setPlaying],
   )
 
   // Completion and navigation are driven only by track end (didJustFinish). No progress threshold
@@ -185,19 +206,28 @@ const AudioPlayer = () => {
         isLoadedRef.current = true
         setIsLoading(false)
 
+        // Hero duration guard: when metadata says long track (e.g. Master Embodiment 30–44 min) and file reports much shorter (e.g. 6:15), prefer metadata so UI never shows truncated duration
+        const metaMs = metadata?.durationMs ?? 0
+        const fileMs = status.durationMillis && status.durationMillis > 0 ? status.durationMillis : 0
+        const TEN_MIN_MS = 10 * 60 * 1000
         const duration =
-          status.durationMillis && status.durationMillis > 0
-            ? status.durationMillis
-            : metadata?.durationMs || 0
+          metaMs >= TEN_MIN_MS && fileMs > 0 && fileMs < 0.6 * metaMs
+            ? metaMs
+            : fileMs > 0
+              ? fileMs
+              : metaMs || 0
         const playing = !!status.isPlaying
 
-        // Throttle position/duration updates to reduce UI flicker (every 500ms)
+        // First loaded status always updates progress bar (no throttle); then throttle to reduce UI flicker (every 500ms)
         const now = Date.now()
+        const isFirstStatus = !hasAppliedFirstStatusRef.current
         const shouldUpdateProgress =
+          isFirstStatus ||
           status.didJustFinish ||
           playing !== lastAppliedStorePlayingRef.current ||
           now - lastStatusUpdateTimeRef.current >= PROGRESS_UPDATE_INTERVAL_MS
         if (shouldUpdateProgress) {
+          if (isFirstStatus) hasAppliedFirstStatusRef.current = true
           lastStatusUpdateTimeRef.current = now
           setPosition(status.positionMillis)
           setDuration(duration)
@@ -275,19 +305,28 @@ const AudioPlayer = () => {
         interruptionModeIOS: InterruptionModeIOS.DuckOthers,
         interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
         shouldDuckAndroid: true,
+        ...(Platform.OS === "android" && { playThroughEarpieceAndroid: false }),
       })
+      if (Platform.OS === "android") {
+        const delayMs = isEmulatorOrSimulator() ? 100 : 50
+        await new Promise((r) => setTimeout(r, delayMs))
+      }
 
       const { sound } = await Audio.Sound.createAsync(
         source,
         {
           shouldPlay: false,
           isLooping: prefs.shouldLoop || false,
+          ...(Platform.OS === "android" && { androidImplementation: "MediaPlayer" }),
         },
         onPlaybackStatusUpdate,
       )
 
       setTrack(sound)
-      await sound.setProgressUpdateIntervalAsync(PROGRESS_UPDATE_INTERVAL_MS)
+      const progressIntervalMs = isEmulatorOrSimulator()
+        ? 1000
+        : PROGRESS_UPDATE_INTERVAL_MS
+      await sound.setProgressUpdateIntervalAsync(progressIntervalMs)
       await sound.setIsLoopingAsync(prefs.shouldLoop || false)
       await sound.setVolumeAsync(1)
       await new Promise((resolve) => setTimeout(resolve, 100))
@@ -298,6 +337,9 @@ const AudioPlayer = () => {
         setIsLoading(false)
         setLoadError(null)
         await sound.playAsync()
+        if (Platform.OS === "android") {
+          await sound.setVolumeAsync(1)
+        }
         setIsPlaying(true)
       } else {
         setIsLoading(true)
@@ -349,6 +391,7 @@ const AudioPlayer = () => {
   }, [source, track])
 
   // Only stop on user leave (screen revert). Trial: stop when leaving. Lifetime + non-intro: mini player continues.
+  // CRITICAL: Await stop+unload before reset() so the track is actually stopped. Prevents two audios at once and "cannot turn off" on trial.
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -365,9 +408,11 @@ const AudioPlayer = () => {
             currentTrack
               .stopAsync()
               .then(() => currentTrack.unloadAsync().catch(() => {}))
-              .catch(() => {})
+              .then(() => reset())
+              .catch(() => reset())
+          } else {
+            reset()
           }
-          reset()
         }
       }
     }, [reset, hasLifetimeAccess]),
@@ -452,15 +497,19 @@ const AudioPlayer = () => {
     closePlayerAndNavigate,
   ])
 
-  // Re-initialize whenever source or prefs change (critical for track switching)
+  // Re-initialize whenever source or prefs change (critical for track switching).
+  // Compare by URI/signature so we do not re-init when the same source is set with a new object reference (avoids double load/restart).
   useEffect(() => {
     if (!source || !prefs) return
 
-    const sourceChanged = lastSourceRef.current !== source
+    const sig = getSourceSignature(source)
+    const sourceChanged = lastSourceSignatureRef.current !== sig
     if (sourceChanged) {
       lastSourceRef.current = source
+      lastSourceSignatureRef.current = sig
       lastAppliedStorePlayingRef.current = null
       embodimentEightyPercentRef.current = false
+      hasAppliedFirstStatusRef.current = false
       setLoadError(null)
     }
 
@@ -583,7 +632,7 @@ const AudioPlayer = () => {
 
   const handleCloseX = useCallback(() => {
     addHapticFeedback(HapticStrength.Light)
-    if (!hasLifetimeAccess) {
+    if (!hasLifetimeAccess && Platform.OS !== "android") {
       setShowExitConfirmModal(true)
     } else {
       performClose()
@@ -681,14 +730,21 @@ const AudioPlayer = () => {
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
+          {!showNoAudioMessage && (
+            <ActivityIndicator
+              size="large"
+              color="rgba(255,255,255,0.8)"
+              style={{ marginBottom: 16 }}
+            />
+          )}
           <AppText
-            font="instrument-regular"
+            font={showNoAudioMessage ? "instrument-regular" : "cormorant-italic"}
             size="lg"
             className="text-white text-center px-4"
           >
             {showNoAudioMessage
               ? "No audio selected. Please select an audio file to play."
-              : "Loading…"}
+              : "Gathering Presence…"}
           </AppText>
           <Pressable
             onPress={handleCloseXNoSource}
@@ -733,17 +789,29 @@ const AudioPlayer = () => {
 
   const rewind10 = async () => {
     if (track) {
+      const wasPlaying = isPlaying
       const newPosition = Math.max(positionMs - 10000, 0)
       await track.setPositionAsync(newPosition)
       setPosition(newPosition)
+      if (Platform.OS === "android" && wasPlaying) {
+        await track.playAsync()
+        setIsPlaying(true)
+        setPlaying(true)
+      }
     }
   }
 
   const forward10 = async () => {
     if (track) {
+      const wasPlaying = isPlaying
       const newPosition = Math.min(positionMs + 10000, durationMs)
       await track.setPositionAsync(newPosition)
       setPosition(newPosition)
+      if (Platform.OS === "android" && wasPlaying) {
+        await track.playAsync()
+        setIsPlaying(true)
+        setPlaying(true)
+      }
     }
   }
 
@@ -854,7 +922,7 @@ const AudioPlayer = () => {
             positionMs={positionMs}
             seekToPosition={async (ms) => {
               showControls()
-              await seekToPosition(ms)
+              await seekToPosition(ms, isPlaying)
             }}
           />
           <View
@@ -1032,6 +1100,9 @@ const AudioPlayer = () => {
                 borderWidth: 1,
                 borderColor: "rgba(168, 201, 154, 0.5)",
                 backgroundColor: "rgba(168, 201, 154, 0.15)",
+                minHeight: 44,
+                justifyContent: "center",
+                alignItems: "center",
               }}
             >
               <AppText
@@ -1051,6 +1122,9 @@ const AudioPlayer = () => {
                 borderWidth: 1,
                 borderColor: "rgba(168, 201, 154, 0.5)",
                 backgroundColor: "rgba(168, 201, 154, 0.35)",
+                minHeight: 44,
+                justifyContent: "center",
+                alignItems: "center",
               }}
             >
               <AppText

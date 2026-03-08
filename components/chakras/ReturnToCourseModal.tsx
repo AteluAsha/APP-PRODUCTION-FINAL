@@ -7,10 +7,19 @@
  */
 
 import React from "react"
-import { Modal, View, Pressable, StyleSheet, useWindowDimensions } from "react-native"
+import {
+  Modal,
+  View,
+  Pressable,
+  TouchableOpacity,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+} from "react-native"
 import { AppText } from "@/components/AppText"
 import { LinearGradient } from "expo-linear-gradient"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { TOUCH } from "@/constants/layout"
 
 interface ReturnToCourseModalProps {
   visible: boolean
@@ -115,7 +124,7 @@ export const ReturnToCourseModal: React.FC<ReturnToCourseModalProps> = ({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} pointerEvents="box-none">
         <View style={[styles.card, { width: cardWidth }]}>
           <AppText font="instrument-bold" size="lg" style={styles.title}>
             Start a new 7 Day Somatic Journey
@@ -123,41 +132,84 @@ export const ReturnToCourseModal: React.FC<ReturnToCourseModalProps> = ({
           <AppText font="instrument-regular" size="base" style={styles.body}>
             You have a 7-day journey in progress. Continue it or start a new one?
           </AppText>
-          <View style={styles.buttonRow}>
-            <Pressable
-              onPress={handleContinueCurrent}
-              style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
-            >
-              <View style={styles.button}>
-                <LinearGradient
-                  colors={[...buttonGradientColors]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.gradient}
-                />
-                <AppText
-                  font="instrument-semibold"
-                  size="base"
-                  style={styles.buttonLabel}
+          <View style={styles.buttonRow} pointerEvents="box-none">
+            {Platform.OS === "android" ? (
+              <>
+                <TouchableOpacity
+                  onPress={handleContinueCurrent}
+                  hitSlop={TOUCH.hitSlop}
+                  activeOpacity={TOUCH.activeOpacity}
                 >
-                  Continue current course
-                </AppText>
-              </View>
-            </Pressable>
-            <Pressable
-              onPress={handleStartNew}
-              style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
-            >
-              <View style={[styles.button, styles.buttonSecondary]}>
-                <AppText
-                  font="instrument-medium"
-                  size="base"
-                  style={styles.buttonLabel}
+                  <View style={styles.button}>
+                    <LinearGradient
+                      colors={[...buttonGradientColors]}
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      style={styles.gradient}
+                    />
+                    <AppText
+                      font="instrument-semibold"
+                      size="base"
+                      style={styles.buttonLabel}
+                    >
+                      Continue current course
+                    </AppText>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleStartNew}
+                  hitSlop={TOUCH.hitSlop}
+                  activeOpacity={TOUCH.activeOpacity}
                 >
-                  Start a new one
-                </AppText>
-              </View>
-            </Pressable>
+                  <View style={[styles.button, styles.buttonSecondary]}>
+                    <AppText
+                      font="instrument-medium"
+                      size="base"
+                      style={styles.buttonLabel}
+                    >
+                      Start a new one
+                    </AppText>
+                  </View>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Pressable
+                  onPress={handleContinueCurrent}
+                  style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <View style={styles.button}>
+                    <LinearGradient
+                      colors={[...buttonGradientColors]}
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      style={styles.gradient}
+                    />
+                    <AppText
+                      font="instrument-semibold"
+                      size="base"
+                      style={styles.buttonLabel}
+                    >
+                      Continue current course
+                    </AppText>
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={handleStartNew}
+                  style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <View style={[styles.button, styles.buttonSecondary]}>
+                    <AppText
+                      font="instrument-medium"
+                      size="base"
+                      style={styles.buttonLabel}
+                    >
+                      Start a new one
+                    </AppText>
+                  </View>
+                </Pressable>
+              </>
+            )}
           </View>
         </View>
       </View>

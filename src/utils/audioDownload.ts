@@ -4,6 +4,12 @@
  * PRODUCTION: Playback always prefers local file (getLocalAudioUri / localUri)
  * when available. Callers (prepareLongAudioForPlay, hooks) must check local first
  * so audio never cuts off once downloaded. Cache dir: FileSystem.cacheDirectory/audio/
+ *
+ * Bulletproof playback (Android + iOS): Same cache dir and logic on both platforms.
+ * Waiting room starts head preload then full-file preload so once past waiting room
+ * all course audio can be fully cached. Local-first + resumable for large files
+ * = seamless, glitch-free somatic experience. Do not clear app cache if users
+ * want offline/healing playback.
  */
 
 import * as FileSystem from "expo-file-system"

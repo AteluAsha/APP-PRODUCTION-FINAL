@@ -1,4 +1,5 @@
 import ChakraTemplate from "@/components/chakras/ChakraTemplate"
+import { Chakra } from "@/types/chakras/Chakra"
 import { useEffect } from "react"
 import { isValidChakra } from "@/utils/validation"
 import { useLocalSearchParams, useRouter } from "expo-router"
@@ -21,7 +22,7 @@ const ChakraScreen = () => {
   // Only render the component if we have a valid chakra value
   if (!isValidChakra(chakra)) return null
 
-  return <ChakraTemplate chakra={chakra} />
+  return <ChakraTemplate chakra={chakra as Chakra} />
 }
 
 export default ChakraScreen

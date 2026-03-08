@@ -15,7 +15,8 @@
  */
 
 import React, { useMemo, useEffect, useState } from "react"
-import { View, ScrollView, Pressable, Image } from "react-native"
+import { View, Pressable, Image, Platform } from "react-native"
+import { ScrollView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
@@ -39,7 +40,7 @@ import { ReturnToCourseModal } from "@/components/chakras/ReturnToCourseModal"
 import { isChakraDayAccessible } from "@/src/services/timegate"
 import { useFocusEffect } from "@react-navigation/native"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
-import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
 
 const CHAKRA_ORDER: Chakra[] = [
@@ -272,42 +273,17 @@ export default function ChakraHub() {
         <TrialTestFlow onUnlockNextDay={() => {}} currentDay={currentDay} />
       )}
       <ActionBar onBackPress={handleBack} />
-      {/* Hamburger – Profile (name, photo, Soul School ID). Same position as ChakraHome. */}
-      <Pressable
-        onPress={() => {
-          addHapticFeedback(HapticStrength.Light)
-          useProfileSheetStore.getState().open()
-        }}
-        style={{
-          position: "absolute",
-          top: Math.max(insets.top, 8) + 12,
-          right: 16,
-          zIndex: 100,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          borderWidth: 1,
-          borderColor: "rgba(255, 255, 255, 0.15)",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilityLabel="Profile menu"
-        accessibilityHint="View your profile and Soul School ID"
-      >
-        <Ionicons name="menu" size={22} color="rgba(255, 255, 255, 0.9)" />
-      </Pressable>
-      {/* Note: GlobalHomeButton handles "chakras 101" link on home screen (top right) */}
+      {/* ScrollView first so overlay rendered after it receives touches on Android */}
 
       <ScrollView
         style={{ flex: 1, backgroundColor: "#000000" }}
+        showsVerticalScrollIndicator={false}
+        {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
         contentContainerStyle={{
           padding: 20,
           paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
           paddingTop: Math.max(insets.top, 20) + 20,
         }}
-        showsVerticalScrollIndicator={false}
       >
         {/* Hero: Day title + tagline – explicit style so layout matches APP1 restoration */}
         <View
@@ -992,6 +968,33 @@ export default function ChakraHub() {
           </View>
         )}
       </ScrollView>
+
+      {/* Profile overlay after ScrollView so it receives touches on Android */}
+      <Pressable
+        onPress={() => {
+          addHapticFeedback(HapticStrength.Light)
+          useProfileSheetStore.getState().open()
+        }}
+        style={{
+          position: "absolute",
+          top: Math.max(insets.top, 8) + 12,
+          right: 16,
+          zIndex: 100,
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          borderWidth: 1,
+          borderColor: "rgba(255, 255, 255, 0.15)",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        accessibilityLabel="Profile menu"
+        accessibilityHint="View your profile and Soul School ID"
+      >
+        <Ionicons name="menu" size={22} color="rgba(255, 255, 255, 0.9)" />
+      </Pressable>
 
       <GoodbyeModal
         isVisible={isGoodbyeVisible}

@@ -1,16 +1,23 @@
 /**
  * Audio Preload Manifest
  *
- * Central list of all app audio for "first 3 min" head preload.
- * Ensures every track has its start cached so playback never stutters.
- * Must stay in sync with useCrystalBowlAudio, useTuningForkAudio, useEmbodimentAudio.
+ * Central list of all app audio for head (first ~3 min) and full-file preload.
+ * Waiting room: heads preload first (fast), then full files in background so
+ * once past waiting room all course audio can be fully cached for bulletproof playback.
+ * Must stay in sync with useCrystalBowlAudio, useTuningForkAudio, useEmbodimentAudio, useAncestralWisdomAudio.
  */
 
 import { ref, getDownloadURL } from "firebase/storage"
 import type { FirebaseStorage } from "firebase/storage"
 import { Chakra } from "@/types/chakras/Chakra"
-import { getLocalAudioHeadUri, downloadAudioHead } from "./audioDownload"
+import {
+  getLocalAudioHeadUri,
+  downloadAudioHead,
+  getLocalAudioUri,
+  downloadAndCacheAudioResumable,
+} from "./audioDownload"
 import { checkRateLimit, waitForRateLimit } from "./rateLimiter"
+import { FIREBASE_ANCESTRAL_WISDOM_FOLDER } from "@/constants/firebaseStoragePaths"
 
 const CRYSTAL_BOWL_FOLDER = "crystal_Bowl_Meditation_Audio"
 // Must match CHAKRA_TO_CRYSTAL_BOWL_FILE in hooks/useCrystalBowlAudio.ts (only these 7 hero files).
@@ -39,7 +46,7 @@ const TUNING_FORK_FILES: Record<Chakra, string> = {
 const EMBODIMENT_FOLDER =
   "Course Audio - MASTER EMBODIMENT - 7 Chakras in 7 Days"
 const EMBODIMENT_FILES: Record<Chakra, string | string[]> = {
-  [Chakra.ROOT]: "Day1_RootChakraEmbodiment_SoulSchool.aac",
+  [Chakra.ROOT]: "Day1_ROOT_DAY_MASTER_EMBODIMENT_SoulSchool_MotherJJ.aac",
   [Chakra.SACRAL]: "Day2_SacralChakraEmbodiment_SoulSchool.aac",
   [Chakra.SOLAR_PLEXUS]: "Day3_SolarChakraEmbodiment_SoulSchool.aac",
   [Chakra.HEART]: "Day4_HeartChakraEmbodiment_SoulSchool.aac",
@@ -49,6 +56,22 @@ const EMBODIMENT_FILES: Record<Chakra, string | string[]> = {
     "Day6_PARTTWO_AjnaEmbodiment_SoulSchool.aac",
   ],
   [Chakra.CROWN]: "Day7_CrownChakra_MasterEmbodiment_Meditation_SoulSchool.aac",
+}
+
+const ANCESTRAL_FOLDER = FIREBASE_ANCESTRAL_WISDOM_FOLDER
+// Head to Heart (Ancestral Wisdom); must match useAncestralWisdomAudio / getHeadToHeartAudioId
+const ANCESTRAL_FILES: Partial<Record<Chakra, string>> = {
+  [Chakra.ROOT]: "Day1_7th_DivineLaw_With_Asha.aac",
+  [Chakra.SACRAL]: "day2_theauthenticself_6th_DivineLaw_POLARITY_With_Asha.aac",
+  [Chakra.SOLAR_PLEXUS]:
+    "day3_egoheartrailroad_5thdivinelaw_causeandeffect_With_Asha_Length_12minutes.aac",
+  [Chakra.HEART]: "Day4_AWAKENINGTHEHEART_4thDivinelaw_Rhythm_With_Asha.aac",
+  [Chakra.THROAT]:
+    "Day5_ThePOWEROfVibration_Vishuddha_3rd_DivineLaw_With_Asha.aac",
+  [Chakra.THIRD_EYE]:
+    "Day6_LISTENINGTOTHECOSMOS_2nd_DivineLaw_Correspodence_With_Asha.aac",
+  [Chakra.CROWN]:
+    "Day7_THEMEADOWOFTHESOUL_1stDivineLaw_Mentalism_With_Asha.aac",
 }
 
 export interface AudioHeadEntry {
@@ -88,6 +111,16 @@ function buildManifest(): AudioHeadEntry[] {
       entries.push({
         audioId: `embodiment_${chakra}`,
         storagePath: `${EMBODIMENT_FOLDER}/${file}`,
+      })
+    }
+  }
+
+  for (const chakra of chakras) {
+    const audioFile = ANCESTRAL_FILES[chakra]
+    if (audioFile) {
+      entries.push({
+        audioId: `head_to_heart_${chakra}_${audioFile}`,
+        storagePath: `${ANCESTRAL_FOLDER}/${audioFile}`,
       })
     }
   }
@@ -137,6 +170,57 @@ export async function preloadAllAudioHeads(
   if (__DEV__ && (done > 0 || failed > 0)) {
     console.log(
       `[audioPreload] Heads: ${done} downloaded, ${skipped} skipped, ${failed} failed`,
+    )
+  }
+
+  return { done, skipped, failed }
+}
+
+/**
+ * Preload full files for all course audio in the background.
+ * Call after heads (e.g. from waiting room): heads give instant playback start;
+ * full files complete in background so once past waiting room everything can be
+ * fully cached for bulletproof, glitch-free playback.
+ * Android + iOS: Same flow on both; no platform-specific logic. Cache and preload
+ * are shared for maximum seamless somatic experience on all devices.
+ * Skips entries that already have full file cached. Uses resumable download for
+ * large files; one at a time with rate limit to avoid Firebase throttling.
+ */
+export async function preloadAllAudioFullFiles(
+  storage: FirebaseStorage | null,
+): Promise<{ done: number; skipped: number; failed: number }> {
+  if (!storage) return { done: 0, skipped: 0, failed: MANIFEST.length }
+
+  let done = 0
+  let skipped = 0
+  let failed = 0
+
+  for (const { audioId, storagePath } of MANIFEST) {
+    try {
+      const existing = await getLocalAudioUri(audioId)
+      if (existing) {
+        skipped += 1
+        continue
+      }
+
+      if (!checkRateLimit("firebase")) {
+        await waitForRateLimit("firebase")
+      }
+
+      const url = await getDownloadURL(ref(storage, storagePath))
+      await downloadAndCacheAudioResumable(url, audioId)
+      done += 1
+    } catch (err) {
+      if (__DEV__) {
+        console.warn(`[audioPreload] Full failed for ${audioId}:`, err)
+      }
+      failed += 1
+    }
+  }
+
+  if (__DEV__ && (done > 0 || failed > 0)) {
+    console.log(
+      `[audioPreload] Full: ${done} downloaded, ${skipped} skipped, ${failed} failed`,
     )
   }
 

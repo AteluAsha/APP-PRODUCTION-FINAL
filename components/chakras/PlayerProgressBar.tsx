@@ -59,7 +59,12 @@ export const PlayerProgressBar = ({
   return (
     <View style={styles.container}>
       <View style={styles.progressRow}>
-        <AppText font="instrument-medium" size="sm" style={styles.timeLeft}>
+        <AppText
+          font="instrument-medium"
+          size="sm"
+          style={styles.timeLeft}
+          numberOfLines={1}
+        >
           {isValidDuration ? formatTime(positionMs) : "0:00"}
         </AppText>
         <GestureDetector gesture={panGesture}>
@@ -81,7 +86,12 @@ export const PlayerProgressBar = ({
             </View>
           </Pressable>
         </GestureDetector>
-        <AppText font="instrument-medium" size="sm" style={styles.timeRight}>
+        <AppText
+          font="instrument-medium"
+          size="sm"
+          style={styles.timeRight}
+          numberOfLines={1}
+        >
           {isValidDuration ? formatTime(durationMs) : "0:00"}
         </AppText>
       </View>
@@ -98,9 +108,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     width: "100%",
+    flexWrap: "nowrap",
   },
   trackWrap: {
     flex: 1,
+    minWidth: 0,
     height: TRACK_HEIGHT,
     justifyContent: "center",
   },
@@ -115,13 +127,15 @@ const styles = StyleSheet.create({
     borderRadius: TRACK_HEIGHT / 2,
   },
   timeLeft: {
-    width: 40,
+    minWidth: 48,
+    flexShrink: 0,
     textAlign: "left",
     color: "rgba(255,255,255,0.9)",
     marginRight: 8,
   },
   timeRight: {
-    width: 40,
+    minWidth: 48,
+    flexShrink: 0,
     textAlign: "right",
     color: "rgba(255,255,255,0.9)",
     marginLeft: 8,

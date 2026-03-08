@@ -3,13 +3,15 @@
  *
  * Displays a button for crystal bowl meditation audio.
  * variant="layered" gives a glossy, inset, beveled pill-shaped design.
+ * When playing, shows time passed / total and a seekable progress bar (sound bath only).
  */
 
-import React from "react"
-import { Pressable, View, ActivityIndicator, Platform } from "react-native"
+import React, { useCallback, useRef } from "react"
+import { Pressable, TouchableOpacity, View, ActivityIndicator, Platform } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
+import { formatTime } from "@/utils/format"
 
 interface CrystalBowlButtonProps {
   className?: string
@@ -59,6 +61,56 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
     isPlaying && durationMs > 0 && positionMs >= 0
   const progressFraction =
     durationMs > 0 ? Math.min(1, Math.max(0, positionMs / durationMs)) : 0
+
+  const progressTrackWidthRef = useRef(0)
+  const handleProgressLayout = useCallback(
+    (e: { nativeEvent: { layout: { width: number } } }) => {
+      progressTrackWidthRef.current = e.nativeEvent.layout.width
+    },
+    [],
+  )
+  const handleProgressPress = useCallback(
+    (e: { nativeEvent: { locationX: number } }) => {
+      if (!onSeek || durationMs <= 0) return
+      const w = progressTrackWidthRef.current
+      if (w <= 0) return
+      const x = Math.max(0, Math.min(e.nativeEvent.locationX, w))
+      const ms = Math.floor((x / w) * durationMs)
+      onSeek(ms)
+    },
+    [onSeek, durationMs],
+  )
+
+  const progressBlock = showProgress && (
+    <View style={{ marginTop: 10, marginHorizontal: 24 }}>
+      <AppText
+        font="instrument-regular"
+        size="xs"
+        style={{ color: "rgba(255,255,255,0.85)", marginBottom: 4 }}
+      >
+        {formatTime(positionMs)} / {formatTime(durationMs)}
+      </AppText>
+      <Pressable
+        onLayout={handleProgressLayout}
+        onPress={handleProgressPress}
+        style={{
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: "rgba(255,255,255,0.2)",
+          overflow: "hidden",
+        }}
+      >
+        <View
+          style={{
+            width: `${progressFraction * 100}%`,
+            height: "100%",
+            borderRadius: 2,
+            backgroundColor: "rgba(251,191,36,0.9)",
+          }}
+        />
+      </Pressable>
+    </View>
+  )
 
   const content = (
     <View
@@ -135,26 +187,67 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
     </View>
   )
 
+  const layeredStyle = {
+    paddingVertical: 16,
+    width: 320,
+    maxWidth: "92%",
+    borderRadius: 9999,
+    overflow: "hidden" as const,
+    ...(Platform.OS === "ios"
+      ? {
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.5,
+          shadowRadius: 6,
+        }
+      : { elevation: 8 }),
+  }
+
   if (isLayered) {
-    return (
+    return Platform.OS === "android" ? (
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={isLoading}
+        style={layeredStyle}
+        activeOpacity={0.85}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      >
+        <LinearGradient
+          colors={["rgba(0,0,0,0.5)", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.4)"]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={{
+            flex: 1,
+            borderRadius: 9999,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.15)",
+            paddingVertical: 16,
+          }}
+        >
+          <LinearGradient
+            colors={["rgba(255,255,255,0.08)", "transparent"]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "35%",
+              borderTopLeftRadius: 9999,
+              borderTopRightRadius: 9999,
+            }}
+            pointerEvents="none"
+          />
+          {content}
+          {progressBlock}
+        </LinearGradient>
+      </TouchableOpacity>
+    ) : (
       <Pressable
         onPress={onPress}
         disabled={isLoading}
-        style={{
-          paddingVertical: 16,
-          width: 320,
-          maxWidth: "92%",
-          borderRadius: 9999,
-          overflow: "hidden",
-          ...(Platform.OS === "ios"
-            ? {
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.5,
-                shadowRadius: 6,
-              }
-            : { elevation: 8 }),
-        }}
+        style={layeredStyle}
       >
         <LinearGradient
           colors={["rgba(0,0,0,0.5)", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.4)"]}
@@ -185,68 +278,41 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
             pointerEvents="none"
           />
           {content}
-          {showProgress && (
-            <View
-              style={{
-                marginTop: 10,
-                marginHorizontal: 24,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: "rgba(255,255,255,0.2)",
-                overflow: "hidden",
-              }}
-            >
-              <View
-                style={{
-                  width: `${progressFraction * 100}%`,
-                  height: "100%",
-                  borderRadius: 2,
-                  backgroundColor: "rgba(251,191,36,0.9)",
-                }}
-              />
-            </View>
-          )}
+          {progressBlock}
         </LinearGradient>
       </Pressable>
     )
   }
 
+  const defaultStyle = {
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.38)",
+    borderRadius: 16,
+    paddingVertical: 16,
+    width: 320,
+    maxWidth: "92%",
+    backgroundColor: "rgba(0,0,0,0.125)",
+  }
+
+  if (Platform.OS === "android") {
+    return (
+      <TouchableOpacity
+        style={defaultStyle}
+        onPress={onPress}
+        disabled={isLoading}
+        activeOpacity={0.85}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      >
+        {content}
+        {progressBlock}
+      </TouchableOpacity>
+    )
+  }
+
   return (
-    <Pressable
-      style={{
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.38)",
-        borderRadius: 16,
-        paddingVertical: 16,
-        width: 320,
-        maxWidth: "92%",
-        backgroundColor: "rgba(0,0,0,0.125)",
-      }}
-      onPress={onPress}
-      disabled={isLoading}
-    >
+    <Pressable style={defaultStyle} onPress={onPress} disabled={isLoading}>
       {content}
-      {showProgress && (
-        <View
-          style={{
-            marginTop: 10,
-            marginHorizontal: 24,
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: "rgba(255,255,255,0.2)",
-            overflow: "hidden",
-          }}
-        >
-          <View
-            style={{
-              width: `${progressFraction * 100}%`,
-              height: "100%",
-              borderRadius: 2,
-              backgroundColor: "rgba(251,191,36,0.9)",
-            }}
-          />
-        </View>
-      )}
+      {progressBlock}
     </Pressable>
   )
 }

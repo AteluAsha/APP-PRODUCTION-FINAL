@@ -9,7 +9,7 @@
  */
 
 import React from "react"
-import { Pressable, StyleSheet } from "react-native"
+import { Pressable, StyleSheet, Platform } from "react-native"
 import { useRouter, usePathname, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Image } from "react-native"
@@ -18,7 +18,8 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import { AppText } from "@/components/AppText"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
-import { ICON } from "@/constants/layout"
+import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
+import { ICON, ANDROID_PRESS_DELAY_MS } from "@/constants/layout"
 
 export const GlobalHomeButton: React.FC = () => {
   const router = useRouter()
@@ -36,6 +37,7 @@ export const GlobalHomeButton: React.FC = () => {
       clearCompletedChakra: state.clearCompletedChakra,
     })),
   )
+  const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
 
   // Hide on Chakras101, CommitmentGate, EnergyExchange, WelcomeScreen, DateSelection, and WaitingScreen
   // Use both pathname and segments for reliable detection
@@ -75,7 +77,12 @@ export const GlobalHomeButton: React.FC = () => {
     (isChakraHome || isRootChakrasRoute) && !hasLifetimeAccess
 
   // EARLY RETURN - Most important check first
-  // Hide on AudioPlayer for distraction-free embodiment listening
+  // Goodbye modal open: hide so global home doesn't block modal's home/back touches
+  if (isGoodbyeVisible) {
+    return null
+  }
+
+  // Hide on AudioPlayer for distraction-free embodiment listening; hide on AnuaChat so chakra icon doesn't cover close X
   if (
     segments.includes("Chakras101") ||
     segments.includes("CommitmentGate") ||
@@ -84,6 +91,8 @@ export const GlobalHomeButton: React.FC = () => {
     segments.includes("DateSelection") ||
     segments.includes("TribeChat") ||
     segments.includes("AudioPlayer") ||
+    segments.includes("AnuaChat") ||
+    segments.includes("GiftChakra") ||
     pathname?.includes("/Chakras101") ||
     pathname?.includes("/CommitmentGate") ||
     pathname?.includes("/DevPaywall") ||
@@ -94,6 +103,13 @@ export const GlobalHomeButton: React.FC = () => {
     pathname?.includes("TribeChat") ||
     pathname?.includes("/AudioPlayer") ||
     pathname?.includes("AudioPlayer") ||
+    pathname?.includes("/AnuaChat") ||
+    pathname?.includes("AnuaChat") ||
+    pathname === "AnuaChat" ||
+    (segments.length > 0 && segments[segments.length - 1] === "AnuaChat") ||
+    pathname?.includes("/GiftChakra") ||
+    pathname?.includes("GiftChakra") ||
+    (segments.length > 0 && segments[segments.length - 1] === "GiftChakra") ||
     isWelcomeScreen ||
     shouldHideOnWaitingScreen || // Hide when waiting screen is shown
     !pathname || // Safety: hide if pathname is undefined
@@ -163,6 +179,7 @@ export const GlobalHomeButton: React.FC = () => {
         },
       ]}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
     >
       {/* Always show hero chakra icon - on home screen it navigates to Chakras 101 */}
       <Image

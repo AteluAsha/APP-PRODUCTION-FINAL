@@ -11,7 +11,7 @@ import { FIREBASE_EMBODIMENT_FOLDER } from "@/constants/firebaseStoragePaths"
  * CRITICAL: These must match exactly with Firebase Storage file names
  *
  * Day Mapping (EXACT file names from Firebase Storage):
- * - Monday (Day 0) - ROOT: Day1_RootChakraEmbodiment_SoulSchool.aac
+ * - Monday (Day 0) - ROOT: Day1_ROOT_DAY_MASTER_EMBODIMENT_SoulSchool_MotherJJ.aac (44:44, Mother JJ)
  * - Tuesday (Day 1) - SACRAL: Day2_SacralChakraEmbodiment_SoulSchool.aac
  * - Wednesday (Day 2) - SOLAR_PLEXUS: Day3_SolarChakraEmbodiment_SoulSchool.aac
  * - Thursday (Day 3) - HEART: Day4_HeartChakraEmbodiment_SoulSchool.aac
@@ -20,7 +20,7 @@ import { FIREBASE_EMBODIMENT_FOLDER } from "@/constants/firebaseStoragePaths"
  * - Sunday (Day 6) - CROWN: Day7_CrownChakra_MasterEmbodiment_Meditation_SoulSchool.aac
  */
 const CHAKRA_TO_AUDIO_FILE: Record<Chakra, string | string[]> = {
-  [Chakra.ROOT]: "Day1_RootChakraEmbodiment_SoulSchool.aac", // Monday - Day 0
+  [Chakra.ROOT]: "Day1_ROOT_DAY_MASTER_EMBODIMENT_SoulSchool_MotherJJ.aac", // Monday - Day 0 (44:44, Mother JJ)
   [Chakra.SACRAL]: "Day2_SacralChakraEmbodiment_SoulSchool.aac", // Tuesday - Day 1
   [Chakra.SOLAR_PLEXUS]: "Day3_SolarChakraEmbodiment_SoulSchool.aac", // Wednesday - Day 2
   [Chakra.HEART]: "Day4_HeartChakraEmbodiment_SoulSchool.aac", // Thursday - Day 3
@@ -203,9 +203,16 @@ export const useEmbodimentAudio = (chakra: Chakra) => {
             )
           }
 
+          const audioId = getEmbodimentAudioId(chakra)
+          let localUri: string | null = null
+          try {
+            localUri = await getLocalAudioUri(audioId)
+          } catch (_) {}
+
+          if (!isMounted) return
           setUrls({
             single: audioUrl,
-            localUri: null,
+            localUri,
             isLoading: false,
             error: null,
           })

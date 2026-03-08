@@ -66,28 +66,27 @@ export const TrialTestFlow: React.FC<TrialTestFlowProps> = ({
     router.replace("/(chakras)/DevPaywall")
   }
 
-  // Green: bypass waiting room and land on trial ChakraHome (walk through trial)
+  // Green: bypass waiting room and land on trial ChakraHome (walk through trial).
+  // When on waiting room we are already on ChakraHome; only hide waiting and update store.
+  // Do NOT router.replace when onStartDay1 is provided — it causes remount and blank black screen on Android.
   const handleStartDay1 = () => {
     addHapticFeedback(HapticStrength.Medium)
     const today = getLocalDateISO()
     const currentWeekStart = getCurrentWeekStartDateISO()
 
-    // Set initial dates
     setInitialOpenDate(today)
     setCourseStartDate(currentWeekStart)
 
-    // Start journey
     if (!journeyStarted) {
       startJourney(currentWeekStart)
     }
 
-    // Mark day 0 (Monday/Root) as participated to unlock it
     markDayParticipated(0)
 
     if (onStartDay1) {
       onStartDay1()
+      return
     }
-    // Navigate to ChakraHome so we land on trial stack (waiting screen will be hidden)
     router.replace("/(chakras)/ChakraHome")
   }
 

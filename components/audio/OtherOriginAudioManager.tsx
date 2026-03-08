@@ -13,8 +13,10 @@ import {
   InterruptionModeIOS,
   InterruptionModeAndroid,
 } from "expo-av"
+import { Platform } from "react-native"
 import { usePathname } from "expo-router"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { isEmulatorOrSimulator } from "@/constants/emulator"
 import {
   otherOriginTrackRef,
   getSourceSignature,
@@ -50,6 +52,17 @@ export function OtherOriginAudioManager() {
     const meta = state.metadata
     if (!src || !pref || state.audioOrigin !== "other") return
 
+    const hasUri = typeof src === "object" && src !== null && "uri" in src
+    const uriStr =
+      hasUri && typeof (src as { uri?: string }).uri === "string"
+        ? (src as { uri: string }).uri
+        : ""
+    if (hasUri && (!uriStr || uriStr.trim() === "")) {
+      if (__DEV__) console.warn("[OtherOriginAudioManager] Invalid or empty source URI, skipping createAsync")
+      setPlaying(false)
+      return
+    }
+
     try {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
@@ -57,20 +70,35 @@ export function OtherOriginAudioManager() {
         interruptionModeIOS: InterruptionModeIOS.DuckOthers,
         interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
         shouldDuckAndroid: true,
+        ...(Platform.OS === "android" && { playThroughEarpieceAndroid: false }),
       })
 
       const { sound } = await Audio.Sound.createAsync(
         src,
-        { shouldPlay: true, isLooping: pref.shouldLoop ?? true },
+        {
+          shouldPlay: true,
+          isLooping: pref.shouldLoop ?? true,
+          ...(Platform.OS === "android" && { androidImplementation: "MediaPlayer" }),
+        },
         onPlaybackStatusUpdate,
       )
-      await sound.setProgressUpdateIntervalAsync(500)
+      await sound.setProgressUpdateIntervalAsync(
+        isEmulatorOrSimulator() ? 1000 : 500,
+      )
       await sound.setIsLoopingAsync(pref.shouldLoop ?? true)
       await sound.setVolumeAsync(1)
+      setPositionMs(0)
 
       const sig = getSourceSignature(src)
       otherOriginTrackRef.current = { sound, sourceSignature: sig }
       setPlaying(true)
+      if (Platform.OS === "android") {
+        try {
+          await sound.playAsync()
+        } catch (e) {
+          if (__DEV__) console.warn("[OtherOriginAudioManager] Android playAsync after create:", e)
+        }
+      }
     } catch (e) {
       if (__DEV__) console.warn("[OtherOriginAudioManager] Init error:", e)
       setPlaying(false)
@@ -108,7 +136,7 @@ export function OtherOriginAudioManager() {
     })
   }, [isOnAudioPlayer, source, prefs, audioOrigin, initAndPlay, unloadTrack])
 
-  // Seek when seekToMs is set (crystal bowl slider)
+  // Seek when seekToMs is set (crystal bowl slider). On Android, resume playback after seek if was playing.
   useEffect(() => {
     if (seekToMs == null || audioOrigin !== "other") return
     const ref = otherOriginTrackRef.current
@@ -116,11 +144,18 @@ export function OtherOriginAudioManager() {
       setSeekTo(null)
       return
     }
+    const wasPlaying = isPlayingFromStore
     ref.sound
       .setPositionAsync(seekToMs)
-      .then(() => setSeekTo(null))
+      .then(async () => {
+        if (Platform.OS === "android" && wasPlaying) {
+          await ref.sound.playAsync()
+          setPlaying(true)
+        }
+        setSeekTo(null)
+      })
       .catch(() => setSeekTo(null))
-  }, [seekToMs, audioOrigin, setSeekTo])
+  }, [seekToMs, audioOrigin, setSeekTo, isPlayingFromStore, setPlaying])
 
   // Sync play/pause from store (mini player or crystal bowl button)
   useEffect(() => {

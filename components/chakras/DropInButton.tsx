@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { Pressable, View } from "react-native"
+import { Platform, Pressable, View } from "react-native"
 import { Audio, AVPlaybackStatus } from "expo-av"
 import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
@@ -72,9 +72,13 @@ export function DropInButton({
       })
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUri },
-        { shouldPlay: true },
+        {
+          shouldPlay: true,
+          ...(Platform.OS === "android" && { androidImplementation: "MediaPlayer" }),
+        },
         onPlaybackStatusUpdate,
       )
+      await sound.setVolumeAsync(1)
       soundRef.current = sound
       setIsPlaying(true)
     } catch (_) {
@@ -104,6 +108,10 @@ export function DropInButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityLabel="Drop in with tuning fork"
+      accessibilityHint={
+        isPlaying ? "Pause tuning fork sound" : "Plays tuning fork sound for this chakra"
+      }
       style={{
         minWidth,
         alignItems: "center",

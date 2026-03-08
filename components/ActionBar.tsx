@@ -1,6 +1,6 @@
 import React from "react"
 import { TouchableOpacity } from "react-native"
-import { Feather, Ionicons } from "@expo/vector-icons"
+import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
@@ -75,13 +75,15 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           alignItems: "center",
           ...(isLeft ? { left: 16 } : { right: 16 }),
           zIndex: 1000,
+          backgroundColor: "transparent",
           ...shadowStyle,
         }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        activeOpacity={0.7}
         accessibilityLabel="Close"
         accessibilityHint="Closes the audio player"
       >
-        <Feather name="x" size={ICON.actionBar} color="white" />
+        <Ionicons name="close" size={ICON.actionBar + 2} color="white" />
       </TouchableOpacity>
     )
   }

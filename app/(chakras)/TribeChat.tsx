@@ -3,6 +3,7 @@
  *
  * Renders TribeChatContent. Single entry point – all tribe buttons navigate here.
  * Source of truth: components/tribe/TribeChatContent.tsx
+ * Escape: onClose calls router.back(); hardware back pops this screen (stack default).
  */
 
 import React from "react"

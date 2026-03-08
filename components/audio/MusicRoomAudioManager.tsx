@@ -15,8 +15,10 @@ import {
   InterruptionModeIOS,
   InterruptionModeAndroid,
 } from "expo-av"
+import { Platform } from "react-native"
 import { usePathname } from "expo-router"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { isEmulatorOrSimulator } from "@/constants/emulator"
 
 export function MusicRoomAudioManager() {
   const pathname = usePathname()
@@ -58,6 +60,13 @@ export function MusicRoomAudioManager() {
     const src = state.source
     const pref = state.prefs
     if (!src || !pref || state.audioOrigin !== "music-room") return
+    if (
+      typeof src === "object" &&
+      src !== null &&
+      "uri" in src &&
+      !(typeof (src as { uri?: unknown }).uri === "string" && (src as { uri: string }).uri.trim())
+    )
+      return
 
     initInProgressRef.current = true
     try {
@@ -67,15 +76,22 @@ export function MusicRoomAudioManager() {
         interruptionModeIOS: InterruptionModeIOS.DuckOthers,
         interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
         shouldDuckAndroid: true,
+        ...(Platform.OS === "android" && { playThroughEarpieceAndroid: false }),
       })
 
       const { sound } = await Audio.Sound.createAsync(
         src,
-        { shouldPlay: true, isLooping: false },
+        {
+          shouldPlay: true,
+          isLooping: false,
+          ...(Platform.OS === "android" && { androidImplementation: "MediaPlayer" }),
+        },
         onPlaybackStatusUpdate,
       )
       trackRef.current = sound
-      await sound.setProgressUpdateIntervalAsync(500)
+      await sound.setProgressUpdateIntervalAsync(
+        isEmulatorOrSimulator() ? 1000 : 500,
+      )
       await sound.setIsLoopingAsync(false)
       await sound.setVolumeAsync(1)
       setPlaying(true)

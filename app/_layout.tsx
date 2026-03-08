@@ -28,6 +28,7 @@ import { useChakraWeekTransition } from "@/hooks/useChakraWeekTransition"
 import { SplashScreenReveal } from "@/components/SplashScreenReveal"
 import { useState } from "react"
 import Animated, { FadeIn, Easing } from "react-native-reanimated"
+import { SOMATIC_FADE_IN_MS } from "@/constants/layout"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { PermanentMenuBar } from "@/components/navigation/PermanentMenuBar"
 import { MusicRoomAudioManager } from "@/components/audio/MusicRoomAudioManager"
@@ -99,17 +100,10 @@ export default function RootLayout() {
           interruptionModeIOS: InterruptionModeIOS.DuckOthers,
           interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
           shouldDuckAndroid: true,
-        })
-        if (Platform.OS === "android") {
-          await Audio.setAudioModeAsync({
-            playsInSilentModeIOS: true,
-            staysActiveInBackground: true,
-            interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-            interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-            shouldDuckAndroid: true,
+          ...(Platform.OS === "android" && {
             playThroughEarpieceAndroid: false,
-          })
-        }
+          }),
+        })
       } catch (e) {
         if (__DEV__) {
           console.warn("[RootLayout] Audio setup skipped:", e)
@@ -117,6 +111,9 @@ export default function RootLayout() {
       }
     }
     setupAudio()
+    // Emulator/simulator audio is often poor; real device is source of truth. In __DEV__ on
+    // emulator we apply lighter progress-update intervals and a short pre-play delay (see
+    // constants/emulator.ts and AudioPlayer / *AudioManager). Production builds are unchanged.
   }, [])
 
   useEffect(() => {
@@ -274,10 +271,14 @@ export default function RootLayout() {
         const path = parsed.path === "/invite" || parsed.path === "invite"
         if (path && parsed.queryParams?.ref) {
           const ref = parsed.queryParams.ref as string
-          const { setPendingInviteRef } = await import(
+          const { setPendingInviteRef, setPendingInviteStartDate } = await import(
             "@/src/services/inviteRefStorage"
           )
           await setPendingInviteRef(ref)
+          const start = parsed.queryParams?.start as string | undefined
+          if (start && /^\d{4}-\d{2}-\d{2}$/.test(start)) {
+            await setPendingInviteStartDate(start)
+          }
         }
         if (
           parsed.path === "/payment-success" &&
@@ -305,10 +306,11 @@ export default function RootLayout() {
     return () => subscription.remove()
   }, [])
 
+  // Android: hardware back always goes to previous screen when there is history (never exits app from CoursePreview, etc.)
   useEffect(() => {
     if (Platform.OS !== "android") return
     const onBack = () => {
-      if (pathname?.includes("AudioPlayer")) {
+      if (router.canGoBack()) {
         router.back()
         return true
       }
@@ -316,7 +318,7 @@ export default function RootLayout() {
     }
     const sub = BackHandler.addEventListener("hardwareBackPress", onBack)
     return () => sub.remove()
-  }, [pathname, router])
+  }, [router])
 
   useEffect(() => {
     if ((fontsLoaded || fontsError) && imagesLoaded && audiosLoaded) {
@@ -366,7 +368,7 @@ export default function RootLayout() {
             <View style={{ flex: 1, backgroundColor: "#000000" }}>
               <Animated.View
                 style={{ flex: 1 }}
-                entering={FadeIn.duration(1000).easing(Easing.out(Easing.ease))}
+                entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
               >
                 <Stack>
                   <Stack.Screen
@@ -394,6 +396,9 @@ export default function RootLayout() {
                 <StatusBar
                   style="light"
                   translucent={Platform.OS === "android"}
+                  {...(Platform.OS === "android" && {
+                    backgroundColor: "transparent",
+                  })}
                 />
               </Animated.View>
               <ProfileSheet />

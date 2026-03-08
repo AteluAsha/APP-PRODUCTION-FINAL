@@ -26,15 +26,8 @@ const Chakras101 = () => {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* ActionBar stays fixed at the top */}
-      <ActionBarAnimated
-        scrollViewRef={scrollRef}
-        scrollThreshold={100}
-        onBackPress={handleBack}
-      />
-
-      {/* ScrollView wraps all content except the ActionBar */}
+    <View style={{ flex: 1 }} pointerEvents="box-none">
+      {/* ScrollView first so ActionBar overlay receives touches on Android */}
       <Animated.ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
@@ -160,6 +153,12 @@ const Chakras101 = () => {
           width={width}
         />
       </Animated.ScrollView>
+
+      <ActionBarAnimated
+        scrollViewRef={scrollRef}
+        scrollThreshold={100}
+        onBackPress={handleBack}
+      />
     </View>
   )
 }

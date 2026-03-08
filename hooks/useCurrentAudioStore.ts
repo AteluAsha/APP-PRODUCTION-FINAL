@@ -46,7 +46,7 @@ export interface PlaylistItem {
  *
  * Audio hard rules (single-owner, no double-play):
  * - Single active playback: Only one AV.Sound should be active. Full-screen playback is owned by AudioPlayer; mini-player by OtherOriginAudioManager / MusicRoomAudioManager; they never play when pathname is AudioPlayer.
- * - Full-player ownership: When audioOrigin === "full-player", only AudioPlayer creates and owns the sound; it must stop and unload that sound before any reset() and navigation.
+ * - Full-player ownership: When audioOrigin === "full-player", only AudioPlayer creates and owns the sound; it must stop and unload that sound before any reset() and navigation. The full-player track is stopped only in AudioPlayer's focus cleanup (on leave); that cleanup must await stopAsync() and unloadAsync() before calling reset() to prevent double-play and "can't turn off" on trial.
  * - Close rule: Any "close player and navigate" must go through one code path (AudioPlayer.closePlayerAndNavigate) that awaits stop + unload, then reset, then navigate. Prevents double-play when user taps the same or another track.
  * - AudioPlayer never routes to goodbye: only close or revert back. Goodbye is shown only by the course page (ChakraHome) when the user is on it with a completed day.
  * - Completion rule: Day completion (dot) can be set at track end or at 80% (dot only). No progress threshold affects audio or navigation. Goodbye is driven by the course page, not by AudioPlayer.
@@ -104,6 +104,15 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
   setPositionMs: (ms) => set({ positionMs: ms }),
   setSeekTo: (ms) => set({ seekToMs: ms }),
   setSource: (source, origin: AudioOrigin = "full-player") => {
+    // Never store empty/invalid URI — prevents loading wrong or stub audio (e.g. Android 1:05 bug).
+    const hasUri = typeof source === "object" && source !== null && "uri" in source
+    const uriStr = hasUri && typeof (source as { uri?: unknown }).uri === "string"
+      ? ((source as { uri: string }).uri ?? "").trim()
+      : ""
+    if (hasUri && !uriStr) {
+      get().reset({ keepPending: false })
+      return
+    }
     // HARD RULE: Only one audio can play at a time. Reset first (keep pending so UI stays active), then delay before setting
     // new source so managers (MusicRoom, OtherOrigin) can unload their tracks.
     clearPendingSet()
@@ -133,6 +142,16 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
     })
     pendingSetTimeoutId = setTimeout(() => {
       pendingSetTimeoutId = null
+      const src = item.source
+      const hasUri = typeof src === "object" && src !== null && "uri" in src
+      const uriStr =
+        hasUri && typeof (src as { uri?: unknown }).uri === "string"
+          ? ((src as { uri: string }).uri ?? "").trim()
+          : ""
+      if (hasUri && !uriStr) {
+        get().reset({ keepPending: false })
+        return
+      }
       set({
         source: item.source,
         metadata: item.metadata,

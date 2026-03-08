@@ -5,7 +5,7 @@ buildscript {
         buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
         minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
         compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
-        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
+        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '35')
         kotlinVersion = findProperty('android.kotlinVersion') ?: '1.9.25'
 
         ndkVersion = "26.1.10909125"
@@ -37,5 +37,14 @@ allprojects {
         google()
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
+    }
+    // Resolve duplicate image cropper: use only vanniktech 4.6.0 (same com.canhub.cropper package)
+    configurations.all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'com.github.CanHub' && details.requested.name == 'Android-Image-Cropper') {
+                details.useTarget 'com.vanniktech:android-image-cropper:4.6.0'
+                details.because 'Unify on vanniktech 4.6.0 to avoid duplicate classes'
+            }
+        }
     }
 }

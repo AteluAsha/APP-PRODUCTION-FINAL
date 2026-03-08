@@ -1,0 +1,21 @@
+---
+description: Before covering up an Android bug, investigate root cause and global Android build impact
+alwaysApply: true
+---
+
+# Android build: investigate root cause before masking
+
+When fixing an issue that appears on Android (UI artifact, crash, layout glitch, modal/overlay bug, etc.):
+
+1. **Do not** choose a fix that only hides or covers the symptom (e.g. adding an overlay, painting over a white strip, disabling a feature only on Android) until you have investigated root cause.
+
+2. **First investigate** whether the problem is:
+   - A **root Android build / platform issue** (e.g. Modal default background, SafeAreaView insets, native window behavior, theme/window background).
+   - A **view hierarchy or layering bug** (missing `backgroundColor`, wrong z-index, unpainted regions showing platform default).
+   - Something that could **affect the global Android app build** (shared components, native config, theme, or patterns used elsewhere).
+
+3. **Then fix the root cause** where possible (e.g. define the modal surface with explicit background instead of covering the white strip). Document the root cause in code or in `docs/` when it’s an Android-specific platform behavior.
+
+4. Use **covering or workarounds only** when the root cause is confirmed to be local and not a global Android build concern, or when a proper root fix is documented and the cover is an intentional, documented fallback.
+
+**Example:** A “white box” on Android when opening a modal → investigate: is it the Modal’s first child having no `backgroundColor` (platform default shows)? Fix by setting the root view’s background so the surface is fully defined, not by adding a black overlay to hide the white.

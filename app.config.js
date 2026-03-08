@@ -35,7 +35,7 @@ module.exports = {
       image: "./assets/images/SoulSchool_Error_HeroLogo.png",
       backgroundColor: "#000000",
       resizeMode: "contain",
-      imageWidth: 300,
+      imageWidth: 180,
     },
     scheme: "soul-school",
     userInterfaceStyle: "dark",
@@ -63,6 +63,11 @@ module.exports = {
         foregroundImage: APP_ICON_BLACK,
         backgroundColor: "#000000",
       },
+      // Avoid default semi-transparent status bar scrim (#00000088) so the app doesn't feel dim
+      androidStatusBar: {
+        backgroundColor: "#00000000",
+        translucent: true,
+      },
       package: "com.sevenchakras.SevenChakras",
       permissions: [
         "CAMERA",
@@ -81,7 +86,7 @@ module.exports = {
           image: "./assets/images/SoulSchool_Error_HeroLogo.png",
           backgroundColor: "#000000",
           resizeMode: "contain",
-          imageWidth: 300,
+          imageWidth: 180,
         },
       ],
       "expo-font",

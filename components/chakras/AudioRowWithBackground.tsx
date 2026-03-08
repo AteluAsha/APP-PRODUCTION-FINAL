@@ -1,8 +1,9 @@
-import { View, ImageBackground, Pressable } from "react-native"
+import { useState } from "react"
+import { View, ImageBackground, Pressable, ActivityIndicator } from "react-native"
 import { useRouter } from "expo-router"
 import { FontAwesome } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
-import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { useCurrentAudioStore, AUDIO_READY_DELAY_MS } from "@/hooks/useCurrentAudioStore"
 import { AVPlaybackSource } from "expo-av"
 import { getMinutesString } from "@/utils/format"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
@@ -13,6 +14,7 @@ export const AudioRowWithBackground = ({
   author,
   durationMs,
   audioSource,
+  getAudioSource,
   authorColor = "#FFFFFF",
   isIntroAudio = false,
   chakraColor,
@@ -20,12 +22,54 @@ export const AudioRowWithBackground = ({
   title: string
   author: string
   durationMs: number
-  audioSource: AVPlaybackSource
+  audioSource?: AVPlaybackSource
+  /** When provided, used instead of audioSource for local-first / prepared playback (e.g. Head to Heart on Android). */
+  getAudioSource?: () => Promise<AVPlaybackSource>
   authorColor: string
   isIntroAudio?: boolean
   chakraColor?: string
 }) => {
   const router = useRouter()
+  const [isPreparing, setIsPreparing] = useState(false)
+
+  const onPress = async () => {
+    if (isPreparing) return
+    addHapticFeedback(HapticStrength.Light)
+    useCurrentAudioStore.getState().setPendingTrackKey("full-player-row")
+    useCurrentAudioStore.getState().setPlaying(true)
+    setIsPreparing(true)
+    try {
+      const source = getAudioSource
+        ? await getAudioSource()
+        : audioSource
+      if (!source) {
+        useCurrentAudioStore.getState().setPendingTrackKey(null)
+        useCurrentAudioStore.getState().setPlaying(false)
+        return
+      }
+      useCurrentAudioStore.getState().setSource(source, "full-player")
+      useCurrentAudioStore.getState().setMetadata({
+        durationMs,
+        title,
+        author,
+      })
+      useCurrentAudioStore.getState().setPrefs({
+        shouldLoop: false,
+        isIntroAudio,
+      })
+      if (chakraColor) {
+        useCurrentAudioStore.getState().setChakraColor(chakraColor)
+      }
+      await new Promise((r) => setTimeout(r, AUDIO_READY_DELAY_MS))
+      router.push("/AudioPlayer")
+      addHapticFeedback(HapticStrength.Light)
+    } catch {
+      useCurrentAudioStore.getState().setPendingTrackKey(null)
+      useCurrentAudioStore.getState().setPlaying(false)
+    } finally {
+      setIsPreparing(false)
+    }
+  }
 
   return (
     <Pressable
@@ -38,29 +82,8 @@ export const AudioRowWithBackground = ({
         borderRadius: 14,
         overflow: "hidden",
       }}
-      onPress={async () => {
-        useCurrentAudioStore.getState().setPendingTrackKey("full-player-row")
-        useCurrentAudioStore.getState().setPlaying(true)
-        // setSource internally resets and delays; wait so store has source when AudioPlayer mounts
-        useCurrentAudioStore.getState().setSource(audioSource, "full-player")
-        useCurrentAudioStore.getState().setMetadata({
-          durationMs,
-          title,
-          author,
-        })
-        useCurrentAudioStore.getState().setPrefs({
-          shouldLoop: false,
-          isIntroAudio,
-        })
-        if (chakraColor) {
-          useCurrentAudioStore.getState().setChakraColor(chakraColor)
-        }
-        const { AUDIO_READY_DELAY_MS } =
-          await import("@/hooks/useCurrentAudioStore")
-        await new Promise((r) => setTimeout(r, AUDIO_READY_DELAY_MS))
-        router.push("/AudioPlayer")
-        addHapticFeedback(HapticStrength.Light)
-      }}
+      onPress={onPress}
+      disabled={isPreparing}
     >
       <ImageBackground
         source={require("@/assets/images/colorbar.png")}
@@ -92,12 +115,16 @@ export const AudioRowWithBackground = ({
               justifyContent: "center",
             }}
           >
-            <FontAwesome
-              name="play"
-              size={18}
-              color="white"
-              style={{ marginLeft: 4 }}
-            />
+            {isPreparing ? (
+              <ActivityIndicator size="small" color="rgba(255,255,255,0.9)" />
+            ) : (
+              <FontAwesome
+                name="play"
+                size={18}
+                color="white"
+                style={{ marginLeft: 4 }}
+              />
+            )}
           </View>
           <View style={{ marginLeft: 16 }}>
             <AppText

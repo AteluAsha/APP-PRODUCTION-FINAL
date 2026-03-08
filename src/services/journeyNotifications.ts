@@ -147,7 +147,9 @@ export async function scheduleJourneyReminders(
 
   const dayName = formatDate(startDate).split(",")[0]
 
-  const triggerExtras =
+    const triggerExtras =
+    Platform.OS === "android" ? { channelId: CHANNEL_ID } : {}
+  const contentExtras =
     Platform.OS === "android" ? { channelId: CHANNEL_ID } : {}
 
   for (let daysBefore = 3; daysBefore >= 1; daysBefore--) {
@@ -171,6 +173,7 @@ export async function scheduleJourneyReminders(
         title: message.title,
         body,
         data: { courseStartDate: courseStartDateISO, daysBefore },
+        ...contentExtras,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,

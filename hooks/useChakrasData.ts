@@ -4,6 +4,7 @@ import { db } from "@/src/services/firebase"
 import { ref, getDownloadURL } from "firebase/storage"
 import { storage } from "@/src/services/firebase"
 import { checkRateLimit, waitForRateLimit } from "@/src/utils/rateLimiter"
+import { getChakraFromDay } from "@/utils/chakraMapping"
 
 // Map day numbers to Firestore document IDs
 const DAY_TO_DOC_ID: Record<number, string> = {
@@ -120,8 +121,9 @@ export const useChakrasData = () => {
             }
             // For Day 3, 6, and 7, audio is handled by useEmbodimentAudio hook with correct Firebase Storage paths
 
-            // Map to router path based on document ID
-            const routerPath = `/(chakras)/${docId === "solar_plexus" ? "solar" : docId === "third_eye" ? "thirdeye" : docId}`
+            // Map to route using Chakra enum so [chakra] route always gets valid segment (APP1 + APP2)
+            const chakraSlug = getChakraFromDay(day) as string
+            const routerPath = `/(chakras)/${chakraSlug}` as const
 
             // Get image source from static mapping
             const imageSource = DOC_ID_TO_IMAGE[docId]

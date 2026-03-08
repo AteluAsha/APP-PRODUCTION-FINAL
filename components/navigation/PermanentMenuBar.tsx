@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from "react"
-import { View, Pressable, StyleSheet } from "react-native"
+import { View, Pressable, StyleSheet, Platform } from "react-native"
 import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet"
 import { useRouter, usePathname, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -39,6 +39,7 @@ import { getContextChakraDayFromRoute } from "@/utils/notesContextChakra"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { DAY_NAMES, getDayName } from "@/constants/chakras/chakraConstants"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
+import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { JourneyNotesView } from "@/components/chakras/JourneyNotesView"
 import { MenuBarMiniPlayer } from "@/components/navigation/MenuBarMiniPlayer"
 import { SocialSanctuaryModal } from "@/components/social/SocialSanctuaryModal"
@@ -125,6 +126,7 @@ export const PermanentMenuBar: React.FC = () => {
   )
   const source = useCurrentAudioStore((s) => s.source)
   const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
+  const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
 
   // Determine if we're on a home/landing screen where menu should be hidden by default
   // NOTE: All hooks must run unconditionally (Rules of Hooks) - no early return before hooks
@@ -291,6 +293,13 @@ export const PermanentMenuBar: React.FC = () => {
 
   const handleItemPress = (item: MenuItem) => {
     addHapticFeedback(HapticStrength.Light)
+    // Android: open Anua chat directly (skip SocialSanctuaryModal so touches work)
+    if (item.id === "anua" && Platform.OS === "android") {
+      useAnuaChatStore.getState().open({
+        chakraDayOverride: contextChakraDay ?? undefined,
+      })
+      return
+    }
     if (item.onPress) {
       item.onPress()
     } else if (item.route) {
@@ -301,6 +310,11 @@ export const PermanentMenuBar: React.FC = () => {
   // Hide menu bar completely if user doesn't have lifetime access (APP_2 only)
   // Exception: trial shows mini player when Sound Healing crystal bowl is playing (other origin)
   if (!hasLifetimeAccess && !(source && audioOrigin === "other")) {
+    return null
+  }
+
+  // Goodbye modal open: hide so menu bar doesn't block modal touches
+  if (isGoodbyeVisible) {
     return null
   }
 
@@ -338,15 +352,21 @@ export const PermanentMenuBar: React.FC = () => {
     return null
   }
 
-  // Hide menu bar on paywall (CommitmentGate, DevPaywall), Tribe Chat (has its own header),
-  // AudioPlayer (distraction-free embodiment listening), and Social Sanctuary (input box at bottom)
+  // Hide menu bar on paywall, Tribe Chat, AudioPlayer, Anua Chat, CommunityHalls, and GiftChakra (gift awaits screens)
   if (
     pathname?.includes("CommitmentGate") ||
     pathname?.includes("DevPaywall") ||
     pathname?.includes("TribeChat") ||
     pathname?.includes("AudioPlayer") ||
     pathname?.includes("CommunityHalls") ||
-    segments.includes("AudioPlayer")
+    pathname?.includes("AnuaChat") ||
+    pathname?.includes("GiftChakra") ||
+    pathname === "AnuaChat" ||
+    segments.includes("AudioPlayer") ||
+    segments.includes("AnuaChat") ||
+    segments.includes("GiftChakra") ||
+    (segments.length > 0 && segments[segments.length - 1] === "AnuaChat") ||
+    (segments.length > 0 && segments[segments.length - 1] === "GiftChakra")
   ) {
     return null
   }

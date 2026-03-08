@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useCallback } from "react"
 import {
   View,
   Image,
@@ -16,7 +16,10 @@ import Animated, {
 import { ActionBarAnimated } from "@/components/ActionBarAnimated"
 import { HeaderSection } from "@/components/chakras/HeaderSection"
 import { chakraContent } from "@/constants/chakras/content"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import {
+  SCROLL_BREATHING_BOTTOM_PADDING,
+  SOMATIC_CONTENT_FADE_MS,
+} from "@/constants/layout"
 import { PillBottomSheet } from "@/components/chakras/PillBottomSheet"
 import { PillSection } from "@/components/chakras/PillSection"
 import { Divider } from "@/components/chakras/Divider"
@@ -39,8 +42,9 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import GoodbyeModal from "@/components/chakras/GoodbyeModal"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { useEmbodimentAudio } from "@/hooks/useEmbodimentAudio"
+import { useEmbodimentAudio, getEmbodimentAudioId } from "@/hooks/useEmbodimentAudio"
 import { useTuningForkAudio } from "@/hooks/useTuningForkAudio"
+import { prepareLongAudioForPlay } from "@/src/utils/crystalBowlPlayback"
 import { DropInButton } from "@/components/chakras/DropInButton"
 // Social Sanctuary and Anua access handled globally by FloatingNavButtons
 import { getChakraIndex } from "@/utils/chakraMapping"
@@ -142,40 +146,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   const embodimentAudio = useEmbodimentAudio(chakra)
   const tuningForkAudio = useTuningForkAudio(chakra)
 
-  // Debug logging to verify correct chakra and audio mapping
-  useEffect(() => {
-    if (__DEV__) {
-      console.log(
-        `[ChakraTemplate] Rendering for chakra: ${chakra}, Day: ${chakraDay}, Name: ${chakraName}`,
-      )
-      console.log(`[ChakraTemplate] Embodiment audio state:`, {
-        hasSingle: !!embodimentAudio.single,
-        hasPartOne: !!embodimentAudio.partOne,
-        hasPartTwo: !!embodimentAudio.partTwo,
-        isLoading: embodimentAudio.isLoading,
-        error: embodimentAudio.error?.message,
-      })
-      if (embodimentAudio.single) {
-        console.log(
-          `[ChakraTemplate] Single audio URL (first 50 chars):`,
-          embodimentAudio.single.substring(0, 50),
-        )
-      }
-      if (embodimentAudio.partOne) {
-        console.log(
-          `[ChakraTemplate] Part One audio URL (first 50 chars):`,
-          embodimentAudio.partOne.substring(0, 50),
-        )
-      }
-      if (embodimentAudio.partTwo) {
-        console.log(
-          `[ChakraTemplate] Part Two audio URL (first 50 chars):`,
-          embodimentAudio.partTwo.substring(0, 50),
-        )
-      }
-    }
-  }, [chakra, chakraDay, chakraName, embodimentAudio])
-
   // Track pill bottom sheet visibility globally
   const setIsPillBottomSheetVisible = usePillBottomSheetStore(
     (state) => state.setIsVisible,
@@ -262,13 +232,13 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
         <View style={{ paddingBottom: 80 + SCROLL_BREATHING_BOTTOM_PADDING, paddingTop: 8 }}>
           <Animated.View
             style={{ backgroundColor: "#000000" }}
-            entering={FadeIn.duration(520)
+            entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
               .delay(80)
               .easing(Easing.out(Easing.ease))}
           >
             {/* Master meditation: baked layout so page and buttons appear in one paint (no "Preparing..." swap). */}
             <Animated.View
-              entering={FadeIn.duration(460)
+              entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
                 .delay(40)
                 .easing(Easing.out(Easing.ease))}
               style={{ marginBottom: 8 }}
@@ -326,6 +296,19 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                     disabled={
                       embodimentAudio.isLoading || !!embodimentAudio.error
                     }
+                    getAudioSource={async () =>
+                      prepareLongAudioForPlay(
+                        {
+                          url: embodimentAudio.partOne ?? null,
+                          localUri: embodimentAudio.localUriPartOne ?? null,
+                          audioId: getEmbodimentAudioId(Chakra.THIRD_EYE, "part1"),
+                          fallback: {
+                            uri: embodimentAudio.partOne ?? "",
+                          },
+                        },
+                        { requireFullDownload: true },
+                      )
+                    }
                   />
                   <AudioRow
                     title="Part Two: Somatic Healing"
@@ -342,6 +325,19 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                     chakraColor={getChakraColor(chakraDay)}
                     disabled={
                       embodimentAudio.isLoading || !!embodimentAudio.error
+                    }
+                    getAudioSource={async () =>
+                      prepareLongAudioForPlay(
+                        {
+                          url: embodimentAudio.partTwo ?? null,
+                          localUri: embodimentAudio.localUriPartTwo ?? null,
+                          audioId: getEmbodimentAudioId(Chakra.THIRD_EYE, "part2"),
+                          fallback: {
+                            uri: embodimentAudio.partTwo ?? "",
+                          },
+                        },
+                        { requireFullDownload: true },
+                      )
                     }
                   />
                 </>
@@ -366,18 +362,31 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                   disabled={
                     embodimentAudio.isLoading || !!embodimentAudio.error
                   }
+                  getAudioSource={async () =>
+                    prepareLongAudioForPlay(
+                      {
+                        url: embodimentAudio.single ?? null,
+                        localUri: embodimentAudio.localUri ?? null,
+                        audioId: getEmbodimentAudioId(chakra),
+                        fallback: {
+                          uri: embodimentAudio.single ?? embodimentAudio.partOne ?? "",
+                        },
+                      },
+                      { requireFullDownload: true },
+                    )
+                  }
                 />
               )}
             </Animated.View>
             <Animated.View
-              entering={FadeIn.duration(440)
+              entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
                 .delay(120)
                 .easing(Easing.out(Easing.ease))}
             >
               <PillSection chakra={chakra} onPress={handlePillPress} />
             </Animated.View>
             <Animated.View
-              entering={FadeIn.duration(420)
+              entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
                 .delay(180)
                 .easing(Easing.out(Easing.ease))}
             >
@@ -387,7 +396,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               <AffirmationSection affirmationText={content.affirmationText} />
             </Animated.View>
             <Animated.View
-              entering={FadeIn.duration(440)
+              entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
                 .delay(220)
                 .easing(Easing.out(Easing.ease))}
             >
@@ -402,7 +411,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
             </Animated.View>
           </Animated.View>
           <Animated.View
-            entering={FadeIn.duration(420)
+            entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
               .delay(280)
               .easing(Easing.out(Easing.ease))}
           >
@@ -411,6 +420,10 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               setIntegrationModalVisible(true)
               addHapticFeedback(HapticStrength.Light)
             }}
+            accessibilityLabel={
+              getIntegrationMomentContent(chakraDay)?.title ?? "Integration moment"
+            }
+            accessibilityHint="Opens integration reflection for today"
             style={{
               width: "83.33%",
               alignSelf: "center",
@@ -480,7 +493,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
           </Animated.View>
           {/* PART IV - Mirror of Embodiment: section header, divider, quiz button */}
           <Animated.View
-            entering={FadeIn.duration(420)
+            entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
               .delay(320)
               .easing(Easing.out(Easing.ease))}
             style={{ marginTop: 28, marginBottom: 24, alignItems: "center" }}
@@ -503,6 +516,8 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                 addHapticFeedback(HapticStrength.Medium)
                 router.push(`/(chakras)/QuizScreen?day=${chakraDay + 1}`)
               }}
+              accessibilityLabel="A Test of Remembrance"
+              accessibilityHint={`Take day ${chakraDay + 1} quiz`}
               style={{
                 shadowColor: "#2a2520",
                 shadowOffset: { width: 0, height: 4 },
@@ -569,7 +584,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
           </Animated.View>
           {/* Completion Ceremony - whole section tappable; checkbox fills when completed; resets Monday midnight via week transition */}
           <Animated.View
-            entering={FadeIn.duration(440)
+            entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
               .delay(360)
               .easing(Easing.out(Easing.ease))}
             style={{ marginTop: 48, marginBottom: 24, alignItems: "center" }}

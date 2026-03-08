@@ -27,6 +27,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Dimensions,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -45,6 +46,7 @@ import {
 } from "@/src/services/wisdomEngine"
 import { moderateReflection } from "@/src/services/sentinel"
 import { getUserProfile, type UserProfile } from "@/src/services/profileService"
+import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { useRouter } from "expo-router"
 import { TreeOfLifeIcon } from "./TreeOfLifeIcon"
 import { ProfilePreviewModal } from "@/components/profile/ProfilePreviewModal"
@@ -272,26 +274,57 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
     return date.toLocaleDateString()
   }
 
+  // Escape hatch: user must always be able to close (onRequestClose + visible header close).
+  // Android: fullScreen + explicit root dimensions so modal content paints (pageSheet can show only dim).
+  const { width: winWidth, height: winHeight } = Dimensions.get("window")
+  const androidRootStyle =
+    Platform.OS === "android"
+      ? {
+          width: winWidth,
+          height: winHeight,
+          minWidth: winWidth,
+          minHeight: winHeight,
+          position: "absolute" as const,
+          left: 0,
+          top: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "#000000",
+        }
+      : { flex: 1, backgroundColor: "#000000" }
+
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle={Platform.OS === "android" ? "fullScreen" : "pageSheet"}
       onRequestClose={onClose}
+      statusBarTranslucent={Platform.OS === "android"}
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
+      <GestureHandlerRootView
+        style={androidRootStyle}
+        {...(Platform.OS === "android" && { unstable_forceActive: true })}
+      >
+        <View style={{ flex: 1 }} pointerEvents="box-none" collapsable={false}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }} edges={["top", "left", "right", "bottom"]}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
         >
-          {/* Header */}
+          {/* Header: Android – solid background, elevation/zIndex, large close target (escape hatch). */}
           <View
+            collapsable={Platform.OS !== "android"}
             style={{
               paddingHorizontal: 24,
               paddingTop: 24,
               paddingBottom: 16,
               borderBottomWidth: 1,
               borderBottomColor: "rgba(31, 41, 55, 0.5)",
+              ...(Platform.OS === "android" && {
+                zIndex: 10,
+                elevation: 10,
+                backgroundColor: "#000000",
+              }),
             }}
           >
             <View
@@ -311,7 +344,16 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
               </AppText>
               <Pressable
                 onPress={onClose}
-                style={{ padding: 8, marginRight: -8 }}
+                style={{
+                  padding: 8,
+                  marginRight: -8,
+                  ...(Platform.OS === "android" && {
+                    minWidth: 48,
+                    minHeight: 48,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }),
+                }}
                 accessibilityLabel="Close"
                 accessibilityHint="Tap to close Social Sanctuary"
               >
@@ -334,7 +376,10 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
           {/* Options View - Stacked buttons vertically */}
           {view === "options" && (
             <ScrollView
-              style={{ flex: 1 }}
+              style={{
+                flex: 1,
+                ...(Platform.OS === "android" && { zIndex: 0, elevation: 0 }),
+              }}
               contentContainerStyle={{
                 paddingHorizontal: 24,
                 paddingTop: 24,
@@ -351,12 +396,12 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                     }}
                     style={{
                       backgroundColor: "rgba(135, 174, 115, 0.1)",
-                      borderWidth: 1.5,
+                      borderWidth: 1,
                       flexDirection: "row",
                       alignItems: "center",
                       gap: 16,
                       borderColor: "rgba(135, 174, 115, 0.3)",
-                      borderRadius: 20,
+                      borderRadius: 14,
                       padding: 16,
                       shadowColor: "#87AE73",
                       shadowOffset: { width: 0, height: 2 },
@@ -371,7 +416,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                         width: 56,
                         height: 56,
                         borderRadius: 28,
-                        borderWidth: 1.5,
+                        borderWidth: 1,
                         borderColor: "rgba(135, 174, 115, 0.4)",
                       }}
                       resizeMode="cover"
@@ -417,11 +462,11 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                         alignItems: "center",
                         gap: 16,
                         backgroundColor: "rgba(135, 174, 115, 0.1)",
-                        borderWidth: 1.5,
+                        borderWidth: 1,
                         borderColor: isLimitedMode
                           ? "rgba(135, 174, 115, 0.2)"
                           : "rgba(135, 174, 115, 0.3)",
-                        borderRadius: 20,
+                        borderRadius: 14,
                         padding: 16,
                         shadowColor: "#87AE73",
                         shadowOffset: { width: 0, height: 2 },
@@ -436,7 +481,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                           height: 56,
                           borderRadius: 28,
                           backgroundColor: "rgba(135, 174, 115, 0.2)",
-                          borderWidth: 1.5,
+                          borderWidth: 1,
                           borderColor: "rgba(135, 174, 115, 0.4)",
                           justifyContent: "center",
                           alignItems: "center",
@@ -499,11 +544,11 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                       alignItems: "center",
                       gap: 16,
                       backgroundColor: "rgba(135, 174, 115, 0.1)",
-                      borderWidth: 1.5,
+                      borderWidth: 1,
                       borderColor: isLimitedMode
                         ? "rgba(135, 174, 115, 0.2)"
                         : "rgba(135, 174, 115, 0.3)",
-                      borderRadius: 20,
+                      borderRadius: 14,
                       padding: 16,
                       shadowColor: "#87AE73",
                       shadowOffset: { width: 0, height: 2 },
@@ -518,7 +563,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                         height: 56,
                         borderRadius: 28,
                         backgroundColor: "#000000",
-                        borderWidth: 1.5,
+                        borderWidth: 1,
                         borderColor: "rgba(255, 255, 255, 0.2)",
                         justifyContent: "center",
                         alignItems: "center",
@@ -596,9 +641,9 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                           key={reflection.id}
                           style={{
                             backgroundColor: "rgba(135, 174, 115, 0.08)",
-                            borderWidth: 1.5,
+                            borderWidth: 1,
                             borderColor: "rgba(135, 174, 115, 0.2)",
-                            borderRadius: 20,
+                            borderRadius: 14,
                             padding: 20,
                             shadowColor: "#87AE73",
                             shadowOffset: { width: 0, height: 2 },
@@ -1139,6 +1184,8 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
         avatarUrl={profilePreview?.avatarUrl}
         location={profilePreview?.location}
       />
+        </View>
+      </GestureHandlerRootView>
     </Modal>
   )
 }

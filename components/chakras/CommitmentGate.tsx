@@ -14,6 +14,7 @@ import {
   Image,
   ActivityIndicator,
   StyleSheet,
+  Platform,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { LinearGradient } from "expo-linear-gradient"
@@ -137,7 +138,9 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
         setShowAccessGranted(true)
       } else {
         setRestoreError(
-          "No purchases found. If you bought on another device, sign in with the same Apple ID and try again.",
+          Platform.OS === "android"
+            ? "No purchases found. If you bought on another device, sign in with the same Google account and try again."
+            : "No purchases found. If you bought on another device, sign in with the same Apple ID and try again.",
         )
       }
     } catch (err: any) {

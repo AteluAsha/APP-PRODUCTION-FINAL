@@ -28,6 +28,7 @@ export const CommunityFeaturePreviewModal: React.FC<
   const isShare = featureType === "share"
   const isHalls = featureType === "halls"
 
+  // Escape hatch: user must always be able to close (onRequestClose + visible close).
   return (
     <Modal
       visible={visible}
@@ -36,7 +37,11 @@ export const CommunityFeaturePreviewModal: React.FC<
       onRequestClose={onClose}
       statusBarTranslucent={true}
     >
-      <SafeAreaView className="flex-1 bg-black/95" edges={["top", "bottom"]}>
+      <SafeAreaView
+        className="flex-1 bg-black/95"
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)" }}
+        edges={["top", "bottom"]}
+      >
         <View className="flex-1">
           {/* Header */}
           <View className="flex-row items-center justify-between px-6 pt-4 pb-6">

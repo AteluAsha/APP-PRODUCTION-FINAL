@@ -28,6 +28,7 @@ import { useRouter } from "expo-router"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
+import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { LinearGradient } from "expo-linear-gradient"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import Animated, { FadeIn, Easing } from "react-native-reanimated"
@@ -136,7 +137,7 @@ const DEFAULT_THEME = {
   ] as const,
   inputBorder: "rgba(135, 174, 115, 0.3)",
   inputGlow: "rgba(135, 174, 115, 0.1)",
-  placeholderColor: "rgba(135, 174, 115, 0.5)",
+  placeholderColor: "rgba(255, 255, 255, 0.7)",
   emptyGradient: [
     "rgba(135, 174, 115, 0.2)",
     "rgba(107, 142, 90, 0.1)",
@@ -290,19 +291,15 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
         onSelect={setSelectedChakraDay}
       />
 
-      <AppText
-        font="instrument-regular"
-        size="xs"
-        style={{
-          color: t.hintColor,
-          textAlign: "center",
-          marginBottom: 12,
-          paddingHorizontal: 16,
-          lineHeight: 18,
-        }}
-      >
-        All notes save to the chakra you're exploring in this moment.
-      </AppText>
+      <View style={styles.hintWrap}>
+        <AppText
+          font="instrument-regular"
+          size="xs"
+          style={[styles.hintText, { color: t.hintColor }]}
+        >
+          All notes save to the chakra you're exploring in this moment.
+        </AppText>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -491,7 +488,13 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
                         <Pressable
                           onPress={() => {
                             addHapticFeedback(HapticStrength.Light)
-                            onSendToAnua?.(note.content)
+                            if (onSendToAnua) {
+                              onSendToAnua(note.content)
+                            } else {
+                              useAnuaChatStore
+                                .getState()
+                                .open({ initialMessage: note.content })
+                            }
                           }}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           style={{ alignSelf: "flex-start", marginTop: 8 }}
@@ -602,42 +605,44 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     marginBottom: 16,
     marginTop: 0,
+    paddingHorizontal: 20,
     gap: 12,
-    minHeight: 100,
+    minHeight: 112,
   },
   inputGradient: {
     flex: 1,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 16,
+    borderWidth: 1,
     borderColor: "rgba(135, 174, 115, 0.3)",
     overflow: "hidden",
     position: "relative",
     shadowColor: "#87AE73",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 3,
   },
   inputGlow: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    height: "30%",
-    backgroundColor: "rgba(135, 174, 115, 0.1)",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    height: "18%",
+    backgroundColor: "rgba(135, 174, 115, 0.08)",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   textInput: {
     flex: 1,
     backgroundColor: "transparent",
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     color: "#FFFFFF",
-    minHeight: 100,
+    minHeight: 112,
     maxHeight: 200,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 20,
     fontFamily: "InstrumentRegular",
   },
   addButton: {
@@ -662,6 +667,17 @@ const styles = StyleSheet.create({
   },
   addButtonDisabled: {
     opacity: 0.5,
+  },
+  hintWrap: {
+    alignSelf: "center",
+    maxWidth: "100%",
+    paddingHorizontal: 24,
+    marginBottom: 14,
+  },
+  hintText: {
+    textAlign: "center",
+    lineHeight: 18,
+    fontSize: 12,
   },
   fullPageLink: {
     flexDirection: "row",

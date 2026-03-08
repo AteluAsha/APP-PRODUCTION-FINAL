@@ -33,6 +33,8 @@ export const Pill = ({
         style,
       ]}
       onPress={onPress}
+      accessibilityLabel={content}
+      accessibilityRole="button"
     >
       <LinearGradient
         colors={[...PILL_GRADIENT_COLORS]}
