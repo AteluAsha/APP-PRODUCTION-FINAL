@@ -168,7 +168,11 @@ const HeadToHeart = () => {
                             audioId: getHeadToHeartAudioId(chakra),
                             fallback: { uri: url ?? localUri ?? "" },
                           },
-                          { requireFullDownload: true },
+                          {
+                            requireFullDownload: true,
+                            allowStreamingFallback: false,
+                            downloadTimeoutMs: 180000,
+                          },
                         )
                     : undefined
                 }

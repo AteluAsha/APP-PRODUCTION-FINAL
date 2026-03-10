@@ -15,74 +15,35 @@
  */
 
 import React, { useMemo, useEffect, useState } from "react"
-import { View, Pressable, Image, Platform } from "react-native"
+import { View, Pressable, Image, Platform, Linking, useWindowDimensions } from "react-native"
 import { ScrollView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
-import { Feather } from "@expo/vector-icons"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
-import { Chakra } from "@/types/chakras/Chakra"
-import { CHAKRA_TO_DAY, getChakraIndex } from "@/utils/chakraMapping"
+import { getChakraIndex } from "@/utils/chakraMapping"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import PulsingButton from "@/components/chakras/PulsingButton"
 import { useChakrasData } from "@/hooks/useChakrasData"
 import { ActionBar } from "@/components/ActionBar"
-import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import GoodbyeModal from "@/components/chakras/GoodbyeModal"
 import { ReturnToCourseModal } from "@/components/chakras/ReturnToCourseModal"
-import { isChakraDayAccessible } from "@/src/services/timegate"
 import { useFocusEffect } from "@react-navigation/native"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
-import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
+import {
+  FLOATING_NAV_SCROLL_BOTTOM_PADDING,
+  SCROLL_BREATHING_BOTTOM_PADDING,
+  SCROLL_ANDROID_SMOOTH_PROPS,
+  TRIAL_HOME_ROOT_CHAKRA,
+} from "@/constants/layout"
+import { ARCHETYPE_QUIZ_URL } from "@/constants/sharing"
 import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
-
-const CHAKRA_ORDER: Chakra[] = [
-  Chakra.ROOT,
-  Chakra.SACRAL,
-  Chakra.SOLAR_PLEXUS,
-  Chakra.HEART,
-  Chakra.THROAT,
-  Chakra.THIRD_EYE,
-  Chakra.CROWN,
-]
-
-const CHAKRA_NAMES = [
-  "Root",
-  "Sacral",
-  "Solar Plexus",
-  "Heart",
-  "Throat",
-  "Third Eye",
-  "Crown",
-]
-
-const DAY_NAMES = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-]
-
-// Static chakra ball images – used when useChakrasData has not yet loaded or fails (e.g. Firestore)
-const DAY_INDEX_TO_CHAKRA_IMAGE: Record<number, ReturnType<typeof require>> = {
-  0: require("@/assets/images/root.png"),
-  1: require("@/assets/images/sacral.png"),
-  2: require("@/assets/images/solar.png"),
-  3: require("@/assets/images/heart.png"),
-  4: require("@/assets/images/throat.png"),
-  5: require("@/assets/images/thirdeye.png"),
-  6: require("@/assets/images/crown.png"),
-}
+import { IntegratedProgressStack } from "@/components/chakras/IntegratedProgressStack"
 
 export default function ChakraHub() {
   const router = useRouter()
@@ -159,24 +120,20 @@ export default function ChakraHub() {
     return count
   }, [hasLifetimeAccess, hasEverCompletedChakra, completedChakras])
 
-  const hubChakraData = useMemo(() => {
-    if (!hasLifetimeAccess) return []
-    return CHAKRA_ORDER.map((chakra) => {
-      const dayIndex = CHAKRA_TO_DAY[chakra]
-      const chakraData = chakrasData.find((c) => c.day === dayIndex)
-      return {
-        chakra,
-        dayIndex,
-        name: CHAKRA_NAMES[dayIndex],
-        dayName: DAY_NAMES[dayIndex],
-        source: chakraData?.source ?? DAY_INDEX_TO_CHAKRA_IMAGE[dayIndex],
-        onPress: (_r: any) => {
-          router.push(`/(chakras)/${chakra}`)
-          addHapticFeedback(HapticStrength.Light)
-        },
-      }
-    })
-  }, [hasLifetimeAccess, chakrasData, router])
+  const { height: windowHeight } = useWindowDimensions()
+  const viewportHeight = windowHeight - insets.top - insets.bottom
+
+  // Same shape as ChakraHome: day, affirmation, description, source, onPress for IntegratedProgressStack
+  const stackChakraData = useMemo(() => {
+    if (chakrasData.length === 0) return []
+    return chakrasData.map((item) => ({
+      ...item,
+      onPress: (r: any) => {
+        addHapticFeedback(HapticStrength.Light)
+        item.onPress(r)
+      },
+    }))
+  }, [chakrasData])
 
   useFocusEffect(
     React.useCallback(() => {
@@ -187,11 +144,6 @@ export default function ChakraHub() {
       }
     }, [completedChakra, clearCompletedChakra]),
   )
-
-  const handleNavigateToChakra = (chakra: Chakra) => {
-    router.push(`/(chakras)/${chakra}`)
-    addHapticFeedback(HapticStrength.Light)
-  }
 
   const handleNavigateToGallery = () => {
     router.push("/(chakras)/GalleryOfGnosis")
@@ -218,33 +170,8 @@ export default function ChakraHub() {
     addHapticFeedback(HapticStrength.Light)
   }
 
+  // Somatic journey (lifetime): no course → single path to DateSelection; course scheduled → modal: continue or start new
   const hasSomaticJourneyScheduled = Boolean(courseStartDate)
-
-  const getChakraBallProps = (dayIndex: number) => {
-    const isUnlocked = inCourseMode
-      ? isChakraDayAccessible(
-          dayIndex,
-          true,
-          hasParticipatedDay,
-          currentDay,
-          allChakrasCompleted,
-          true,
-        )
-      : true
-    const isMissedDay =
-      inCourseMode &&
-      dayIndex < currentDay &&
-      !hasParticipatedDay(dayIndex) &&
-      !hasCompletedChakra(dayIndex)
-    const opacity = inCourseMode
-      ? isMissedDay
-        ? 0.3
-        : dayIndex > currentDay
-          ? 0.4
-          : 1
-      : 1
-    return { isUnlocked, opacity }
-  }
 
   const handleBack = () => {
     addHapticFeedback(HapticStrength.Light)
@@ -280,158 +207,41 @@ export default function ChakraHub() {
         showsVerticalScrollIndicator={false}
         {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
         contentContainerStyle={{
-          padding: 20,
-          paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
-          paddingTop: Math.max(insets.top, 20) + 20,
+          flexGrow: 1,
+          minHeight: "100%",
+          paddingTop: TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP,
+          paddingBottom:
+            FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
         }}
       >
-        {/* Hero: Day title + tagline – explicit style so layout matches APP1 restoration */}
+        {/* Viewport-sized block: same placement as trial home (IntegratedProgressStack) */}
         <View
           style={{
-            alignItems: "center",
-            marginBottom: 32,
-            paddingHorizontal: 16,
+            minHeight: viewportHeight,
+            maxHeight: viewportHeight,
           }}
         >
-          <AppText
-            font="instrument-medium"
-            size="lg"
-            numberOfLines={1}
-            style={{
-              textAlign: "center",
-              color: "rgba(255,255,255,0.95)",
-              letterSpacing: 1,
-              textShadowColor: "rgba(168, 201, 154, 0.25)",
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 6,
-            }}
-          >
-            {DAY_NAMES[currentDay]} – {CHAKRA_NAMES[currentDay]} Day
-          </AppText>
-          <AppText
-            font="instrument-italic"
-            size="sm"
-            style={{
-              textAlign: "center",
-              color: "rgba(255,255,255,0.7)",
-              marginTop: 8,
-              letterSpacing: 0.8,
-            }}
-          >
-            All pathways are open to you
-          </AppText>
+          <IntegratedProgressStack
+            currentDay={currentDay}
+            hasCompletedChakra={hasCompletedChakra}
+            hasParticipatedDay={hasParticipatedDay}
+            allChakrasCompleted={allChakrasCompleted}
+            hasLifetimeAccess={true}
+            inCourseMode={inCourseMode}
+            showAllChakrasForLifetimeHub={true}
+            chakraData={stackChakraData}
+            router={router}
+          />
         </View>
 
-        {/* Chakras Grid - Bottom to top: Root at bottom, Crown at top; marginTop drops balls in frame */}
-        <View style={{ marginTop: 28, marginBottom: 32 }}>
-          <View
-            style={{
-              flexDirection: "column-reverse",
-              alignItems: "center",
-              gap: 16,
-            }}
-          >
-            {/* Row 1 (DOM first) - Renders at bottom: Root, Sacral, Solar Plexus */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 16,
-              }}
-            >
-              {hubChakraData
-                .slice(0, 3)
-                .map(({ chakra, dayIndex, name, dayName, source }) => {
-                  const { isUnlocked, opacity } = getChakraBallProps(dayIndex)
-                  return (
-                    <ChakraBallItem
-                      key={chakra}
-                      chakra={chakra}
-                      dayIndex={dayIndex}
-                      name={name}
-                      dayName={dayName}
-                      source={source}
-                      currentDay={currentDay}
-                      hasEverCompletedChakra={hasEverCompletedChakra}
-                      onPress={() => handleNavigateToChakra(chakra)}
-                      inCourseMode={inCourseMode}
-                      isUnlocked={isUnlocked}
-                      opacity={opacity}
-                    />
-                  )
-                })}
-            </View>
-            {/* Row 2 - Renders middle: Heart, Throat, Third Eye */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 16,
-              }}
-            >
-              {hubChakraData
-                .slice(3, 6)
-                .map(({ chakra, dayIndex, name, dayName, source }) => {
-                  const { isUnlocked, opacity } = getChakraBallProps(dayIndex)
-                  return (
-                    <ChakraBallItem
-                      key={chakra}
-                      chakra={chakra}
-                      dayIndex={dayIndex}
-                      name={name}
-                      dayName={dayName}
-                      source={source}
-                      currentDay={currentDay}
-                      hasEverCompletedChakra={hasEverCompletedChakra}
-                      onPress={() => handleNavigateToChakra(chakra)}
-                      inCourseMode={inCourseMode}
-                      isUnlocked={isUnlocked}
-                      opacity={opacity}
-                    />
-                  )
-                })}
-            </View>
-            {/* Row 3 (DOM last) - Renders at top: Crown */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 16,
-              }}
-            >
-              {hubChakraData
-                .slice(6, 7)
-                .map(({ chakra, dayIndex, name, dayName, source }) => {
-                  const { isUnlocked, opacity } = getChakraBallProps(dayIndex)
-                  return (
-                    <ChakraBallItem
-                      key={chakra}
-                      chakra={chakra}
-                      dayIndex={dayIndex}
-                      name={name}
-                      dayName={dayName}
-                      source={source}
-                      currentDay={currentDay}
-                      hasEverCompletedChakra={hasEverCompletedChakra}
-                      onPress={() => handleNavigateToChakra(chakra)}
-                      inCourseMode={inCourseMode}
-                      isUnlocked={isUnlocked}
-                      opacity={opacity}
-                    />
-                  )
-                })}
-            </View>
-          </View>
-        </View>
-
-        {/* Sanctuary - Menu Options (explicit style for APP2 restoration); marginTop pushes section down */}
-        <View style={{ marginTop: 56, marginBottom: 24 }}>
+        {/* Sanctuary and actions – scroll to reveal; title up, first button pushed down for cleaner look */}
+        <View style={{ paddingTop: 38, paddingHorizontal: 20, marginBottom: 24 }}>
           <AppText
             font="instrument-bold"
             size="lg"
             style={{
               color: "#ffffff",
-              marginBottom: 16,
+              marginBottom: 28,
               textAlign: "center",
               textShadowColor: "rgba(0,0,0,0.3)",
               textShadowOffset: { width: 0, height: 1 },
@@ -878,7 +688,7 @@ export default function ChakraHub() {
           </View>
         </View>
 
-        {/* Start a new 7 Day Somatic Journey */}
+        {/* Start a new 7 Day Somatic Journey: no course → DateSelection only; course active → modal (continue or start new) */}
         <View style={{ marginTop: 32 }}>
           <AppText
             font="instrument-semibold"
@@ -928,6 +738,40 @@ export default function ChakraHub() {
                 Start a new 7 Day Journey
               </AppText>
             </View>
+          </Pressable>
+        </View>
+
+        {/* Discover Your Ego Archetype – own section with clear spacing so it never sticks to the journey button above */}
+        <View style={{ marginTop: 40, marginBottom: 24, alignItems: "center" }}>
+          <Pressable
+            onPress={() => {
+              addHapticFeedback(HapticStrength.Light)
+              Linking.openURL(ARCHETYPE_QUIZ_URL)
+            }}
+            style={({ pressed }) => [
+              {
+                paddingVertical: 12,
+                paddingHorizontal: 28,
+                borderRadius: 24,
+                backgroundColor: "rgba(28, 28, 28, 0.95)",
+                borderWidth: 1,
+                borderColor: "rgba(212, 165, 116, 0.6)",
+                minHeight: 44,
+                justifyContent: "center",
+                alignItems: "center",
+              },
+              pressed && { opacity: 0.9 },
+            ]}
+            accessibilityLabel="Discover Your Ego Archetype"
+            accessibilityHint="Open archetype quiz in browser"
+          >
+            <AppText
+              font="cormorant-regular"
+              size="sm"
+              style={{ color: "rgba(212, 165, 116, 0.95)" }}
+            >
+              Discover Your Ego Archetype
+            </AppText>
           </Pressable>
         </View>
 
@@ -1018,163 +862,5 @@ export default function ChakraHub() {
         }}
       />
     </SafeAreaView>
-  )
-}
-
-function ChakraBallItem({
-  chakra,
-  dayIndex,
-  name,
-  dayName,
-  source,
-  currentDay,
-  hasEverCompletedChakra,
-  onPress,
-  inCourseMode = false,
-  isUnlocked = true,
-  opacity = 1,
-}: {
-  chakra: Chakra
-  dayIndex: number
-  name: string
-  dayName: string
-  source: any
-  currentDay: number
-  hasEverCompletedChakra: (i: number) => boolean
-  onPress: () => void
-  inCourseMode?: boolean
-  isUnlocked?: boolean
-  opacity?: number
-}) {
-  const isCurrentDay = dayIndex === currentDay
-  const handlePress = () => {
-    if (inCourseMode && !isUnlocked) return
-    onPress()
-  }
-  return (
-    <View style={{ alignItems: "center", width: 102, opacity }}>
-      <Pressable
-        onPress={handlePress}
-        style={({ pressed }) => [pressed && { opacity: 0.8 }]}
-        accessibilityLabel={`${name} Chakra, ${dayName}`}
-        accessibilityHint={
-          inCourseMode && !isUnlocked
-            ? "This day is not yet accessible"
-            : `Open ${name} chakra day content`
-        }
-      >
-        <View style={{ alignItems: "center", position: "relative" as const }}>
-          <View
-            style={{
-              position: "relative",
-              transform:
-                inCourseMode && isCurrentDay ? [{ scale: 1.15 }] : undefined,
-            }}
-          >
-            <PulsingButton
-              source={source}
-              isAnimating={isCurrentDay && (!inCourseMode || isUnlocked)}
-              onPress={handlePress}
-              small={true}
-              smallDivisor={7.8}
-            />
-            {isCurrentDay &&
-              (() => {
-                const chakraColor = getChakraColor(dayIndex)
-                const hexToRgba = (hex: string, alpha: number) => {
-                  const r = parseInt(hex.slice(1, 3), 16)
-                  const g = parseInt(hex.slice(3, 5), 16)
-                  const b = parseInt(hex.slice(5, 7), 16)
-                  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-                }
-                const gradientColors: [string, string, string] = [
-                  hexToRgba(chakraColor, 0.7),
-                  hexToRgba(chakraColor, 0.5),
-                  hexToRgba(chakraColor, 0.6),
-                ]
-                return (
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: "50%",
-                      right: -12,
-                      transform: [{ translateY: -4 }],
-                      zIndex: 10,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <View
-                      style={{
-                        position: "absolute",
-                        width: 12,
-                        height: 12,
-                        borderRadius: 6,
-                        backgroundColor: hexToRgba(chakraColor, 0.12),
-                        shadowColor: chakraColor,
-                        shadowOffset: { width: 0, height: 0 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 4,
-                      }}
-                    />
-                    <LinearGradient
-                      colors={[
-                        gradientColors[0],
-                        gradientColors[1],
-                        gradientColors[2],
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        borderWidth: 0.5,
-                        borderColor: hexToRgba(chakraColor, 0.3),
-                        shadowColor: chakraColor,
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.4,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}
-                    >
-                      <Feather
-                        name="check"
-                        size={4}
-                        color="rgba(255, 255, 255, 0.95)"
-                        style={{ fontWeight: "bold" }}
-                      />
-                    </LinearGradient>
-                  </View>
-                )
-              })()}
-          </View>
-          <AppText
-            font="instrument-medium"
-            size="xs"
-            style={{
-              color: "#ffffff",
-              marginTop: 8,
-              textAlign: "center",
-            }}
-          >
-            {name}
-          </AppText>
-          <AppText
-            font="instrument-regular"
-            size="xs"
-            style={{
-              color: "rgba(255,255,255,0.6)",
-              marginTop: 2,
-              textAlign: "center",
-            }}
-          >
-            {dayName}
-          </AppText>
-        </View>
-      </Pressable>
-    </View>
   )
 }

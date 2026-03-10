@@ -53,3 +53,19 @@ So if either modal was open (or appeared to be closed but was still mounted and 
 
 - **File:** `components/chakras/ChakraHome.tsx`
 - **Change:** On the `View` that wraps `WaitingScreen` when `needsWaiting` is true, add `pointerEvents="box-none"`.
+
+---
+
+## Update: Freeze after returning from Anua chat (fixed)
+
+**User clue:** After Anua played on first open, user went back to waiting room and all buttons froze; something overlayed and blocked the screen.
+
+**Root cause:** The 60s **CommunicationReminderModal** timer runs in `WaitingScreen`. When the user opens Anua chat, the stack pushes `AnuaChat` but **ChakraHome (and WaitingScreen) stay mounted**. The 60s timer kept running. If it fired while the user was in Anua chat, it set `showCommunicationModal` to `true`. When the user navigated back, the waiting room appeared with the modal already visible (or its overlay blocking touches), so every button was blocked.
+
+**Fix:**
+
+1. **Focus-gate the timer** (`components/chakras/WaitingScreen.tsx`): Use `useIsFocused()` from `@react-navigation/native`. Only run the 60s timer when `isFocused` is true. When the user leaves (e.g. to Anua chat), `isFocused` becomes false, so we clear the timeout and set `showCommunicationModal(false)`. When they return, the timer starts fresh. The modal never fires while the user is on another screen, so returning to the waiting room is never blocked by that overlay.
+
+2. **Defensive layout** (`app/(chakras)/_layout.tsx`): Set `pointerEvents="box-none"` on the layout `View` so it never captures touches (same pattern as ChakraHome wrapper).
+
+**Same freeze when returning from "While You Wait" (quiz in browser):** The "While You Wait" button opens the archetype quiz via `Linking.openURL` (external browser). The app goes to **background** but the route stays ChakraHome, so `useIsFocused()` stays true and the 60s timer kept running. When the user returned to the app, the modal had fired and blocked the waiting room. Fix: also gate the 60s timer on **app in foreground** using `AppState`. When `AppState` is not `'active'` (e.g. user in browser), we clear the timer and set `showCommunicationModal(false)`. When they return, we start a fresh 60s timer so the overlay never blocks.

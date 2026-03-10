@@ -339,26 +339,26 @@ const GoodbyeModal = ({
                 </Pressable>
               ))}
 
-            {/* Closing message – gentle, slightly smaller; more space from hero above, less below */}
+            {/* Closing message – gentle; chakra name + awakening; Crown day ends with Era of The Heart */}
             <AppText
               font="cormorant-italic"
               size="sm"
               style={styles.closingMessageText}
             >
-              {content?.goodbye?.closingMessage ??
-                "Wonderful work, lovely soul. Have a beautiful day."}
+              {`Wonderful work lovely soul, your ${getChakraName(chakraDay ?? 0)} chakra is now awakening. Remember to send it some love.\n\n${chakraDay === 6 ? "Welcome to The Era of The Heart" : "We will see you tomorrow."}`}
             </AppText>
 
             <View style={styles.affirmationBottomLine} />
             </View>
           </ScrollView>
 
-          {/* SECTION 2: Bottom - Gift + Tomorrow + Home (own section). On Android in-flow to avoid black gap. */}
+          {/* SECTION 2: Bottom - Gift + Tomorrow + Home (pulled up from bottom of frame). */}
           <View
             style={[
               styles.bottomSection,
               {
-                paddingBottom: bottomInset + 24,
+                paddingBottom: Platform.OS === "android" ? bottomInset + 48 : bottomInset + 24,
+                ...(Platform.OS !== "android" && { bottom: 40 }),
               },
               Platform.OS === "android" && styles.bottomSectionInFlow,
               Platform.OS === "android" && { zIndex: 10, elevation: 10 },
@@ -405,11 +405,22 @@ const GoodbyeModal = ({
                       hitSlop={{ top: 16, bottom: 16, left: 24, right: 24 }}
                       accessibilityLabel="Open your gift"
                     >
-                      <View style={styles.openGiftButton}>
-                        <AppText font="instrument-medium" size="sm" style={{ color: "#fff" }}>
-                          Open Your Gift
-                        </AppText>
-                      </View>
+                      <LinearGradient
+                        colors={[
+                          "rgba(212, 165, 116, 0.85)",
+                          "rgba(212, 165, 116, 0.5)",
+                          "rgba(212, 165, 116, 0.85)",
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.openGiftButtonGradientFrame}
+                      >
+                        <View style={styles.openGiftButton}>
+                          <AppText font="instrument-medium" size="sm" style={{ color: "#fff" }}>
+                            Open Your Gift
+                          </AppText>
+                        </View>
+                      </LinearGradient>
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -438,16 +449,30 @@ const GoodbyeModal = ({
                       hitSlop={{ top: 12, bottom: 12, left: 24, right: 24 }}
                       accessibilityLabel="Open your gift"
                     >
-                      <View style={styles.openGiftButton}>
-                        <AppText font="instrument-medium" size="sm" style={{ color: "#fff" }}>
-                          Open Your Gift
-                        </AppText>
-                      </View>
+                      <LinearGradient
+                        colors={[
+                          "rgba(212, 165, 116, 0.85)",
+                          "rgba(212, 165, 116, 0.5)",
+                          "rgba(212, 165, 116, 0.85)",
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.openGiftButtonGradientFrame}
+                      >
+                        <View style={styles.openGiftButton}>
+                          <AppText font="instrument-medium" size="sm" style={{ color: "#fff" }}>
+                            Open Your Gift
+                          </AppText>
+                        </View>
+                      </LinearGradient>
                     </Pressable>
                   </>
                 )}
               </View>
             )}
+
+            {/* Explicit spacer so Open Your Gift and Home never appear crushed (all days 1–7) */}
+            <View style={styles.giftToHomeSpacer} pointerEvents="none" />
 
             {/* Home button - primary exit */}
             <Pressable
@@ -567,9 +592,12 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     fontSize: 26,
     lineHeight: 40,
-    color: "rgba(255,255,255,0.82)",
+    color: "rgba(255,255,255,0.95)",
     textAlign: "center",
     paddingHorizontal: 8,
+    textShadowColor: "rgba(255,255,255,0.5)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
   },
   heroAffirmationTextLong: {
     fontSize: 22,
@@ -624,9 +652,9 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   cardThumb: {
-    width: 64,
-    height: 80,
-    borderRadius: 10,
+    width: 83,
+    height: 104,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(168, 201, 154, 0.35)",
   },
@@ -646,18 +674,29 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     minHeight: 48,
     justifyContent: "center",
-    marginBottom: 8,
+  },
+  /** Fixed-height spacer between Open Your Gift and Home – guarantees visual separation (all days 1–7). */
+  giftToHomeSpacer: {
+    height: 40,
+    width: "100%",
   },
   openGiftButtonPressed: {
     opacity: 0.9,
   },
-  openGiftButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 32,
+  /** Gold gradient wire frame around Open Your Gift (all days 1–7) */
+  openGiftButtonGradientFrame: {
+    padding: 2,
     borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: "rgba(168, 201, 154, 0.4)",
-    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  openGiftButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 9999,
+    borderWidth: 0,
+    borderColor: "transparent",
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
   },
   tomorrowBlock: {
     width: "100%",

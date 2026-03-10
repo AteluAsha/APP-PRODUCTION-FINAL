@@ -16,7 +16,7 @@ import {
   Dimensions,
 } from "react-native"
 import { useRouter, useLocalSearchParams } from "expo-router"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { ActionBar } from "@/components/ActionBar"
 import BackgroundOpacity from "@/components/BackgroundOpacity"
 import { AppText } from "@/components/AppText"
@@ -24,7 +24,6 @@ import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { AVPlaybackSource } from "expo-av"
 import {
   useCurrentAudioStore,
-  AUDIO_READY_DELAY_MS,
   type PlaylistItem,
 } from "@/hooks/useCurrentAudioStore"
 import { Chakra } from "@/types/chakras/Chakra"
@@ -44,6 +43,7 @@ import {
   useEmbodimentAudio,
   getEmbodimentAudioId,
 } from "@/hooks/useEmbodimentAudio"
+import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import {
   useAncestralWisdomAudio,
   getHeadToHeartAudioId,
@@ -52,6 +52,8 @@ import {
   downloadAndCacheAudio,
   downloadAndCacheAudioResumable,
 } from "@/src/utils/audioDownload"
+import { storage } from "@/src/services/firebase"
+import { preloadFullFilesForChakra } from "@/src/utils/audioPreloadManifest"
 import {
   prepareCrystalBowlForPlay,
   prepareLongAudioForPlay,
@@ -61,6 +63,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { CHAKRA_NAMES } from "@/constants/chakras/chakraConstants"
 import { AudioTrackRow } from "@/components/chakras/AudioTrackRow"
 import { DropInButton } from "@/components/chakras/DropInButton"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 const CHAKRA_ORDER: Chakra[] = [
   Chakra.ROOT,
@@ -153,6 +156,7 @@ const AudioLibrary = () => {
 
   // APP2 only: redirect trial users
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   useEffect(() => {
     if (!hasLifetimeAccess) {
       router.replace("/(chakras)/ChakraHome")
@@ -261,8 +265,11 @@ const AudioLibrary = () => {
     [Chakra.CROWN]: ancestralCrown,
   }
 
+  const embodimentDurations = useEmbodimentDurationCacheStore((s) => s.durations)
+
   const playWithPlaylist = useCallback(
     async (chakra: Chakra, startIndex: number) => {
+      if (storage) preloadFullFilesForChakra(storage, chakra).catch(() => {})
       const trackKey = `${chakra}_${startIndex}`
       setPreparingPlaybackId(trackKey)
       try {
@@ -455,8 +462,8 @@ const AudioLibrary = () => {
       if (isActive) {
         setPlaying(!isPlaying)
       } else {
+        // Only set pending; isPlaying is set by setSourceWithPlaylist when the correct source is ready (one track per button).
         setPendingTrackKey(trackKey)
-        setPlaying(true)
         playWithPlaylist(chakra, startIndex).catch(() => {
           useCurrentAudioStore.getState().setPendingTrackKey(null)
           useCurrentAudioStore.getState().setPlaying(false)
@@ -475,19 +482,54 @@ const AudioLibrary = () => {
 
   const handlePlayEmbodimentFullPlayer = useCallback(
     async (chakra: Chakra, part: "single" | "part1" | "part2") => {
+      // Embodiment play: only this chakra's embodiment; never load another track.
+      // Prepare source FIRST, then set store and navigate so AudioPlayer never sees a stale source.
+      if (storage) preloadFullFilesForChakra(storage, chakra).catch(() => {})
       const content = chakraContent[chakra]
       const embodiment = embodimentByChakra[chakra]
       const hertz = getTuningForkHertz(chakra)
       const preparingId = `embodiment_${chakra}_${part}`
       setPreparingPlaybackId(preparingId)
-      useCurrentAudioStore.getState().setPendingTrackKey("embodiment")
-      useCurrentAudioStore.getState().setPlaying(true)
+      const cacheStore = useEmbodimentDurationCacheStore.getState()
+      let title: string
+      let durationMs: number
+      let author: string
+
+      if (
+        part === "part1" &&
+        (embodiment.localUriPartOne || embodiment.partOne)
+      ) {
+        const part1Id = getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")
+        title = content.audioIntro.title
+        durationMs = cacheStore.getDuration(part1Id) ?? content.audioIntro.durationMs
+        author = `${content.audioIntro.author} · ${hertz} Hz`
+      } else if (
+        part === "part2" &&
+        (embodiment.localUriPartTwo || embodiment.partTwo)
+      ) {
+        const part2Id = getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")
+        title = "Part Two: Somatic Healing"
+        durationMs = cacheStore.getDuration(part2Id) ?? 1257000
+        author = `${content.audioIntro.author} · ${hertz} Hz`
+      } else if (
+        part === "single" &&
+        (embodiment.localUri || embodiment.single)
+      ) {
+        const embodimentId = getEmbodimentAudioId(chakra)
+        title = content.audioIntro.title
+        durationMs =
+          cacheStore.getDuration(embodimentId) ??
+          (chakra === Chakra.CROWN ? 2684000 : content.audioIntro.durationMs)
+        author = `${content.audioIntro.author} · ${hertz} Hz`
+      } else {
+        useCurrentAudioStore.getState().setPendingTrackKey(null)
+        useCurrentAudioStore.getState().setPlaying(false)
+        setPreparingPlaybackId(null)
+        return
+      }
+
       try {
         let src: AVPlaybackSource
-        let title: string
-        let durationMs: number
-        let author: string
-
         if (
           part === "part1" &&
           (embodiment.localUriPartOne || embodiment.partOne)
@@ -502,9 +544,7 @@ const AudioLibrary = () => {
             },
             { requireFullDownload: true },
           )
-          title = content.audioIntro.title
-          durationMs = content.audioIntro.durationMs
-          author = `${content.audioIntro.author} · ${hertz} Hz`
+          cacheStore.setEmbodimentDurationCacheKey(part1Id)
         } else if (
           part === "part2" &&
           (embodiment.localUriPartTwo || embodiment.partTwo)
@@ -519,14 +559,17 @@ const AudioLibrary = () => {
             },
             { requireFullDownload: true },
           )
-          title = "Part Two: Somatic Healing"
-          durationMs = 1257000
-          author = `${content.audioIntro.author} · ${hertz} Hz`
-        } else if (
-          part === "single" &&
-          (embodiment.localUri || embodiment.single)
-        ) {
+          cacheStore.setEmbodimentDurationCacheKey(part2Id)
+        } else {
           const embodimentId = getEmbodimentAudioId(chakra)
+          if (__DEV__) {
+            const expected = getEmbodimentAudioId(chakra)
+            if (embodimentId !== expected) {
+              console.error(
+                `[handlePlayEmbodimentFullPlayer] audioId mismatch: got ${embodimentId}, expected ${expected} for chakra ${chakra}`,
+              )
+            }
+          }
           src = await prepareLongAudioForPlay(
             {
               url: embodiment.single ?? null,
@@ -538,30 +581,42 @@ const AudioLibrary = () => {
             },
             { requireFullDownload: true },
           )
-          title = content.audioIntro.title
-          durationMs =
-            chakra === Chakra.CROWN ? 2684000 : content.audioIntro.durationMs
-          author = `${content.audioIntro.author} · ${hertz} Hz`
-        } else {
+          cacheStore.setEmbodimentDurationCacheKey(embodimentId)
+        }
+        const uri =
+          typeof src === "object" && src !== null && "uri" in src
+            ? (src as { uri?: string }).uri
+            : ""
+        if (!uri || String(uri).trim() === "") {
           useCurrentAudioStore.getState().setPendingTrackKey(null)
           useCurrentAudioStore.getState().setPlaying(false)
           return
         }
-
-        useCurrentAudioStore.getState().setSource(src, "full-player")
-        useCurrentAudioStore.getState().setMetadata({
-          durationMs,
-          title,
-          author,
+        const finalDuration =
+          part === "part1"
+            ? cacheStore.getDuration(getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")) ?? durationMs
+            : part === "part2"
+              ? cacheStore.getDuration(getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")) ?? durationMs
+              : cacheStore.getDuration(getEmbodimentAudioId(chakra)) ?? durationMs
+        const trackId =
+          part === "single"
+            ? getEmbodimentAudioId(chakra)
+            : getEmbodimentAudioId(Chakra.THIRD_EYE, part)
+        const saved = await AsyncStorage.getItem(`audio_position_${trackId}`)
+        const resumeMs =
+          saved != null && Number.isFinite(Number(saved)) ? Number(saved) : 0
+        useCurrentAudioStore.getState().setSource(src, "full-player", {
+          resumePositionMs: resumeMs > 0 ? resumeMs : undefined,
+          fullPlayerTrackId: trackId,
         })
-        useCurrentAudioStore.getState().setPrefs({
-          shouldLoop: false,
-          isIntroAudio: true,
-        })
-        useCurrentAudioStore.getState().setChakraColor(CHAKRA_COLORS[chakra])
-        await new Promise((r) => setTimeout(r, AUDIO_READY_DELAY_MS))
-        router.push("/AudioPlayer")
+        const store = useCurrentAudioStore.getState()
+        store.setMetadata({ durationMs: finalDuration, title, author })
+        store.setPrefs({ shouldLoop: false, isIntroAudio: true })
+        store.setChakraColor(CHAKRA_COLORS[chakra])
+        store.setPendingTrackKey("embodiment")
+        store.setPlaying(true)
         addHapticFeedback(HapticStrength.Light)
+        router.push("/AudioPlayer")
       } catch (_) {
         useCurrentAudioStore.getState().setPendingTrackKey(null)
         useCurrentAudioStore.getState().setPlaying(false)
@@ -574,15 +629,15 @@ const AudioLibrary = () => {
 
   const handlePlayHeadToHeartFullPlayer = useCallback(
     async (chakra: Chakra) => {
+      // Head to Heart: prepare source FIRST, then set store and navigate so AudioPlayer never sees a stale source.
+      if (storage) preloadFullFilesForChakra(storage, chakra).catch(() => {})
       const ancestral = ancestralByChakra[chakra]
       const content = chakraContent[chakra].headtoheart
       if (!ancestral.url && !ancestral.localUri) return
       const preparingId = `headtoheart_${chakra}`
       setPreparingPlaybackId(preparingId)
-      useCurrentAudioStore.getState().setPendingTrackKey("headtoheart")
-      useCurrentAudioStore.getState().setPlaying(true)
+      const audioId = getHeadToHeartAudioId(chakra)
       try {
-        const audioId = getHeadToHeartAudioId(chakra)
         const src = await prepareLongAudioForPlay(
           {
             url: ancestral.url ?? null,
@@ -590,22 +645,40 @@ const AudioLibrary = () => {
             audioId,
             fallback: { uri: ancestral.url ?? ancestral.localUri ?? "" },
           },
-          { requireFullDownload: true },
+          {
+            requireFullDownload: true,
+            allowStreamingFallback: false,
+            downloadTimeoutMs: 180000,
+          },
         )
-        useCurrentAudioStore.getState().setSource(src, "full-player")
-        useCurrentAudioStore.getState().setMetadata({
+        const uri =
+          typeof src === "object" && src !== null && "uri" in src
+            ? (src as { uri?: string }).uri
+            : ""
+        if (!uri || String(uri).trim() === "") {
+          useCurrentAudioStore.getState().setPendingTrackKey(null)
+          useCurrentAudioStore.getState().setPlaying(false)
+          return
+        }
+        const saved = await AsyncStorage.getItem(`audio_position_${audioId}`)
+        const resumeMs =
+          saved != null && Number.isFinite(Number(saved)) ? Number(saved) : 0
+        useCurrentAudioStore.getState().setSource(src, "full-player", {
+          resumePositionMs: resumeMs > 0 ? resumeMs : undefined,
+          fullPlayerTrackId: audioId,
+        })
+        const store = useCurrentAudioStore.getState()
+        store.setMetadata({
           durationMs: content.audio.duration,
           title: content.audio.title,
           author: `with ${content.audio.author}`,
         })
-        useCurrentAudioStore.getState().setPrefs({
-          shouldLoop: false,
-          isIntroAudio: false,
-        })
-        useCurrentAudioStore.getState().setChakraColor(CHAKRA_COLORS[chakra])
-        await new Promise((r) => setTimeout(r, AUDIO_READY_DELAY_MS))
-        router.push("/AudioPlayer")
+        store.setPrefs({ shouldLoop: false, isIntroAudio: false })
+        store.setChakraColor(CHAKRA_COLORS[chakra])
+        store.setPendingTrackKey("headtoheart")
+        store.setPlaying(true)
         addHapticFeedback(HapticStrength.Light)
+        router.push("/AudioPlayer")
       } catch (_) {
         useCurrentAudioStore.getState().setPendingTrackKey(null)
         useCurrentAudioStore.getState().setPlaying(false)
@@ -797,24 +870,28 @@ const AudioLibrary = () => {
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                marginTop: 8,
-                gap: 6,
+                alignSelf: "center",
+                marginTop: 20,
+                paddingVertical: 14,
+                paddingHorizontal: 28,
+                gap: 10,
                 opacity: pressed ? 0.7 : 1,
+                minWidth: 260,
               })}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <Ionicons
                 name="cloud-download-outline"
-                size={14}
-                color="rgba(255,255,255,0.6)"
+                size={20}
+                color="rgba(255,255,255,0.7)"
               />
               <AppText
                 font="cormorant-italic"
-                size="xs"
+                size="sm"
                 style={{
-                  color: "rgba(255,255,255,0.6)",
+                  color: "rgba(255,255,255,0.75)",
                   textAlign: "center",
-                  fontSize: 12,
+                  fontSize: 15,
                 }}
               >
                 {isDownloadingAll ? "Downloading…" : "Download for offline listening"}
@@ -1047,8 +1124,12 @@ const AudioLibrary = () => {
                   <>
                     <AudioTrackRow
                       title={content.audioIntro.title}
-                      subtitle={`with ${content.audioIntro.author} · ~${Math.round(content.audioIntro.durationMs / 60000)} min`}
-                      durationLabel={`with ${content.audioIntro.author} · ~29 min`}
+                      subtitle={`with ${content.audioIntro.author} · ~${Math.round(
+                        (embodimentDurations[getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")] ?? 1750000) / 60000,
+                      )} min`}
+                      durationLabel={`with ${content.audioIntro.author} · ~${Math.round(
+                        (embodimentDurations[getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")] ?? 1750000) / 60000,
+                      )} min`}
                       isLoading={
                         embodiment.isLoading ||
                         preparingPlaybackId === `embodiment_${chakra}_part1`
@@ -1072,8 +1153,12 @@ const AudioLibrary = () => {
                     />
                     <AudioTrackRow
                       title="Part Two: Somatic Healing"
-                      subtitle={`with ${content.audioIntro.author} · ~21 min`}
-                      durationLabel={`with ${content.audioIntro.author} · ~21 min`}
+                      subtitle={`with ${content.audioIntro.author} · ~${Math.round(
+                        (embodimentDurations[getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")] ?? 1257000) / 60000,
+                      )} min`}
+                      durationLabel={`with ${content.audioIntro.author} · ~${Math.round(
+                        (embodimentDurations[getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")] ?? 1257000) / 60000,
+                      )} min`}
                       isLoading={
                         embodiment.isLoading ||
                         preparingPlaybackId === `embodiment_${chakra}_part2`
@@ -1099,8 +1184,18 @@ const AudioLibrary = () => {
                 ) : (
                   <AudioTrackRow
                     title={content.audioIntro.title}
-                    subtitle={`with ${content.audioIntro.author} · ~${Math.round(content.audioIntro.durationMs / 60000)} min`}
-                    durationLabel={`with ${content.audioIntro.author} · ~${Math.round(content.audioIntro.durationMs / 60000)} min`}
+                    subtitle={`with ${content.audioIntro.author} · ~${Math.round(
+                      (embodimentDurations[embodimentId] ??
+                        (chakra === Chakra.CROWN
+                          ? 2684000
+                          : content.audioIntro.durationMs)) / 60000,
+                    )} min`}
+                    durationLabel={`with ${content.audioIntro.author} · ~${Math.round(
+                      (embodimentDurations[embodimentId] ??
+                        (chakra === Chakra.CROWN
+                          ? 2684000
+                          : content.audioIntro.durationMs)) / 60000,
+                    )} min`}
                     isLoading={
                       embodiment.isLoading ||
                       preparingPlaybackId === `embodiment_${chakra}_single`
@@ -1171,6 +1266,7 @@ const AudioLibrary = () => {
           <ActionBar
             useXButton={true}
             xButtonPosition="left"
+            xButtonTop={Math.max(insets.top, 8) + 4}
             onXPress={handleClose}
           />
         </View>

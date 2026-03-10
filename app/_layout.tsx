@@ -36,6 +36,8 @@ import { OtherOriginAudioManager } from "@/components/audio/OtherOriginAudioMana
 import { FloatingNavButtons } from "@/components/navigation/FloatingNavButtons"
 import { GlobalHomeButton } from "@/components/navigation/GlobalHomeButton"
 import { GlobalAnuaChat } from "@/components/navigation/GlobalAnuaChat"
+import { GlobalTribeChat } from "@/components/navigation/GlobalTribeChat"
+import { FloatingUIRevealStrip } from "@/components/navigation/FloatingUIRevealStrip"
 import { PathSelectionGate } from "@/components/navigation/PathSelectionGate"
 import { ProfileSheet } from "@/components/profile/ProfileSheet"
 import { InviteRefApplier } from "@/components/invite/InviteRefApplier"
@@ -269,15 +271,17 @@ export default function RootLayout() {
       try {
         const parsed = Linking.parse(url)
         const path = parsed.path === "/invite" || parsed.path === "invite"
-        if (path && parsed.queryParams?.ref) {
-          const ref = parsed.queryParams.ref as string
+        if (path) {
           const { setPendingInviteRef, setPendingInviteStartDate } = await import(
             "@/src/services/inviteRefStorage"
           )
-          await setPendingInviteRef(ref)
           const start = parsed.queryParams?.start as string | undefined
           if (start && /^\d{4}-\d{2}-\d{2}$/.test(start)) {
             await setPendingInviteStartDate(start)
+          }
+          if (parsed.queryParams?.ref) {
+            const ref = parsed.queryParams.ref as string
+            await setPendingInviteRef(ref)
           }
         }
         if (
@@ -387,10 +391,12 @@ export default function RootLayout() {
                 </Stack>
                 <MusicRoomAudioManager />
                 <OtherOriginAudioManager />
+                <FloatingUIRevealStrip />
                 <PermanentMenuBar />
                 <FloatingNavButtons />
                 <GlobalHomeButton />
                 <GlobalAnuaChat />
+                <GlobalTribeChat />
                 <PathSelectionGate />
                 <InviteRefApplier />
                 <StatusBar

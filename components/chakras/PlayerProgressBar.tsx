@@ -1,11 +1,11 @@
 /**
  * PlayerProgressBar - Custom progress bar for AudioPlayer
  *
- * Replaces react-native-awesome-slider with a simple View-based implementation
- * to avoid layout bugs (tiny bar, wrong position). Full-width, tappable, draggable.
+ * Full-width, tappable, draggable. Visible white thumb; drag updates only local
+ * state (thumb follows finger); seek runs once on release for responsive Android UX.
  */
 
-import React, { useCallback, useRef } from "react"
+import React, { useCallback, useRef, useState } from "react"
 import { View, Pressable, StyleSheet, LayoutChangeEvent } from "react-native"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import { runOnJS } from "react-native-reanimated"
@@ -15,6 +15,9 @@ import { AppText } from "../AppText"
 const TRACK_HEIGHT = 8
 const TRACK_BG = "rgba(255,255,255,0.2)"
 const FILL_BG = "#ffffff"
+const THUMB_SIZE = 14
+const THUMB_SIZE_DRAGGING = 18
+const TOUCH_AREA_MIN_HEIGHT = 36
 
 export const PlayerProgressBar = ({
   positionMs,
@@ -26,10 +29,15 @@ export const PlayerProgressBar = ({
   seekToPosition: (newPositionMs: number) => Promise<void>
 }) => {
   const trackWidthRef = useRef(0)
+  const [trackWidth, setTrackWidth] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragFraction, setDragFraction] = useState<number | null>(null)
+
   const isValidDuration = durationMs > 0
-  const progress = isValidDuration
+  const progressFromPlayback = isValidDuration
     ? Math.min(1, Math.max(0, positionMs / durationMs))
     : 0
+  const displayProgress = dragFraction ?? progressFromPlayback
 
   const seekFromX = useCallback(
     (x: number) => {
@@ -41,7 +49,9 @@ export const PlayerProgressBar = ({
   )
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
-    trackWidthRef.current = e.nativeEvent.layout.width
+    const w = e.nativeEvent.layout.width
+    trackWidthRef.current = w
+    setTrackWidth(w)
   }, [])
 
   const onPress = useCallback(
@@ -51,10 +61,58 @@ export const PlayerProgressBar = ({
     [seekFromX],
   )
 
-  const panGesture = Gesture.Pan().onUpdate((e) => {
-    "worklet"
-    runOnJS(seekFromX)(e.x)
-  })
+  const updateDragFraction = useCallback((x: number) => {
+    const w = trackWidthRef.current
+    if (w <= 0) return
+    const fraction = Math.min(1, Math.max(0, x / w))
+    setDragFraction(fraction)
+  }, [])
+
+  const seekFromDragEnd = useCallback(
+    (x: number) => {
+      const w = trackWidthRef.current
+      if (isValidDuration && w > 0) {
+        const fraction = Math.min(1, Math.max(0, x / w))
+        seekToPosition(fraction * durationMs)
+      }
+    },
+    [durationMs, isValidDuration, seekToPosition],
+  )
+
+  const clearDragState = useCallback(() => {
+    setIsDragging(false)
+    setDragFraction(null)
+  }, [])
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      "worklet"
+      runOnJS(setIsDragging)(true)
+    })
+    .onUpdate((e) => {
+      "worklet"
+      runOnJS(updateDragFraction)(e.x)
+    })
+    .onEnd((e) => {
+      "worklet"
+      runOnJS(seekFromDragEnd)(e.x)
+    })
+    .onFinalize(() => {
+      "worklet"
+      runOnJS(clearDragState)()
+    })
+
+  const thumbSize = isDragging ? THUMB_SIZE_DRAGGING : THUMB_SIZE
+  const thumbLeft =
+    trackWidth > 0
+      ? Math.max(
+          0,
+          Math.min(
+            trackWidth - thumbSize,
+            displayProgress * trackWidth - thumbSize / 2,
+          ),
+        )
+      : 0
 
   return (
     <View style={styles.container}>
@@ -70,16 +128,30 @@ export const PlayerProgressBar = ({
         <GestureDetector gesture={panGesture}>
           <Pressable
             onPress={onPress}
-            onLayout={onLayout}
             style={styles.trackWrap}
+            delayPressIn={0}
           >
-            <View style={[styles.track, { backgroundColor: TRACK_BG }]}>
+            <View style={styles.touchArea} onLayout={onLayout}>
+              <View style={[styles.track, { backgroundColor: TRACK_BG }]}>
+                <View
+                  style={[
+                    styles.fill,
+                    {
+                      width: `${displayProgress * 100}%`,
+                      backgroundColor: FILL_BG,
+                    },
+                  ]}
+                />
+              </View>
               <View
                 style={[
-                  styles.fill,
+                  styles.thumb,
                   {
-                    width: `${progress * 100}%`,
-                    backgroundColor: FILL_BG,
+                    width: thumbSize,
+                    height: thumbSize,
+                    borderRadius: thumbSize / 2,
+                    left: thumbLeft,
+                    top: (TRACK_HEIGHT - thumbSize) / 2,
                   },
                 ]}
               />
@@ -113,8 +185,13 @@ const styles = StyleSheet.create({
   trackWrap: {
     flex: 1,
     minWidth: 0,
-    height: TRACK_HEIGHT,
+    minHeight: TOUCH_AREA_MIN_HEIGHT,
     justifyContent: "center",
+  },
+  touchArea: {
+    position: "relative",
+    width: "100%",
+    height: TRACK_HEIGHT,
   },
   track: {
     width: "100%",
@@ -125,6 +202,10 @@ const styles = StyleSheet.create({
   fill: {
     height: "100%",
     borderRadius: TRACK_HEIGHT / 2,
+  },
+  thumb: {
+    position: "absolute",
+    backgroundColor: "#ffffff",
   },
   timeLeft: {
     minWidth: 48,

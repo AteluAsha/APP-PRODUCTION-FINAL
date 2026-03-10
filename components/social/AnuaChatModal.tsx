@@ -40,7 +40,7 @@ import {
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { getCosmicContextForAnua } from "@/utils/cosmicTime"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { speakAsAnua, isElevenLabsAvailable } from "@/src/services/elevenlabs"
+import { speakAsAnua, isElevenLabsAvailable, stopAnuaAudio } from "@/src/services/elevenlabs"
 import { performIntroRitual } from "@/src/services/anuaRitualService"
 import {
   generateDailyTransmission,
@@ -180,8 +180,9 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
   const recordingRef = useRef<Audio.Recording | null>(null)
   const recordingDurationRef = useRef(0)
 
-  // Load daily transmission asynchronously (non-blocking) - optional feature
+  // Load daily transmission gently after chat/note are visible (so it does not block or lag the open)
   useEffect(() => {
+    const delayMs = initialMessage ? 3000 : 1500
     const timeoutId = setTimeout(() => {
       if (isWisdomEngineAvailable() && !dailyTransmission) {
         generateDailyTransmission(chakraDay)
@@ -193,12 +194,12 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
               console.warn("Daily transmission loading failed (optional):", err)
           })
       }
-    }, 1000)
+    }, delayMs)
     return () => {
       clearTimeout(timeoutId)
       setDailyTransmission(null)
     }
-  }, [chakraDay]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chakraDay, initialMessage]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Core send logic - reusable for manual send and initialMessage
   const sendMessage = useCallback(
@@ -261,7 +262,7 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
         if (useVoice && isElevenLabsAvailable()) {
           setIsAnuaSpeaking(true)
           setPendingAnuaMessage(response)
-          speakAsAnua(response)
+          speakAsAnua(response, undefined, () => introCancelledRef.current)
             .then(() => {
               const anuaMessage: ChatMessage = {
                 id: `anua-${Date.now()}`,
@@ -436,7 +437,7 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
         if (useVoice && isElevenLabsAvailable()) {
           setIsAnuaSpeaking(true)
           setPendingAnuaMessage(response)
-          speakAsAnua(response)
+          speakAsAnua(response, undefined, () => introCancelledRef.current)
             .then(() => {
               const anuaMessage: ChatMessage = {
                 id: `anua-${Date.now()}`,
@@ -585,17 +586,27 @@ As you prepare, I'd love to understand your starting point. How do you currently
     setMessages([greeting])
   }, [isWaitingRoom])
 
+  // When user leaves Anua chat: cancel any in-flight/queued speech and stop playback (Anua only speaks while in chat).
+  const introCancelledRef = useRef(false)
+  useEffect(() => {
+    return () => {
+      introCancelledRef.current = true
+      stopAnuaAudio().catch(() => {})
+    }
+  }, [])
+
   // Course intro: only when in waiting room, and only the first time ever (persisted).
   useEffect(() => {
     if (!isWaitingRoom || waitingRoomCourseIntroStartedRef.current) return
     waitingRoomCourseIntroStartedRef.current = true
-    let cancelled = false
+    introCancelledRef.current = false
+    const isCancelled = () => introCancelledRef.current
     AsyncStorage.getItem(HAS_PLAYED_WAITING_ROOM_COURSE_INTRO_KEY).then(
       (value) => {
-        if (cancelled || value === "true") return
-        performIntroRitual()
+        if (introCancelledRef.current || value === "true") return
+        performIntroRitual(isCancelled)
           .then(() => {
-            if (!cancelled)
+            if (!introCancelledRef.current)
               AsyncStorage.setItem(
                 HAS_PLAYED_WAITING_ROOM_COURSE_INTRO_KEY,
                 "true",
@@ -611,7 +622,8 @@ As you prepare, I'd love to understand your starting point. How do you currently
       },
     )
     return () => {
-      cancelled = true
+      introCancelledRef.current = true
+      stopAnuaAudio().catch(() => {})
     }
   }, [isWaitingRoom])
 
@@ -1028,12 +1040,13 @@ const AnuaChatContent: React.FC<{
           </Pressable>
         </View>
 
-        {/* Voice/Text Mode Toggle */}
+        {/* Voice/Text Mode Toggle - right padding so "Tap to switch" doesn't sit under close X */}
         {isElevenLabsAvailable() && (
           <View
             style={{
               paddingHorizontal: 24,
               paddingVertical: 12,
+              paddingRight: 56,
               borderBottomWidth: 1,
               borderBottomColor: "#1f2937",
             }}

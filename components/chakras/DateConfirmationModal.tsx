@@ -84,6 +84,7 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
             borderColor: "rgba(135, 174, 115, 0.4)",
             backgroundColor: "rgba(20, 20, 20, 0.98)",
             alignItems: "center",
+            overflow: "hidden",
           }}
         >
           <AppText
@@ -154,6 +155,7 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
                   }}
                   hitSlop={TOUCH.hitSlop}
                   activeOpacity={TOUCH.activeOpacity}
+                  style={{ flex: 1, minWidth: 0 }}
                 >
                   <View
                     style={{
@@ -162,9 +164,8 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
                       borderColor: buttonBorder,
                       borderRadius: 12,
                       paddingVertical: 14,
-                      paddingHorizontal: 24,
+                      paddingHorizontal: 12,
                       minHeight: 50,
-                      minWidth: 100,
                       justifyContent: "center",
                       alignItems: "center",
                       overflow: "hidden",
@@ -176,7 +177,7 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
                       end={{ x: 0.5, y: 1 }}
                       style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
                     />
-                    <AppText font="instrument-medium" size="base" style={{ color: "#ffffff" }}>
+                    <AppText font="instrument-medium" size="base" style={{ color: "#ffffff" }} numberOfLines={1}>
                       Change
                     </AppText>
                   </View>
@@ -188,6 +189,7 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
                   }}
                   hitSlop={TOUCH.hitSlop}
                   activeOpacity={TOUCH.activeOpacity}
+                  style={{ flex: 1, minWidth: 0 }}
                 >
                   <View
                     style={{
@@ -196,9 +198,8 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
                       borderColor: buttonBorder,
                       borderRadius: 12,
                       paddingVertical: 14,
-                      paddingHorizontal: 24,
+                      paddingHorizontal: 12,
                       minHeight: 50,
-                      minWidth: 100,
                       justifyContent: "center",
                       alignItems: "center",
                       overflow: "hidden",

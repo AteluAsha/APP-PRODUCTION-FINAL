@@ -7,11 +7,14 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  Image,
+  BackHandler,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from "react-native-reanimated"
 import {
@@ -25,24 +28,27 @@ import { useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
-import { Ionicons, Feather } from "@expo/vector-icons"
+import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
 import { PlayerProgressBar } from "@/components/chakras/PlayerProgressBar"
 import { PulsingChakraBall } from "@/components/chakras/PulsingChakraBall"
-import { JourneyNotesView } from "@/components/chakras/JourneyNotesView"
-import { getChakraImage } from "@/constants/chakras/chakraConstants"
+import {
+  getChakraImage,
+  getChakraName,
+} from "@/constants/chakras/chakraConstants"
 import Rewind10 from "@/assets/svg/rewind10.svg"
 import Forward10 from "@/assets/svg/forward10.svg"
 import { stopAnuaAudio } from "@/src/services/elevenlabs"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { ICON } from "@/constants/layout"
+import { ICON, TOUCH, ANDROID_PRESS_DELAY_MS } from "@/constants/layout"
 import { isEmulatorOrSimulator } from "@/constants/emulator"
 import {
   otherOriginTrackRef,
   getSourceSignature,
 } from "@/src/services/otherOriginTrackRef"
-import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 const FALLBACK_DAY_INDEX = 5 // Third Eye
 
@@ -96,7 +102,9 @@ const AudioPlayer = () => {
   const audioOrigin = useCurrentAudioStore((state) => state.audioOrigin)
   const reset = useCurrentAudioStore((state) => state.reset)
   const setPlaying = useCurrentAudioStore((state) => state.setPlaying)
+  const setPositionMs = useCurrentAudioStore((state) => state.setPositionMs)
   const storeChakraColor = useCurrentAudioStore((state) => state.chakraColor)
+  const pendingTrackKey = useCurrentAudioStore((state) => state.pendingTrackKey)
   const dayIndex =
     storeChakraColor &&
     CHAKRA_COLOR_TO_DAY_INDEX[storeChakraColor] !== undefined
@@ -117,8 +125,7 @@ const AudioPlayer = () => {
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false)
   const [showNoAudioMessage, setShowNoAudioMessage] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [notesSheetOpenKey, setNotesSheetOpenKey] = useState(0)
-  const notesSheetRef = useRef<BottomSheetModal>(null)
+  const [focusKey, setFocusKey] = useState(0)
   const controlsHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
@@ -135,6 +142,8 @@ const AudioPlayer = () => {
   const initializingTrackRef = useRef(false)
   /** Ref to current track. Only stop/unload on: user close, pause, leave screen (focus cleanup), or track end. No other system may stop playback. */
   const trackRef = useRef<Audio.Sound | undefined>(undefined)
+  /** When true, we just returned from Notes; ignore one Android back so we don't close player. */
+  const justReturnedFromNotesRef = useRef(false)
   /** Reset when source/track changes so first loaded status always updates progress bar (no throttle). */
   const hasAppliedFirstStatusRef = useRef(false)
 
@@ -146,8 +155,19 @@ const AudioPlayer = () => {
     }
   }, [track])
 
-  // When store is empty, wait briefly before showing "No audio selected" so delayed setSourceWithPlaylist (180ms) can run
+  // When store is empty, wait briefly before showing "No audio selected" so delayed setSource (180ms) can run.
+  // When source is loading (pendingTrackKey set, metadata/prefs present), never show "No audio selected" — user is waiting for prepare.
   useEffect(() => {
+    const sourceLoading =
+      !source && !!pendingTrackKey && (!!metadata || !!prefs)
+    if (sourceLoading) {
+      if (noAudioGraceTimerRef.current) {
+        clearTimeout(noAudioGraceTimerRef.current)
+        noAudioGraceTimerRef.current = null
+      }
+      setShowNoAudioMessage(false)
+      return
+    }
     const empty = !source || !metadata || !prefs
     if (empty) {
       if (noAudioGraceTimerRef.current) return
@@ -168,7 +188,7 @@ const AudioPlayer = () => {
         noAudioGraceTimerRef.current = null
       }
     }
-  }, [source, metadata, prefs])
+  }, [source, metadata, prefs, pendingTrackKey])
 
   // Sync duration from metadata when we have source so progress bar shows total even before first status (e.g. Android durationMillis delay)
   useEffect(() => {
@@ -186,6 +206,7 @@ const AudioPlayer = () => {
       if (track) {
         await track.setPositionAsync(newPositionMs)
         setPosition(newPositionMs)
+        setPositionMs(newPositionMs)
         if (Platform.OS === "android" && wasPlaying) {
           await track.playAsync()
           setIsPlaying(true)
@@ -193,7 +214,7 @@ const AudioPlayer = () => {
         }
       }
     },
-    [track, setPlaying],
+    [track, setPlaying, setPositionMs],
   )
 
   // Completion and navigation are driven only by track end (didJustFinish). No progress threshold
@@ -206,7 +227,7 @@ const AudioPlayer = () => {
         isLoadedRef.current = true
         setIsLoading(false)
 
-        // Hero duration guard: when metadata says long track (e.g. Master Embodiment 30–44 min) and file reports much shorter (e.g. 6:15), prefer metadata so UI never shows truncated duration
+        // Use file duration when available (actual loaded length); prefer metadata only when file reports much shorter (e.g. truncated).
         const metaMs = metadata?.durationMs ?? 0
         const fileMs = status.durationMillis && status.durationMillis > 0 ? status.durationMillis : 0
         const TEN_MIN_MS = 10 * 60 * 1000
@@ -227,9 +248,21 @@ const AudioPlayer = () => {
           playing !== lastAppliedStorePlayingRef.current ||
           now - lastStatusUpdateTimeRef.current >= PROGRESS_UPDATE_INTERVAL_MS
         if (shouldUpdateProgress) {
-          if (isFirstStatus) hasAppliedFirstStatusRef.current = true
+          if (isFirstStatus) {
+            hasAppliedFirstStatusRef.current = true
+            if (duration > 0) {
+              const cacheKey =
+                useEmbodimentDurationCacheStore.getState()
+                  .embodimentDurationCacheKey
+              if (cacheKey) {
+                useEmbodimentDurationCacheStore.getState().setDuration(cacheKey, duration)
+                useEmbodimentDurationCacheStore.getState().clearEmbodimentDurationCacheKey()
+              }
+            }
+          }
           lastStatusUpdateTimeRef.current = now
           setPosition(status.positionMillis)
+          setPositionMs(status.positionMillis)
           setDuration(duration)
         }
 
@@ -263,6 +296,7 @@ const AudioPlayer = () => {
     [
       metadata,
       setPlaying,
+      setPositionMs,
       hasLifetimeAccess,
       prefs?.isIntroAudio,
       audioOrigin,
@@ -336,11 +370,24 @@ const AudioPlayer = () => {
         isLoadedRef.current = true
         setIsLoading(false)
         setLoadError(null)
-        await sound.playAsync()
-        if (Platform.OS === "android") {
-          await sound.setVolumeAsync(1)
+        const resumePositionMs = useCurrentAudioStore.getState().positionMs
+        if (resumePositionMs > 0) {
+          const clamped =
+            status.durationMillis != null
+              ? Math.min(resumePositionMs, status.durationMillis)
+              : resumePositionMs
+          await sound.setPositionAsync(clamped)
+          setPosition(clamped)
+          if (status.durationMillis) setDuration(status.durationMillis)
+          setPlaying(false)
+          // Do not auto-play; user presses play to resume
+        } else {
+          await sound.playAsync()
+          if (Platform.OS === "android") {
+            await sound.setVolumeAsync(1)
+          }
+          setIsPlaying(true)
         }
-        setIsPlaying(true)
       } else {
         setIsLoading(true)
       }
@@ -390,33 +437,44 @@ const AudioPlayer = () => {
     }
   }, [source, track])
 
-  // Only stop on user leave (screen revert). Trial: stop when leaving. Lifetime + non-intro: mini player continues.
-  // CRITICAL: Await stop+unload before reset() so the track is actually stopped. Prevents two audios at once and "cannot turn off" on trial.
+  // On leave: do NOT stop/unload the track so that opening Notes (or any overlay) keeps playback
+  // and returning to this screen shows the same track. Stop+unload only in closePlayerAndNavigate (X or Android back).
+  // Only stop Anua audio on blur so we don't leave Anua sounds playing when user navigates away.
+  // Android: hardware back from this screen is handled below via BackHandler and runs closePlayerAndNavigate.
   useFocusEffect(
     useCallback(() => {
+      setFocusKey((k) => k + 1)
+      const clearReturnedFromNotesTimer = setTimeout(() => {
+        justReturnedFromNotesRef.current = false
+      }, 450)
       return () => {
+        clearTimeout(clearReturnedFromNotesTimer)
         const state = useCurrentAudioStore.getState()
-        const isIntroAudio =
-          (state.audioOrigin === "other" ||
-            state.audioOrigin === "full-player") &&
-          state.prefs?.isIntroAudio
-        const trialMustStop = !hasLifetimeAccess
-        if (isIntroAudio || trialMustStop) {
-          stopAnuaAudio().catch(() => {})
-          const currentTrack = trackRef.current
-          if (currentTrack) {
-            currentTrack
-              .stopAsync()
-              .then(() => currentTrack.unloadAsync().catch(() => {}))
-              .then(() => reset())
-              .catch(() => reset())
-          } else {
-            reset()
-          }
-        }
+        const isFullPlayerOrOther =
+          state.audioOrigin === "full-player" ||
+          state.audioOrigin === "other"
+        if (!isFullPlayerOrOther) return
+        stopAnuaAudio().catch(() => {})
+        // Do not stop/unload track on blur — keeps playback when user opens Notes Along the Way (or other overlay).
       }
-    }, [reset, hasLifetimeAccess]),
+    }, []),
   )
+
+  // Android: hardware back must stop and unload audio, then navigate. When we just returned from Notes, ignore one back so we don't close the player.
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (justReturnedFromNotesRef.current) {
+        justReturnedFromNotesRef.current = false
+        return true
+      }
+      closePlayerAndNavigate().catch((e) => {
+        if (__DEV__) console.warn("AudioPlayer: closePlayerAndNavigate on back:", e)
+      })
+      return true
+    })
+    return () => sub.remove()
+  }, [closePlayerAndNavigate])
 
   /** Single path for closing player and navigating. Awaits stop+unload before reset+navigate to prevent double-play. */
   const closePlayerAndNavigate = useCallback(
@@ -437,6 +495,19 @@ const AudioPlayer = () => {
         setIsPlaying(false)
         setIsLoading(false)
         isLoadedRef.current = false
+      }
+      const state = useCurrentAudioStore.getState()
+      const fullPlayerTrackId = state.fullPlayerTrackId
+      const positionMs = state.positionMs
+      if (fullPlayerTrackId != null && positionMs > 0) {
+        try {
+          await AsyncStorage.setItem(
+            `audio_position_${fullPlayerTrackId}`,
+            String(positionMs),
+          )
+        } catch (_) {
+          // Persistence failure must not block closing the player
+        }
       }
       reset()
       if (options?.replaceToChakraHome) {
@@ -555,6 +626,8 @@ const AudioPlayer = () => {
       }
 
       if (initializingTrackRef.current) return
+      const resumePos = useCurrentAudioStore.getState().positionMs
+      if (resumePos > 0) setPosition(resumePos)
       setIsLoading(true)
       await initializeTrack()
     }
@@ -577,7 +650,7 @@ const AudioPlayer = () => {
         isLoadedRef.current = false
       }
     }
-  }, [source, prefs, audioOrigin])
+  }, [source, prefs, audioOrigin, focusKey])
 
   // When mini player toggles play/pause for "other", apply to our track (ignore initial/self updates)
   useEffect(() => {
@@ -603,6 +676,12 @@ const AudioPlayer = () => {
     }, CONTROLS_HIDE_DELAY_MS)
   }, [])
 
+  const handleRestart = useCallback(() => {
+    showControls()
+    addHapticFeedback(HapticStrength.Light)
+    seekToPosition(0, isPlaying)
+  }, [showControls, seekToPosition, isPlaying])
+
   const bottomBarOpacity = useSharedValue(1)
   useEffect(() => {
     bottomBarOpacity.value = withTiming(controlsVisible ? 1 : 0, {
@@ -623,6 +702,11 @@ const AudioPlayer = () => {
 
   const animatedBottomBarStyle = useAnimatedStyle(() => ({
     opacity: bottomBarOpacity.value,
+  }))
+
+  const notesButtonScale = useSharedValue(1)
+  const notesButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: notesButtonScale.value }],
   }))
 
   const performClose = useCallback(async () => {
@@ -730,21 +814,40 @@ const AudioPlayer = () => {
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
+          {storeChakraColor != null && !showNoAudioMessage && (
+            <View style={{ marginBottom: 20, alignItems: "center" }}>
+              <Image
+                source={getChakraImage(dayIndex)}
+                style={{ width: 56, height: 56, opacity: 0.85 }}
+                resizeMode="contain"
+              />
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{
+                  color: "rgba(255,255,255,0.75)",
+                  marginTop: 8,
+                }}
+              >
+                {getChakraName(dayIndex)}
+              </AppText>
+            </View>
+          )}
           {!showNoAudioMessage && (
             <ActivityIndicator
-              size="large"
+              size="small"
               color="rgba(255,255,255,0.8)"
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: 12 }}
             />
           )}
           <AppText
             font={showNoAudioMessage ? "instrument-regular" : "cormorant-italic"}
-            size="lg"
+            size="base"
             className="text-white text-center px-4"
           >
             {showNoAudioMessage
               ? "No audio selected. Please select an audio file to play."
-              : "Gathering Presence…"}
+              : "Loading…"}
           </AppText>
           <Pressable
             onPress={handleCloseXNoSource}
@@ -856,6 +959,7 @@ const AudioPlayer = () => {
                 ? require("@/assets/images/ajna.png")
                 : getChakraImage(dayIndex)
             }
+            embodimentPulse={prefs?.isIntroAudio === true && isPlaying}
           />
           <AppText
             font="instrument-regular"
@@ -910,21 +1014,46 @@ const AudioPlayer = () => {
           bottom: 0,
           minHeight: 100,
           paddingHorizontal: 24,
-          paddingBottom: Math.max(insets.bottom, 24),
+          paddingBottom:
+            Math.max(insets.bottom, 24) +
+            (Platform.OS === "android" ? 24 : 0),
           paddingTop: 20,
           backgroundColor: "rgba(0,0,0,0.6)",
           justifyContent: "center",
         }}
       >
         <Animated.View style={[{ width: "100%" }, animatedBottomBarStyle]}>
-          <PlayerProgressBar
-            durationMs={durationMs}
-            positionMs={positionMs}
-            seekToPosition={async (ms) => {
-              showControls()
-              await seekToPosition(ms, isPlaying)
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              width: "100%",
             }}
-          />
+          >
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <PlayerProgressBar
+                durationMs={durationMs}
+                positionMs={positionMs}
+                seekToPosition={async (ms) => {
+                  showControls()
+                  await seekToPosition(ms, isPlaying)
+                }}
+              />
+            </View>
+            <Pressable
+              onPress={handleRestart}
+              hitSlop={TOUCH.hitSlop}
+              style={{ padding: 8 }}
+              accessibilityLabel="Restart from beginning"
+              accessibilityHint="Starts the track over from the beginning"
+            >
+              <Ionicons
+                name="refresh"
+                size={22}
+                color="rgba(255,255,255,0.9)"
+              />
+            </Pressable>
+          </View>
           <View
             style={{
               flexDirection: "row",
@@ -979,16 +1108,18 @@ const AudioPlayer = () => {
         </Animated.View>
       </Pressable>
 
-      {/* Notes Along the Way (white feather) - toggles with player bar (same opacity + reasoning) */}
+      {/* Notes Along the Way: generous touch target, gentle press feedback, somatic feel. */}
       {audioOrigin === "full-player" && (
         <Animated.View
           style={[
             {
               position: "absolute",
-              left: 16,
-              bottom: Math.max(insets.bottom, 12),
-              width: 36,
-              height: 36,
+              left: 12,
+              bottom:
+                Math.max(insets.bottom, 12) +
+                (Platform.OS === "android" ? 24 : 0),
+              width: 52,
+              height: 52,
               alignItems: "center",
               justifyContent: "center",
             },
@@ -999,56 +1130,47 @@ const AudioPlayer = () => {
           <Pressable
             onPress={() => {
               addHapticFeedback(HapticStrength.Light)
-              setNotesSheetOpenKey((k) => k + 1)
-              notesSheetRef.current?.present()
+              justReturnedFromNotesRef.current = true
+              router.push(
+                `/(chakras)/NotesAlongTheWay?contextDay=${dayIndex}`,
+              )
             }}
-            style={{ flex: 1, width: "100%", alignItems: "center", justifyContent: "center" }}
+            onPressIn={() => {
+              notesButtonScale.value = withSpring(0.88, {
+                damping: 14,
+                stiffness: 260,
+              })
+            }}
+            onPressOut={() => {
+              notesButtonScale.value = withSpring(1, {
+                damping: 14,
+                stiffness: 260,
+              })
+            }}
+            delayPressIn={Platform.OS === "android" ? ANDROID_PRESS_DELAY_MS : undefined}
+            hitSlop={TOUCH.hitSlop}
+            style={({ pressed }) => [
+              {
+                flex: 1,
+                width: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 26,
+                backgroundColor: pressed
+                  ? "rgba(135, 174, 115, 0.28)"
+                  : "rgba(135, 174, 115, 0.14)",
+              },
+            ]}
             accessibilityLabel="Notes Along the Way"
-            accessibilityHint="Tap to jot down something from your healing session"
+            accessibilityHint="Tap to view and add your journey notes; playback continues"
           >
-            <Feather name="feather" size={17} color="#ffffff" />
+            <Animated.View style={notesButtonAnimatedStyle}>
+              <Ionicons name="leaf" size={26} color="#87AE73" />
+            </Animated.View>
           </Pressable>
         </Animated.View>
       )}
     </View>
-
-    {/* Notes Along the Way - bottom sheet (full-player only) */}
-    <BottomSheetModal
-      ref={notesSheetRef}
-      index={1}
-      snapPoints={["50%", "90%"]}
-      enablePanDownToClose
-      backdropComponent={(props) => (
-        <BottomSheetBackdrop {...props} opacity={0.6} />
-      )}
-      backgroundStyle={{
-        backgroundColor: "rgba(20, 20, 22, 0.98)",
-      }}
-      handleIndicatorStyle={{ backgroundColor: "rgba(255,255,255,0.4)" }}
-    >
-      <JourneyNotesView
-        theme="player"
-        sheetOpenKey={notesSheetOpenKey}
-        contextChakraDay={dayIndex}
-        onOpenFullPage={() => {
-          notesSheetRef.current?.dismiss()
-          setTimeout(
-            () =>
-              router.push(
-                `/(chakras)/NotesAlongTheWay?contextDay=${dayIndex}`,
-              ),
-            300,
-          )
-        }}
-        onSendToAnua={(content) => {
-          notesSheetRef.current?.dismiss()
-          setTimeout(
-            () => useAnuaChatStore.getState().open({ initialMessage: content }),
-            200,
-          )
-        }}
-      />
-    </BottomSheetModal>
 
     {/* Trial: exit confirmation modal */}
     <Modal

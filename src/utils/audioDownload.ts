@@ -238,6 +238,33 @@ export async function downloadAndCacheAudioResumable(
   }
 }
 
+/** Default timeout for resumable download (avoid indefinite hang on slow networks). */
+export const RESUMABLE_DOWNLOAD_TIMEOUT_MS = 60 * 1000
+
+/** Longer timeout for meditation-length audio (Head to Heart, Master Embodiment) so full file can download. */
+export const MEDITATION_DOWNLOAD_TIMEOUT_MS = 180 * 1000
+
+/**
+ * Resumable download with timeout. Rejects with Error('Download timeout') after timeoutMs.
+ * Use from prepareLongAudioForPlay so embodiment/crystal bowl never hang indefinitely.
+ */
+export async function downloadAndCacheAudioResumableWithTimeout(
+  audioUrl: string,
+  audioId: string,
+  timeoutMs: number = RESUMABLE_DOWNLOAD_TIMEOUT_MS,
+): Promise<string> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(
+      () => reject(new Error("Download timeout")),
+      timeoutMs,
+    )
+  })
+  return Promise.race([
+    downloadAndCacheAudioResumable(audioUrl, audioId),
+    timeoutPromise,
+  ])
+}
+
 /**
  * Download and cache only the first N bytes (first ~3 min) of an audio file.
  * Uses HTTP Range so playback can start instantly with no streaming glitches.

@@ -4,18 +4,18 @@
  * Trial Mode: Leaf (left), Anua (bottom-right)
  * Post-Paywall: Leaf (above menu bar, left), Anua (above menu bar, right)
  *
- * Leaf opens JourneyNotesView (Notes along the way)
- * Anua opens Sanctuary (Talk to Anua, Share, Community)
+ * Leaf opens master NotesAlongTheWay full page only (no sheet).
+ * Anua opens Sanctuary (Talk to Anua, Share, Community).
  */
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import {
   View,
   Pressable,
   StyleSheet,
   Image,
   Platform,
-  BackHandler,
+  Animated,
 } from "react-native"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -30,40 +30,33 @@ import { getContextChakraDayFromRoute } from "@/utils/notesContextChakra"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { getChakraName } from "@/constants/chakras/chakraConstants"
 import { SocialSanctuaryModal } from "@/components/social/SocialSanctuaryModal"
-import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet"
-import { JourneyNotesView } from "@/components/chakras/JourneyNotesView"
 import { usePillBottomSheetStore } from "@/hooks/usePillBottomSheetStore"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { CommunityFeaturePreviewModal } from "@/components/chakras/CommunityFeaturePreviewModal"
 import { ANDROID_PRESS_DELAY_MS } from "@/constants/layout"
+import { useFloatingUIVisibilityStore } from "@/hooks/useFloatingUIVisibilityStore"
 
 export const FloatingNavButtons = () => {
+  const visible = useFloatingUIVisibilityStore((s) => s.visible)
+  const opacityRef = useRef(new Animated.Value(1)).current
+  useEffect(() => {
+    Animated.timing(opacityRef, {
+      toValue: visible ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start()
+  }, [visible, opacityRef])
   const router = useRouter()
   const pathname = usePathname()
   const segments = useSegments()
   const insets = useSafeAreaInsets()
-  const [notesSheetRef] = useState<React.RefObject<BottomSheetModal>>(() =>
-    React.createRef<BottomSheetModal>(),
-  )
-  const [notesSheetOpenKey, setNotesSheetOpenKey] = useState(0)
   const [isSanctuaryModalVisible, setIsSanctuaryModalVisible] = useState(false)
   const [showCommunityPreview, setShowCommunityPreview] = useState(false)
   const [showHallsPreview, setShowHallsPreview] = useState(false)
   const [previewFeatureType, setPreviewFeatureType] = useState<
     "share" | "halls"
   >("share")
-  const [isNotesSheetOpen, setIsNotesSheetOpen] = useState(false)
-
-  // Escape hatch: Android back button dismisses Notes sheet when open so user is never stuck.
-  useEffect(() => {
-    if (Platform.OS !== "android" || !isNotesSheetOpen) return
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      notesSheetRef.current?.dismiss()
-      return true
-    })
-    return () => sub.remove()
-  }, [isNotesSheetOpen])
 
   // Get lifetime access status - determines positioning and behavior
   const hasLifetimeAccess = useChakraJourneyStore(
@@ -138,9 +131,11 @@ export const FloatingNavButtons = () => {
     segments.includes("AudioPlayer") ||
     segments.includes("CommitmentGate") ||
     segments.includes("DevPaywall") ||
+    segments.includes("Paywall") ||
     segments.includes("EnergyExchange") ||
     segments.includes("ChakraHub") ||
     segments.includes("DateSelection") ||
+    segments.includes("NotesAlongTheWay") ||
     segments.includes("TribeChat") ||
     segments.includes("QuizScreen") ||
     segments.includes("AnuaChat") ||
@@ -148,10 +143,13 @@ export const FloatingNavButtons = () => {
     pathname?.includes("/AudioPlayer") ||
     pathname?.includes("/CommitmentGate") ||
     pathname?.includes("/DevPaywall") ||
+    pathname?.includes("/Paywall") ||
     pathname?.includes("/EnergyExchange") ||
     pathname?.includes("/ChakraHub") ||
     pathname?.includes("/DateSelection") ||
     pathname?.includes("DateSelection") ||
+    pathname?.includes("/NotesAlongTheWay") ||
+    pathname?.includes("NotesAlongTheWay") ||
     pathname?.includes("/TribeChat") ||
     pathname?.includes("TribeChat") ||
     pathname?.includes("/QuizScreen") ||
@@ -174,11 +172,12 @@ export const FloatingNavButtons = () => {
     return null
   }
 
-  // Open Notes (JourneyNotesView) - Bottom sheet
+  // Open Notes: push to full diary page (hero)
   const handleOpenNotes = () => {
     addHapticFeedback(HapticStrength.Light)
-    setNotesSheetOpenKey((k) => k + 1)
-    notesSheetRef.current?.present()
+    router.push(
+      `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
+    )
   }
 
   // Open Sanctuary: on Android go direct to Anua chat (skip modal so touches work). iOS shows modal.
@@ -203,11 +202,24 @@ export const FloatingNavButtons = () => {
   if (!hasLifetimeAccess) {
     // Calculate bottom position for both buttons to align them
     const bottomPosition = Math.max(insets.bottom, 4) + 8
-    const leftButtonGap = 8
+    // Generous gap so Notes is well above Tribe and easy to tap (Android had tight spacing)
+    const leftButtonGap = 24
+    const leftButtonHitSlop =
+      Platform.OS === "android"
+        ? { top: 20, bottom: 20, left: 20, right: 20 }
+        : { top: 10, bottom: 10, left: 10, right: 10 }
 
     return (
-      <>
-        {/* Left side: Leaf (top), Tribe Chat (below) - modern floating stack */}
+      <Animated.View
+        style={{
+          opacity: opacityRef,
+          ...(Platform.OS === "android" && { elevation: 999, zIndex: 99 }),
+        }}
+        pointerEvents={visible ? "auto" : "none"}
+        collapsable={false}
+      >
+        <>
+        {/* Left side: Leaf (top), Tribe Chat (below) – gap and hitSlop tuned for easy tap on Android */}
         <View
           style={{
             position: "absolute",
@@ -221,8 +233,12 @@ export const FloatingNavButtons = () => {
         >
           <Pressable
             onPress={handleOpenNotes}
-            style={[styles.buttonStacked, styles.leafButton]}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={[
+              styles.buttonStacked,
+              styles.leafButton,
+              Platform.OS === "android" && styles.buttonStackedAndroid,
+            ]}
+            hitSlop={leftButtonHitSlop}
             accessibilityLabel="Notes Along the Way"
             accessibilityHint="Tap to view and add your journey notes"
             {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
@@ -231,8 +247,12 @@ export const FloatingNavButtons = () => {
           </Pressable>
           <Pressable
             onPress={openTribeChat}
-            style={[styles.buttonStacked, styles.tribeButton]}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={[
+              styles.buttonStacked,
+              styles.tribeButton,
+              Platform.OS === "android" && styles.buttonStackedAndroid,
+            ]}
+            hitSlop={leftButtonHitSlop}
             accessibilityLabel="Tribe Chat"
             accessibilityHint="Connect with people you invited to the journey"
             {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
@@ -269,16 +289,15 @@ export const FloatingNavButtons = () => {
           </AppText>
           <Pressable
             onPress={handleOpenAnua}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            style={{
-              width: 44,
-              height: 44,
-              shadowColor: "#9D4EDD",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.5,
-              shadowRadius: 12,
-              elevation: 8,
-            }}
+            hitSlop={
+              Platform.OS === "android"
+                ? { top: 20, bottom: 20, left: 20, right: 20 }
+                : { top: 10, bottom: 10, left: 10, right: 10 }
+            }
+            style={[
+              styles.anuaButtonFloating,
+              Platform.OS === "android" && styles.anuaButtonFloatingAndroid,
+            ]}
             accessibilityLabel="Anua Sanctuary"
             accessibilityHint="Tap to connect with Anua and the community"
             {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
@@ -302,7 +321,6 @@ export const FloatingNavButtons = () => {
           chakraDay={currentDay}
           chakraName={chakraName}
           onOpenAnuaChat={() => {
-            notesSheetRef.current?.dismiss()
             setIsSanctuaryModalVisible(false)
             setTimeout(() => {
               useAnuaChatStore
@@ -336,44 +354,8 @@ export const FloatingNavButtons = () => {
           onClose={() => setShowHallsPreview(false)}
           featureType="halls"
         />
-
-        {/* Notes Bottom Sheet - Default 2/3 open, dimmed backdrop */}
-        <BottomSheetModal
-          ref={notesSheetRef}
-          index={1}
-          snapPoints={["50%", "90%"]}
-          enablePanDownToClose
-          onChange={(index) => setIsNotesSheetOpen(index >= 0)}
-          backdropComponent={(props) => (
-            <BottomSheetBackdrop {...props} opacity={0.6} />
-          )}
-          backgroundStyle={styles.bottomSheetBackground}
-          handleIndicatorStyle={styles.handleIndicator}
-        >
-          <JourneyNotesView
-            sheetOpenKey={notesSheetOpenKey}
-            contextChakraDay={contextChakraDay}
-            onOpenFullPage={() => {
-              notesSheetRef.current?.dismiss()
-              setTimeout(
-                () =>
-                  router.push(
-                    `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
-                  ),
-                300,
-              )
-            }}
-            onSendToAnua={(content) => {
-              notesSheetRef.current?.dismiss()
-              setTimeout(
-                () =>
-                  useAnuaChatStore.getState().open({ initialMessage: content }),
-                200,
-              )
-            }}
-          />
-        </BottomSheetModal>
       </>
+      </Animated.View>
     )
   }
 
@@ -383,6 +365,11 @@ export const FloatingNavButtons = () => {
   const buttonSpacing = 16
 
   return (
+    <Animated.View
+      style={{ opacity: opacityRef }}
+      pointerEvents={visible ? "auto" : "none"}
+      collapsable={false}
+    >
     <>
       {/* Leaf Button - Above menu bar, left (lowered) */}
       <Pressable
@@ -457,7 +444,6 @@ export const FloatingNavButtons = () => {
         chakraDay={currentDay}
         chakraName={chakraName}
         onOpenAnuaChat={() => {
-          notesSheetRef.current?.dismiss()
           setIsSanctuaryModalVisible(false)
           setTimeout(() => {
             useAnuaChatStore
@@ -491,43 +477,8 @@ export const FloatingNavButtons = () => {
         featureType="halls"
       />
 
-        {/* Notes Bottom Sheet - Default 2/3 open, dimmed backdrop */}
-        <BottomSheetModal
-          ref={notesSheetRef}
-          index={1}
-          snapPoints={["50%", "90%"]}
-          enablePanDownToClose
-          onChange={(index) => setIsNotesSheetOpen(index >= 0)}
-          backdropComponent={(props) => (
-            <BottomSheetBackdrop {...props} opacity={0.6} />
-          )}
-          backgroundStyle={styles.bottomSheetBackground}
-          handleIndicatorStyle={styles.handleIndicator}
-        >
-          <JourneyNotesView
-            sheetOpenKey={notesSheetOpenKey}
-            contextChakraDay={contextChakraDay}
-            onOpenFullPage={() => {
-              notesSheetRef.current?.dismiss()
-              setTimeout(
-                () =>
-                  router.push(
-                    `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
-                  ),
-                300,
-              )
-            }}
-            onSendToAnua={(content) => {
-              notesSheetRef.current?.dismiss()
-              setTimeout(
-                () =>
-                  useAnuaChatStore.getState().open({ initialMessage: content }),
-                200,
-              )
-            }}
-          />
-        </BottomSheetModal>
-      </>
+        </>
+      </Animated.View>
     )
   }
 
@@ -562,6 +513,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  buttonStackedAndroid: {
+    minWidth: 48,
+    minHeight: 48,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
   leafButton: {
     borderColor: "rgba(135, 174, 115, 0.5)",
   },
@@ -571,15 +529,17 @@ const styles = StyleSheet.create({
   anuaButton: {
     borderColor: "rgba(157, 78, 221, 0.5)",
   },
-  bottomSheetBackground: {
-    backgroundColor: "#1a1a1a",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.2)",
+  anuaButtonFloating: {
+    width: 44,
+    height: 44,
+    shadowColor: "#9D4EDD",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  handleIndicator: {
-    backgroundColor: "#FFFFFF",
-    width: 40,
+  anuaButtonFloatingAndroid: {
+    width: 48,
+    height: 48,
   },
 })

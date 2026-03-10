@@ -318,11 +318,12 @@ export const synthesizeAnuaVoice = async (
 
 /**
  * Play Anua's voice from text
- * Convenience function that synthesizes and plays in one call
+ * Convenience function that synthesizes and plays in one call.
+ * If isCancelled returns true after synthesis (e.g. user left Anua chat), we do not play and unload.
  *
  * @param text - The text for Anua to speak
  * @param options - Optional voice configuration overrides
- * @returns Promise that resolves when playback completes
+ * @param isCancelled - Optional; if returns true before/during play we skip playback and unload (Anua only speaks while in chat)
  */
 export const speakAsAnua = async (
   text: string,
@@ -331,11 +332,20 @@ export const speakAsAnua = async (
     similarity_boost?: number
     style?: number
   },
+  isCancelled?: () => boolean,
 ): Promise<void> => {
   try {
     await stopAnuaAudio()
 
     const sound = await synthesizeAnuaVoice(text, options)
+    if (isCancelled?.()) {
+      try {
+        await sound.unloadAsync()
+      } catch (_) {}
+      currentAnuaSound = null
+      return
+    }
+
     currentAnuaSound = sound
 
     return new Promise((resolve, reject) => {
@@ -350,6 +360,10 @@ export const speakAsAnua = async (
 
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded) {
+          if (isCancelled?.()) {
+            sound.unloadAsync().then(clearAndResolve).catch(() => {})
+            return
+          }
           sound.setRateAsync(1.0, true).catch(() => {})
           if (status.didJustFinish) {
             sound.unloadAsync().then(clearAndResolve).catch(clearAndReject)
@@ -362,6 +376,10 @@ export const speakAsAnua = async (
         }
       })
 
+      if (isCancelled?.()) {
+        sound.unloadAsync().then(clearAndResolve).catch(() => {})
+        return
+      }
       sound.playAsync().catch((playError) => {
         sound.unloadAsync().catch(() => {})
         clearAndReject(playError)

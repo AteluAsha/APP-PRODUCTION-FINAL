@@ -4,7 +4,7 @@
  * Clear opening copy, visible invite message/link, primary Share, embedded share list.
  */
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { Modal, View, Pressable, ScrollView } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -19,6 +19,7 @@ import {
   openSystemShare,
 } from "@/utils/shareDestinations"
 import { ShareDestinationList } from "@/components/sharing/ShareDestinationPicker"
+import { getUserId } from "@/src/services/userId"
 
 export interface TribeRoomInviteModalProps {
   visible: boolean
@@ -38,12 +39,27 @@ export function TribeRoomInviteModal({
   onClose,
   startDate,
   courseStartDateISO,
-  referralCode,
+  referralCode: referralCodeProp,
   onInviteSent,
   onFindFriends,
 }: TribeRoomInviteModalProps) {
+  const [resolvedReferralCode, setResolvedReferralCode] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (visible && !referralCodeProp) {
+      getUserId().then(setResolvedReferralCode).catch(() => setResolvedReferralCode(null))
+    } else if (!visible) {
+      setResolvedReferralCode(null)
+    }
+  }, [visible, referralCodeProp])
+
+  const referralCode = referralCodeProp ?? resolvedReferralCode ?? undefined
   const referralLink = generateReferralLink(referralCode, courseStartDateISO)
-  const inviteMessage = generateInviteMessage({ startDate, referralLink })
+  const inviteMessage = generateInviteMessage({
+    startDate,
+    referralLink,
+    senderSoulSchoolId: referralCode,
+  })
 
   const handleSystemShare = async () => {
     addHapticFeedback(HapticStrength.Medium)

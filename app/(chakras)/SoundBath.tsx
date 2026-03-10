@@ -10,7 +10,7 @@ import { useLocalSearchParams, useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { View, ScrollView, ImageBackground, Platform, Dimensions } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
 import BackgroundOpacity from "@/components/BackgroundOpacity"
@@ -43,10 +43,13 @@ const SoundBath = () => {
 
   const soundBathContent = chakraContent[chakra].soundBath
   const [crystalBowlPreparing, setCrystalBowlPreparing] = useState(false)
+  const [tuningForkPreparing, setTuningForkPreparing] = useState(false)
 
   // Tuning fork: play/pause only on page, no player. One local Sound ref.
   const tuningForkSoundRef = useRef<Audio.Sound | null>(null)
   const [tuningForkPlaying, setTuningForkPlaying] = useState(false)
+  const [tuningForkPositionMs, setTuningForkPositionMs] = useState(0)
+  const [tuningForkDurationMs, setTuningForkDurationMs] = useState(0)
 
   // Crystal bowl: trial = full AudioPlayer; lifetime = mini player (navigate away and keep listening)
   const metadata = useCurrentAudioStore((s) => s.metadata)
@@ -78,10 +81,20 @@ const SoundBath = () => {
           s.stopAsync().then(() => s.unloadAsync().catch(() => {})).catch(() => {})
           tuningForkSoundRef.current = null
           setTuningForkPlaying(false)
+          setTuningForkPositionMs(0)
+          setTuningForkDurationMs(0)
         }
       }
     }, []),
   )
+
+  const handleTuningForkSeek = useCallback((ms: number) => {
+    const s = tuningForkSoundRef.current
+    if (s) {
+      s.setPositionAsync(ms).catch(() => {})
+      setTuningForkPositionMs(ms)
+    }
+  }, [])
 
   const handleTuningForkPress = useCallback(async () => {
     const uri = tuningForkAudio.localUri || tuningForkAudio.url
@@ -89,7 +102,7 @@ const SoundBath = () => {
     addHapticFeedback(HapticStrength.Light)
 
     if (isCurrentCrystalBowl && isPlaying) {
-      setPlaying(false)
+      useCurrentAudioStore.getState().reset()
     }
 
     const s = tuningForkSoundRef.current
@@ -105,6 +118,7 @@ const SoundBath = () => {
       return
     }
 
+    setTuningForkPreparing(true)
     try {
       const { sound } = await Audio.Sound.createAsync(
         { uri },
@@ -117,8 +131,13 @@ const SoundBath = () => {
       tuningForkSoundRef.current = sound
       setTuningForkPlaying(true)
       sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish && !status.isLooping) {
+        if (!status.isLoaded) return
+        if (status.positionMillis != null) setTuningForkPositionMs(status.positionMillis)
+        if (status.durationMillis != null) setTuningForkDurationMs(status.durationMillis)
+        if (status.didJustFinish && !status.isLooping) {
           setTuningForkPlaying(false)
+          setTuningForkPositionMs(0)
+          setTuningForkDurationMs(0)
           tuningForkSoundRef.current = null
           sound.unloadAsync().catch(() => {})
         }
@@ -126,8 +145,10 @@ const SoundBath = () => {
     } catch (e) {
       if (__DEV__) console.warn("[SoundBath] Tuning fork play failed:", e)
       setTuningForkPlaying(false)
+    } finally {
+      setTuningForkPreparing(false)
     }
-  }, [tuningForkAudio.localUri, tuningForkAudio.url, isCurrentCrystalBowl, isPlaying, setPlaying])
+  }, [tuningForkAudio.localUri, tuningForkAudio.url, isCurrentCrystalBowl, isPlaying])
 
   const handleCrystalBowlPress = useCallback(async () => {
     if (isCurrentCrystalBowl && isPlaying) {
@@ -146,6 +167,7 @@ const SoundBath = () => {
       tuningForkSoundRef.current = null
       setTuningForkPlaying(false)
     }
+    useCurrentAudioStore.getState().reset()
 
     setCrystalBowlPreparing(true)
     addHapticFeedback(HapticStrength.Light)
@@ -198,6 +220,7 @@ const SoundBath = () => {
   // Don't render anything if the chakra is invalid
   if (!isValidChakra(chakraParam)) return null
 
+  const insets = useSafeAreaInsets()
   // Background must sit BEHIND content (hero + scroll). On Android, ImageBackground can composite
   // its image on top of children; use explicit layer order: background first (zIndex 0), content on top (zIndex 1).
   const { height: screenHeight } = Dimensions.get("window")
@@ -224,6 +247,18 @@ const SoundBath = () => {
         resizeMode="cover"
       />
       <SafeAreaView style={contentLayerStyle} edges={["top"]} pointerEvents="box-none">
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top + 52,
+            backgroundColor: "#000000",
+            zIndex: 0,
+          }}
+        />
         {/* Scroll content first so ActionBar overlay receives touches on Android */}
         <View style={{ flex: 1, marginTop: 52 }} pointerEvents="box-none">
           <BackgroundOpacity
@@ -240,33 +275,52 @@ const SoundBath = () => {
           >
           <AppText
             font="instrument-regular"
-            size="xl"
-            style={{ letterSpacing: 2, textAlign: "center", color: "#ffffff" }}
+            size="2xl"
+            style={{
+              letterSpacing: 2,
+              textAlign: "center",
+              color: "#ffffff",
+              fontSize: 24 * 1.3,
+            }}
           >
             — SOUND HEALING —
           </AppText>
-          <AppText
-            font="instrument-semibold"
-            size="lg"
+          <View
             style={{
-              textAlign: "center",
-              marginTop: 12,
-              color: "rgba(255,255,255,0.95)",
-            }}
-          >
-            {soundBathContent.title}
-          </AppText>
-          <AppText
-            font="instrument-italic"
-            size="xs"
-            style={{
-              textAlign: "center",
+              marginTop: 16,
+              marginHorizontal: 24,
               marginBottom: 16,
-              color: "rgba(255,255,255,0.8)",
+              paddingVertical: 14,
+              paddingHorizontal: 20,
+              borderRadius: 12,
+              backgroundColor: "rgba(255,255,255,0.06)",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+              alignItems: "center",
             }}
           >
-            {soundBathContent.subtitle}
-          </AppText>
+            <AppText
+              font="instrument-semibold"
+              size="lg"
+              style={{
+                textAlign: "center",
+                color: "rgba(255,255,255,0.95)",
+              }}
+            >
+              {soundBathContent.title}
+            </AppText>
+            <AppText
+              font="instrument-italic"
+              size="xs"
+              style={{
+                textAlign: "center",
+                marginTop: 4,
+                color: "rgba(255,255,255,0.8)",
+              }}
+            >
+              {soundBathContent.subtitle}
+            </AppText>
+          </View>
           <View
             style={{
               marginHorizontal: 24,
@@ -361,12 +415,15 @@ const SoundBath = () => {
           >
             <View style={{ marginBottom: 14 }}>
               <SoundBathButton
-                isLoading={tuningForkAudio.isLoading}
+                isLoading={tuningForkAudio.isLoading || tuningForkPreparing}
                 error={tuningForkAudio.error}
                 onPress={handleTuningForkPress}
                 title="TUNING FORK"
                 subtitle={tuningForkPlaying ? "Playing…" : `${tuningForkHertz} Hz`}
                 isPlaying={tuningForkPlaying}
+                positionMs={tuningForkPlaying ? tuningForkPositionMs : 0}
+                durationMs={tuningForkDurationMs}
+                onSeek={tuningForkPlaying ? handleTuningForkSeek : undefined}
               />
             </View>
             <AppText

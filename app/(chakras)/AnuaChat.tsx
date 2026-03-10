@@ -35,6 +35,7 @@ export default function AnuaChatScreen() {
 
   useEffect(() => {
     return () => {
+      stopAnuaAudio().catch(() => {})
       close()
     }
   }, [close])

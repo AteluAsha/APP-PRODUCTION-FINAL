@@ -10,7 +10,7 @@
  */
 
 import React from "react"
-import { Modal, View, Pressable, StyleSheet } from "react-native"
+import { Modal, View, Pressable, StyleSheet, Platform } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
@@ -45,10 +45,19 @@ export function CommunicationReminderModal({
       transparent
       animationType="fade"
       onRequestClose={handleNotNow}
+      statusBarTranslucent={Platform.OS === "android"}
     >
-      <View style={styles.overlay}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleNotNow} />
-        <View style={styles.card}>
+      <View style={styles.overlay} pointerEvents="box-none">
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={handleNotNow}
+          accessibilityLabel="Dismiss"
+        />
+        <View
+          style={[styles.card, Platform.OS === "android" && { elevation: 24, zIndex: 1 }]}
+          pointerEvents="box-none"
+          collapsable={false}
+        >
           <LinearGradient
             colors={[
               "rgba(24, 28, 32, 0.99)",
@@ -84,6 +93,7 @@ export function CommunicationReminderModal({
             <Pressable
               onPress={handleAllow}
               style={({ pressed }) => [pressed && { opacity: 0.9 }]}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <LinearGradient
                 colors={["rgba(135, 174, 115, 0.35)", "rgba(6, 182, 212, 0.2)"]}
@@ -101,7 +111,11 @@ export function CommunicationReminderModal({
               </LinearGradient>
             </Pressable>
 
-            <Pressable onPress={handleNotNow} style={styles.notNowWrap}>
+            <Pressable
+              onPress={handleNotNow}
+              style={styles.notNowWrap}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
               <AppText
                 font="instrument-regular"
                 size="sm"

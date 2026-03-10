@@ -7,6 +7,11 @@
  *
  * This component is primarily for APP_1 (Trial mode).
  * APP_2 (Lifetime) uses ChakraHub instead.
+ *
+ * LOCKED (trials home): The 7 chakra balls are pinned to the base of the
+ * viewport (minHeight/maxHeight: viewportHeight, justifyContent: "flex-end",
+ * paddingBottom: TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING). They must never be
+ * centered; this placement is non-negotiable.
  */
 
 import React, { useState, useEffect } from "react"
@@ -43,6 +48,8 @@ interface IntegratedProgressStackProps {
   allChakrasCompleted: boolean
   hasLifetimeAccess?: boolean // APP_2 (Lifetime): Pass to timegate service
   inCourseMode?: boolean // When true (lifetime somatic journey), apply trial timegates
+  /** When true (ChakraHub): show all 7 chakras, no current-day label or teaser */
+  showAllChakrasForLifetimeHub?: boolean
   chakraData: {
     day: number
     affirmation: string
@@ -123,6 +130,7 @@ export const IntegratedProgressStack = ({
   allChakrasCompleted,
   hasLifetimeAccess = false, // APP_2 (Lifetime): Default to false for trial mode
   inCourseMode = false, // Lifetime somatic journey: apply trial timegates
+  showAllChakrasForLifetimeHub = false,
   chakraData,
   router,
 }: IntegratedProgressStackProps) => {
@@ -131,8 +139,12 @@ export const IntegratedProgressStack = ({
   // Find current chakra data
   const currentChakraData = chakraData.find(({ day }) => day === currentDay)
 
-  // APP_1 (Trial): Root chakra position LOCKED via constants/layout.ts (TRIAL_HOME_ROOT_CHAKRA)
+  // LOCKED (Android): Trials home stack placement – constants/layout.ts TRIAL_HOME_ROOT_CHAKRA
   const bottomPadding = TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING
+  const dayLabelToBallGap = TRIAL_HOME_ROOT_CHAKRA.DAY_LABEL_TO_BALL_GAP
+
+  // Viewport height for base-pinned stack (flex-end); root stays in same place day 1–7, never centered
+  const viewportHeight = windowHeight - insets.top - insets.bottom
 
   // Next-day preview: midnight countdown when there is a tomorrow (currentDay < 6)
   const [midnightCountdown, setMidnightCountdown] = useState({
@@ -154,15 +166,16 @@ export const IntegratedProgressStack = ({
     return () => clearInterval(interval)
   }, [currentDay])
 
-  // Android: minHeight pins Root chakra to viewport bottom so stack stays lower and centered
+  // LOCKED: viewport-sized container + stack pinned to base – do not center (trials home)
   return (
     <View
       style={{
         flex: 1,
-        ...(Platform.OS === "android" && { minHeight: windowHeight }),
+        minHeight: viewportHeight,
+        maxHeight: viewportHeight,
       }}
     >
-      {/* Chakra stack - Root stays at bottom, progressive reveal upward */}
+      {/* Chakra stack – pinned to base (flex-end); same position Monday–Sunday; never center by day */}
       <View
         style={{
           flex: 1,
@@ -184,10 +197,10 @@ export const IntegratedProgressStack = ({
             // By Sunday, all 7 chakras are present (even if not opened, they're greyed out)
             const isWithinCurrentDayRange = chakraDay <= currentDay
 
-            // Show all chakras up to current day
-            // Monday: only root (day 0)
-            // Sunday: all 7 (days 0-6)
-            const shouldShowChakra = chakraDay <= currentDay
+            // Show all chakras up to current day (or all 7 when lifetime hub)
+            // Monday: only root (day 0); Sunday: all 7 (days 0-6)
+            const shouldShowChakra =
+              showAllChakrasForLifetimeHub || chakraDay <= currentDay
 
             // Check timegate service for accessibility (routes to trial or lifetime logic)
             // APP_1 (Trial): Progressive reveal logic
@@ -243,6 +256,12 @@ export const IntegratedProgressStack = ({
 
             const dayName = getDayName(chakraDay)
             const chakraName = getChakraName(chakraDay)
+            const showDayLabel =
+              !showAllChakrasForLifetimeHub &&
+              ((isCurrentDay && !isCompleted) || isTeaserPosition)
+            // Current day title: show for current day (completed or not) so each day/chakra is labeled on APP1 and APP2
+            const showCurrentDayTitle =
+              !showAllChakrasForLifetimeHub && isCurrentDay
 
             return (
               <View
@@ -253,30 +272,21 @@ export const IntegratedProgressStack = ({
                   width: "100%",
                   marginBottom: 2,
                   position: "relative",
+                  paddingTop: showDayLabel || showCurrentDayTitle ? dayLabelToBallGap : 0,
                   ...(Platform.OS === "android" && chakraDay === 0 && {
                     paddingBottom: 24,
                   }),
                 }}
               >
-                {/* APP_1 (Trial): Title display logic
-                  - ONLY show title above CURRENT day (day of week)
-                  - Remove title after completion
-                  - Show teaser title for next day after completing current day
-              */}
-                {/* Current day title - only if not completed */}
-                {isCurrentDay && !isCompleted && (
+                {/* APP_1/APP_2: Day title above chakra ball – in-flow layout so it renders on Android (absolute + bottom 100% is unreliable) */}
+                {showCurrentDayTitle && (
                   <View
                     style={{
-                      position: "absolute",
-                      bottom: "100%", // Position above the chakra ball
-                      left: 0,
-                      right: 0,
+                      width: "100%",
                       alignItems: "center",
-                      zIndex: 10,
-                      marginBottom: 12, // Space between title and ball
+                      marginBottom: dayLabelToBallGap,
                     }}
                   >
-                    {/* Chakra ball homescreen title: Cormorant font, full brightness to match white font */}
                     <View
                       style={{
                         flexDirection: "row",
@@ -320,27 +330,22 @@ export const IntegratedProgressStack = ({
                   </View>
                 )}
 
-                {/* Teaser title + next-day preview box - after completing current day */}
-                {isTeaserPosition && (
+                {/* Teaser title + next-day preview box - after completing current day; skip for hub; in-flow for Android */}
+                {!showAllChakrasForLifetimeHub && isTeaserPosition && (
                   <View
                     style={{
-                      position: "absolute",
-                      bottom: "100%",
-                      left: 0,
-                      right: 0,
+                      width: "100%",
                       alignItems: "center",
-                      zIndex: 10,
-                      marginBottom: 12,
+                      marginBottom: dayLabelToBallGap,
+                      opacity: 0.6,
                     }}
                   >
-                    {/* Teaser title: Cormorant font (opacity on container for dimmed effect) */}
                     <View
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "center",
                         flexWrap: "wrap",
-                        opacity: 0.6,
                         maxWidth: "100%",
                       }}
                     >
@@ -416,20 +421,18 @@ export const IntegratedProgressStack = ({
                     ...(isCurrentDay
                       ? { transform: [{ scale: 1.15 }] }
                       : { transform: [{ scale: 1 }] }), // Current day larger
-                    // APP_1 (Trial): Opacity logic for chakra balls
-                    // TEASER: Very low opacity shadow (0.15) - next day after completing current day
-                    // OPEN (1.0): Completed OR participated OR current day - stays open all week
-                    // MISSED (0.3): Past day, not opened during the week - greyed out, not accessible
-                    // FUTURE (0.4): Not yet accessible (shouldn't show, but safety fallback)
-                    opacity: isTeaserPosition
-                      ? 0.15 // Teaser: very low opacity shadow only
-                      : isCompleted ||
-                          hasParticipatedDay(chakraDay) ||
-                          isCurrentDay
-                        ? 1.0 // OPEN: stays open all week
-                        : isMissedDay
-                          ? 0.3 // MISSED: greyed out, not accessible
-                          : 0.4, // FUTURE: shouldn't show (safety fallback)
+                    // APP_1 (Trial): Opacity logic; APP_2 (Lifetime hub): all balls full opacity
+                    opacity: showAllChakrasForLifetimeHub
+                      ? 1.0
+                      : isTeaserPosition
+                        ? 0.15 // Teaser: very low opacity shadow only
+                        : isCompleted ||
+                            hasParticipatedDay(chakraDay) ||
+                            isCurrentDay
+                          ? 1.0 // OPEN: stays open all week
+                          : isMissedDay
+                            ? 0.3 // MISSED: greyed out, not accessible
+                            : 0.4, // FUTURE: safety fallback
                   }}
                   accessibilityLabel={
                     isMissedDay
@@ -468,10 +471,12 @@ export const IntegratedProgressStack = ({
                       // - Cannot click future days (beyond current day)
                       // - Cannot click missed days (not opened during the week)
                       // - Cannot click teaser (visual only)
+                      // - Lifetime hub: all balls tappable
                       if (
-                        chakraDay > currentDay ||
-                        isMissedDay ||
-                        isTeaserPosition
+                        !showAllChakrasForLifetimeHub &&
+                        (chakraDay > currentDay ||
+                          isMissedDay ||
+                          isTeaserPosition)
                       ) {
                         return
                       }

@@ -4,10 +4,12 @@ import { Pressable, View, ActivityIndicator } from "react-native"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
-import { useCurrentAudioStore, AUDIO_READY_DELAY_MS } from "@/hooks/useCurrentAudioStore"
+import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import { AVPlaybackSource } from "expo-av"
 import { getMinutesString } from "@/utils/format"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 export const AudioRow = ({
   title,
@@ -20,6 +22,8 @@ export const AudioRow = ({
   rightContent,
   disabled = false,
   getAudioSource,
+  embodimentCacheKey,
+  onPlayTriggered,
 }: {
   title: string
   author: string
@@ -33,40 +37,95 @@ export const AudioRow = ({
   disabled?: boolean
   /** When provided, called on press to resolve source (e.g. prepareLongAudioForPlay). Use for long/embodiment on Android. */
   getAudioSource?: () => Promise<AVPlaybackSource>
+  /** When set, player will cache loaded duration under this key so buttons stay in sync. */
+  embodimentCacheKey?: string
+  /** Optional: called when user taps play (backup trigger to cache rest of day's audio). */
+  onPlayTriggered?: () => void
 }) => {
   const router = useRouter()
   const [isPreparing, setIsPreparing] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const onMainPress = async () => {
+  const applyMetadataAndPrefs = () => {
+    const s = useCurrentAudioStore.getState()
+    s.setMetadata({ durationMs, title, author })
+    s.setPrefs({ shouldLoop: false, isIntroAudio })
+    if (chakraColor != null) s.setChakraColor(chakraColor)
+  }
+
+  const onMainPress = () => {
     if (disabled || isPreparing) return
+    onPlayTriggered?.()
     addHapticFeedback(HapticStrength.Light)
-    useCurrentAudioStore.getState().setPendingTrackKey("full-player-row")
-    useCurrentAudioStore.getState().setPlaying(true)
+    setLoadError(null)
     setIsPreparing(true)
-    try {
-      const source = getAudioSource
-        ? await getAudioSource()
-        : audioSource
-      useCurrentAudioStore.getState().setSource(source, "full-player")
-      useCurrentAudioStore.getState().setMetadata({
-        durationMs,
-        title,
-        author,
-      })
-      useCurrentAudioStore.getState().setPrefs({
-        shouldLoop: false,
-        isIntroAudio,
-      })
-      if (chakraColor != null) {
-        useCurrentAudioStore.getState().setChakraColor(chakraColor)
+    const store = useCurrentAudioStore.getState()
+    store.setPendingTrackKey("full-player-row")
+    store.setPlaying(true)
+    store.setMetadata({ durationMs, title, author })
+    store.setPrefs({ shouldLoop: false, isIntroAudio })
+    if (chakraColor != null) store.setChakraColor(chakraColor)
+    if (embodimentCacheKey) {
+      useEmbodimentDurationCacheStore.getState().setEmbodimentDurationCacheKey(embodimentCacheKey)
+    }
+
+    if (getAudioSource) {
+      // Prepare on course page (spinner on button); only open player when source is ready
+      getAudioSource()
+        .then(async (src) => {
+          const uri =
+            typeof src === "object" && src !== null && "uri" in src
+              ? (src as { uri?: string }).uri
+              : ""
+          if (!uri || String(uri).trim() === "") {
+            useCurrentAudioStore.getState().setPendingTrackKey(null)
+            useCurrentAudioStore.getState().setPlaying(false)
+            setLoadError("No audio URL available.")
+            return
+          }
+          let resumePositionMs: number | undefined
+          if (embodimentCacheKey) {
+            const saved = await AsyncStorage.getItem(
+              `audio_position_${embodimentCacheKey}`,
+            )
+            const ms =
+              saved != null && Number.isFinite(Number(saved)) ? Number(saved) : 0
+            resumePositionMs = ms > 0 ? ms : undefined
+          }
+          useCurrentAudioStore.getState().setSource(src, "full-player", {
+            resumePositionMs,
+            fullPlayerTrackId: embodimentCacheKey ?? undefined,
+          })
+          applyMetadataAndPrefs()
+          addHapticFeedback(HapticStrength.Light)
+          router.push("/AudioPlayer")
+        })
+        .catch(() => {
+          useCurrentAudioStore.getState().setPendingTrackKey(null)
+          useCurrentAudioStore.getState().setPlaying(false)
+          setLoadError("Load failed – tap to try again.")
+        })
+        .finally(() => setIsPreparing(false))
+    } else {
+      const runWithSource = async () => {
+        let resumePositionMs: number | undefined
+        if (embodimentCacheKey) {
+          const saved = await AsyncStorage.getItem(
+            `audio_position_${embodimentCacheKey}`,
+          )
+          const ms =
+            saved != null && Number.isFinite(Number(saved)) ? Number(saved) : 0
+          resumePositionMs = ms > 0 ? ms : undefined
+        }
+        useCurrentAudioStore.getState().setSource(audioSource, "full-player", {
+          resumePositionMs,
+          fullPlayerTrackId: embodimentCacheKey ?? undefined,
+        })
+        applyMetadataAndPrefs()
+        addHapticFeedback(HapticStrength.Light)
+        router.push("/AudioPlayer")
       }
-      await new Promise((resolve) => setTimeout(resolve, AUDIO_READY_DELAY_MS))
-      router.push("/AudioPlayer")
-      addHapticFeedback(HapticStrength.Light)
-    } catch {
-      useCurrentAudioStore.getState().setPendingTrackKey(null)
-      useCurrentAudioStore.getState().setPlaying(false)
-    } finally {
+      runWithSource()
       setIsPreparing(false)
     }
   }
@@ -125,7 +184,7 @@ export const AudioRow = ({
               />
             )}
           </View>
-          <View style={{ marginLeft: 24 }}>
+          <View style={{ marginLeft: 24, flex: 1 }}>
             <AppText
               font="instrument-regular"
               size="base"
@@ -143,6 +202,18 @@ export const AudioRow = ({
               </AppText>{" "}
               - {getMinutesString(durationMs)}
             </AppText>
+            {loadError ? (
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={{
+                  marginTop: 6,
+                  color: "rgba(255, 200, 100, 0.95)",
+                }}
+              >
+                {loadError}
+              </AppText>
+            ) : null}
           </View>
         </Pressable>
         {rightContent != null ? <View>{rightContent}</View> : null}

@@ -8,7 +8,7 @@ import { SOMATIC_SCREEN_TRANSITION_MS } from "@/constants/layout"
 const ChakrasLayout = () => {
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 }} pointerEvents="box-none">
         <BottomSheetModalProvider>
           <Stack
             screenOptions={{

@@ -15,9 +15,9 @@
  *
  * LAYERS (hard-baked over background; render synchronously so underlying image text never shows):
  * 1. Background: Welcomeheader + WelcomeMain.png (card with baked-in "SEVEN CHAKRAS" strip).
- * 2. Black overlay: absolute box (left 5%, right 5%, top 35%, bottom 28%) over paragraph region only.
- * 3. Content: Editable paragraph (Instrument Sans, 12px, lineHeight 17, bold phrases) inside overlay.
- * 4. Enter Path: Transparent tap target (bottom 52, centered); visual is in WelcomeMain.png.
+ * 2. Black overlay (section box): absolute box (left 5%, right 5%, top 35%, bottom 10%). No logo; Enter Path words only at bottom of overlay.
+ * 3. Content: Two paragraphs (Instrument Sans, 13px, lineHeight 17) inside overlay; Enter Path label at bottom of overlay.
+ * 4. Enter Path: Pressable with "Enter Path" text only; tap to DateSelection (trial) or ChakraHub (lifetime).
  *
  * Do not defer or conditionally render the overlay—it must be in the same frame as the Image
  * so the text behind it never flashes.
@@ -61,9 +61,6 @@ const HEADER_WIDTH = 778
 const HEADER_HEIGHT = 456
 const MAIN_WIDTH = 750
 const MAIN_HEIGHT = 1000
-
-/** Diameter of the transparent click circle over the Enter Path play button */
-const ENTER_PATH_TAP_CIRCLE = 200
 
 export default function WelcomeScreen() {
   const router = useRouter()
@@ -198,83 +195,87 @@ export default function WelcomeScreen() {
                   left: "5%",
                   right: "5%",
                   top: "35%",
-                  bottom: "28%",
+                  bottom: "10%",
                   backgroundColor: "#000",
                   borderRadius: 12,
                 }}
               >
-                <View
-                  style={{
-                    flex: 1,
-                    justifyContent: "center",
-                    paddingHorizontal: 14,
-                  }}
-                >
+                <View style={{ flex: 1, paddingHorizontal: 14 }}>
+                  <View style={{ flex: 1, justifyContent: "center", marginTop: 16 }}>
                   <Text
-                    style={{
-                      fontFamily: "InstrumentSansRegular",
-                      fontSize: 12,
-                      color: "#fff",
-                      textAlign: "center",
-                      lineHeight: 17,
-                    }}
-                  >
-                    A wonderful system to integrate the 7 chakras into your life is
-                    to fold them into the 7 days of the week. For this,{" "}
-                    <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                      we start on Monday
-                    </Text>{" "}
-                    with{" "}
-                    <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                      your root into the Earth
-                    </Text>{" "}
-                    and{" "}
-                    <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                      work our way to Sunday
-                    </Text>{" "}
-                    where we spend time in the{" "}
-                    <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                      Soul Chakra of pure bliss
+                      style={{
+                        fontFamily: "InstrumentSansRegular",
+                        fontSize: 13,
+                        color: "#fff",
+                        textAlign: "center",
+                        lineHeight: 17,
+                        marginBottom: 14,
+                      }}
+                    >
+                      A wonderful system to integrate the 7 chakras into your life is
+                      to fold them into the 7 days of the week. For this,{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
+                        we start on Monday
+                      </Text>{" "}
+                      with{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
+                        your root into the Earth
+                      </Text>{" "}
+                      and{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
+                        work our way to Sunday
+                      </Text>{" "}
+                      where we spend time in the{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
+                        Soul Chakra of pure bliss
+                      </Text>
+                      .
                     </Text>
-                    . The chakras are one of the most important aspects of your
-                    authentic self and{" "}
-                    <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                      have everything to do with what you do, who you are, and how
-                      you feel.
-                    </Text>{" "}
-                    These spinning balls of energy act as the supercomputers
-                    translating the signals from your soul.{" "}
-                    <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                      Each chakra carries a profound ancestral wisdom
-                    </Text>
+                    <Text
+                      style={{
+                        fontFamily: "InstrumentSansRegular",
+                        fontSize: 13,
+                        color: "#fff",
+                        textAlign: "center",
+                        lineHeight: 17,
+                      }}
+                    >
+                      The chakras are one of the most important aspects of your
+                      authentic self and{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
+                        have everything to do with what you do, who you are, and how
+                        you feel.
+                      </Text>{" "}
+                      These spinning balls of energy act as the supercomputers
+                      translating the signals from your soul.{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
+                        Each chakra carries a profound ancestral wisdom
+                      </Text>
                     , and they all have a direct impact on your emotions, your
                     deepest wounds, and your ability to co-create life itself.
                   </Text>
+                  </View>
+                  <Pressable
+                    onPress={handleEnterPath}
+                    style={{ alignItems: "center", paddingVertical: 12, marginTop: 12 }}
+                    accessibilityLabel="Enter Path"
+                    accessibilityRole="button"
+                    accessibilityHint="Opens the 7 Chakras in 7 Days course"
+                  >
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      style={{ color: "#fff" }}
+                    >
+                      Enter Path
+                    </AppText>
+                  </Pressable>
                 </View>
               </View>
             </View>
           </Animated.View>
         </GestureDetector>
       </ScrollView>
-
-      {/* BAKED IN: Transparent click circle - fixed overlay; positioned lower to leave room and recenter text above */}
-      <Pressable
-        onPress={handleEnterPath}
-        hitSlop={{ top: 40, bottom: 40, left: 40, right: 40 }}
-        style={{
-          position: "absolute",
-          bottom: 52,
-          left: (screenWidth - ENTER_PATH_TAP_CIRCLE) / 2,
-          width: ENTER_PATH_TAP_CIRCLE,
-          height: ENTER_PATH_TAP_CIRCLE,
-          borderRadius: ENTER_PATH_TAP_CIRCLE / 2,
-          backgroundColor: "transparent",
-          zIndex: 99999,
-        }}
-        accessibilityLabel="Enter Path"
-        accessibilityRole="button"
-        accessibilityHint="Opens the 7 Chakras in 7 Days course"
-      />
 
       {/* Subtle shortcut for post-trial users only: skip DateSelection, go to Simple Grace. Never on first launch. */}
       {showPostTrialShortcut && (

@@ -6,23 +6,25 @@ import { useLocalSearchParams, useRouter } from "expo-router"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 
 const ChakraScreen = () => {
-  const { chakra } = useLocalSearchParams<{ chakra: string }>()
+  const params = useLocalSearchParams<{ chakra?: string | string[] }>()
+  const raw = params.chakra
+  const chakraParam = Array.isArray(raw) ? raw[0] : raw
   const router = useRouter()
   const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
 
   // If the chakra value is invalid, redirect to appropriate home (APP1: ChakraHome, APP2: ChakraHub)
   useEffect(() => {
-    if (!isValidChakra(chakra)) {
+    if (!isValidChakra(chakraParam)) {
       router.replace(
         hasLifetimeAccess ? "/(chakras)/ChakraHub" : "/(chakras)/ChakraHome",
       )
     }
-  }, [chakra, router, hasLifetimeAccess])
+  }, [chakraParam, router, hasLifetimeAccess])
 
   // Only render the component if we have a valid chakra value
-  if (!isValidChakra(chakra)) return null
+  if (!isValidChakra(chakraParam)) return null
 
-  return <ChakraTemplate chakra={chakra as Chakra} />
+  return <ChakraTemplate chakra={chakraParam as Chakra} />
 }
 
 export default ChakraScreen

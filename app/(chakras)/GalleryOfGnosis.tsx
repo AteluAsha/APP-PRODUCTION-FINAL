@@ -79,7 +79,11 @@ export default function GalleryOfGnosis() {
 
   const handleBack = () => {
     if (hasLifetimeAccess) {
-      router.replace("/(chakras)/ChakraHub")
+      if (router.canGoBack()) {
+        router.back()
+      } else {
+        router.replace("/(chakras)/ChakraHub")
+      }
     } else {
       router.back()
     }

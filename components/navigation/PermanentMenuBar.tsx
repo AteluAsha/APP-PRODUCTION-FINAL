@@ -5,9 +5,8 @@
  * Features: Sacred geometry icons, chakra-colored gradients, pulsating animations, light reveals
  */
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { View, Pressable, StyleSheet, Platform } from "react-native"
-import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet"
 import { useRouter, usePathname, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
@@ -40,7 +39,6 @@ import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { DAY_NAMES, getDayName } from "@/constants/chakras/chakraConstants"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
-import { JourneyNotesView } from "@/components/chakras/JourneyNotesView"
 import { MenuBarMiniPlayer } from "@/components/navigation/MenuBarMiniPlayer"
 import { SocialSanctuaryModal } from "@/components/social/SocialSanctuaryModal"
 import { getChakraName } from "@/constants/chakras/chakraConstants"
@@ -109,11 +107,6 @@ export const PermanentMenuBar: React.FC = () => {
   const [localMenuOpen, setLocalMenuOpen] = useState(false) // Local state for animations
   const setIsMenuOpen = useMenuBarStore((state) => state.setIsMenuOpen)
 
-  // Notes and Anua state
-  const [notesSheetRef] = useState<React.RefObject<BottomSheetModal>>(() =>
-    React.createRef<BottomSheetModal>(),
-  )
-  const [notesSheetOpenKey, setNotesSheetOpenKey] = useState(0)
   const [isSanctuaryModalVisible, setIsSanctuaryModalVisible] = useState(false)
   const currentDay = getCurrentDayOfWeek()
   const chakraName = getChakraName(currentDay)
@@ -127,6 +120,7 @@ export const PermanentMenuBar: React.FC = () => {
   const source = useCurrentAudioStore((s) => s.source)
   const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
   const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
+  // Lifetime menu bar is permanently visible. Hide/reveal applies only to trial floating icons (FloatingNavButtons).
 
   // Determine if we're on a home/landing screen where menu should be hidden by default
   // NOTE: All hooks must run unconditionally (Rules of Hooks) - no early return before hooks
@@ -258,8 +252,9 @@ export const PermanentMenuBar: React.FC = () => {
         iconComponent: "leaf",
         label: "Notes",
         onPress: () => {
-          setNotesSheetOpenKey((k) => k + 1)
-          notesSheetRef.current?.present()
+          router.push(
+            `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
+          )
         },
         isActive: false,
         gradient: MENU_ITEM_CONFIG.notes.gradient,
@@ -352,18 +347,23 @@ export const PermanentMenuBar: React.FC = () => {
     return null
   }
 
-  // Hide menu bar on paywall, Tribe Chat, AudioPlayer, Anua Chat, CommunityHalls, and GiftChakra (gift awaits screens)
+  // Hide menu bar on paywall (all variants), Energy Exchange, Tribe Chat, AudioPlayer, Anua Chat, CommunityHalls, Notes Along the Way, and GiftChakra
   if (
     pathname?.includes("CommitmentGate") ||
+    pathname?.includes("Paywall") ||
     pathname?.includes("DevPaywall") ||
+    pathname?.includes("EnergyExchange") ||
     pathname?.includes("TribeChat") ||
     pathname?.includes("AudioPlayer") ||
     pathname?.includes("CommunityHalls") ||
+    pathname?.includes("NotesAlongTheWay") ||
     pathname?.includes("AnuaChat") ||
     pathname?.includes("GiftChakra") ||
     pathname === "AnuaChat" ||
+    segments.includes("EnergyExchange") ||
     segments.includes("AudioPlayer") ||
     segments.includes("AnuaChat") ||
+    segments.includes("NotesAlongTheWay") ||
     segments.includes("GiftChakra") ||
     (segments.length > 0 && segments[segments.length - 1] === "AnuaChat") ||
     (segments.length > 0 && segments[segments.length - 1] === "GiftChakra")
@@ -377,6 +377,7 @@ export const PermanentMenuBar: React.FC = () => {
   }
 
   return (
+    <View style={{ opacity: 1 }} pointerEvents="auto" collapsable={false}>
     <>
       {/* Menu Bar - Vertical (left wall) for healing screens, Horizontal (bottom) for others */}
       {useVerticalLayout ? (
@@ -454,51 +455,6 @@ export const PermanentMenuBar: React.FC = () => {
         </Pressable>
       </Animated.View>
 
-      {/* Notes Bottom Sheet - APP_2 only */}
-      <BottomSheetModal
-        ref={notesSheetRef}
-        index={1}
-        snapPoints={["50%", "90%"]}
-        enablePanDownToClose
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop {...props} opacity={0.6} />
-        )}
-        backgroundStyle={{
-          backgroundColor: "#1a1a1a",
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          borderTopWidth: 1,
-          borderTopColor: "rgba(255, 255, 255, 0.2)",
-        }}
-        handleIndicatorStyle={{
-          backgroundColor: "#FFFFFF",
-          width: 40,
-        }}
-      >
-        <JourneyNotesView
-          sheetOpenKey={notesSheetOpenKey}
-          contextChakraDay={contextChakraDay}
-          onOpenFullPage={() => {
-            notesSheetRef.current?.dismiss()
-            setTimeout(
-              () =>
-                router.push(
-                  `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
-                ),
-              300,
-            )
-          }}
-          onSendToAnua={(content) => {
-            notesSheetRef.current?.dismiss()
-            setTimeout(
-              () =>
-                useAnuaChatStore.getState().open({ initialMessage: content }),
-              200,
-            )
-          }}
-        />
-      </BottomSheetModal>
-
       {/* Social Sanctuary Modal - APP_2 only */}
       <SocialSanctuaryModal
         visible={isSanctuaryModalVisible}
@@ -506,13 +462,13 @@ export const PermanentMenuBar: React.FC = () => {
         chakraDay={currentDay}
         chakraName={chakraName}
         onOpenAnuaChat={() => {
-          notesSheetRef.current?.dismiss()
           setIsSanctuaryModalVisible(false)
           setTimeout(() => useAnuaChatStore.getState().open(), 200)
         }}
         isLimitedMode={false} // App 2 always has full access
       />
     </>
+    </View>
   )
 }
 

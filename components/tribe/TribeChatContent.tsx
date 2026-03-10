@@ -30,6 +30,7 @@ import { TribeFriendsMenu } from "@/components/tribe/TribeFriendsMenu"
 import { FindFriendsModal } from "@/components/tribe/FindFriendsModal"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
 import { formatDate } from "@/utils/date"
+import { getUserId } from "@/src/services/userId"
 import type { TribeFriend } from "@/types/tribe"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { LinearGradient } from "expo-linear-gradient"
@@ -98,11 +99,15 @@ function MessageRow({
 export interface TribeChatContentProps {
   onClose: () => void
   enabled?: boolean
+  initialMessage?: string | null
+  onClearInitialMessage?: () => void
 }
 
 export function TribeChatContent({
   onClose,
   enabled = true,
+  initialMessage = null,
+  onClearInitialMessage,
 }: TribeChatContentProps) {
   const courseStartDate = useChakraJourneyStore((s) => s.courseStartDate)
   const invitedFriends = useChakraJourneyStore((s) => s.invitedFriends)
@@ -123,10 +128,25 @@ export function TribeChatContent({
   const presenceAvatarUrl = usePresenceStore((s) => s.profileImageUri)
   const [inputText, setInputText] = useState("")
   const [sending, setSending] = useState(false)
+  const [sharingFromNotes, setSharingFromNotes] = useState(false)
+
+  useEffect(() => {
+    if (initialMessage?.trim()) {
+      setInputText(initialMessage.trim())
+      setSharingFromNotes(true)
+    }
+  }, [initialMessage])
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showFriendsMenu, setShowFriendsMenu] = useState(false)
   const [showFindFriendsModal, setShowFindFriendsModal] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const scrollRef = useRef<ScrollView>(null)
+
+  useEffect(() => {
+    if (showFindFriendsModal || showInviteModal || showFriendsMenu) {
+      getUserId().then(setCurrentUserId).catch(() => setCurrentUserId(null))
+    }
+  }, [showFindFriendsModal, showInviteModal, showFriendsMenu])
 
   const formattedDate = useMemo(() => {
     if (!courseStartDate) return undefined
@@ -207,8 +227,12 @@ export function TribeChatContent({
     setSending(true)
     const result = await sendMessage(trimmed, displayNameForSend)
     setSending(false)
-    if (result.ok) setInputText("")
-  }, [inputText, sendMessage, sending, displayNameForSend])
+    if (result.ok) {
+      setInputText("")
+      setSharingFromNotes(false)
+      onClearInitialMessage?.()
+    }
+  }, [inputText, sendMessage, sending, displayNameForSend, onClearInitialMessage])
 
   return (
     <SafeAreaProvider>
@@ -278,6 +302,34 @@ export function TribeChatContent({
                     color="rgba(255,255,255,0.9)"
                   />
                 </Pressable>
+                {showChat && (
+                  <Pressable
+                    onPress={() => {
+                      addHapticFeedback(HapticStrength.Light)
+                      setShowInviteModal(true)
+                    }}
+                    hitSlop={12}
+                    style={[styles.addBtnWrap, { marginRight: 8 }]}
+                    accessibilityLabel="Add a connection"
+                    accessibilityHint="Invite a friend to this chat group"
+                  >
+                    <LinearGradient
+                      colors={[
+                        "rgba(135, 174, 115, 0.25)",
+                        "rgba(6, 182, 212, 0.15)",
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[styles.addBtnGradient, { paddingHorizontal: 10 }]}
+                    >
+                      <Ionicons
+                        name="person-add-outline"
+                        size={20}
+                        color="rgba(255,255,255,0.95)"
+                      />
+                    </LinearGradient>
+                  </Pressable>
+                )}
                 <Pressable
                   onPress={() => {
                     addHapticFeedback(HapticStrength.Light)
@@ -624,7 +676,25 @@ export function TribeChatContent({
               )}
 
               {showChat && (
-                <View style={styles.inputRow}>
+                <>
+                  {sharingFromNotes && (
+                    <View
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        paddingBottom: 4,
+                      }}
+                    >
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={{ color: "rgba(255,255,255,0.5)" }}
+                      >
+                        Send to: Your Tribe
+                      </AppText>
+                    </View>
+                  )}
+                  <View style={styles.inputRow}>
                   <TextInput
                     style={styles.input}
                     placeholder="Message…"
@@ -664,6 +734,7 @@ export function TribeChatContent({
                     )}
                   </Pressable>
                 </View>
+                </>
               )}
 
               {(showDescription || showPending) && (
@@ -710,6 +781,7 @@ export function TribeChatContent({
         onClose={() => setShowInviteModal(false)}
         startDate={formattedDate}
         courseStartDateISO={courseStartDate ?? undefined}
+        referralCode={currentUserId ?? undefined}
         onInviteSent={handleInviteSent}
         onFindFriends={() => {
           setShowInviteModal(false)
@@ -721,6 +793,7 @@ export function TribeChatContent({
         onClose={() => setShowFindFriendsModal(false)}
         startDate={formattedDate}
         courseStartDateISO={courseStartDate ?? undefined}
+        referralCode={currentUserId ?? undefined}
       />
       <TribeFriendsMenu
         visible={showFriendsMenu}
@@ -733,6 +806,7 @@ export function TribeChatContent({
         connected={connectedList}
         pending={pendingList}
         suggested={suggestedList}
+        currentUserId={currentUserId ?? undefined}
         currentDisplayName={presenceDisplayName || SENDER_NAME}
       />
     </SafeAreaProvider>

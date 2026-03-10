@@ -590,6 +590,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
           }))
         },
 
+        /** Recompute from trialHistory; include current week only when no trials (lifetime-only progress). */
         recomputeAccountabilityFromHistory: () => {
           const state = get()
           let totalDays = 0
@@ -597,6 +598,14 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
           for (const trial of state.trialHistory) {
             totalDays += trial.daysParticipated.length
             trial.daysParticipated.forEach((d) => chakraSet.add(d))
+          }
+          // Lifetime users who only use ChakraHub never have trialHistory; include current progress
+          if (state.trialHistory.length === 0) {
+            state.participatedDays.forEach((d) => {
+              totalDays += 1
+              chakraSet.add(d)
+            })
+            state.completedChakras.forEach((d) => chakraSet.add(d))
           }
           set({
             totalDaysParticipated: totalDays,

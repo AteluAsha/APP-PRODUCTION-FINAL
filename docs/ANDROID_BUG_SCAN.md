@@ -16,8 +16,9 @@ Quick reference for seeing updates on the emulator and known Android issues.
 |-------|-----|--------|
 | White box when opening "Open Your Gift" (ChakraCardRevealModal) | [ANDROID_MODAL_WHITE_BOX.md](ANDROID_MODAL_WHITE_BOX.md) | Fixed: root and SafeAreaView have `backgroundColor: "#000"` in ChakraCardRevealModal. |
 | Exposed background on Sound Bath / Audio Library | [ANDROID_SOUND_PAGES_BACKGROUND.md](ANDROID_SOUND_PAGES_BACKGROUND.md) | Fixed: full-bleed background + `minHeight` on Android. |
-| Trial home chakra stack too high | Plan / IntegratedProgressStack | Fixed: Android-only `minHeight: windowHeight` so Root pins to bottom. |
+| Trial home root chakra ball cut off | IntegratedProgressStack | Fixed: removed `minHeight: windowHeight`; stack uses `maxHeight: viewportHeight` (window − safe area) so all 7 chakra balls fit on screen and root is never cut off. |
 | Scratchy/crashy audio in emulator | [ANDROID_AUDIO_TROUBLESHOOTING.md](ANDROID_AUDIO_TROUBLESHOOTING.md) | Emulator known to be poor; test on real device; dev-only workarounds in code. |
+| All buttons stop working after ~1–2 min (waiting room) | (this section) | **Cause:** CommunicationReminderModal opens 60s after entering waiting room; on Android the Modal overlay can block touches or the card can fail to receive taps. **Fix:** CommunicationReminderModal uses `statusBarTranslucent`, card has `elevation`/`zIndex` and `collapsable={false}`, buttons have `hitSlop`. WaitingScreen auto-dismisses the modal after 2 min so the screen never stays stuck. |
 
 ## Modal audit (Android white-box prevention)
 

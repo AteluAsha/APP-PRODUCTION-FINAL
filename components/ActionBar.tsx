@@ -15,6 +15,8 @@ interface ActionBarProps {
   useXButton?: boolean
   /** Position of X when useXButton: 'left' for audio screens, 'right' default */
   xButtonPosition?: "left" | "right"
+  /** When set, use this for X button top (e.g. Frequency of Gnosis so X doesn't block Download all) */
+  xButtonTop?: number
   onXPress?: () => void
   onBackPress?: () => void
   /** When false, hide back arrow (e.g. ChakraHub is root for lifetime users) */
@@ -24,6 +26,7 @@ interface ActionBarProps {
 export const ActionBar: React.FC<ActionBarProps> = ({
   useXButton = false,
   xButtonPosition = "right",
+  xButtonTop,
   onXPress,
   onBackPress,
   showBackButton = true,
@@ -54,6 +57,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   }
 
   const top = HEADER_ROW_TOP(insets)
+  const xTop = xButtonTop ?? top
   if (useXButton) {
     const isLeft = xButtonPosition === "left"
     return (
@@ -68,7 +72,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
         }}
         style={{
           position: "absolute",
-          top,
+          top: xTop,
           width: HEADER_ROW_HEIGHT,
           height: HEADER_ROW_HEIGHT,
           justifyContent: "center",
@@ -98,12 +102,14 @@ export const ActionBar: React.FC<ActionBarProps> = ({
         height: HEADER_ROW_HEIGHT,
         justifyContent: "center",
         alignItems: "center",
-        zIndex: 1,
+        zIndex: 1000,
         backgroundColor: "transparent",
         ...shadowStyle,
       }}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       activeOpacity={0.7}
+      accessibilityLabel="Back"
+      accessibilityHint="Go back to previous screen"
     >
       <Ionicons
         name="arrow-back"

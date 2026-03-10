@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react"
+import React, { useState, useCallback, useEffect, useRef } from "react"
 import {
   View,
   Image,
@@ -6,6 +6,7 @@ import {
   Pressable,
   ImageBackground,
   StyleSheet,
+  RefreshControl,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import Animated, {
@@ -37,14 +38,19 @@ import ResponsiveImage from "@/components/ResponsiveImage"
 import { AppText } from "@/components/AppText"
 import { Chakra } from "@/types/chakras/Chakra"
 import { useRouter } from "expo-router"
+import { useFocusEffect } from "@react-navigation/native"
+import { useScrollRevealFloatingUI } from "@/hooks/useFloatingUIVisibilityStore"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import GoodbyeModal from "@/components/chakras/GoodbyeModal"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useEmbodimentAudio, getEmbodimentAudioId } from "@/hooks/useEmbodimentAudio"
+import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import { useTuningForkAudio } from "@/hooks/useTuningForkAudio"
 import { prepareLongAudioForPlay } from "@/src/utils/crystalBowlPlayback"
+import { storage } from "@/src/services/firebase"
+import { preloadFullFilesForChakra } from "@/src/utils/audioPreloadManifest"
 import { DropInButton } from "@/components/chakras/DropInButton"
 // Social Sanctuary and Anua access handled globally by FloatingNavButtons
 import { getChakraIndex } from "@/utils/chakraMapping"
@@ -86,6 +92,29 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   )
 
   const [showGoodbyeModal, setShowGoodbyeModal] = useState(false)
+  const [contentKey, setContentKey] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const isFirstFocusRef = useRef(true)
+
+  // Android (and safe for iOS): When returning to this screen via back button, Reanimated entering
+  // animations may not re-run and content can stay blank. Remount scroll content on focus so FadeIn runs again.
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocusRef.current) {
+        isFirstFocusRef.current = false
+        return
+      }
+      setContentKey((k) => k + 1)
+    }, []),
+  )
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true)
+    setContentKey((k) => k + 1)
+    setTimeout(() => setRefreshing(false), 400)
+  }, [])
+
+  const onScrollRevealFloating = useScrollRevealFloatingUI()
 
   const getChakraName = (chakraName: Chakra): string => {
     switch (chakraName) {
@@ -142,9 +171,22 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
 
   const { width: screenWidth } = useWindowDimensions()
 
+  // Backup cache: when day opens, trigger full-file download of all this day's audio one at a time (in case waiting room was bypassed).
+  useEffect(() => {
+    if (!storage) return
+    preloadFullFilesForChakra(storage, chakra).catch(() => {})
+  }, [chakra])
+
+  // Backup cache: when user presses any audio on this day, trigger same so rest of day's audio is cached after that track loads.
+  const triggerBackupCacheForDay = useCallback(() => {
+    if (!storage) return
+    preloadFullFilesForChakra(storage, chakra).catch(() => {})
+  }, [chakra])
+
   // Fetch Firebase Storage URLs for embodiment audio files
   const embodimentAudio = useEmbodimentAudio(chakra)
   const tuningForkAudio = useTuningForkAudio(chakra)
+  const embodimentDurations = useEmbodimentDurationCacheStore((s) => s.durations)
 
   // Track pill bottom sheet visibility globally
   const setIsPillBottomSheetVisible = usePillBottomSheetStore(
@@ -193,12 +235,20 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
       <ParallaxScrollView
         scrollRef={scrollRef}
         scrollEventThrottle={16}
+        onScroll={onScrollRevealFloating}
         showsVerticalScrollIndicator={false}
         scrollEnabled={true}
         bounces={true}
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
         headerHeight={screenWidth}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="rgba(135, 174, 115, 0.9)"
+          />
+        }
         headerImage={
           <View style={{ width: "100%", height: screenWidth }}>
             <HeaderBackground
@@ -229,7 +279,10 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
           </View>
         }
       >
-        <View style={{ paddingBottom: 80 + SCROLL_BREATHING_BOTTOM_PADDING, paddingTop: 8 }}>
+        <View
+          key={contentKey}
+          style={{ paddingBottom: 80 + SCROLL_BREATHING_BOTTOM_PADDING, paddingTop: 8 }}
+        >
           <Animated.View
             style={{ backgroundColor: "#000000" }}
             entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
@@ -283,7 +336,9 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                   <AudioRow
                     title="Part One: Ajna Embodiment"
                     author="Mother JJ"
-                    durationMs={1750000}
+                    durationMs={
+                      embodimentDurations[getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")] ?? 1750000
+                    }
                     audioSource={{
                       uri:
                         embodimentAudio.localUriPartOne ||
@@ -296,6 +351,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                     disabled={
                       embodimentAudio.isLoading || !!embodimentAudio.error
                     }
+                    embodimentCacheKey={getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")}
                     getAudioSource={async () =>
                       prepareLongAudioForPlay(
                         {
@@ -306,14 +362,21 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                             uri: embodimentAudio.partOne ?? "",
                           },
                         },
-                        { requireFullDownload: true },
+                        {
+                          requireFullDownload: true,
+                          allowStreamingFallback: false,
+                          downloadTimeoutMs: 180000,
+                        },
                       )
                     }
+                    onPlayTriggered={triggerBackupCacheForDay}
                   />
                   <AudioRow
                     title="Part Two: Somatic Healing"
                     author="Mother JJ"
-                    durationMs={1257000}
+                    durationMs={
+                      embodimentDurations[getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")] ?? 1257000
+                    }
                     audioSource={{
                       uri:
                         embodimentAudio.localUriPartTwo ||
@@ -326,6 +389,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                     disabled={
                       embodimentAudio.isLoading || !!embodimentAudio.error
                     }
+                    embodimentCacheKey={getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")}
                     getAudioSource={async () =>
                       prepareLongAudioForPlay(
                         {
@@ -336,19 +400,27 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                             uri: embodimentAudio.partTwo ?? "",
                           },
                         },
-                        { requireFullDownload: true },
+                        {
+                          requireFullDownload: true,
+                          allowStreamingFallback: false,
+                          downloadTimeoutMs: 180000,
+                        },
                       )
                     }
+                    onPlayTriggered={triggerBackupCacheForDay}
                   />
                 </>
               ) : (
-                <AudioRow
+                <>
+                  {/* Master Embodiment: hard-wired to this screen's chakra only; must never load another chakra's audio. */}
+                  <AudioRow
                   title={content.audioIntro.title}
                   author="Mother JJ"
                   durationMs={
-                    chakra === Chakra.CROWN
+                    embodimentDurations[getEmbodimentAudioId(chakra)] ??
+                    (chakra === Chakra.CROWN
                       ? 2684000
-                      : content.audioIntro.durationMs
+                      : content.audioIntro.durationMs)
                   }
                   audioSource={{
                     uri:
@@ -360,8 +432,11 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                   isIntroAudio={true}
                   chakraColor={getChakraColor(chakraDay)}
                   disabled={
-                    embodimentAudio.isLoading || !!embodimentAudio.error
+                    embodimentAudio.isLoading ||
+                    !!embodimentAudio.error ||
+                    (!embodimentAudio.localUri && !embodimentAudio.single)
                   }
+                  embodimentCacheKey={getEmbodimentAudioId(chakra)}
                   getAudioSource={async () =>
                     prepareLongAudioForPlay(
                       {
@@ -372,10 +447,16 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                           uri: embodimentAudio.single ?? embodimentAudio.partOne ?? "",
                         },
                       },
-                      { requireFullDownload: true },
+                      {
+                        requireFullDownload: true,
+                        allowStreamingFallback: false,
+                        downloadTimeoutMs: 180000,
+                      },
                     )
                   }
+                  onPlayTriggered={triggerBackupCacheForDay}
                 />
+                </>
               )}
             </Animated.View>
             <Animated.View

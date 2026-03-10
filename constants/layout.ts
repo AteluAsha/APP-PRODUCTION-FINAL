@@ -12,13 +12,18 @@ export const FLOATING_NAV_SCROLL_BOTTOM_PADDING = 140
 export const SCROLL_BREATHING_BOTTOM_PADDING = 80
 
 /**
- * TRIAL HOME ROOT CHAKRA POSITION - LOCKED
- * Do not change without explicit approval. These values ensure the root chakra
- * ball always starts at the same fixed position on the trials page.
+ * TRIAL HOME CHAKRA STACK POSITION - LOCKED
+ * The full 7 chakra balls must ALWAYS be pinned to the base (bottom) of the
+ * main phone screen on trials home. They must NEVER be centered.
+ * - Stack is pinned via IntegratedProgressStack (viewportHeight container +
+ *   justifyContent: "flex-end" + paddingBottom). Do not change to center.
+ * - Android and all platforms: base-pinned placement is non-negotiable.
  */
 export const TRIAL_HOME_ROOT_CHAKRA = {
-  /** Space between root chakra ball and bottom of content area (IntegratedProgressStack) */
-  BOTTOM_PADDING: 48,
+  /** Vertical padding under the stack (root ball pinned this far from bottom); lower = stack sits lower (lifetime hub + trial home). */
+  BOTTOM_PADDING: 20,
+  /** Space between day title (e.g. "Monday – Root Day") and the chakra ball icon; gentle black spacing above ball */
+  DAY_LABEL_TO_BALL_GAP: 28,
   /** ScrollView content top padding (ChakraHome) */
   SCROLL_PADDING_TOP: 32,
   /** ScrollView content bottom padding (ChakraHome) */

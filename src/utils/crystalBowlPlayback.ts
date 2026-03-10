@@ -17,7 +17,9 @@ import {
   getLocalAudioHeadUriWithMinSize,
   downloadAndCacheAudio,
   downloadAndCacheAudioResumable,
+  downloadAndCacheAudioResumableWithTimeout,
   downloadAudioHead,
+  MEDITATION_DOWNLOAD_TIMEOUT_MS,
 } from "./audioDownload"
 
 export interface CrystalBowlSourceInput {
@@ -32,6 +34,8 @@ interface LongAudioOptions {
   allowStreamingFallback?: boolean
   /** When playing from head, start full download in background using resumable (for 1hr files) */
   useResumableForBackgroundFull?: boolean
+  /** Timeout for full-file download when requireFullDownload (meditation-length content). */
+  downloadTimeoutMs?: number
 }
 
 /**
@@ -48,6 +52,7 @@ export async function prepareLongAudioForPlay(
     requireFullDownload = false,
     allowStreamingFallback = true,
     useResumableForBackgroundFull = false,
+    downloadTimeoutMs = MEDITATION_DOWNLOAD_TIMEOUT_MS,
   } = options
 
   // Local-first: once downloaded, always use local — no stream, no cutoff
@@ -67,17 +72,33 @@ export async function prepareLongAudioForPlay(
   if (requireFullDownload) {
     if (url) {
       try {
-        const localPath = await downloadAndCacheAudioResumable(url, audioId)
+        const localPath = await downloadAndCacheAudioResumableWithTimeout(
+          url,
+          audioId,
+          downloadTimeoutMs,
+        )
         return { uri: localPath }
       } catch (error) {
         if (__DEV__) {
           console.warn(
-            "[prepareLongAudioForPlay] Resumable download failed, fallback to stream:",
+            "[prepareLongAudioForPlay] Resumable download failed or timed out:",
             error,
           )
         }
+        if (!allowStreamingFallback) {
+          downloadAndCacheAudioResumable(url, audioId).catch(() => {})
+          throw error
+        }
         return { uri: url }
       }
+    }
+    // Never return empty fallback — store would reject and user sees "No audio selected". Throw so caller can handle (retry/close).
+    const fallbackUri =
+      typeof fallback === "object" && fallback !== null && "uri" in fallback
+        ? (fallback as { uri?: string }).uri
+        : ""
+    if (!fallbackUri || String(fallbackUri).trim() === "") {
+      throw new Error("No audio URL available for playback")
     }
     return fallback
   }

@@ -7,6 +7,7 @@
 
 import React from "react"
 import { View, ScrollView, Platform, Pressable } from "react-native"
+import { useRouter } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
 import { ActionBar } from "@/components/ActionBar"
@@ -15,19 +16,23 @@ import { Ionicons } from "@expo/vector-icons"
 import { useShallow } from "zustand/react/shallow"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 import { CHAKRA_NAMES, DAY_NAMES } from "@/constants/chakras/chakraConstants"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 
 export const AccountabilityOfAwakening = () => {
+  const router = useRouter()
   const [
     getAccountabilityStats,
     hasEverCompletedChakra,
     recomputeAccountabilityFromHistory,
+    hasLifetimeAccess,
   ] = useChakraJourneyStore(
     useShallow((state) => [
       state.getAccountabilityStats,
       state.hasEverCompletedChakra,
       state.recomputeAccountabilityFromHistory,
+      state.hasLifetimeAccess,
     ]),
   )
   useChakraJourneyStore(
@@ -64,12 +69,21 @@ export const AccountabilityOfAwakening = () => {
     return "Your heart is fully open — you have journeyed through all seven"
   }
 
+  const handleBack = () => {
+    if (hasLifetimeAccess) {
+      if (router.canGoBack()) router.back()
+      else router.replace("/(chakras)/ChakraHub")
+    } else {
+      router.back()
+    }
+  }
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: "#000" }}
       edges={["top", "left", "right"]}
     >
-      <ActionBar />
+      <ActionBar onBackPress={handleBack} />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -78,6 +92,7 @@ export const AccountabilityOfAwakening = () => {
           paddingBottom: 60 + SCROLL_BREATHING_BOTTOM_PADDING,
         }}
         showsVerticalScrollIndicator={false}
+        {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
       >
         <View
           style={{
@@ -123,11 +138,6 @@ export const AccountabilityOfAwakening = () => {
               className="text-center"
               style={{
                 marginBottom: 8,
-                color: "rgba(168, 201, 154, 0.5)",
-                letterSpacing: 3,
-                textTransform: "uppercase",
-              }}
-              style={{
                 color: "rgba(168, 201, 154, 0.5)",
                 letterSpacing: 3,
                 textTransform: "uppercase",
@@ -539,33 +549,35 @@ export const AccountabilityOfAwakening = () => {
             </View>
           )}
 
-          {/* Empty State – on black */}
-          {stats.trialHistory.length === 0 && (
-            <View className="items-center py-16">
-              <Ionicons
-                name="leaf-outline"
-                size={28}
-                color="rgba(168, 201, 154, 0.35)"
-                style={{ marginBottom: 12 }}
-              />
-              <AppText
-                font="instrument-regular"
-                size="sm"
-                className="text-center px-8"
-                style={{ color: "rgba(212, 197, 169, 0.55)" }}
-              >
-                Your journey begins when you start your first trial
-              </AppText>
-              <AppText
-                font="instrument-italic"
-                size="xs"
-                className="text-center mt-2"
-                style={{ color: "rgba(168, 201, 154, 0.45)" }}
-              >
-                Every step is sacred
-              </AppText>
-            </View>
-          )}
+          {/* Empty state only when no progress at all (avoids misleading message for lifetime ChakraHub-only users) */}
+          {stats.trialHistory.length === 0 &&
+            stats.totalChakrasCompleted === 0 &&
+            stats.totalDaysParticipated === 0 && (
+              <View className="items-center py-16">
+                <Ionicons
+                  name="leaf-outline"
+                  size={28}
+                  color="rgba(168, 201, 154, 0.35)"
+                  style={{ marginBottom: 12 }}
+                />
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  className="text-center px-8"
+                  style={{ color: "rgba(212, 197, 169, 0.55)" }}
+                >
+                  Your journey begins when you start your first trial
+                </AppText>
+                <AppText
+                  font="instrument-italic"
+                  size="xs"
+                  className="text-center mt-2"
+                  style={{ color: "rgba(168, 201, 154, 0.45)" }}
+                >
+                  Every step is sacred
+                </AppText>
+              </View>
+            )}
         </View>
       </ScrollView>
     </SafeAreaView>

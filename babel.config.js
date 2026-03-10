@@ -11,7 +11,7 @@ module.exports = function (api) {
     ],
     plugins: [
       // note: react-native-reanimated/plugin must be last in this list
-      "react-native-reanimated/plugin",
+      ["react-native-reanimated/plugin", { relativeSourceLocation: true }],
     ],
   }
 }

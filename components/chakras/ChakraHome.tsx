@@ -460,17 +460,18 @@ export const ChakraHome = () => {
     }
   }, [completedChakra, markChakraCompleted])
 
-  // Memoize chakra data - only recalculate when chakrasData changes
-  // Data comes sorted by day (0-6: Root to Crown)
-  // The views use justify-end which aligns items to the bottom
-  // With justify-end: first item in array = bottom, last item = top
-  // We want: Root (day 0) at bottom, Crown (day 6) at top
-  // So array should be [Root (0), ..., Crown (6)] - which is the natural order
-  // But user reports Root is at top, suggesting the rendering is inverted
-  // Solution: Keep natural order [Root, ..., Crown] - Root will be at bottom with justify-end
+  // Memoize chakra data - wrap onPress so navigating from home stack to course day
+  // always clears stale completedChakra first (goodbye only from course completion, not home tap)
   const chakraData = useMemo(() => {
-    return chakrasData.length > 0 ? chakrasData : []
-  }, [chakrasData])
+    if (chakrasData.length === 0) return []
+    return chakrasData.map((item) => ({
+      ...item,
+      onPress: (routerInstance: Parameters<typeof item.onPress>[0]) => {
+        clearCompletedChakra()
+        item.onPress(routerInstance)
+      },
+    }))
+  }, [chakrasData, clearCompletedChakra])
 
   // Debug logging in dev mode (MUST be before any conditional returns to follow Rules of Hooks)
   // Removed conditional __DEV__ check inside useEffect to ensure hook is always called
@@ -1015,7 +1016,11 @@ export const ChakraHome = () => {
           chakraDay={
             completedChakra ? getChakraIndex(completedChakra) : currentDay
           }
-          navigateToHubOnHome={false}
+          navigateToHubOnHome={
+            hasLifetimeAccess &&
+            (completedChakra ? getChakraIndex(completedChakra) : currentDay) ===
+              6
+          }
         />
 
         {/* First Monday presence: name + visual expression, then trial begins */}

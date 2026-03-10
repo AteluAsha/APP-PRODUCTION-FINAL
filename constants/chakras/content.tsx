@@ -60,7 +60,7 @@ export const chakraContent: Record<Chakra, Content> = {
     audioIntro: {
       title: "Good Morning Root!",
       author: "Mother JJ",
-      durationMs: 1800000, // 30:00 - Actual embodiment meditation duration
+      durationMs: 2684000, // 44:44 - Root hero embodiment (Day1_ROOT_DAY_MASTER_EMBODIMENT_SoulSchool_MotherJJ.aac)
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {

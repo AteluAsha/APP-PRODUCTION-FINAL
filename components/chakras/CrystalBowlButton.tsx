@@ -3,15 +3,31 @@
  *
  * Displays a button for crystal bowl meditation audio.
  * variant="layered" gives a glossy, inset, beveled pill-shaped design.
- * When playing, shows time passed / total and a seekable progress bar (sound bath only).
+ * When playing, shows time passed / total and a seekable progress bar with thumb (tap + drag).
+ * Play/pause is only triggered by the main content row; progress bar touches do not trigger play/pause.
  */
 
-import React, { useCallback, useRef } from "react"
-import { Pressable, TouchableOpacity, View, ActivityIndicator, Platform } from "react-native"
+import React, { useCallback, useRef, useState } from "react"
+import {
+  Pressable,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  Platform,
+  LayoutChangeEvent,
+  StyleSheet,
+} from "react-native"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
+import { runOnJS } from "react-native-reanimated"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { formatTime } from "@/utils/format"
+
+const SLIDER_TRACK_HEIGHT = 8
+const SLIDER_THUMB_SIZE = 14
+const SLIDER_THUMB_DRAGGING = 18
+const SLIDER_TOUCH_MIN_HEIGHT = 36
 
 interface CrystalBowlButtonProps {
   className?: string
@@ -59,56 +75,131 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
   const label = title
   const showProgress =
     isPlaying && durationMs > 0 && positionMs >= 0
-  const progressFraction =
-    durationMs > 0 ? Math.min(1, Math.max(0, positionMs / durationMs)) : 0
-
+  const isValidDuration = durationMs > 0
+  const progressFromPlayback = isValidDuration
+    ? Math.min(1, Math.max(0, positionMs / durationMs))
+    : 0
+  const [trackWidth, setTrackWidth] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragFraction, setDragFraction] = useState<number | null>(null)
   const progressTrackWidthRef = useRef(0)
-  const handleProgressLayout = useCallback(
-    (e: { nativeEvent: { layout: { width: number } } }) => {
-      progressTrackWidthRef.current = e.nativeEvent.layout.width
+  const displayProgress = dragFraction ?? progressFromPlayback
+
+  const onSliderLayout = useCallback((e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width
+    progressTrackWidthRef.current = w
+    setTrackWidth(w)
+  }, [])
+
+  const seekFromX = useCallback(
+    (x: number) => {
+      if (!isValidDuration || progressTrackWidthRef.current <= 0 || !onSeek) return
+      const fraction = Math.min(1, Math.max(0, x / progressTrackWidthRef.current))
+      onSeek(fraction * durationMs)
     },
-    [],
+    [durationMs, isValidDuration, onSeek],
   )
-  const handleProgressPress = useCallback(
+
+  const onSliderPress = useCallback(
     (e: { nativeEvent: { locationX: number } }) => {
-      if (!onSeek || durationMs <= 0) return
-      const w = progressTrackWidthRef.current
-      if (w <= 0) return
-      const x = Math.max(0, Math.min(e.nativeEvent.locationX, w))
-      const ms = Math.floor((x / w) * durationMs)
-      onSeek(ms)
+      seekFromX(e.nativeEvent.locationX)
     },
-    [onSeek, durationMs],
+    [seekFromX],
   )
+
+  const updateDragFraction = useCallback((x: number) => {
+    const w = progressTrackWidthRef.current
+    if (w <= 0) return
+    setDragFraction(Math.min(1, Math.max(0, x / w)))
+  }, [])
+
+  const seekFromDragEnd = useCallback(
+    (x: number) => {
+      if (isValidDuration && progressTrackWidthRef.current > 0 && onSeek) {
+        const fraction = Math.min(1, Math.max(0, x / progressTrackWidthRef.current))
+        onSeek(fraction * durationMs)
+      }
+    },
+    [durationMs, isValidDuration, onSeek],
+  )
+
+  const clearDragState = useCallback(() => {
+    setIsDragging(false)
+    setDragFraction(null)
+  }, [])
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      "worklet"
+      runOnJS(setIsDragging)(true)
+    })
+    .onUpdate((e) => {
+      "worklet"
+      runOnJS(updateDragFraction)(e.x)
+    })
+    .onEnd((e) => {
+      "worklet"
+      runOnJS(seekFromDragEnd)(e.x)
+    })
+    .onFinalize(() => {
+      "worklet"
+      runOnJS(clearDragState)()
+    })
+
+  const thumbSize = isDragging ? SLIDER_THUMB_DRAGGING : SLIDER_THUMB_SIZE
+  const thumbLeft =
+    trackWidth > 0
+      ? Math.max(
+          0,
+          Math.min(
+            trackWidth - thumbSize,
+            displayProgress * trackWidth - thumbSize / 2,
+          ),
+        )
+      : 0
 
   const progressBlock = showProgress && (
-    <View style={{ marginTop: 10, marginHorizontal: 24 }}>
+    <View style={styles.progressBlock}>
       <AppText
         font="instrument-regular"
         size="xs"
-        style={{ color: "rgba(255,255,255,0.85)", marginBottom: 4 }}
+        style={styles.progressTime}
       >
         {formatTime(positionMs)} / {formatTime(durationMs)}
       </AppText>
-      <Pressable
-        onLayout={handleProgressLayout}
-        onPress={handleProgressPress}
-        style={{
-          height: 4,
-          borderRadius: 2,
-          backgroundColor: "rgba(255,255,255,0.2)",
-          overflow: "hidden",
-        }}
-      >
-        <View
-          style={{
-            width: `${progressFraction * 100}%`,
-            height: "100%",
-            borderRadius: 2,
-            backgroundColor: "rgba(251,191,36,0.9)",
-          }}
-        />
-      </Pressable>
+      <GestureDetector gesture={panGesture}>
+        <Pressable
+          onLayout={onSliderLayout}
+          onPress={onSliderPress}
+          style={styles.sliderTouchArea}
+        >
+          <View style={styles.sliderTrackWrap}>
+            <View style={[styles.sliderTrack, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+              <View
+                style={[
+                  styles.sliderFill,
+                  {
+                    width: `${displayProgress * 100}%`,
+                    backgroundColor: "rgba(251,191,36,0.9)",
+                  },
+                ]}
+              />
+            </View>
+            <View
+              style={[
+                styles.sliderThumb,
+                {
+                  width: thumbSize,
+                  height: thumbSize,
+                  borderRadius: thumbSize / 2,
+                  left: thumbLeft,
+                  top: (SLIDER_TRACK_HEIGHT - thumbSize) / 2,
+                },
+              ]}
+            />
+          </View>
+        </Pressable>
+      </GestureDetector>
     </View>
   )
 
@@ -189,8 +280,8 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
 
   const layeredStyle = {
     paddingVertical: 16,
-    width: 320,
-    maxWidth: "92%",
+    width: 360,
+    maxWidth: "95%",
     borderRadius: 9999,
     overflow: "hidden" as const,
     ...(Platform.OS === "ios"
@@ -203,15 +294,30 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
       : { elevation: 8 }),
   }
 
+  const contentPressable = (
+    <View style={{ flex: 1 }}>
+      {Platform.OS === "android" ? (
+        <TouchableOpacity
+          onPress={onPress}
+          disabled={isLoading}
+          activeOpacity={0.85}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={{ flex: 1 }}
+        >
+          {content}
+        </TouchableOpacity>
+      ) : (
+        <Pressable onPress={onPress} disabled={isLoading} style={{ flex: 1 }}>
+          {content}
+        </Pressable>
+      )}
+      {progressBlock}
+    </View>
+  )
+
   if (isLayered) {
-    return Platform.OS === "android" ? (
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={isLoading}
-        style={layeredStyle}
-        activeOpacity={0.85}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-      >
+    return (
+      <View style={layeredStyle}>
         <LinearGradient
           colors={["rgba(0,0,0,0.5)", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.4)"]}
           start={{ x: 0.5, y: 0 }}
@@ -239,48 +345,9 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
             }}
             pointerEvents="none"
           />
-          {content}
-          {progressBlock}
+          {contentPressable}
         </LinearGradient>
-      </TouchableOpacity>
-    ) : (
-      <Pressable
-        onPress={onPress}
-        disabled={isLoading}
-        style={layeredStyle}
-      >
-        <LinearGradient
-          colors={["rgba(0,0,0,0.5)", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.4)"]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={{
-            flex: 1,
-            borderRadius: 9999,
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.15)",
-            paddingVertical: 16,
-          }}
-        >
-          {/* Glossy highlight strip - top edge */}
-          <LinearGradient
-            colors={["rgba(255,255,255,0.08)", "transparent"]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "35%",
-              borderTopLeftRadius: 9999,
-              borderTopRightRadius: 9999,
-            }}
-            pointerEvents="none"
-          />
-          {content}
-          {progressBlock}
-        </LinearGradient>
-      </Pressable>
+      </View>
     )
   }
 
@@ -289,32 +356,66 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
     borderColor: "rgba(255,255,255,0.38)",
     borderRadius: 16,
     paddingVertical: 16,
-    width: 320,
-    maxWidth: "92%",
+    width: 360,
+    maxWidth: "95%",
     backgroundColor: "rgba(0,0,0,0.125)",
   }
 
-  if (Platform.OS === "android") {
-    return (
-      <TouchableOpacity
-        style={defaultStyle}
-        onPress={onPress}
-        disabled={isLoading}
-        activeOpacity={0.85}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-      >
-        {content}
-        {progressBlock}
-      </TouchableOpacity>
-    )
-  }
-
   return (
-    <Pressable style={defaultStyle} onPress={onPress} disabled={isLoading}>
-      {content}
+    <View style={defaultStyle}>
+      {Platform.OS === "android" ? (
+        <TouchableOpacity
+          onPress={onPress}
+          disabled={isLoading}
+          activeOpacity={0.85}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={{ flex: 1 }}
+        >
+          {content}
+        </TouchableOpacity>
+      ) : (
+        <Pressable onPress={onPress} disabled={isLoading} style={{ flex: 1 }}>
+          {content}
+        </Pressable>
+      )}
       {progressBlock}
-    </Pressable>
+    </View>
   )
 }
+
+const styles = StyleSheet.create({
+  progressBlock: {
+    marginTop: 10,
+    marginHorizontal: 28,
+  },
+  progressTime: {
+    color: "rgba(255,255,255,0.85)",
+    marginBottom: 4,
+  },
+  sliderTouchArea: {
+    width: "100%",
+    minHeight: SLIDER_TOUCH_MIN_HEIGHT,
+    justifyContent: "center",
+  },
+  sliderTrackWrap: {
+    position: "relative",
+    width: "100%",
+    height: SLIDER_TRACK_HEIGHT,
+  },
+  sliderTrack: {
+    width: "100%",
+    height: SLIDER_TRACK_HEIGHT,
+    borderRadius: SLIDER_TRACK_HEIGHT / 2,
+    overflow: "hidden",
+  },
+  sliderFill: {
+    height: "100%",
+    borderRadius: SLIDER_TRACK_HEIGHT / 2,
+  },
+  sliderThumb: {
+    position: "absolute",
+    backgroundColor: "#ffffff",
+  },
+})
 
 export default CrystalBowlButton

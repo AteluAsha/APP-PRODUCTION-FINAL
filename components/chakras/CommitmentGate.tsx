@@ -163,8 +163,9 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
     // Grant lifetime access immediately (it's free, not a barter)
     grantLifetimeAccess("scholarship")
     setShowScholarshipModal(false)
-    // Close paywall and navigate to Energy Exchange (not AccessGrantedModal)
-    onComplete()
+    // Navigate to Energy Exchange only. Do NOT call onComplete() here — that goes to ChakraHub
+    // and on Android can win over the next replace, skipping Energy Exchange. User reaches
+    // ChakraHub by tapping "Enter Path" on the Energy Exchange screen.
     router.replace("/(chakras)/EnergyExchange")
   }
 

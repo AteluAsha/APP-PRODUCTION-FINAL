@@ -3,22 +3,23 @@ import {
   View,
   Pressable,
   ScrollView,
-  Linking,
   StyleSheet,
   Platform,
 } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { LinearGradient } from "expo-linear-gradient"
+import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
 import { ActionBar } from "@/components/ActionBar"
 import { useRouter } from "expo-router"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import { useEnergyExchangeStore } from "@/hooks/useEnergyExchangeStore"
 import { useShallow } from "zustand/react/shallow"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { VideoRecorderModal } from "@/components/chakras/VideoRecorderModal"
 import { WriteToUsModal } from "@/components/chakras/WriteToUsModal"
-import { REVIEW_URL } from "@/constants/sharing"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { LeaveReviewModal } from "@/components/chakras/LeaveReviewModal"
+import { SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 
 /**
  * Energy Exchange Screen
@@ -29,13 +30,21 @@ import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
  */
 export default function EnergyExchange() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [showVideoRecorder, setShowVideoRecorder] = useState(false)
   const [showWriteToUs, setShowWriteToUs] = useState(false)
+  const [showLeaveReview, setShowLeaveReview] = useState(false)
   const hasLifetimeAccess = useChakraJourneyStore(
     useShallow((s) => s.hasLifetimeAccess),
   )
-  // Note: Lifetime access is already granted before reaching this screen
-  // This screen is for connection, not barter
+  const {
+    videoComplete,
+    reviewComplete,
+    writeToUsComplete,
+    markVideoComplete,
+    markReviewComplete,
+    markWriteToUsComplete,
+  } = useEnergyExchangeStore()
 
   const handleBack = () => {
     addHapticFeedback(HapticStrength.Light)
@@ -46,27 +55,19 @@ export default function EnergyExchange() {
     }
   }
 
-  const handleShare = async () => {
+  const handleShare = () => {
     addHapticFeedback(HapticStrength.Light)
-    // Open video recorder modal
     setShowVideoRecorder(true)
   }
 
-  const handleReview = async () => {
+  const handleReview = () => {
     addHapticFeedback(HapticStrength.Light)
-    await Linking.openURL(REVIEW_URL)
-    // User completed an exchange—navigate to path
-    router.replace("/(chakras)/ChakraHub")
+    setShowLeaveReview(true)
   }
 
   const handleWriteToUs = () => {
     addHapticFeedback(HapticStrength.Light)
     setShowWriteToUs(true)
-  }
-
-  const handleSkip = () => {
-    addHapticFeedback(HapticStrength.Light)
-    handleBack()
   }
 
   return (
@@ -81,15 +82,22 @@ export default function EnergyExchange() {
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
-        <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
           <ActionBar onBackPress={handleBack} />
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingTop: Math.max(insets.top, 16) + 8,
+                paddingBottom: Math.max(insets.bottom, 16) + 12,
+              },
+            ]}
             showsVerticalScrollIndicator={false}
+            {...(Platform.OS === "android" ? SCROLL_ANDROID_SMOOTH_PROPS : {})}
           >
             <View style={styles.content}>
-              {/* Header - after approval message */}
+              {/* Header */}
               <AppText
                 font="instrument-bold"
                 size="xl"
@@ -110,88 +118,86 @@ export default function EnergyExchange() {
                 size="sm"
                 style={styles.headerHint}
               >
-                Choose how you'd like to stay connected, or enter your path now.
+                Choose how you would like to express your vibration or enter your path below.
               </AppText>
 
-              {/* Primary CTA - Enter Path */}
-              <Pressable
-                onPress={handleBack}
-                style={({ pressed }) => [
-                  styles.enterPathButton,
-                  pressed && styles.enterPathButtonPressed,
-                ]}
+              {/* Hero quote - global energy exchange line */}
+              <AppText
+                font="instrument-bold"
+                size="lg"
+                style={styles.heroQuote}
               >
-                <LinearGradient
-                  colors={[
-                    "rgba(168, 201, 154, 0.5)",
-                    "rgba(107, 142, 90, 0.45)",
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.enterPathGradient}
-                >
-                  <AppText
-                    font="instrument-bold"
-                    size="base"
-                    style={styles.enterPathText}
-                  >
-                    Enter Path
-                  </AppText>
-                </LinearGradient>
-              </Pressable>
+                This is the energy exchange of your own value.
+              </AppText>
 
               {/* Exchange Options */}
               <View style={styles.optionsContainer}>
                 {/* Share Video Option */}
-                <Pressable onPress={handleShare} style={styles.optionCard}>
+                <Pressable
+                  onPress={handleShare}
+                  style={[
+                    styles.optionCard,
+                    styles.optionCardVideo,
+                    videoComplete && styles.optionCardComplete,
+                  ]}
+                >
                   <View>
+                    {videoComplete && (
+                      <View style={styles.completeBadge}>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={20}
+                          color="rgba(168, 201, 154, 0.9)"
+                        />
+                      </View>
+                    )}
                     <AppText
                       font="instrument-bold"
-                      size="xl"
-                      style={{ color: "#ffffff", marginBottom: 8 }}
+                      size="lg"
+                      style={styles.optionCardTitle}
                     >
-                      This is the Energy Exchange of your own value.
+                      Post A Video To Social.
                     </AppText>
                     <AppText
                       font="instrument-regular"
                       size="sm"
-                      style={{
-                        color: "rgba(255,255,255,0.8)",
-                        marginBottom: 8,
-                      }}
+                      style={styles.optionCardSubtitle}
                     >
-                      Send a love balm out to the world and express your
-                      experience on this master path. A practice in
-                      transparency.
-                    </AppText>
-                    <AppText
-                      font="instrument-regular"
-                      size="xs"
-                      style={{
-                        color: "rgba(255,255,255,0.5)",
-                        fontStyle: "italic",
-                      }}
-                    >
-                      We do not store or keep any of your expressions. They only
-                      exist in this now moment.
+                      Tell the world why you are here, awakening the energy body.
                     </AppText>
                   </View>
                 </Pressable>
 
                 {/* Review Option */}
-                <Pressable onPress={handleReview} style={styles.optionCard}>
+                <Pressable
+                  onPress={handleReview}
+                  style={[
+                    styles.optionCard,
+                    styles.optionCardReview,
+                    reviewComplete && styles.optionCardComplete,
+                  ]}
+                >
                   <View>
+                    {reviewComplete && (
+                      <View style={styles.completeBadge}>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={20}
+                          color="rgba(168, 201, 154, 0.9)"
+                        />
+                      </View>
+                    )}
                     <AppText
                       font="instrument-bold"
-                      size="xl"
-                      style={{ color: "#ffffff", marginBottom: 8 }}
+                      size="lg"
+                      style={styles.optionCardTitle}
                     >
                       Leave a Review
                     </AppText>
                     <AppText
                       font="instrument-regular"
                       size="sm"
-                      style={{ color: "rgba(255,255,255,0.8)" }}
+                      style={styles.optionCardSubtitle}
                     >
                       Share your experience and help others find their path
                     </AppText>
@@ -199,19 +205,35 @@ export default function EnergyExchange() {
                 </Pressable>
 
                 {/* Write to Us Option */}
-                <Pressable onPress={handleWriteToUs} style={styles.optionCard}>
+                <Pressable
+                  onPress={handleWriteToUs}
+                  style={[
+                    styles.optionCard,
+                    styles.optionCardWriteToUs,
+                    writeToUsComplete && styles.optionCardComplete,
+                  ]}
+                >
                   <View>
+                    {writeToUsComplete && (
+                      <View style={styles.completeBadge}>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={20}
+                          color="rgba(168, 201, 154, 0.9)"
+                        />
+                      </View>
+                    )}
                     <AppText
                       font="instrument-bold"
-                      size="xl"
-                      style={{ color: "#ffffff", marginBottom: 8 }}
+                      size="lg"
+                      style={styles.optionCardTitle}
                     >
                       Write to Us
                     </AppText>
                     <AppText
                       font="instrument-regular"
                       size="sm"
-                      style={{ color: "rgba(255,255,255,0.8)" }}
+                      style={styles.optionCardSubtitle}
                     >
                       Share your story, feedback, or connect with our community
                     </AppText>
@@ -242,15 +264,31 @@ export default function EnergyExchange() {
                 </AppText>
               </View>
 
-              {/* Skip Option */}
-              <Pressable onPress={handleSkip} style={styles.skipWrap}>
-                <AppText
-                  font="instrument-regular"
-                  size="sm"
-                  style={styles.skipText}
+              {/* Primary CTA - Enter Path (at bottom) */}
+              <Pressable
+                onPress={handleBack}
+                style={({ pressed }) => [
+                  styles.enterPathButton,
+                  pressed && styles.enterPathButtonPressed,
+                ]}
+              >
+                <LinearGradient
+                  colors={[
+                    "rgba(168, 201, 154, 0.5)",
+                    "rgba(107, 142, 90, 0.45)",
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.enterPathGradient}
                 >
-                  Continue to App
-                </AppText>
+                  <AppText
+                    font="instrument-bold"
+                    size="base"
+                    style={styles.enterPathText}
+                  >
+                    Enter Path
+                  </AppText>
+                </LinearGradient>
               </Pressable>
             </View>
           </ScrollView>
@@ -266,7 +304,17 @@ export default function EnergyExchange() {
             }}
             onComplete={() => {
               setShowVideoRecorder(false)
-              router.replace("/(chakras)/ChakraHub")
+              markVideoComplete()
+            }}
+          />
+
+          {/* Leave a Review Modal */}
+          <LeaveReviewModal
+            visible={showLeaveReview}
+            onClose={() => setShowLeaveReview(false)}
+            onComplete={() => {
+              markReviewComplete()
+              setShowLeaveReview(false)
             }}
           />
 
@@ -275,8 +323,8 @@ export default function EnergyExchange() {
             visible={showWriteToUs}
             onClose={() => setShowWriteToUs(false)}
             onComplete={() => {
+              markWriteToUsComplete()
               setShowWriteToUs(false)
-              router.replace("/(chakras)/ChakraHub")
             }}
           />
         </SafeAreaView>
@@ -300,8 +348,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 32,
-    paddingBottom: 48 + SCROLL_BREATHING_BOTTOM_PADDING,
+    paddingHorizontal: 32,
   },
   content: {
     alignItems: "center",
@@ -312,23 +359,36 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: "#ffffff",
     textAlign: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   headerSubtitle: {
     color: "rgba(255,255,255,0.9)",
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   headerHint: {
     color: "rgba(168, 201, 154, 0.85)",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 12,
+  },
+  heroQuote: {
+    color: "rgba(168, 201, 154, 0.95)",
+    textAlign: "center",
+    marginBottom: 20,
+    fontStyle: "italic",
+  },
+  optionCardTitle: {
+    color: "#ffffff",
+    marginBottom: 6,
+  },
+  optionCardSubtitle: {
+    color: "rgba(255,255,255,0.8)",
   },
   enterPathButton: {
     width: "100%",
     borderRadius: 14,
     overflow: "hidden",
-    marginBottom: 28,
+    marginTop: 4,
     borderWidth: 1,
     borderColor: "rgba(168, 201, 154, 0.35)",
   },
@@ -345,40 +405,58 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     width: "100%",
-    marginBottom: 24,
+    marginBottom: 14,
   },
   optionCard: {
     width: "100%",
     borderWidth: 1,
-    borderColor: "rgba(168, 201, 154, 0.2)",
-    paddingVertical: 24,
-    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderRadius: 14,
-    backgroundColor: "rgba(168, 201, 154, 0.04)",
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  optionCardVideo: {
+    borderColor: "rgba(168, 201, 154, 0.35)",
+    borderLeftWidth: 5,
+    borderLeftColor: "#A8C99A",
+    backgroundColor: "rgba(168, 201, 154, 0.08)",
+  },
+  optionCardReview: {
+    borderColor: "rgba(139, 115, 85, 0.35)",
+    borderLeftWidth: 5,
+    borderLeftColor: "rgba(180, 150, 100, 0.9)",
+    backgroundColor: "rgba(139, 115, 85, 0.06)",
+  },
+  optionCardWriteToUs: {
+    borderColor: "rgba(107, 142, 90, 0.35)",
+    borderLeftWidth: 5,
+    borderLeftColor: "rgba(107, 142, 90, 0.85)",
+    backgroundColor: "rgba(107, 142, 90, 0.06)",
+  },
+  optionCardComplete: {
+    borderColor: "rgba(168, 201, 154, 0.5)",
+    backgroundColor: "rgba(168, 201, 154, 0.12)",
+  },
+  completeBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
   },
   infoText: {
     color: "rgba(168, 201, 154, 0.75)",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 12,
   },
   disclosure: {
     backgroundColor: "rgba(168, 201, 154, 0.06)",
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+    padding: 12,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "rgba(168, 201, 154, 0.12)",
   },
   disclosureText: {
     color: "rgba(255,255,255,0.6)",
     textAlign: "center",
-  },
-  skipWrap: {
-    marginTop: 8,
-  },
-  skipText: {
-    color: "rgba(168, 201, 154, 0.6)",
-    textDecorationLine: "underline",
   },
 })

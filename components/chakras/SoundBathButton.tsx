@@ -1,7 +1,8 @@
-import React from "react"
+import React, { useCallback, useRef } from "react"
 import { Pressable, View } from "react-native"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
+import { formatTime } from "@/utils/format"
 
 interface SoundBathButtonProps {
   className?: string // Additional Tailwind classes for styling
@@ -12,6 +13,10 @@ interface SoundBathButtonProps {
   error?: Error | null // When set, show "Unable to load" and disable
   /** When true, show pause icon; otherwise play. For tuning fork play/pause. */
   isPlaying?: boolean
+  /** When playing, show progress; optional seek (e.g. restart). */
+  positionMs?: number
+  durationMs?: number
+  onSeek?: (positionMs: number) => void
 }
 
 const SoundBathButton: React.FC<SoundBathButtonProps> = ({
@@ -22,6 +27,9 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
   isLoading = false,
   error = null,
   isPlaying = false,
+  positionMs = 0,
+  durationMs = 0,
+  onSeek,
 }) => {
   const hasError = !!error
   const disabled = isLoading || hasError
@@ -30,8 +38,31 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
     : isLoading
       ? "Preparing..."
       : subtitle
+
+  const showProgress = isPlaying && durationMs > 0 && positionMs >= 0
+  const progressFraction =
+    durationMs > 0 ? Math.min(1, Math.max(0, positionMs / durationMs)) : 0
+  const progressTrackWidthRef = useRef(0)
+  const handleProgressLayout = useCallback(
+    (e: { nativeEvent: { layout: { width: number } } }) => {
+      progressTrackWidthRef.current = e.nativeEvent.layout.width
+    },
+    [],
+  )
+  const handleProgressPress = useCallback(
+    (e: { nativeEvent: { locationX: number } }) => {
+      if (!onSeek || durationMs <= 0) return
+      const w = progressTrackWidthRef.current
+      if (w <= 0) return
+      const x = Math.max(0, Math.min(e.nativeEvent.locationX, w))
+      const ms = Math.floor((x / w) * durationMs)
+      onSeek(ms)
+    },
+    [onSeek, durationMs],
+  )
+
   return (
-    <Pressable
+    <View
       style={{
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.38)",
@@ -40,10 +71,10 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
         width: 288,
         backgroundColor: "rgba(0,0,0,0.125)",
       }}
-      onPress={onPress}
-      disabled={disabled}
     >
-      <View
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -104,8 +135,39 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
             {subtitleText}
           </AppText>
         </View>
-      </View>
-    </Pressable>
+      </Pressable>
+
+      {showProgress && (
+        <View style={{ marginTop: 8, marginHorizontal: 24 }}>
+          <AppText
+            font="instrument-regular"
+            size="xs"
+            style={{ color: "rgba(255,255,255,0.85)", marginBottom: 4 }}
+          >
+            {formatTime(positionMs)} / {formatTime(durationMs)}
+          </AppText>
+          <Pressable
+            onLayout={handleProgressLayout}
+            onPress={handleProgressPress}
+            style={{
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: "rgba(255,255,255,0.2)",
+              overflow: "hidden",
+            }}
+          >
+            <View
+              style={{
+                width: `${progressFraction * 100}%`,
+                height: "100%",
+                borderRadius: 3,
+                backgroundColor: "rgba(251,191,36,0.9)",
+              }}
+            />
+          </Pressable>
+        </View>
+      )}
+    </View>
   )
 }
 

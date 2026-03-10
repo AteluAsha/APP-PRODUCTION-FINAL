@@ -13,6 +13,7 @@ import {
   ScrollView,
   StyleSheet,
   useWindowDimensions,
+  TextInput,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -21,6 +22,7 @@ import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import * as Clipboard from "expo-clipboard"
 import type { TribeFriend } from "@/types/tribe"
+import { createTribeInvite } from "@/src/services/tribeInvites"
 
 const TABS = ["Connected", "Pending", "Suggested"] as const
 type TabKey = (typeof TABS)[number]
@@ -54,9 +56,45 @@ export function TribeFriendsMenu({
 }: TribeFriendsMenuProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("Connected")
   const [copied, setCopied] = useState(false)
+  const [connectIdInput, setConnectIdInput] = useState("")
+  const [connectStatus, setConnectStatus] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle")
+  const [connectError, setConnectError] = useState<string | null>(null)
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const panelWidth = Math.min(width * 0.88, 360)
+
+  const handleConnectById = async () => {
+    const trimmed = connectIdInput.trim()
+    if (!trimmed) return
+    if (currentUserId && trimmed === currentUserId) {
+      setConnectError("That's your own ID. Enter your friend's Soul School ID.")
+      setConnectStatus("error")
+      return
+    }
+    if (!currentUserId || currentUserId === "soul-school-guest") {
+      setConnectError("Your Soul School ID is not ready. Try again in a moment.")
+      setConnectStatus("error")
+      return
+    }
+    addHapticFeedback(HapticStrength.Medium)
+    setConnectStatus("sending")
+    setConnectError(null)
+    const result = await createTribeInvite(
+      currentUserId,
+      trimmed,
+      currentDisplayName || "A soul",
+    )
+    if (result.ok) {
+      setConnectStatus("sent")
+      setConnectIdInput("")
+      setTimeout(() => setConnectStatus("idle"), 2000)
+    } else {
+      setConnectStatus("error")
+      setConnectError(result.error || "Could not send request. Try again.")
+    }
+  }
 
   const handleCopyId = () => {
     addHapticFeedback(HapticStrength.Light)
@@ -169,6 +207,76 @@ export function TribeFriendsMenu({
                   </Pressable>
                 )}
               </View>
+            </View>
+
+            {/* Connect by Soul School ID */}
+            <View style={styles.connectByIdSection}>
+              <AppText
+                font="instrument-semibold"
+                size="sm"
+                style={styles.connectByIdLabel}
+              >
+                Connect with a Soul School ID
+              </AppText>
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={styles.connectByIdHint}
+              >
+                Enter your friend's Soul School ID to connect.
+              </AppText>
+              <TextInput
+                value={connectIdInput}
+                onChangeText={(text) => {
+                  setConnectIdInput(text)
+                  setConnectStatus("idle")
+                  setConnectError(null)
+                }}
+                placeholder="e.g. Starseed | 1212:88"
+                placeholderTextColor="rgba(255,255,255,0.35)"
+                style={styles.connectByIdInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={connectStatus !== "sending"}
+              />
+              {connectError ? (
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={styles.connectByIdError}
+                >
+                  {connectError}
+                </AppText>
+              ) : null}
+              <Pressable
+                onPress={handleConnectById}
+                disabled={
+                  !connectIdInput.trim() ||
+                  connectStatus === "sending" ||
+                  !currentUserId ||
+                  currentUserId === "soul-school-guest"
+                }
+                style={[
+                  styles.connectByIdBtn,
+                  (connectStatus === "sending" ||
+                    !connectIdInput.trim() ||
+                    !currentUserId ||
+                    currentUserId === "soul-school-guest") &&
+                    styles.connectByIdBtnDisabled,
+                ]}
+              >
+                <AppText
+                  font="instrument-semibold"
+                  size="sm"
+                  style={styles.connectByIdBtnText}
+                >
+                  {connectStatus === "sending"
+                    ? "Sending…"
+                    : connectStatus === "sent"
+                      ? "Request sent"
+                      : "Connect"}
+                </AppText>
+              </Pressable>
             </View>
 
             {/* Tabs */}
@@ -386,6 +494,45 @@ const styles = StyleSheet.create({
   idLabel: { color: "rgba(255,255,255,0.6)", fontSize: 12 },
   copiedText: { color: "rgba(135, 174, 115, 0.9)", marginTop: 2, fontSize: 11 },
   editBtn: { padding: 8 },
+  connectByIdSection: {
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.2)",
+  },
+  connectByIdLabel: { color: "rgba(255,255,255,0.95)", marginBottom: 4 },
+  connectByIdHint: {
+    color: "rgba(255,255,255,0.5)",
+    marginBottom: 10,
+  },
+  connectByIdInput: {
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    color: "#ffffff",
+    fontSize: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.25)",
+  },
+  connectByIdError: {
+    color: "rgba(220, 100, 100, 0.95)",
+    marginBottom: 8,
+  },
+  connectByIdBtn: {
+    backgroundColor: "rgba(135, 174, 115, 0.3)",
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.4)",
+  },
+  connectByIdBtnDisabled: { opacity: 0.5 },
+  connectByIdBtnText: { color: "rgba(255,255,255,0.95)" },
   tabRow: { flexDirection: "row", marginBottom: 12, gap: 4 },
   tab: {
     flex: 1,

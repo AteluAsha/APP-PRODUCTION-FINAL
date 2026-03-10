@@ -18,6 +18,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react"
 import {
   View,
   ScrollView,
+  FlatList,
   Pressable,
   ActivityIndicator,
   TextInput,
@@ -28,6 +29,7 @@ import {
   Modal,
   Linking,
   RefreshControl,
+  useWindowDimensions,
 } from "react-native"
 import Animated, {
   FadeIn,
@@ -187,14 +189,23 @@ interface CommunityHallsScreenProps {
   initialDay?: number
 }
 
+const DAYS = [0, 1, 2, 3, 4, 5, 6] as const
+
 export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
   initialDay,
 }) => {
   const router = useRouter()
-  const [selectedDay, setSelectedDay] = useState<number | "global">(
-    initialDay ?? "global",
+  const { width: screenWidth } = useWindowDimensions()
+  const pagerRef = useRef<FlatList>(null)
+  const dayScrollRefs = useRef<Record<number, ScrollView | null>>({})
+  const [selectedDay, setSelectedDay] = useState<number>(
+    typeof initialDay === "number" && initialDay >= 0 && initialDay <= 6
+      ? initialDay
+      : 0,
   )
-  const [comments, setComments] = useState<CommentWithReplies[]>([])
+  const [commentsByDay, setCommentsByDay] = useState<
+    Record<number, CommentWithReplies[]>
+  >(() => ({ 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] }))
   const [isLoading, setIsLoading] = useState(false)
   const [showPreparingMessage, setShowPreparingMessage] = useState(true)
 
@@ -243,6 +254,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   // When set, show "Should we clean this from our community space, little shepherd?" modal for this comment
   const [shepherdModalReflectionId, setShepherdModalReflectionId] = useState<string | null>(null)
+  const [shepherdModalDay, setShepherdModalDay] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
   const refreshRotation = useSharedValue(0)
@@ -277,121 +289,106 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
     }
   }, [])
 
-  // Load comments for selected day (with currentUserId for myReaction and hidden filter)
+  // Load comments for all 7 days (by-day feed; each day's comments on its own page)
   useEffect(() => {
     if (isBlocked === true) return
-    loadComments()
+    loadAllDays()
 
-    // If no comments exist, populate placeholders (dev mode only)
     if (__DEV__) {
       const t = setTimeout(async () => {
         try {
           const { populatePlaceholders } =
             await import("@/src/services/communityPlaceholders")
           await populatePlaceholders()
-          await loadComments()
+          await loadAllDays()
         } catch {
           // Silent fail
         }
       }, 1000)
       return () => clearTimeout(t)
     }
-  }, [selectedDay, isBlocked])
+  }, [isBlocked])
 
-  const loadComments = async (silent?: boolean) => {
+  const setCommentsForDay = useCallback(
+    (day: number, updater: (prev: CommentWithReplies[]) => CommentWithReplies[]) => {
+      setCommentsByDay((prev) => ({
+        ...prev,
+        [day]: updater(prev[day] ?? []),
+      }))
+    },
+    [],
+  )
+
+  const loadAllDays = async (silent?: boolean) => {
     if (!silent) setIsLoading(true)
     try {
       const uid = await getUserId().catch(() => undefined)
       if (uid) setCurrentUserId(uid)
-      let loadedComments: CommentWithReplies[] = []
-
-      if (selectedDay === "global") {
-        for (let day = 0; day < 7; day++) {
-          try {
-            const dayComments = await getReflectionsForDay(day, 50, uid)
-            loadedComments.push(
-              ...dayComments.map((c) => ({
-                ...c,
-                replies: [],
-                showReplies: false,
-              })),
-            )
-          } catch (err) {
-            if (__DEV__) {
-              console.error(`Error loading comments for day ${day}:`, err)
-            }
-          }
-        }
-        loadedComments.sort(
-          (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
-        )
-      } else {
-        const dayComments = await getReflectionsForDay(selectedDay, 50, uid)
-        loadedComments = dayComments.map((c) => ({
-          ...c,
-          replies: [],
-          showReplies: false,
-        }))
-      }
-
-      // Self-governance: filter out reflections this user has hidden
       const userData = uid ? await getSanctuaryUserData(uid) : null
-      if (userData?.hiddenReflectionIds?.length) {
-        const hiddenSet = new Set(userData.hiddenReflectionIds)
-        loadedComments = loadedComments.filter((c) => !c.id || !hiddenSet.has(c.id))
-      }
       setSanctuaryUserData(userData ?? null)
-
-      // Somatic feed: followed first, then people you've hearted (more), then rest; all by time
+      const hiddenSet = new Set(userData?.hiddenReflectionIds ?? [])
       const followedSet = new Set(userData?.followedUserIds ?? [])
-      const heartedUserIds = new Set(
-        loadedComments.filter((c) => c.myReaction === "more").map((c) => c.userId),
-      )
-      loadedComments.sort((a, b) => {
-        const aFollowed = followedSet.has(a.userId)
-        const bFollowed = followedSet.has(b.userId)
-        if (aFollowed && !bFollowed) return -1
-        if (!aFollowed && bFollowed) return 1
-        const aHearted = heartedUserIds.has(a.userId)
-        const bHearted = heartedUserIds.has(b.userId)
-        if (aHearted && !bHearted) return -1
-        if (!aHearted && bHearted) return 1
-        return b.timestamp.getTime() - a.timestamp.getTime()
-      })
 
-      setComments(loadedComments)
+      const byDay: Record<number, CommentWithReplies[]> = {
+        0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [],
+      }
 
-      // Seed reaction state from Firestore myReaction
+      for (let day = 0; day < 7; day++) {
+        try {
+          const dayComments = await getReflectionsForDay(day, 50, uid)
+          let list = dayComments
+            .filter((c) => !c.id || !hiddenSet.has(c.id))
+            .map((c) => ({
+              ...c,
+              replies: [] as SanctuaryReflection[],
+              showReplies: false,
+            }))
+          const heartedUserIds = new Set(
+            list.filter((c) => c.myReaction === "more").map((c) => c.userId),
+          )
+          list.sort((a, b) => {
+            const aFollowed = followedSet.has(a.userId)
+            const bFollowed = followedSet.has(b.userId)
+            if (aFollowed && !bFollowed) return -1
+            if (!aFollowed && bFollowed) return 1
+            const aHearted = heartedUserIds.has(a.userId)
+            const bHearted = heartedUserIds.has(b.userId)
+            if (aHearted && !bHearted) return -1
+            if (!aHearted && bHearted) return 1
+            return a.timestamp.getTime() - b.timestamp.getTime()
+          })
+          byDay[day] = list
+        } catch (err) {
+          if (__DEV__) console.error(`Error loading comments for day ${day}:`, err)
+        }
+      }
+
+      setCommentsByDay(byDay)
+
+      const allComments = DAYS.flatMap((d) => byDay[d] ?? [])
       setCommentReactions((prev) => {
         const next = { ...prev }
-        loadedComments.forEach((c) => {
+        allComments.forEach((c) => {
           if (c.id && c.myReaction) next[c.id] = c.myReaction
         })
         return next
       })
 
-      // Load profile images for all unique user IDs
-      const uniqueUserIds = new Set(loadedComments.map((c) => c.userId))
+      const uniqueUserIds = new Set(allComments.map((c) => c.userId))
       const profilePromises = Array.from(uniqueUserIds).map(async (userId) => {
         try {
           const profile = await getUserProfile(userId)
-          if (profile) {
-            return { userId, profile }
-          }
-        } catch (err) {
-          // Silent fail
+          if (profile) return { userId, profile }
+        } catch {
+          // silent
         }
         return null
       })
-
       const profiles = await Promise.all(profilePromises)
       const profileMap: Record<string, UserProfile> = {}
-      profiles.forEach((result) => {
-        if (result) {
-          profileMap[result.userId] = result.profile
-        }
+      profiles.forEach((r) => {
+        if (r) profileMap[r.userId] = r.profile
       })
-      // Merge current user's presence (name, photo, location) so "me" shows correctly
       try {
         const presence = usePresenceStore.getState()
         if (uid) {
@@ -410,9 +407,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
       }
       setUserProfiles(profileMap)
     } catch (err) {
-      if (__DEV__) {
-        console.error("Error loading comments:", err)
-      }
+      if (__DEV__) console.error("Error loading comments:", err)
     } finally {
       if (!silent) setIsLoading(false)
     }
@@ -421,14 +416,14 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await loadComments(true)
+      await loadAllDays(true)
     } finally {
       setRefreshing(false)
     }
   }, [])
 
-  const loadReplies = async (commentId: string) => {
-    setComments((prev) =>
+  const loadReplies = async (commentId: string, day: number) => {
+    setCommentsForDay(day, (prev) =>
       prev.map((c) =>
         c.id === commentId ? { ...c, isLoadingReplies: true } : c,
       ),
@@ -466,7 +461,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
       }
       setUserProfiles((prev) => ({ ...prev, ...merge }))
 
-      setComments((prev) =>
+      setCommentsForDay(day, (prev) =>
         prev.map((c) =>
           c.id === commentId
             ? { ...c, replies, showReplies: true, isLoadingReplies: false }
@@ -477,7 +472,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
       if (__DEV__) {
         console.error("Error loading replies:", err)
       }
-      setComments((prev) =>
+      setCommentsForDay(day, (prev) =>
         prev.map((c) =>
           c.id === commentId ? { ...c, isLoadingReplies: false } : c,
         ),
@@ -485,23 +480,22 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
     }
   }
 
-  const toggleReplies = (commentId: string) => {
+  const toggleReplies = (commentId: string, day: number) => {
+    const comments = commentsByDay[day] ?? []
     const comment = comments.find((c) => c.id === commentId)
     if (!comment) return
 
     if (comment.showReplies) {
-      // Collapse
-      setComments((prev) =>
+      setCommentsForDay(day, (prev) =>
         prev.map((c) =>
           c.id === commentId ? { ...c, showReplies: false } : c,
         ),
       )
     } else {
-      // Expand - load replies if not loaded
       if (!comment.replies || comment.replies.length === 0) {
-        loadReplies(commentId)
+        loadReplies(commentId, day)
       } else {
-        setComments((prev) =>
+        setCommentsForDay(day, (prev) =>
           prev.map((c) =>
             c.id === commentId ? { ...c, showReplies: true } : c,
           ),
@@ -540,11 +534,13 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
         }
       }
 
-      const chakraDay = selectedDay === "global" ? 0 : selectedDay
-      await addReflection(chakraDay, message.trim(), isAnonymous, undefined, imageUrl)
+      await addReflection(selectedDay, message.trim(), isAnonymous, undefined, imageUrl)
       setMessage("")
       setSelectedImage(null)
-      await loadComments()
+      await loadAllDays()
+      setTimeout(() => {
+        dayScrollRefs.current[selectedDay]?.scrollToEnd({ animated: true })
+      }, 150)
     } catch (err) {
       if (__DEV__) {
         console.error("Error submitting comment:", err)
@@ -570,12 +566,10 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
         return
       }
 
-      const chakraDay = selectedDay === "global" ? 0 : selectedDay
-      await addReflection(chakraDay, replyMessage.trim(), isAnonymous, parentId)
+      await addReflection(selectedDay, replyMessage.trim(), isAnonymous, parentId)
       setReplyMessage("")
       setReplyingTo(null)
-      // Reload replies for this comment
-      await loadReplies(parentId)
+      await loadReplies(parentId, selectedDay)
     } catch (err) {
       if (__DEV__) {
         console.error("Error submitting reply:", err)
@@ -599,20 +593,15 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
     return date.toLocaleDateString()
   }
 
-  // All (global) uses white-violet light; individual days use their chakra color
-  const ALL_FRAME = {
-    text: "#E8E0F5",
-    glow: "#E6DCFF",
-    frame: "rgba(240, 235, 255, 0.12)",
-  }
-  const borderChakraColor =
-    selectedDay === "global" ? ALL_FRAME : CHAKRA_COLORS[selectedDay]
+  const borderChakraColor = CHAKRA_COLORS[selectedDay]
 
   const CommentItem = ({
     comment,
+    day,
     level = 0,
   }: {
     comment: CommentWithReplies
+    day: number
     level?: number
   }) => {
     const isReply = level > 0
@@ -622,7 +611,6 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
     const chakra = DAY_TO_CHAKRA[comment.chakraDay]
     const chakraColor = CHAKRA_COLORS[comment.chakraDay]
     const chakraName = CHAKRA_NAMES[comment.chakraDay]
-    // Always have a display profile: Firestore when available, else deterministic fallback (works in dev and iOS production when profiles fail to load)
     const fallbackProfile = getTestProfileForUser(comment.userId ?? "")
     const fromStore = userProfiles[comment.userId ?? ""]
     const displayProfile = {
@@ -631,13 +619,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
       location: fromStore?.location ?? fallbackProfile.location,
     }
 
-    // Use selected day's chakra color for theme (when viewing global, use comment's own chakra color)
-    const themeChakraColor =
-      selectedDay === "global"
-        ? chakraColor
-        : typeof selectedDay === "number"
-          ? CHAKRA_COLORS[selectedDay]
-          : chakraColor
+    const themeChakraColor = CHAKRA_COLORS[day]
 
     // Get current user's reaction for this comment
     const currentUserReaction = comment.id ? commentReactions[comment.id] : null
@@ -675,8 +657,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
         return updated
       })
 
-      // Update comment reactions count optimistically
-      setComments((prev) =>
+      setCommentsForDay(comment.chakraDay, (prev) =>
         prev.map((c) => {
           if (c.id === comment.id) {
             const currentReactions = c.reactions || {
@@ -685,21 +666,16 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
               less: 0,
             }
             const updatedReactions = { ...currentReactions }
-
-            // Remove previous reaction count
             if (previousReaction) {
               updatedReactions[previousReaction] = Math.max(
                 0,
                 updatedReactions[previousReaction] - 1,
               )
             }
-
-            // Add new reaction count
             if (newReaction) {
               updatedReactions[newReaction] =
                 (updatedReactions[newReaction] || 0) + 1
             }
-
             return { ...c, reactions: updatedReactions }
           }
           return c
@@ -720,6 +696,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
             (sanctuaryUserData?.minusPopupShownCount ?? 0) < 3
           ) {
             setShepherdModalReflectionId(comment.id ?? null)
+            setShepherdModalDay(comment.chakraDay)
           }
         } else {
           // Removing reaction
@@ -736,8 +713,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
           }
           return updated
         })
-        // Revert reaction counts
-        setComments((prev) =>
+        setCommentsForDay(comment.chakraDay, (prev) =>
           prev.map((c) => {
             if (c.id === comment.id) {
               const currentReactions = c.reactions || {
@@ -746,8 +722,6 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 less: 0,
               }
               const updatedReactions = { ...currentReactions }
-
-              // Revert: add back previous, remove new
               if (previousReaction) {
                 updatedReactions[previousReaction] =
                   (updatedReactions[previousReaction] || 0) + 1
@@ -758,7 +732,6 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                   updatedReactions[newReaction] - 1,
                 )
               }
-
               return { ...c, reactions: updatedReactions }
             }
             return c
@@ -816,23 +789,6 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
               marginBottom: 10,
             }}
           >
-            {selectedDay === "global" && !isReply && (
-              <View
-                style={{
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderRadius: 6,
-                  backgroundColor: `${chakraColor.text}20`,
-                }}
-              >
-                <AppText
-                  font="instrument-regular"
-                  style={{ color: chakraColor.text, fontSize: 10 }}
-                >
-                  {getDayName(comment.chakraDay).slice(0, 3)}
-                </AppText>
-              </View>
-            )}
             <View style={{ flex: 1 }} />
             <AppText
               font="instrument-regular"
@@ -1052,7 +1008,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                                 : prev,
                             )
                           }
-                          setComments((prev) => {
+                          setCommentsForDay(comment.chakraDay, (prev) => {
                             const followedSet = new Set(
                               followed
                                 ? (sanctuaryUserData?.followedUserIds ?? []).filter((id) => id !== targetId)
@@ -1070,7 +1026,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                               const bH = heartedSet.has(b.userId)
                               if (aH && !bH) return -1
                               if (!aH && bH) return 1
-                              return b.timestamp.getTime() - a.timestamp.getTime()
+                              return a.timestamp.getTime() - b.timestamp.getTime()
                             })
                           })
                         } catch (e) {
@@ -1223,7 +1179,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                   const uid = currentUserId ?? (await getUserId().catch(() => null))
                   if (uid) {
                     await addHiddenReflection(uid, comment.id)
-                    setComments((prev) => prev.filter((c) => c.id !== comment.id))
+                    setCommentsForDay(comment.chakraDay, (prev) => prev.filter((c) => c.id !== comment.id))
                     setSanctuaryUserData((prev) =>
                       prev
                         ? {
@@ -1234,6 +1190,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                     )
                     if ((sanctuaryUserData?.minusPopupShownCount ?? 0) < 3) {
                       setShepherdModalReflectionId(comment.id)
+                      setShepherdModalDay(comment.chakraDay)
                     }
                   }
                 } catch (e) {
@@ -1311,12 +1268,12 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
             {/* View Replies Button */}
             {hasReplies && (
               <Pressable
-                onPress={() => {
-                  if (comment.id) {
-                    toggleReplies(comment.id)
-                    addHapticFeedback(HapticStrength.Light)
-                  }
-                }}
+                  onPress={() => {
+                    if (comment.id) {
+                      toggleReplies(comment.id, day)
+                      addHapticFeedback(HapticStrength.Light)
+                    }
+                  }}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -1471,6 +1428,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                   <CommentItem
                     key={reply.id}
                     comment={reply}
+                    day={day}
                     level={level + 1}
                   />
                 ))}
@@ -1655,20 +1613,18 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 >
                   Social Sanctuary
                 </AppText>
-                {selectedDay !== "global" && (
-                  <AppText
-                    font="instrument-medium"
-                    size="sm"
-                    style={{
-                      color: CHAKRA_COLORS[selectedDay].text,
-                      textAlign: "center",
-                      marginTop: 2,
-                      opacity: 0.9,
-                    }}
-                  >
-                    {getChakraName(selectedDay)} Chakra
-                  </AppText>
-                )}
+                <AppText
+                  font="instrument-medium"
+                  size="sm"
+                  style={{
+                    color: CHAKRA_COLORS[selectedDay].text,
+                    textAlign: "center",
+                    marginTop: 2,
+                    opacity: 0.9,
+                  }}
+                >
+                  {getChakraName(selectedDay)} Chakra
+                </AppText>
               </View>
             </View>
             {/* Refresh feed - earth icon spins while refreshing */}
@@ -1737,45 +1693,21 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
               paddingHorizontal: 4,
             }}
           >
-            <Pressable
-              onPress={() => setSelectedDay("global")}
-              style={{
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                borderRadius: 8,
-                backgroundColor:
-                  selectedDay === "global"
-                    ? "rgba(232, 224, 245, 0.25)"
-                    : "transparent",
-                borderWidth: selectedDay === "global" ? 1 : 0,
-                borderColor:
-                  selectedDay === "global"
-                    ? "rgba(232, 224, 245, 0.5)"
-                    : "transparent",
-              }}
-            >
-              <AppText
-                font="instrument-regular"
-                style={{
-                  color:
-                    selectedDay === "global"
-                      ? "#E8E0F5"
-                      : "rgba(255, 255, 255, 0.4)",
-                  fontSize: 10,
-                }}
-              >
-                All
-              </AppText>
-            </Pressable>
             {DAY_NAMES.map((dayName, index) => {
-              const chakraColor = CHAKRA_COLORS[index] // Use object with text property, not getChakraColor which returns string
+              const chakraColor = CHAKRA_COLORS[index]
               const isSelected = selectedDay === index
               const chakraBallImage = getChakraImage(index)
 
               return (
                 <Pressable
                   key={index}
-                  onPress={() => setSelectedDay(index)}
+                  onPress={() => {
+                    setSelectedDay(index)
+                    pagerRef.current?.scrollToOffset({
+                      offset: index * screenWidth,
+                      animated: true,
+                    })
+                  }}
                   style={{
                     width: 28,
                     height: 28,
@@ -1807,66 +1739,99 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* Comments List - Hero Section - Maximum Space for Connection */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 12, paddingTop: 8 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={EARTH_COLORS.accent}
-            />
-          }
-        >
-          {isLoading ? (
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 40,
-              }}
+        {/* Comments by day - swipeable horizontal pager (one page per chakra day) */}
+        {isLoading ? (
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingVertical: 40,
+            }}
+          >
+            <ActivityIndicator size="large" color={EARTH_COLORS.accent} />
+            <AppText
+              style={{ color: EARTH_COLORS.textSecondary, marginTop: 12 }}
             >
-              <ActivityIndicator size="large" color={EARTH_COLORS.accent} />
-              <AppText
-                style={{ color: EARTH_COLORS.textSecondary, marginTop: 12 }}
-              >
-                Gathering community wisdom...
-              </AppText>
-            </View>
-          ) : comments.length === 0 ? (
-            <View style={{ alignItems: "center", paddingVertical: 40 }}>
-              <Ionicons
-                name="people-outline"
-                size={64}
-                color={EARTH_COLORS.cardBorder}
-              />
-              <AppText
-                style={{
-                  color: EARTH_COLORS.textSecondary,
-                  marginTop: 16,
-                  textAlign: "center",
-                }}
-              >
-                {selectedDay === "global"
-                  ? "No reflections yet.\nBe the first to share your experience."
-                  : `No reflections yet for ${DAY_NAMES[selectedDay as number]}.\nBe the first to share your experience.`}
-              </AppText>
-            </View>
-          ) : (
-            <View>
-              {comments.map((comment, index) => (
-                <Animated.View
-                  key={comment.id}
-                  entering={FadeIn.delay(Math.min(index * 80, 400)).duration(350)}
-                >
-                  <CommentItem comment={comment} />
-                </Animated.View>
-              ))}
-            </View>
-          )}
-        </ScrollView>
+              Gathering community wisdom...
+            </AppText>
+          </View>
+        ) : (
+          <FlatList
+            ref={pagerRef}
+            data={DAYS}
+            keyExtractor={(item) => String(item)}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => {
+              const x = e.nativeEvent.contentOffset.x
+              const index = Math.round(x / screenWidth)
+              setSelectedDay(Math.max(0, Math.min(6, index)))
+            }}
+            getItemLayout={(_: unknown, index: number) => ({
+              length: screenWidth,
+              offset: index * screenWidth,
+              index,
+            })}
+            initialScrollIndex={Math.max(0, Math.min(6, selectedDay))}
+            renderItem={({ item: day }) => {
+              const dayComments = commentsByDay[day] ?? []
+              return (
+                <View style={{ width: screenWidth, flex: 1 }}>
+                  <ScrollView
+                    ref={(r) => {
+                      dayScrollRefs.current[day] = r
+                    }}
+                    onContentSizeChange={() => {
+                      dayScrollRefs.current[day]?.scrollToEnd({ animated: false })
+                    }}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ padding: 12, paddingTop: 8, paddingBottom: 24 }}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                      <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={EARTH_COLORS.accent}
+                      />
+                    }
+                  >
+                    {dayComments.length === 0 ? (
+                      <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                        <Ionicons
+                          name="people-outline"
+                          size={64}
+                          color={EARTH_COLORS.cardBorder}
+                        />
+                        <AppText
+                          style={{
+                            color: EARTH_COLORS.textSecondary,
+                            marginTop: 16,
+                            textAlign: "center",
+                          }}
+                        >
+                          No reflections yet for {DAY_NAMES[day]}.\nBe the first to share your experience.
+                        </AppText>
+                      </View>
+                    ) : (
+                      <View>
+                        {dayComments.map((comment, index) => (
+                          <Animated.View
+                            key={comment.id}
+                            entering={FadeIn.delay(Math.min(index * 80, 400)).duration(350)}
+                          >
+                            <CommentItem comment={comment} day={day} />
+                          </Animated.View>
+                        ))}
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
+              )
+            }}
+          />
+        )}
 
         {/* Input Section - Engaging and Easy to Use */}
         <View
@@ -1993,7 +1958,10 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
         visible={!!shepherdModalReflectionId}
         transparent
         animationType="fade"
-        onRequestClose={() => setShepherdModalReflectionId(null)}
+        onRequestClose={() => {
+          setShepherdModalReflectionId(null)
+          setShepherdModalDay(null)
+        }}
       >
         <Pressable
           style={{
@@ -2003,7 +1971,10 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
             alignItems: "center",
             padding: 24,
           }}
-          onPress={() => setShepherdModalReflectionId(null)}
+          onPress={() => {
+            setShepherdModalReflectionId(null)
+            setShepherdModalDay(null)
+          }}
         >
           <Pressable
             style={{
@@ -2032,13 +2003,15 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
               <Pressable
                 onPress={async () => {
                   const id = shepherdModalReflectionId
+                  const day = shepherdModalDay
                   setShepherdModalReflectionId(null)
-                  if (!id) return
+                  setShepherdModalDay(null)
+                  if (!id || day === null) return
                   try {
                     const userId = await getUserId()
                     await addHiddenReflection(userId, id)
                     await incrementMinusPopupShown(userId)
-                    setComments((prev) => prev.filter((c) => c.id !== id))
+                    setCommentsForDay(day, (prev) => prev.filter((c) => c.id !== id))
                     setSanctuaryUserData((prev) =>
                       prev
                         ? {
@@ -2069,6 +2042,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
               <Pressable
                 onPress={async () => {
                   setShepherdModalReflectionId(null)
+                  setShepherdModalDay(null)
                   try {
                     const userId = await getUserId()
                     await incrementMinusPopupShown(userId)

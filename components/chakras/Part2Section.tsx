@@ -39,23 +39,23 @@ const Part2Section = ({ chakra }: { chakra: Chakra }) => {
       >
         <SectionHeader subtitle={"— PART II —"} title={"GOING WITHIN"} />
         <TextButtonSection
-          heading="HEAD TO HEART"
-          description="Each chakra holds one of the 7 Divine Laws of the Universe. This ancestral knowledge acts as a roadmap for identifying your authentic self."
+          heading="SOUND HEALING"
+          description="Specific frequencies vibrate the chakras into alignment for energetic equilibrium, well-being, and emotional healing."
           buttonText="Path 1"
-          buttonSubText="Ancestral Knowledge"
+          buttonSubText="Frequency"
           onPress={() => {
-            router.push(`/(chakras)/HeadToHeart?chakra=${chakra}`)
+            router.push(`/(chakras)/SoundBath?chakra=${chakra}`)
             addHapticFeedback(HapticStrength.Medium)
           }}
         />
 
         <TextButtonSection
-          heading="SOUND HEALING"
-          description="Specific frequencies vibrate the chakras into alignment for energetic equilibrium, well-being, and emotional healing."
+          heading="HEAD TO HEART"
+          description="Each chakra holds one of the 7 Divine Laws of the Universe. This ancestral knowledge acts as a roadmap for identifying your authentic self."
           buttonText="Path 2"
-          buttonSubText="Frequency"
+          buttonSubText="Ancestral Knowledge"
           onPress={() => {
-            router.push(`/(chakras)/SoundBath?chakra=${chakra}`)
+            router.push(`/(chakras)/HeadToHeart?chakra=${chakra}`)
             addHapticFeedback(HapticStrength.Medium)
           }}
         />

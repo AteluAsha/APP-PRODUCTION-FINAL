@@ -9,7 +9,10 @@
 
 import { speakAsAnua, synthesizeAnuaVoice } from "./elevenlabs"
 import { askAnua } from "./gemini"
-import { ANUA_INTRO_RITUAL_SCRIPT } from "@/src/constants/anuaScripts"
+import {
+  ANUA_INTRO_FIRST_PHRASE,
+  ANUA_INTRO_RITUAL_SCRIPT,
+} from "@/src/constants/anuaScripts"
 import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
 
@@ -26,14 +29,24 @@ const RITUAL_VOICE_CONFIG = {
 /**
  * Intro Ritual (Threshold)
  *
- * Triggered when the main audio intro finishes.
- * Anua speaks the intro ritual script to prepare the student for their journey.
+ * Triggered when opening Anua from waiting room (first time). Anua speaks the intro script.
+ * If the user leaves the chat before or during playback, pass isCancelled so we do not play.
  *
- * @returns Promise that resolves when the ritual completes
+ * @param isCancelled - Optional; when true, do not start or continue playback (user left Anua chat)
+ * @returns Promise that resolves when the ritual completes or is cancelled
  */
-export const performIntroRitual = async (): Promise<void> => {
+export const performIntroRitual = async (
+  isCancelled?: () => boolean,
+): Promise<void> => {
   try {
-    await speakAsAnua(ANUA_INTRO_RITUAL_SCRIPT, RITUAL_VOICE_CONFIG)
+    // Short phrase first so playback starts quickly on first open
+    await speakAsAnua(
+      ANUA_INTRO_FIRST_PHRASE,
+      RITUAL_VOICE_CONFIG,
+      isCancelled,
+    )
+    if (isCancelled?.()) return
+    await speakAsAnua(ANUA_INTRO_RITUAL_SCRIPT, RITUAL_VOICE_CONFIG, isCancelled)
   } catch (error) {
     if (__DEV__) {
       console.error("Error performing Intro Ritual:", error)

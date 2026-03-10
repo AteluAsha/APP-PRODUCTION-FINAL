@@ -30,6 +30,7 @@ import {
   openSystemShare,
 } from "@/utils/shareDestinations"
 import { ShareDestinationPicker } from "@/components/sharing/ShareDestinationPicker"
+import { getUserId } from "@/src/services/userId"
 
 export interface FindFriendsModalProps {
   visible: boolean
@@ -46,7 +47,7 @@ export function FindFriendsModal({
   onClose,
   startDate,
   courseStartDateISO,
-  referralCode,
+  referralCode: referralCodeProp,
 }: FindFriendsModalProps) {
   const [status, setStatus] = useState<
     | "idle"
@@ -61,9 +62,23 @@ export function FindFriendsModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showCopied, setShowCopied] = useState(false)
   const [showSharePicker, setShowSharePicker] = useState(false)
+  const [resolvedReferralCode, setResolvedReferralCode] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (visible && !referralCodeProp) {
+      getUserId().then(setResolvedReferralCode).catch(() => setResolvedReferralCode(null))
+    } else if (!visible) {
+      setResolvedReferralCode(null)
+    }
+  }, [visible, referralCodeProp])
+
+  const referralCode = referralCodeProp ?? resolvedReferralCode ?? undefined
   const referralLink = generateReferralLink(referralCode, courseStartDateISO)
-  const inviteMessage = generateInviteMessage({ startDate, referralLink })
+  const inviteMessage = generateInviteMessage({
+    startDate,
+    referralLink,
+    senderSoulSchoolId: referralCode,
+  })
 
   const loadContacts = useCallback(async () => {
     if (!visible) return

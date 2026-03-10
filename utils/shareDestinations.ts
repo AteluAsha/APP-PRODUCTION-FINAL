@@ -66,7 +66,9 @@ export function generateInviteMessage(options: {
   message += `\n\nWith you in spirit. ✨`
   if (senderSoulSchoolId) {
     message += `\n\nSoul School ID: ${senderSoulSchoolId}`
+    message += `\n\nAfter you download the app, enter this ID in Tribe Chat to sync journeys.`
   }
+  message += `\n\nGet the app: soulschool.app`
   return message
 }
 

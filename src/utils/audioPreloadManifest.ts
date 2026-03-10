@@ -131,6 +131,64 @@ function buildManifest(): AudioHeadEntry[] {
 const MANIFEST = buildManifest()
 
 /**
+ * Returns manifest entries for a single chakra (one day's audio).
+ * Used for backup cache: when a day opens or user presses any audio, trigger full-file download of all that day's audio one at a time.
+ */
+export function getManifestEntriesForChakra(chakra: Chakra): AudioHeadEntry[] {
+  const c = chakra as string
+  return MANIFEST.filter(
+    (e) =>
+      e.audioId.startsWith(`crystal_bowl_${c}_`) ||
+      e.audioId.startsWith(`tuning_fork_${c}_`) ||
+      e.audioId === `embodiment_${c}` ||
+      e.audioId.startsWith(`embodiment_${c}_`) ||
+      e.audioId.startsWith(`head_to_heart_${c}_`),
+  )
+}
+
+/**
+ * Preload full files for a single day (chakra) in the background, one at a time.
+ * Backup trigger: when a day opens or when user presses any audio on that day, run this so all that day's audio is cached even if waiting room was skipped.
+ * Skips entries already cached; uses same rate limit and resumable download as preloadAllAudioFullFiles.
+ */
+export async function preloadFullFilesForChakra(
+  storage: FirebaseStorage | null,
+  chakra: Chakra,
+): Promise<{ done: number; skipped: number; failed: number }> {
+  if (!storage) return { done: 0, skipped: 0, failed: 0 }
+  const entries = getManifestEntriesForChakra(chakra)
+  let done = 0
+  let skipped = 0
+  let failed = 0
+  for (const { audioId, storagePath } of entries) {
+    try {
+      const existing = await getLocalAudioUri(audioId)
+      if (existing) {
+        skipped += 1
+        continue
+      }
+      if (!checkRateLimit("firebase")) {
+        await waitForRateLimit("firebase")
+      }
+      const url = await getDownloadURL(ref(storage, storagePath))
+      await downloadAndCacheAudioResumable(url, audioId)
+      done += 1
+    } catch (err) {
+      if (__DEV__) {
+        console.warn(`[audioPreload] Chakra ${chakra} full failed for ${audioId}:`, err)
+      }
+      failed += 1
+    }
+  }
+  if (__DEV__ && (done > 0 || failed > 0)) {
+    console.log(
+      `[audioPreload] Chakra ${chakra} full: ${done} downloaded, ${skipped} skipped, ${failed} failed`,
+    )
+  }
+  return { done, skipped, failed }
+}
+
+/**
  * Preload the first ~3 min (head) of all app audio in the background.
  * Call after first paint; skips entries that already have head cached.
  * Respects rate limit; one at a time to avoid Firebase throttling.

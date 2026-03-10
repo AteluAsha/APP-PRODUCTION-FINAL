@@ -9,7 +9,8 @@ import { Chakra } from "@/types/chakras/Chakra"
 
 /** Default orb distance from top; Throat (Day 5) uses more so orb sits at throat, not over face. */
 const DEFAULT_CHAKRA_ORB_MARGIN_TOP = 64
-const THROAT_CHAKRA_ORB_MARGIN_TOP = 212
+/** Throat: moved down so blue orb sits at throat on hero image, not on chin (Android). */
+const THROAT_CHAKRA_ORB_MARGIN_TOP = 308
 
 /** Throat header: shift background right so model isn't stacked under orb (crop left, show more right). */
 const THROAT_HEADER_IMAGE_SHIFT_RIGHT_PX = 28

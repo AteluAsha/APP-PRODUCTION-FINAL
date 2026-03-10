@@ -18,11 +18,12 @@
  */
 
 import React from "react"
-import { View, Image, Pressable, Platform } from "react-native"
+import { View, Image, Pressable, Platform, Linking, AppState } from "react-native"
 import { ScrollView } from "react-native-gesture-handler"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
+import { useIsFocused } from "@react-navigation/native"
 import {
   getFormattedNextMondayDate,
   getNextMondayDate,
@@ -34,6 +35,7 @@ import {
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
 } from "@/constants/layout"
+import { ARCHETYPE_QUIZ_URL } from "@/constants/sharing"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import Animated, {
@@ -68,9 +70,10 @@ import {
 import { CommunicationReminderModal } from "@/components/chakras/CommunicationReminderModal"
 
 // Countdown clock dimensions - larger for presence, softer feminine design
-const COUNTDOWN_BOX_SIZE = 64
-const COUNTDOWN_BOX_GAP = 6
-const COUNTDOWN_BOX_RADIUS = 12
+// Android: 10% larger for better visibility on device
+const COUNTDOWN_BOX_SIZE = Platform.OS === "android" ? 70 : 64
+const COUNTDOWN_BOX_GAP = Platform.OS === "android" ? 7 : 6
+const COUNTDOWN_BOX_RADIUS = Platform.OS === "android" ? 13 : 12
 const COUNTDOWN_LABEL_MARGIN = 4
 
 // Chakra images for mysterious background effect
@@ -145,9 +148,24 @@ export const WaitingScreen = ({
   const [showCommunicationModal, setShowCommunicationModal] = useState(false)
   const currentDay = getCurrentDayOfWeek()
   const chakraName = getChakraName(currentDay)
+  const isFocused = useIsFocused()
+  const [appState, setAppState] = useState(AppState.currentState)
 
-  // Gentle reminders: show 60s after entering waiting room if permission not yet granted (somatic, non-demanding)
   useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => setAppState(next))
+    return () => sub.remove()
+  }, [])
+
+  // Gentle reminders: show 60s after entering waiting room if permission not yet granted (somatic, non-demanding).
+  // Only run the timer when this screen is focused AND app is in foreground. If the user opens Anua, or taps
+  // "While You Wait" (opens quiz in browser → app goes to background), we clear the timer and modal so when
+  // they return the overlay never blocks the waiting room.
+  useEffect(() => {
+    const inForeground = appState === "active"
+    if (!isFocused || !inForeground) {
+      setShowCommunicationModal(false)
+      return
+    }
     let t: ReturnType<typeof setTimeout> | undefined
     const run = async () => {
       if (await hasNotificationPermission()) return
@@ -157,7 +175,17 @@ export const WaitingScreen = ({
     return () => {
       if (t) clearTimeout(t)
     }
-  }, [])
+  }, [isFocused, appState])
+
+  // Safety: auto-dismiss communication modal after 2 min so Android never gets stuck with an invisible/touch-blocking overlay (RN Modal can leave overlay when buttons fail)
+  useEffect(() => {
+    if (!showCommunicationModal) return
+    const safety = setTimeout(() => {
+      setShowCommunicationModal(false)
+      if (__DEV__) console.warn("[WaitingScreen] Communication modal auto-dismissed (safety timeout)")
+    }, 2 * 60 * 1000)
+    return () => clearTimeout(safety)
+  }, [showCommunicationModal])
 
   const handleCommunicationAllow = async () => {
     const granted = await requestNotificationPermissions()
@@ -174,8 +202,8 @@ export const WaitingScreen = ({
     setShowCommunicationModal(false)
   }
 
-  // Auto-start preload when user reaches waiting room (once per device): heads first (fast), then full files in background for bulletproof playback once past waiting room.
-  // Set guard only when we're about to start heads so dev-bypass before preload starts leaves guard unset and ChakraHome can run preload.
+  // Waiting room ALWAYS begins full downloads of all course audio: heads first (fast), then full files in background.
+  // One-time guard so it runs only once per device. Any bypass (e.g. lifetime direct to day) has backup triggers on day open and on any audio press.
   useEffect(() => {
     let cancelled = false
     getAudioPreloadStarted().then((alreadyStarted) => {
@@ -338,7 +366,13 @@ export const WaitingScreen = ({
         {hasLifetimeAccess ? (
           <>
             {/* Top section - title and date */}
-            <View style={{ alignItems: "center", maxWidth: 384 }}>
+            <View
+              style={{
+                alignItems: "center",
+                maxWidth: 384,
+                ...(Platform.OS === "android" && { marginTop: 20 }),
+              }}
+            >
               <View style={{ marginBottom: 20 }}>
                 <Image
                   source={require("@/assets/images/7chakras.png")}
@@ -587,6 +621,35 @@ export const WaitingScreen = ({
               </View>
             )}
 
+            {/* While You Wait – archetype quiz (hero-style, under countdown) */}
+            <Pressable
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Light)
+                Linking.openURL(ARCHETYPE_QUIZ_URL)
+              }}
+              style={{
+                marginTop: 20,
+                alignSelf: "center",
+                maxWidth: 280,
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 24,
+                backgroundColor: "rgba(28, 28, 28, 0.95)",
+                borderWidth: 1,
+                borderColor: "rgba(212, 165, 116, 0.7)",
+              }}
+              accessibilityLabel="While You Wait"
+              accessibilityHint="Open archetype quiz in browser"
+            >
+              <AppText
+                font="cormorant-regular"
+                size="base"
+                style={{ color: "rgba(212, 165, 116, 0.95)", textAlign: "center" }}
+              >
+                While You Wait
+              </AppText>
+            </Pressable>
+
             {/* Bottom section - compact For Deepest Embodiment and invite */}
             <View
               style={{ width: "100%", maxWidth: 384, alignItems: "center" }}
@@ -717,9 +780,14 @@ export const WaitingScreen = ({
           </>
         ) : (
           <>
-            {/* Top section - icon, title, description - toward top */}
+            {/* Top section - icon, title, description - moved down a little on Android */}
             <View
-              style={{ alignItems: "center", maxWidth: 384, marginBottom: 16 }}
+              style={{
+                alignItems: "center",
+                maxWidth: 384,
+                marginBottom: 16,
+                ...(Platform.OS === "android" && { marginTop: 36 }),
+              }}
             >
               <View style={{ marginBottom: 24 }}>
                 <Image
@@ -1012,6 +1080,37 @@ export const WaitingScreen = ({
                 </View>
               )}
 
+              {/* While You Wait – archetype quiz (hero-style, under countdown) */}
+              {!(completedTrialCourses === 2) && (
+                <Pressable
+                  onPress={() => {
+                    addHapticFeedback(HapticStrength.Light)
+                    Linking.openURL(ARCHETYPE_QUIZ_URL)
+                  }}
+                  style={{
+                    marginTop: 20,
+                    alignSelf: "center",
+                    maxWidth: 280,
+                    paddingVertical: 12,
+                    paddingHorizontal: 24,
+                    borderRadius: 24,
+                    backgroundColor: "rgba(28, 28, 28, 0.95)",
+                    borderWidth: 1,
+                    borderColor: "rgba(212, 165, 116, 0.7)",
+                  }}
+                  accessibilityLabel="While You Wait"
+                  accessibilityHint="Open archetype quiz in browser"
+                >
+                  <AppText
+                    font="cormorant-regular"
+                    size="base"
+                    style={{ color: "rgba(212, 165, 116, 0.95)", textAlign: "center" }}
+                  >
+                    While You Wait
+                  </AppText>
+                </Pressable>
+              )}
+
               {/* Deepest Embodiment + Build Your Tribe moved to fixed bottom block above icon bar */}
             </View>
 
@@ -1126,7 +1225,7 @@ export const WaitingScreen = ({
         <View
           style={{
             position: "absolute",
-            bottom: 0,
+            bottom: Platform.OS === "android" ? 40 : 0,
             left: 0,
             right: 0,
             paddingBottom: Math.max(insets.bottom, 4) + 20,
@@ -1144,7 +1243,7 @@ export const WaitingScreen = ({
                 paddingVertical: 8,
                 paddingHorizontal: 10,
                 backgroundColor: "rgba(0, 0, 0, 0.4)",
-                borderWidth: 1,
+                borderWidth: Platform.OS === "android" ? 1.5 : 1,
                 borderColor: "rgba(6, 182, 212, 0.5)",
                 shadowColor: "rgba(6, 182, 212, 0.2)",
                 shadowOffset: { width: 0, height: 1 },

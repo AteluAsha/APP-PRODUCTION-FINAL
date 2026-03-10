@@ -4,7 +4,7 @@
  * Running notepad scroll with all reflections, divided by chakra days.
  * Opened from the bottom sheet "Open full diary" or directly.
  */
-import React, { useState, useCallback, useMemo } from "react"
+import React, { useState, useCallback, useMemo, useEffect } from "react"
 import {
   View,
   ScrollView,
@@ -13,9 +13,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  BackHandler,
 } from "react-native"
 import { useRouter, useLocalSearchParams } from "expo-router"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
+import Animated, { runOnJS, FadeIn } from "react-native-reanimated"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
@@ -23,6 +26,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
+import { useTribeChatStore } from "@/hooks/useTribeChatStore"
 import { ActionBar } from "@/components/ActionBar"
 import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
 import { getCurrentDayOfWeek } from "@/utils/date"
@@ -116,14 +120,80 @@ export default function NotesAlongTheWay() {
     )
   }, [filteredNotes])
 
+  // Reverse chronological: newest day and newest note just above input
+  const notesByDaySorted = useMemo(() => {
+    return Object.entries(notesByDay)
+      .sort(([a], [b]) => parseInt(b, 10) - parseInt(a, 10))
+      .map(([dayStr, dayNotes]) => [
+        dayStr,
+        [...dayNotes].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      ] as const)
+  }, [notesByDay])
+
+  const insets = useSafeAreaInsets()
+
+  const goNextChakraDay = useCallback(() => {
+    addHapticFeedback(HapticStrength.Light)
+    setSelectedChakraDay((prev) => {
+      if (prev === "all") return 0
+      return (prev + 1) % 7
+    })
+  }, [])
+  const goPrevChakraDay = useCallback(() => {
+    addHapticFeedback(HapticStrength.Light)
+    setSelectedChakraDay((prev) => {
+      if (prev === "all") return 6
+      return (prev - 1 + 7) % 7
+    })
+  }, [])
+
+  // Horizontal swipe to change chakra day: restricted to header + day selector so it doesn't fight the notes ScrollView
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX(12)
+        .failOffsetY([-18, 18])
+        .minDistance(8)
+        .onEnd((e) => {
+          "worklet"
+          const dx = e.translationX
+          const vx = e.velocityX
+          const threshold = 28
+          const velocityThreshold = 60
+          if (dx > threshold || vx > velocityThreshold) {
+            runOnJS(goPrevChakraDay)()
+          } else if (dx < -threshold || vx < -velocityThreshold) {
+            runOnJS(goNextChakraDay)()
+          }
+        }),
+    [goNextChakraDay, goPrevChakraDay],
+  )
+
   const displayDayName =
     selectedChakraDay === "all"
       ? getDayName(effectiveContext)
       : getDayName(selectedChakraDay)
 
+  const handleBack = useCallback(() => {
+    addHapticFeedback(HapticStrength.Light)
+    router.back()
+  }, [router])
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      handleBack()
+      return true
+    })
+    return () => sub.remove()
+  }, [handleBack])
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <ActionBar />
+      <ActionBar onBackPress={handleBack} />
       <LinearGradient
         colors={[
           "rgba(135, 174, 115, 0.08)",
@@ -135,200 +205,246 @@ export default function NotesAlongTheWay() {
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={styles.header}>
-        <AppText
-          font="instrument-bold"
-          size="2xl"
-          style={[styles.headerText, { color: "#ffffff", marginBottom: 4 }]}
-        >
-          Notes Along the Way
-        </AppText>
-        <AppText
-          font="instrument-regular"
-          size="sm"
-          style={{ color: "rgba(255,255,255,0.7)" }}
-        >
-          {notesCount === 0
-            ? "Your reflections will appear here"
-            : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
-        </AppText>
+      <View style={styles.swipeZone}>
+        <GestureDetector gesture={panGesture}>
+          <View style={styles.header} collapsable={false}>
+            <AppText
+              font="instrument-bold"
+              size="2xl"
+              style={[styles.headerText, { color: "#ffffff", marginBottom: 4 }]}
+            >
+              Notes Along the Way
+            </AppText>
+            <AppText
+              font="instrument-regular"
+              size="sm"
+              style={{ color: "rgba(255,255,255,0.7)" }}
+            >
+              {notesCount === 0
+                ? "Your reflections will appear here"
+                : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
+            </AppText>
+          </View>
+        </GestureDetector>
+        <ChakraDaySelector
+          selectedDay={selectedChakraDay}
+          onSelect={setSelectedChakraDay}
+        />
       </View>
-
-      <ChakraDaySelector
-        selectedDay={selectedChakraDay}
-        onSelect={setSelectedChakraDay}
-      />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardView}
         keyboardVerticalOffset={0}
       >
-        <View style={styles.inputRow}>
-          <LinearGradient
-            colors={[
-              "rgba(135, 174, 115, 0.12)",
-              "rgba(107, 142, 90, 0.08)",
-              "rgba(0, 0, 0, 0.4)",
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.inputGradient}
-          >
-            <TextInput
-              value={noteText}
-              onChangeText={handleTextChange}
-              placeholder={`Share your reflections for ${displayDayName}...`}
-              placeholderTextColor="rgba(255, 255, 255, 0.7)"
-              multiline
-              maxLength={1000}
-              style={styles.textInput}
-              textAlignVertical="top"
-              spellCheck={false}
-              autoCorrect={false}
-            />
-          </LinearGradient>
-          <Pressable
-            onPress={handleAddNote}
-            disabled={!noteText.trim() || isAddingNote}
-            style={[
-              styles.addButton,
-              (!noteText.trim() || isAddingNote) && styles.addButtonDisabled,
-            ]}
-          >
-            <LinearGradient
-              colors={
-                noteText.trim() && !isAddingNote
-                  ? ["rgba(135, 174, 115, 0.4)", "rgba(107, 142, 90, 0.3)"]
-                  : ["rgba(135, 174, 115, 0.15)", "rgba(107, 142, 90, 0.1)"]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.addButtonGradient}
+        <View style={styles.contentColumn}>
+            <Animated.View
+              key={selectedChakraDay}
+              entering={FadeIn.duration(140)}
+              style={{ flex: 1 }}
             >
-              <Ionicons
-                name="send"
-                size={20}
-                color={
-                  noteText.trim() && !isAddingNote
-                    ? "#A8C99A"
-                    : "rgba(135, 174, 115, 0.4)"
-                }
-              />
-            </LinearGradient>
-          </Pressable>
-        </View>
-
-        {filteredNotes.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="leaf-outline"
-              size={56}
-              color="rgba(135, 174, 115, 0.5)"
-            />
-            <AppText
-              font="instrument-regular"
-              size="base"
-              style={{
-                color: "rgba(255,255,255,0.8)",
-                marginTop: 24,
-                textAlign: "center",
-                paddingHorizontal: 24,
-              }}
-            >
-              {selectedChakraDay === "all"
-                ? "Your journey notes will appear here"
-                : `No reflections yet for ${getDayName(selectedChakraDay)}. Share your first thought.`}
-            </AppText>
-            <AppText
-              font="instrument-regular"
-              size="sm"
-              style={{
-                color: "rgba(255,255,255,0.6)",
-                marginTop: 12,
-                textAlign: "center",
-                paddingHorizontal: 24,
-              }}
-            >
-              Reflect on your journey as you progress through each chakra
-            </AppText>
-          </View>
-        ) : (
-          <ScrollView
-            style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
-            contentContainerStyle={styles.scrollContent}
-          >
-            {Object.entries(notesByDay)
-              .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
-              .map(([dayStr, dayNotes]) => {
-                const day = parseInt(dayStr, 10)
-                return (
-                  <View key={day} style={styles.daySection}>
-                    <View style={styles.dayHeader}>
-                      <AppText
-                        font="instrument-bold"
-                        size="lg"
-                        style={{ color: "#A8C99A" }}
-                      >
-                        {getDayName(day)} - {getChakraName(day)}
-                      </AppText>
-                      <AppText
-                        font="instrument-regular"
-                        size="xs"
-                        style={{ color: "rgba(255,255,255,0.6)" }}
-                      >
-                        {dayNotes.length} note{dayNotes.length !== 1 ? "s" : ""}
-                      </AppText>
-                    </View>
-                    {dayNotes.map((note) => (
-                      <View key={note.id} style={styles.noteCard}>
+            {filteredNotes.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="leaf-outline"
+                  size={56}
+                  color="rgba(135, 174, 115, 0.5)"
+                />
+                <AppText
+                  font="instrument-regular"
+                  size="base"
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    marginTop: 24,
+                    textAlign: "center",
+                    paddingHorizontal: 24,
+                  }}
+                >
+                  {selectedChakraDay === "all"
+                    ? "Your journey notes will appear here"
+                    : `No reflections yet for ${getDayName(selectedChakraDay)}. Share your first thought.`}
+                </AppText>
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={{
+                    color: "rgba(255,255,255,0.6)",
+                    marginTop: 12,
+                    textAlign: "center",
+                    paddingHorizontal: 24,
+                  }}
+                >
+                  Reflect on your journey as you progress through each chakra
+                </AppText>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.scrollView}
+                showsVerticalScrollIndicator={false}
+                {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
+                contentContainerStyle={styles.scrollContent}
+              >
+                {notesByDaySorted.map(([dayStr, dayNotes]) => {
+                  const day = parseInt(dayStr, 10)
+                  return (
+                    <View key={day} style={styles.daySection}>
+                      <View style={styles.dayHeader}>
+                        <AppText
+                          font="instrument-bold"
+                          size="lg"
+                          style={{ color: "#A8C99A" }}
+                        >
+                          {getDayName(day)} - {getChakraName(day)}
+                        </AppText>
                         <AppText
                           font="instrument-regular"
                           size="xs"
-                          style={{
-                            color: "rgba(255,255,255,0.5)",
-                            marginBottom: 8,
-                          }}
+                          style={{ color: "rgba(255,255,255,0.6)" }}
                         >
-                          {formatDate(note.createdAt)}
+                          {dayNotes.length} note{dayNotes.length !== 1 ? "s" : ""}
                         </AppText>
-                        <AppText
-                          font="instrument-regular"
-                          size="base"
-                          style={{
-                            color: "rgba(255,255,255,0.9)",
-                            lineHeight: 24,
-                          }}
-                        >
-                          {note.content}
-                        </AppText>
-                        <Pressable
-                          onPress={() => {
-                            addHapticFeedback(HapticStrength.Light)
-                            useAnuaChatStore
-                              .getState()
-                              .open({ initialMessage: note.content })
-                          }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          style={{ alignSelf: "flex-start", marginTop: 8 }}
-                        >
+                      </View>
+                      {dayNotes.map((note) => (
+                        <View key={note.id} style={styles.noteCard}>
                           <AppText
                             font="instrument-regular"
                             size="xs"
-                            style={{ color: "rgba(255,255,255,0.4)" }}
+                            style={{
+                              color: "rgba(255,255,255,0.5)",
+                              marginBottom: 8,
+                            }}
                           >
-                            Send thought to Anua
+                            {formatDate(note.createdAt)}
                           </AppText>
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                )
-              })}
-          </ScrollView>
-        )}
+                          <AppText
+                            font="instrument-regular"
+                            size="base"
+                            style={{
+                              color: "rgba(255,255,255,0.9)",
+                              lineHeight: 24,
+                            }}
+                          >
+                            {note.content}
+                          </AppText>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginTop: 8,
+                              flexWrap: "wrap",
+                              gap: 8,
+                            }}
+                          >
+                            <Pressable
+                              onPress={() => {
+                                addHapticFeedback(HapticStrength.Light)
+                                useAnuaChatStore
+                                  .getState()
+                                  .open({
+                                    initialMessage: note.content,
+                                    chakraDayOverride: note.chakraDay,
+                                  })
+                              }}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={{ alignSelf: "flex-start" }}
+                            >
+                              <AppText
+                                font="instrument-regular"
+                                size="xs"
+                                style={{ color: "rgba(255,255,255,0.4)" }}
+                              >
+                                Send thought to Anua
+                              </AppText>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => {
+                                addHapticFeedback(HapticStrength.Light)
+                                useTribeChatStore
+                                  .getState()
+                                  .open({ initialMessage: note.content })
+                              }}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={{ alignSelf: "flex-start" }}
+                            >
+                              <AppText
+                                font="instrument-regular"
+                                size="xs"
+                                style={{ color: "rgba(255,255,255,0.4)" }}
+                              >
+                                Send to Tribe
+                              </AppText>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )
+                })}
+              </ScrollView>
+            )}
+            </Animated.View>
+
+            <View
+              style={[
+                styles.inputRow,
+                { paddingBottom: Math.max(insets.bottom, 16) },
+              ]}
+            >
+              <LinearGradient
+                colors={[
+                  "rgba(135, 174, 115, 0.12)",
+                  "rgba(107, 142, 90, 0.08)",
+                  "rgba(0, 0, 0, 0.4)",
+                ]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.inputGradient}
+              >
+                <TextInput
+                  value={noteText}
+                  onChangeText={handleTextChange}
+                  placeholder={`Share your reflections for ${displayDayName}...`}
+                  placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                  multiline
+                  maxLength={1000}
+                  style={styles.textInput}
+                  textAlignVertical="top"
+                  spellCheck={false}
+                  autoCorrect={false}
+                />
+              </LinearGradient>
+              <Pressable
+                onPress={handleAddNote}
+                disabled={!noteText.trim() || isAddingNote}
+                style={[
+                  styles.addButton,
+                  (!noteText.trim() || isAddingNote) && styles.addButtonDisabled,
+                ]}
+              >
+                <LinearGradient
+                  colors={
+                    noteText.trim() && !isAddingNote
+                      ? ["rgba(135, 174, 115, 0.4)", "rgba(107, 142, 90, 0.3)"]
+                      : ["rgba(135, 174, 115, 0.15)", "rgba(107, 142, 90, 0.1)"]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.addButtonGradient}
+                >
+                  <Ionicons
+                    name="send"
+                    size={20}
+                    color={
+                      noteText.trim() && !isAddingNote
+                        ? "#A8C99A"
+                        : "rgba(135, 174, 115, 0.4)"
+                    }
+                  />
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
@@ -339,10 +455,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
   },
-  header: {
+  swipeZone: {
     paddingHorizontal: 24,
     paddingTop: 16,
+    paddingBottom: 4,
+  },
+  header: {
     paddingBottom: 8,
+    minHeight: 56,
+    justifyContent: "center",
   },
   headerText: {
     textShadowColor: "rgba(135, 174, 115, 0.4)",
@@ -352,11 +473,14 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
+  contentColumn: {
+    flex: 1,
+  },
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingTop: 12,
     gap: 12,
     minHeight: 112,
   },

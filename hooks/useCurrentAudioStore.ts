@@ -8,7 +8,7 @@ const UNLOAD_GRACE_MS = 180
 
 /** Wait this long after setSource/setSourceWithPlaylist before navigating to AudioPlayer
  * so the store has source when the screen mounts (avoids "No audio selected" flash). */
-export const AUDIO_READY_DELAY_MS = 320
+export const AUDIO_READY_DELAY_MS = 220
 
 let pendingSetTimeoutId: ReturnType<typeof setTimeout> | null = null
 
@@ -46,12 +46,14 @@ export interface PlaylistItem {
  *
  * Audio hard rules (single-owner, no double-play):
  * - Single active playback: Only one AV.Sound should be active. Full-screen playback is owned by AudioPlayer; mini-player by OtherOriginAudioManager / MusicRoomAudioManager; they never play when pathname is AudioPlayer.
- * - Full-player ownership: When audioOrigin === "full-player", only AudioPlayer creates and owns the sound; it must stop and unload that sound before any reset() and navigation. The full-player track is stopped only in AudioPlayer's focus cleanup (on leave); that cleanup must await stopAsync() and unloadAsync() before calling reset() to prevent double-play and "can't turn off" on trial.
+ * - Full-player ownership: When audioOrigin === "full-player", only AudioPlayer creates and owns the sound; it must stop and unload that sound before any reset() and navigation. The full-player track is stopped only in AudioPlayer.closePlayerAndNavigate (X button or Android back from player). On blur (e.g. opening Notes Along the Way) we do not stop/unload so playback continues and returning shows the same track.
  * - Close rule: Any "close player and navigate" must go through one code path (AudioPlayer.closePlayerAndNavigate) that awaits stop + unload, then reset, then navigate. Prevents double-play when user taps the same or another track.
  * - AudioPlayer never routes to goodbye: only close or revert back. Goodbye is shown only by the course page (ChakraHome) when the user is on it with a completed day.
  * - Completion rule: Day completion (dot) can be set at track end or at 80% (dot only). No progress threshold affects audio or navigation. Goodbye is driven by the course page, not by AudioPlayer.
  *
  * SAFE SPACE (healing audio): Playback may only stop on (1) user closes player, (2) user pauses, (3) user leaves screen (back/revert), or (4) track ends. No other system (Anua, modals, navigation, app state) may call reset() or stop playback. When track ends, player stays open or returns to Audio Library (lifetime); no auto-close. Anua must never control or stop healing audio.
+ *
+ * Full-player position (hard rule): Position is always persisted on close and restored on reopen. Do not reset full-player position without persisting first (closePlayerAndNavigate does persist then reset).
  */
 export type AudioOrigin = "music-room" | "other" | "full-player"
 
@@ -71,10 +73,16 @@ interface CurrentAudioStore {
   currentTrackKey: string | null
   /** Set on play tap so UI shows active (pause) until source is set or fails. Cleared in setSource/setSourceWithPlaylist delayed callback or on reset. */
   pendingTrackKey: string | null
+  /** Full-player track id (e.g. embodiment or Head to Heart audio id) for persisting position on close. */
+  fullPlayerTrackId: string | null
   setPendingTrackKey: (key: string | null) => void
   setPositionMs: (ms: number) => void
   setSeekTo: (ms: number | null) => void
-  setSource: (source: AVPlaybackSource, origin?: AudioOrigin) => void
+  setSource: (
+    source: AVPlaybackSource,
+    origin?: AudioOrigin,
+    opts?: { resumePositionMs?: number; fullPlayerTrackId?: string },
+  ) => void
   setMetadata: (metadata: AudioMetadata | null) => void
   setPrefs: (prefs: AudioPlayerPrefs | null) => void
   setChakraColor: (color: string | null) => void
@@ -100,10 +108,15 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
   seekToMs: null,
   currentTrackKey: null,
   pendingTrackKey: null,
+  fullPlayerTrackId: null,
   setPendingTrackKey: (key) => set({ pendingTrackKey: key }),
   setPositionMs: (ms) => set({ positionMs: ms }),
   setSeekTo: (ms) => set({ seekToMs: ms }),
-  setSource: (source, origin: AudioOrigin = "full-player") => {
+  setSource: (
+    source,
+    origin: AudioOrigin = "full-player",
+    opts?: { resumePositionMs?: number; fullPlayerTrackId?: string },
+  ) => {
     // Never store empty/invalid URI — prevents loading wrong or stub audio (e.g. Android 1:05 bug).
     const hasUri = typeof source === "object" && source !== null && "uri" in source
     const uriStr = hasUri && typeof (source as { uri?: unknown }).uri === "string"
@@ -117,6 +130,8 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
     // new source so managers (MusicRoom, OtherOrigin) can unload their tracks.
     clearPendingSet()
     get().reset({ keepPending: true })
+    const resumePositionMs = opts?.resumePositionMs
+    const fullPlayerTrackId = opts?.fullPlayerTrackId ?? null
     pendingSetTimeoutId = setTimeout(() => {
       pendingSetTimeoutId = null
       set({
@@ -125,6 +140,12 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
         audioOrigin: origin,
         currentTrackKey: null,
         pendingTrackKey: null,
+        ...(origin === "full-player"
+          ? {
+              positionMs: resumePositionMs != null && resumePositionMs > 0 ? resumePositionMs : 0,
+              fullPlayerTrackId,
+            }
+          : { fullPlayerTrackId: null }),
       })
     }, UNLOAD_GRACE_MS)
   },
@@ -188,6 +209,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
       chakraColor: null,
       positionMs: 0,
       seekToMs: null,
+      fullPlayerTrackId: null,
       ...(keep ? {} : { isPlaying: false, currentTrackKey: null, pendingTrackKey: null }),
     })
   },

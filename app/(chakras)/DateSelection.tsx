@@ -228,12 +228,12 @@ export default function DateSelectionScreen() {
             />
           </View>
 
-          {/* Selected Date Display */}
+          {/* Selected Date Display - ~20% larger for visibility (countdown-style block) */}
           {selectedDateISO && (
             <View style={{ marginBottom: 24, alignItems: "center" }}>
               <AppText
                 font="instrument-regular"
-                size="xs"
+                size="sm"
                 style={{
                   color: "rgba(255,255,255,0.4)",
                   textAlign: "center",
@@ -243,15 +243,15 @@ export default function DateSelectionScreen() {
                 Your journey begins
               </AppText>
               <AppText
-                font="instrument-medium"
-                size="lg"
+                font="instrument-bold"
+                size="xl"
                 style={{ color: "#ffffff", textAlign: "center" }}
               >
                 {displayStartDate}
               </AppText>
               <AppText
                 font="instrument-regular"
-                size="xs"
+                size="sm"
                 style={{
                   color: "rgba(255,255,255,0.5)",
                   textAlign: "center",
@@ -263,9 +263,20 @@ export default function DateSelectionScreen() {
             </View>
           )}
 
-          {/* Trials Info - hide for lifetime users (course mode) */}
+          {/* Clarity line under calendar (when no date selected) + Trials Info - hide for lifetime users */}
           {!hasLifetimeAccess && remainingTrials > 0 && !selectedDateISO && (
             <View style={{ marginBottom: 24, alignItems: "center" }}>
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{
+                  color: "#ffffff",
+                  textAlign: "center",
+                  marginBottom: 16,
+                }}
+              >
+                Select A Date To Begin The Somatic Course
+              </AppText>
               <AppText
                 font="instrument-regular"
                 size="xs"
@@ -318,7 +329,7 @@ export default function DateSelectionScreen() {
             </View>
           </View>
 
-          {/* Invite Friend Button */}
+          {/* Invite Friend Button - single border, centered content */}
           <Pressable
             onPress={() => setShowInviteModal(true)}
             style={{
@@ -330,36 +341,32 @@ export default function DateSelectionScreen() {
               backgroundColor: "rgba(135, 174, 115, 0.15)",
               borderWidth: 1,
               borderColor: "rgba(135, 174, 115, 0.3)",
-              shadowColor: "#87AE73",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              elevation: 4,
+              elevation: 2,
             }}
           >
-            <View style={{ width: "100%", alignItems: "center" }}>
-              <View
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons
+                name="heart"
+                size={18}
+                color="rgba(135, 174, 115, 1)"
+                style={{ marginRight: 10 }}
+              />
+              <AppText
+                font="instrument-medium"
+                size="sm"
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
+                  color: "rgba(135, 174, 115, 1)",
+                  textAlign: "center",
                 }}
               >
-                <Ionicons
-                  name="heart"
-                  size={18}
-                  color="rgba(135, 174, 115, 1)"
-                  style={{ marginRight: 10 }}
-                />
-                <AppText
-                  font="instrument-medium"
-                  size="sm"
-                  style={{
-                    color: "rgba(135, 174, 115, 1)",
-                  }}
-                >
-                  Invite a friend to join your journey
-                </AppText>
-              </View>
+                Invite a friend to join your journey
+              </AppText>
             </View>
           </Pressable>
         </ScrollView>

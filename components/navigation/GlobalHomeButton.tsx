@@ -8,8 +8,8 @@
  * For lifetime users: navigates to ChakraHub
  */
 
-import React from "react"
-import { Pressable, StyleSheet, Platform } from "react-native"
+import React, { useEffect, useRef } from "react"
+import { Pressable, StyleSheet, Platform, Animated } from "react-native"
 import { useRouter, usePathname, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Image } from "react-native"
@@ -20,8 +20,18 @@ import { AppText } from "@/components/AppText"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { ICON, ANDROID_PRESS_DELAY_MS } from "@/constants/layout"
+import { useFloatingUIVisibilityStore } from "@/hooks/useFloatingUIVisibilityStore"
 
 export const GlobalHomeButton: React.FC = () => {
+  const visible = useFloatingUIVisibilityStore((s) => s.visible)
+  const opacityRef = useRef(new Animated.Value(1)).current
+  useEffect(() => {
+    Animated.timing(opacityRef, {
+      toValue: visible ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start()
+  }, [visible, opacityRef])
   const router = useRouter()
   const pathname = usePathname()
   const segments = useSegments()
@@ -87,8 +97,10 @@ export const GlobalHomeButton: React.FC = () => {
     segments.includes("Chakras101") ||
     segments.includes("CommitmentGate") ||
     segments.includes("DevPaywall") ||
+    segments.includes("Paywall") ||
     segments.includes("EnergyExchange") ||
     segments.includes("DateSelection") ||
+    segments.includes("NotesAlongTheWay") ||
     segments.includes("TribeChat") ||
     segments.includes("AudioPlayer") ||
     segments.includes("AnuaChat") ||
@@ -96,9 +108,12 @@ export const GlobalHomeButton: React.FC = () => {
     pathname?.includes("/Chakras101") ||
     pathname?.includes("/CommitmentGate") ||
     pathname?.includes("/DevPaywall") ||
+    pathname?.includes("/Paywall") ||
     pathname?.includes("/EnergyExchange") ||
     pathname?.includes("/DateSelection") ||
     pathname?.includes("DateSelection") ||
+    pathname?.includes("/NotesAlongTheWay") ||
+    pathname?.includes("NotesAlongTheWay") ||
     pathname?.includes("/TribeChat") ||
     pathname?.includes("TribeChat") ||
     pathname?.includes("/AudioPlayer") ||
@@ -169,31 +184,40 @@ export const GlobalHomeButton: React.FC = () => {
   }
 
   return (
-    <Pressable
-      onPress={handlePress}
+    <Animated.View
       style={[
-        styles.homeButton,
+        styles.homeButtonWrap,
         {
-          top: Math.max(insets.top, 8) + 8, // Standard placement - as high as possible without hitting status bar
+          top: Math.max(insets.top, 8) + 8,
           right: 16,
+          opacity: opacityRef,
         },
       ]}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
+      pointerEvents={visible ? "auto" : "none"}
     >
-      {/* Always show hero chakra icon - on home screen it navigates to Chakras 101 */}
-      <Image
-        source={require("@/assets/images/7chakras.png")}
-        style={{ width: ICON.homeIcon, height: ICON.homeIcon }}
-        resizeMode="contain"
-      />
-    </Pressable>
+      <Pressable
+        onPress={handlePress}
+        style={styles.homeButton}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        {...(Platform.OS === "android" && { delayPressIn: ANDROID_PRESS_DELAY_MS })}
+      >
+        <Image
+          source={require("@/assets/images/7chakras.png")}
+          style={{ width: ICON.homeIcon, height: ICON.homeIcon }}
+          resizeMode="contain"
+        />
+      </Pressable>
+    </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
-  homeButton: {
+  homeButtonWrap: {
     position: "absolute",
+    zIndex: 100,
+    ...(Platform.OS === "android" && { elevation: 999 }),
+  },
+  homeButton: {
     width: ICON.homeButton,
     height: ICON.homeButton,
     borderRadius: ICON.homeButton / 2,

@@ -22,14 +22,16 @@ This uses **legacy packaging** for native libraries so they are not subject to t
 - **Trade-off:** Slightly larger install size (native libs are packaged in a way that can increase APK size).
 - **No code or dependency upgrades required** for this workaround.
 
-## Long-term fix (optional)
+## Long-term fix (optional) — SDK 53 attempt and blocker
 
-For a proper 16 KB–aligned build and smaller install size:
+A permanent 16 KB fix was attempted by upgrading to **Expo SDK 53** and setting `expo.useLegacyPackaging=false`. The upgrade was reverted because the Android build failed on **expo-updates** with a **KSP task error** (`getChangedFiles` vs `InputChanges` incompatibility). Until Expo or KSP fix that, the project stays on **Expo 52** with **`expo.useLegacyPackaging=true`** so Android builds succeed.
 
-1. Upgrade to **Expo SDK 54+** and **React Native 0.81+** (and update native deps like Reanimated, Stripe, etc.).
-2. Use **NDK r28+** and ensure **AGP 8.5.1+** (this project already uses AGP 8.6 from RN’s catalog).
-3. After upgrading, set `expo.useLegacyPackaging=false` again and do a clean Android build.
-4. Verify in Android Studio’s APK Analyzer that `.so` files show 16 KB alignment (or no alignment warning).
+When the blocker is resolved, the permanent fix is for a proper 16 KB–aligned build:
+
+1. Upgrade to **Expo SDK 53+** (or 54+) and align all Expo packages (`npx expo install --fix`).
+2. Set **NDK r27/r28** in `android/build.gradle` and **`expo.useLegacyPackaging=false`** in `android/gradle.properties`.
+3. Clean build: `./gradlew clean`, remove `android/app/build` and `android/.cxx`, then build with `npx expo run:android` (with device connected).
+4. Verify on Pixel 9 Pro XL: no "Android App Compatibility" dialog; verify in APK Analyzer that `.so` files are 16 KB aligned if desired.
 
 References:
 

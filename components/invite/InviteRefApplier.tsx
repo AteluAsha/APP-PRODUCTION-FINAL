@@ -41,9 +41,8 @@ export function InviteRefApplier() {
       if (!startDateISO) return
       const parsed = new Date(startDateISO + "T00:00:00")
       if (Number.isNaN(parsed.getTime())) return
-      const { courseStartDate, setCourseStartDate, startJourney } =
+      const { setCourseStartDate, startJourney } =
         useChakraJourneyStore.getState()
-      if (courseStartDate) return
       setCourseStartDate(startDateISO)
       startJourney(startDateISO)
       await clearPendingInviteStartDate()

@@ -16,7 +16,7 @@
  * - Access Social Sanctuary (full halls view)
  */
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import {
   View,
   Modal,
@@ -119,21 +119,77 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
     setPostChakraDay(chakraDay)
   }, [chakraDay])
 
-  // Load daily wisdom and top reflections when modal opens
+  const loadProfilesForReflections = useCallback(
+    async (reflections: SanctuaryReflection[]) => {
+      const ids = [...new Set(reflections.map((r) => r.userId))]
+      const results = await Promise.all(
+        ids.map(async (userId) => {
+          try {
+            const profile = await getUserProfile(userId)
+            return profile ? { userId, profile } : null
+          } catch {
+            return null
+          }
+        }),
+      )
+      const next: Record<string, UserProfile> = {}
+      results.forEach((r) => {
+        if (r) next[r.userId] = r.profile
+      })
+      setProfileMap((prev) => ({ ...prev, ...next }))
+    },
+    [],
+  )
+
+  const loadDailyWisdom = useCallback(async () => {
+    try {
+      if (isWisdomEngineAvailable()) {
+        const transmission = await generateDailyTransmission(chakraDay)
+        setDailyWisdom(transmission)
+      } else {
+        setDailyWisdom(null)
+      }
+    } catch (err) {
+      if (__DEV__) {
+        console.error("Error loading daily wisdom:", err)
+      }
+      setDailyWisdom(null)
+    }
+  }, [chakraDay])
+
+  const loadTopReflections = useCallback(async () => {
+    setIsLoadingHighlights(true)
+    try {
+      const top = await getTopReflections(chakraDay)
+      setTopReflections(top)
+      await loadProfilesForReflections(top)
+    } catch (err) {
+      if (__DEV__) {
+        console.error("Error loading top reflections:", err)
+      }
+      setTopReflections([])
+    } finally {
+      setIsLoadingHighlights(false)
+    }
+  }, [chakraDay, loadProfilesForReflections])
+
+  // Load daily wisdom and top reflections when modal opens (defer once so modal/auth context is ready)
   useEffect(() => {
-    if (visible) {
-      loadDailyWisdom()
-      loadTopReflections()
-    } else if (!visible) {
-      // Reset state when modal closes
+    if (!visible) {
       setView("options")
       setMessage("")
       setError(null)
       setTopReflections([])
       setDailyWisdom(null)
       setReflections([])
+      return
     }
-  }, [visible, chakraDay])
+    const t = setTimeout(() => {
+      loadDailyWisdom()
+      loadTopReflections()
+    }, 0)
+    return () => clearTimeout(t)
+  }, [visible, loadDailyWisdom, loadTopReflections])
 
   // Set up real-time subscription for community view (feed follows selected post day)
   useEffect(() => {
@@ -153,59 +209,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
         }
       }
     }
-  }, [visible, view, postChakraDay])
-
-  const loadDailyWisdom = async () => {
-    try {
-      // Use Wisdom Engine to generate dynamic transmission
-      if (isWisdomEngineAvailable()) {
-        const transmission = await generateDailyTransmission(chakraDay)
-        setDailyWisdom(transmission)
-      } else {
-        // Fallback: Wisdom Engine not available
-        setDailyWisdom(null)
-      }
-    } catch (err) {
-      if (__DEV__) {
-        console.error("Error loading daily wisdom:", err)
-      }
-      // Don't show error to user, just leave dailyWisdom as null
-    }
-  }
-
-  const loadProfilesForReflections = async (reflections: SanctuaryReflection[]) => {
-    const ids = [...new Set(reflections.map((r) => r.userId))]
-    const results = await Promise.all(
-      ids.map(async (userId) => {
-        try {
-          const profile = await getUserProfile(userId)
-          return profile ? { userId, profile } : null
-        } catch {
-          return null
-        }
-      }),
-    )
-    const next: Record<string, UserProfile> = {}
-    results.forEach((r) => {
-      if (r) next[r.userId] = r.profile
-    })
-    setProfileMap((prev) => ({ ...prev, ...next }))
-  }
-
-  const loadTopReflections = async () => {
-    setIsLoadingHighlights(true)
-    try {
-      const top = await getTopReflections(chakraDay)
-      setTopReflections(top)
-      await loadProfilesForReflections(top)
-    } catch (err) {
-      if (__DEV__) {
-        console.error("Error loading top reflections:", err)
-      }
-    } finally {
-      setIsLoadingHighlights(false)
-    }
-  }
+  }, [visible, view, postChakraDay, loadProfilesForReflections])
 
   const loadReflections = async () => {
     setIsLoading(true)
@@ -617,7 +621,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                 </View>
 
                 {/* Community Highlights - Earth Tones Design */}
-                {topReflections.length > 0 && (
+                {(isLoadingHighlights || topReflections.length > 0) && (
                   <View style={{ marginTop: 16 }}>
                     <View
                       style={{
@@ -635,6 +639,14 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                         Community Highlights
                       </AppText>
                     </View>
+                    {isLoadingHighlights && topReflections.length === 0 ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 16 }}>
+                        <ActivityIndicator size="small" color="#A8C99A" />
+                        <AppText font="instrument-regular" size="sm" style={{ color: "rgba(255,255,255,0.6)" }}>
+                          Loading highlights…
+                        </AppText>
+                      </View>
+                    ) : (
                     <View style={{ gap: 16 }}>
                       {topReflections.slice(0, 2).map((reflection) => (
                         <View
@@ -757,6 +769,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                         </View>
                       ))}
                     </View>
+                    )}
                   </View>
                 )}
               </View>
