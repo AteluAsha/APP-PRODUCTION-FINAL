@@ -4,7 +4,7 @@
  * Running notepad scroll with all reflections, divided by chakra days.
  * Opened from the bottom sheet "Open full diary" or directly.
  */
-import React, { useState, useCallback, useMemo, useEffect } from "react"
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import {
   View,
   ScrollView,
@@ -72,8 +72,9 @@ export default function NotesAlongTheWay() {
 
   const [noteText, setNoteText] = useState("")
   const [isAddingNote, setIsAddingNote] = useState(false)
+  // Default to chakra of the day when opening; user can change via selector to post for another day.
   const [selectedChakraDay, setSelectedChakraDay] = useState<number | "all">(
-    effectiveContext,
+    currentDay,
   )
 
   const handleAddNote = useCallback(async () => {
@@ -92,6 +93,8 @@ export default function NotesAlongTheWay() {
         type: "journey",
       })
       setNoteText("")
+      // Scroll so new note (now at bottom) is visible just above input
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80)
     } catch (error) {
       if (__DEV__) console.error("Error adding note:", error)
     } finally {
@@ -103,6 +106,8 @@ export default function NotesAlongTheWay() {
     const sanitized = text.replace(/[<>]/g, "")
     if (sanitized.length <= 1000) setNoteText(sanitized)
   }, [])
+
+  const scrollRef = useRef<ScrollView>(null)
 
   const filteredNotes = useMemo(() => {
     if (selectedChakraDay === "all") return notes
@@ -120,15 +125,15 @@ export default function NotesAlongTheWay() {
     )
   }, [filteredNotes])
 
-  // Reverse chronological: newest day and newest note just above input
+  // Bottom-up: oldest first (top of list), newest last (just above input). New comment lands above input; previous moves up.
   const notesByDaySorted = useMemo(() => {
     return Object.entries(notesByDay)
-      .sort(([a], [b]) => parseInt(b, 10) - parseInt(a, 10))
+      .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
       .map(([dayStr, dayNotes]) => [
         dayStr,
         [...dayNotes].sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         ),
       ] as const)
   }, [notesByDay])
@@ -150,7 +155,7 @@ export default function NotesAlongTheWay() {
     })
   }, [])
 
-  // Horizontal swipe to change chakra day: restricted to header + day selector so it doesn't fight the notes ScrollView
+  // Horizontal swipe to change chakra day: works over entire screen (header, selector, notes list).
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
@@ -205,8 +210,8 @@ export default function NotesAlongTheWay() {
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={styles.swipeZone}>
-        <GestureDetector gesture={panGesture}>
+      <GestureDetector gesture={panGesture} style={styles.swipeArea}>
+        <View style={styles.swipeZone}>
           <View style={styles.header} collapsable={false}>
             <AppText
               font="instrument-bold"
@@ -225,19 +230,18 @@ export default function NotesAlongTheWay() {
                 : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
             </AppText>
           </View>
-        </GestureDetector>
-        <ChakraDaySelector
-          selectedDay={selectedChakraDay}
-          onSelect={setSelectedChakraDay}
-        />
-      </View>
+          <ChakraDaySelector
+            selectedDay={selectedChakraDay}
+            onSelect={setSelectedChakraDay}
+          />
+        </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.keyboardView}
-        keyboardVerticalOffset={0}
-      >
-        <View style={styles.contentColumn}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.keyboardView}
+          keyboardVerticalOffset={0}
+        >
+          <View style={styles.contentColumn}>
             <Animated.View
               key={selectedChakraDay}
               entering={FadeIn.duration(140)}
@@ -279,6 +283,7 @@ export default function NotesAlongTheWay() {
               </View>
             ) : (
               <ScrollView
+                ref={scrollRef}
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
                 {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
@@ -445,7 +450,8 @@ export default function NotesAlongTheWay() {
               </Pressable>
             </View>
           </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </GestureDetector>
     </SafeAreaView>
   )
 }
@@ -454,6 +460,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#000",
+  },
+  swipeArea: {
+    flex: 1,
   },
   swipeZone: {
     paddingHorizontal: 24,

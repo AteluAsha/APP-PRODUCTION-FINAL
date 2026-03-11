@@ -1,6 +1,32 @@
-# Android emulator: Metro and real-time updates
+# Android: Metro and real-time updates (emulator + real device)
 
-To see JS/TS changes (e.g. Anua Chat layout fixes) on the Android emulator, the app must load the bundle from Metro and you must reload after edits.
+To see JS/TS changes on Android, the app must load the bundle from Metro and you must reload after edits.
+
+## Real Android device not loading
+
+On a **physical device** (not emulator), the app must reach Metro on your computer. The device cannot use `10.0.2.2` (that is for the emulator only). Use your computer's **LAN IP** (e.g. `192.168.1.x`) so the phone and Mac are on the same Wi‑Fi and the app can load the bundle.
+
+**One command (recommended):**
+```bash
+npm run android:device
+```
+This detects your LAN IP, sets `REACT_NATIVE_PACKAGER_HOSTNAME`, and runs `expo run:android` (build + install + Metro). Keep the terminal open so Metro stays running.
+
+**Manual:** If the script cannot detect your IP, set it yourself. On Mac: System Settings → Network → Wi‑Fi → Details to see your IP. Then:
+```bash
+REACT_NATIVE_PACKAGER_HOSTNAME=192.168.1.XXX env -u CI npx expo run:android
+```
+Replace `192.168.1.XXX` with your computer's IP. Device and computer must be on the same Wi‑Fi.
+
+**Check device is seen:** `adb devices` should list your phone. If not, enable USB debugging (or wireless debugging on Android 11+) and connect.
+
+**If build fails with "SDK location not found":** Set the Android SDK path so Gradle can build. Either:
+- `export ANDROID_HOME=$HOME/Library/Android/sdk` (macOS default if you use Android Studio), then run `npm run android:device` again; or
+- Create `android/local.properties` with one line: `sdk.dir=/path/to/your/Android/sdk` (use your actual SDK path).
+
+---
+
+## Android emulator
 
 ## Android app never loads ("Failed to open app")
 

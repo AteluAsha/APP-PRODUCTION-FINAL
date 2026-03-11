@@ -38,6 +38,24 @@ const ChakrasLayout = () => {
                 gestureEnabled: true,
               }}
             />
+            <Stack.Screen
+              name="ProfileMenu"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen
+              name="Profile"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
+                gestureEnabled: true,
+              }}
+            />
             <Stack.Screen name="DevPaywall" />
             <Stack.Screen name="Paywall" />
             <Stack.Screen name="DateSelection" />

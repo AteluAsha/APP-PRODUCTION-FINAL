@@ -25,13 +25,14 @@ import {
   Platform,
 } from "react-native"
 import { useRouter } from "expo-router"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
+import Animated, { runOnJS, FadeIn, Easing } from "react-native-reanimated"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { LinearGradient } from "expo-linear-gradient"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import Animated, { FadeIn, Easing } from "react-native-reanimated"
 import { BottomSheetView, BottomSheetScrollView } from "@gorhom/bottom-sheet"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
@@ -182,8 +183,9 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
   const [isAddingNote, setIsAddingNote] = useState(false)
   // Context = screen user is viewing (e.g. Root page = 0). Fallback to calendar day if not on chakra page.
   const effectiveContext = contextChakraDay ?? currentDay
+  // Default to chakra of the day when opening; user can change via selector to post for another day.
   const [selectedChakraDay, setSelectedChakraDay] = useState<number | "all">(
-    effectiveContext,
+    currentDay,
   )
 
   useEffect(() => {
@@ -191,10 +193,10 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
     return () => clearTimeout(timer)
   }, [])
 
-  // Reset to screen context when sheet opens (parent passes sheetOpenKey + contextChakraDay)
+  // When sheet opens, default to chakra of the day (user can still change selector to post for another day).
   useEffect(() => {
-    if (sheetOpenKey != null) setSelectedChakraDay(effectiveContext)
-  }, [sheetOpenKey, effectiveContext])
+    if (sheetOpenKey != null) setSelectedChakraDay(currentDay)
+  }, [sheetOpenKey, currentDay])
 
   const handleAddNote = useCallback(async () => {
     const trimmedText = noteText.trim()
@@ -252,6 +254,42 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
       ? getDayName(effectiveContext)
       : getDayName(selectedChakraDay)
 
+  const goNextChakraDay = useCallback(() => {
+    addHapticFeedback(HapticStrength.Light)
+    setSelectedChakraDay((prev) => {
+      if (prev === "all") return 0
+      return (prev + 1) % 7
+    })
+  }, [])
+  const goPrevChakraDay = useCallback(() => {
+    addHapticFeedback(HapticStrength.Light)
+    setSelectedChakraDay((prev) => {
+      if (prev === "all") return 6
+      return (prev - 1 + 7) % 7
+    })
+  }, [])
+
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX(12)
+        .failOffsetY([-18, 18])
+        .minDistance(8)
+        .onEnd((e) => {
+          "worklet"
+          const dx = e.translationX
+          const vx = e.velocityX
+          const threshold = 28
+          const velocityThreshold = 60
+          if (dx > threshold || vx > velocityThreshold) {
+            runOnJS(goPrevChakraDay)()
+          } else if (dx < -threshold || vx < -velocityThreshold) {
+            runOnJS(goNextChakraDay)()
+          }
+        }),
+    [goNextChakraDay, goPrevChakraDay],
+  )
+
   return (
     <BottomSheetView
       style={[styles.container, { paddingBottom: Math.max(insets.bottom, 20) }]}
@@ -263,49 +301,51 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={styles.header}>
-        <AppText
-          font="instrument-bold"
-          size="2xl"
-          style={[
-            styles.headerText,
-            { color: "#ffffff", marginBottom: 8 },
-            t.headerTextShadow,
-          ]}
-        >
-          Notes Along the Way
-        </AppText>
-        <AppText
-          font="instrument-regular"
-          size="sm"
-          style={{ color: "rgba(255,255,255,0.7)" }}
-        >
-          {notesCount === 0
-            ? "Your reflections will appear here"
-            : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
-        </AppText>
-      </View>
+      <GestureDetector gesture={panGesture} style={styles.swipeArea}>
+        <View style={styles.swipeAreaInner}>
+          <View style={styles.header}>
+            <AppText
+              font="instrument-bold"
+              size="2xl"
+              style={[
+                styles.headerText,
+                { color: "#ffffff", marginBottom: 8 },
+                t.headerTextShadow,
+              ]}
+            >
+              Notes Along the Way
+            </AppText>
+            <AppText
+              font="instrument-regular"
+              size="sm"
+              style={{ color: "rgba(255,255,255,0.7)" }}
+            >
+              {notesCount === 0
+                ? "Your reflections will appear here"
+                : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
+            </AppText>
+          </View>
 
-      <ChakraDaySelector
-        selectedDay={selectedChakraDay}
-        onSelect={setSelectedChakraDay}
-      />
+          <ChakraDaySelector
+            selectedDay={selectedChakraDay}
+            onSelect={setSelectedChakraDay}
+          />
 
-      <View style={styles.hintWrap}>
+          <View style={styles.hintWrap}>
         <AppText
           font="instrument-regular"
           size="xs"
           style={[styles.hintText, { color: t.hintColor }]}
         >
-          All notes save to the chakra you're exploring in this moment.
-        </AppText>
-      </View>
+            All notes save to the chakra you're exploring in this moment.
+          </AppText>
+          </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={0}
-      >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={{ flex: 1 }}
+            keyboardVerticalOffset={0}
+          >
         <View style={styles.inputContainer}>
           <LinearGradient
             colors={[...t.inputGradient]}
@@ -433,6 +473,12 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
               .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
               .map(([dayStr, dayNotes]) => {
                 const day = parseInt(dayStr, 10)
+                // Bottom-up: oldest first (top), newest last (just above input)
+                const dayNotesSorted = [...dayNotes].sort(
+                  (a, b) =>
+                    new Date(a.createdAt).getTime() -
+                    new Date(b.createdAt).getTime(),
+                )
                 return (
                   <View key={day} style={styles.daySection}>
                     <View style={styles.dayHeader}>
@@ -448,10 +494,10 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
                         size="xs"
                         style={{ color: "rgba(255,255,255,0.6)" }}
                       >
-                        {dayNotes.length} note{dayNotes.length !== 1 ? "s" : ""}
+                        {dayNotesSorted.length} note{dayNotesSorted.length !== 1 ? "s" : ""}
                       </AppText>
                     </View>
-                    {dayNotes.map((note) => (
+                    {dayNotesSorted.map((note) => (
                       <View
                         key={note.id}
                         style={[
@@ -531,7 +577,9 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
             />
           </Pressable>
         )}
-      </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
+      </GestureDetector>
     </BottomSheetView>
   )
 }
@@ -543,6 +591,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
     overflow: "hidden",
+  },
+  swipeArea: {
+    flex: 1,
+  },
+  swipeAreaInner: {
+    flex: 1,
   },
   header: {
     marginBottom: 12,

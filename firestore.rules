@@ -77,14 +77,14 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Tribe Room Members – connected and pending friends per room
+    // Tribe Room Members – connected and pending friends per room. Delete allowed so users can remove members from their sacred space.
     match /tribeRooms/{roomId}/members/{memberId} {
       allow read: if true;
       allow create: if request.resource.data.displayName is string
                    && request.resource.data.status in ['connected', 'pending']
                    && request.resource.data.invitedAt is string;
       allow update: if true;
-      allow delete: if false;
+      allow delete: if true;
     }
 
     // Scholarship Requests – audit trail for 501(c)(3) compliance
@@ -111,6 +111,17 @@ service cloud.firestore {
       allow create, update: if request.resource.data.keys().hasAll(['isScholarshipUser'])
                              && request.resource.data.isScholarshipUser is bool;
       allow delete: if false;
+    }
+
+    // 7 Chakras Community email list – Soul School updates and new offerings (from Account)
+    match /soul_school_community_emails/{docId} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasAll(['email', 'createdAt'])
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() >= 5
+                    && request.resource.data.email.size() <= 256
+                    && request.resource.data.createdAt is timestamp;
+      allow update, delete: if false;
     }
 
     // Default: Deny all other access

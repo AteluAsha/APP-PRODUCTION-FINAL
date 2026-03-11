@@ -33,6 +33,10 @@ export const TRIAL_HOME_ROOT_CHAKRA = {
 /**
  * Somatic flow: screen and modal transition durations (ms).
  * Slower, gentler transitions for a calm, embodied feel across the app.
+ *
+ * UX rule (homescreens and app-wide): Preload all screen content first; when
+ * ready, cue a single soft fade so all elements appear together. Avoid
+ * staggered or late-loading elements (e.g. one chakra ball popping in after others).
  */
 export const SOMATIC_SCREEN_TRANSITION_MS = 520
 export const SOMATIC_FADE_IN_MS = 1400

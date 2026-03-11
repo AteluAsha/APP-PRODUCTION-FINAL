@@ -31,6 +31,9 @@ export function FloatingUIRevealStrip() {
   const isGoodbyeVisible = useGoodbyeModalStore((s) => s.isGoodbyeVisible)
   const visible = useFloatingUIVisibilityStore((s) => s.visible)
 
+  // Trial only: strip reveals/hides floating nav. Lifetime uses PermanentMenuBar only.
+  if (hasLifetimeAccess) return null
+
   const segmentsLength = segments.length
   const isRootChakrasRoute =
     segmentsLength === 0 ||
@@ -55,8 +58,12 @@ export function FloatingUIRevealStrip() {
     isRootChakrasRoute
   const shouldHideOnWaitingScreen =
     (isChakraHome || isRootChakrasRoute) && !hasLifetimeAccess
+  const isChakraHubLifetime =
+    hasLifetimeAccess &&
+    (pathname?.startsWith("/(chakras)/ChakraHub") || pathname?.includes("ChakraHub"))
 
   const shouldHide =
+    isChakraHubLifetime ||
     isGoodbyeVisible ||
     segments.includes("Chakras101") ||
     segments.includes("CommitmentGate") ||

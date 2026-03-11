@@ -12,10 +12,16 @@
  * - Central hub for navigation
  *
  * ARCHITECTURE: Part of "Two Apps in One" - this is App 2 (Lifetime)
+ *
+ * GLOBAL (iOS + Android): Course-mode logic, "Start a new 7 day alignment" section
+ * (Enter Course Mode / Return / Reset), day-8 auto-off, and Return to lifetime
+ * on ChakraHome apply on all platforms. Only scroll and sanctuary padding use
+ * Platform.OS where an Android-specific fix is required.
  */
 
 import React, { useMemo, useEffect, useState } from "react"
 import { View, Pressable, Image, Platform, Linking, useWindowDimensions } from "react-native"
+import Animated, { FadeIn, Easing } from "react-native-reanimated"
 import { ScrollView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
@@ -25,21 +31,20 @@ import { Ionicons } from "@expo/vector-icons"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import { getChakraIndex } from "@/utils/chakraMapping"
-import { getCurrentDayOfWeek } from "@/utils/date"
+import { getCurrentDayOfWeek, getLocalDateISO } from "@/utils/date"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useChakrasData } from "@/hooks/useChakrasData"
 import { ActionBar } from "@/components/ActionBar"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import GoodbyeModal from "@/components/chakras/GoodbyeModal"
-import { ReturnToCourseModal } from "@/components/chakras/ReturnToCourseModal"
 import { useFocusEffect } from "@react-navigation/native"
-import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
 import {
   FLOATING_NAV_SCROLL_BOTTOM_PADDING,
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
   TRIAL_HOME_ROOT_CHAKRA,
+  SOMATIC_FADE_IN_MS,
 } from "@/constants/layout"
 import { ARCHETYPE_QUIZ_URL } from "@/constants/sharing"
 import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
@@ -86,7 +91,6 @@ export default function ChakraHub() {
     courseStartDate && journeyStarted && lifetimeChosenTimegateJourney,
   )
   const { completedChakra, clearCompletedChakra } = useCompletedChakraStore()
-  const [showReturnToCourseModal, setShowReturnToCourseModal] = useState(false)
   const isGoodbyeVisible = completedChakra != null
 
   useEffect(() => {
@@ -99,7 +103,7 @@ export default function ChakraHub() {
   const closeGoodbyeModal = () => {
     clearCompletedChakra()
   }
-  const { chakrasData } = useChakrasData()
+  const { chakrasData, isLoading: isLoadingChakras } = useChakrasData()
 
   // APP_2 (Lifetime): Safety check - redirect trial users to ChakraHome
   useEffect(() => {
@@ -134,6 +138,7 @@ export default function ChakraHub() {
       },
     }))
   }, [chakrasData])
+  const contentReady = !isLoadingChakras && stackChakraData.length === 7
 
   useFocusEffect(
     React.useCallback(() => {
@@ -170,8 +175,24 @@ export default function ChakraHub() {
     addHapticFeedback(HapticStrength.Light)
   }
 
-  // Somatic journey (lifetime): no course → single path to DateSelection; course scheduled → modal: continue or start new
-  const hasSomaticJourneyScheduled = Boolean(courseStartDate)
+  // Day 8: when the 7-day course has ended, auto-shut off course mode (global: iOS + Android)
+  useEffect(() => {
+    if (
+      !hasLifetimeAccess ||
+      !courseStartDate ||
+      !lifetimeChosenTimegateJourney
+    ) {
+      return
+    }
+    const start = new Date(courseStartDate + "T00:00:00")
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6) // last day of course (day 7 = Sunday)
+    const endISO = end.getFullYear() + "-" + String(end.getMonth() + 1).padStart(2, "0") + "-" + String(end.getDate()).padStart(2, "0")
+    const todayISO = getLocalDateISO()
+    if (todayISO > endISO) {
+      useChakraJourneyStore.getState().setLifetimeChosenTimegateJourney(false)
+    }
+  }, [hasLifetimeAccess, courseStartDate, lifetimeChosenTimegateJourney])
 
   const handleBack = () => {
     addHapticFeedback(HapticStrength.Light)
@@ -199,7 +220,7 @@ export default function ChakraHub() {
       {__DEV__ && (
         <TrialTestFlow onUnlockNextDay={() => {}} currentDay={currentDay} />
       )}
-      <ActionBar onBackPress={handleBack} />
+      <ActionBar onBackPress={handleBack} showBackButton={false} />
       {/* ScrollView first so overlay rendered after it receives touches on Android */}
 
       <ScrollView
@@ -209,19 +230,26 @@ export default function ChakraHub() {
         contentContainerStyle={{
           flexGrow: 1,
           minHeight: "100%",
-          paddingTop: TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP,
+          paddingTop: Math.max(TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP, 56),
           paddingBottom:
             FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
         }}
       >
-        {/* Viewport-sized block: same placement as trial home (IntegratedProgressStack) */}
-        <View
-          style={{
-            minHeight: viewportHeight,
-            maxHeight: viewportHeight,
-          }}
-        >
-          <IntegratedProgressStack
+        {!contentReady ? (
+          <View style={{ minHeight: viewportHeight, flexGrow: 1 }} />
+        ) : (
+          <Animated.View
+            entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
+            style={{ flexGrow: 1 }}
+          >
+            {/* Viewport-sized block: same placement as trial home (IntegratedProgressStack) */}
+            <View
+              style={{
+                minHeight: viewportHeight,
+                maxHeight: viewportHeight,
+              }}
+            >
+              <IntegratedProgressStack
             currentDay={currentDay}
             hasCompletedChakra={hasCompletedChakra}
             hasParticipatedDay={hasParticipatedDay}
@@ -231,11 +259,11 @@ export default function ChakraHub() {
             showAllChakrasForLifetimeHub={true}
             chakraData={stackChakraData}
             router={router}
-          />
-        </View>
+              />
+            </View>
 
-        {/* Sanctuary and actions – scroll to reveal; title up, first button pushed down for cleaner look */}
-        <View style={{ paddingTop: 38, paddingHorizontal: 20, marginBottom: 24 }}>
+            {/* Sanctuary and actions – scroll to reveal; title up, first button pushed down for cleaner look */}
+            <View style={{ paddingTop: 38, paddingHorizontal: 20, marginBottom: 24 }}>
           <AppText
             font="instrument-bold"
             size="lg"
@@ -251,7 +279,12 @@ export default function ChakraHub() {
             Sanctuary
           </AppText>
 
-          <View style={{ gap: 12 }}>
+          <View
+            style={{
+              gap: 12,
+              paddingTop: Platform.OS === "android" ? 56 : 0,
+            }}
+          >
             {/* Gallery of Gnosis */}
             <Pressable
               onPress={handleNavigateToGallery}
@@ -688,90 +721,196 @@ export default function ChakraHub() {
           </View>
         </View>
 
-        {/* Start a new 7 Day Somatic Journey: no course → DateSelection only; course active → modal (continue or start new) */}
-        <View style={{ marginTop: 32 }}>
+        {/* Start a new 7 day alignment – global section (iOS + Android): title, color bar, Enter Course Mode or Return + Reset */}
+        <View
+          style={{
+            marginTop: 48,
+            paddingTop: 28,
+            paddingHorizontal: 20,
+            paddingBottom: 24,
+            alignItems: "center",
+            borderTopWidth: 1,
+            borderTopColor: "rgba(255, 255, 255, 0.06)",
+          }}
+        >
           <AppText
             font="instrument-semibold"
             size="base"
             style={{
-              color: "#ffffff",
-              marginBottom: 12,
+              color: "rgba(255, 255, 255, 0.95)",
+              marginBottom: 16,
               textAlign: "center",
+              letterSpacing: 0.5,
             }}
           >
-            Start a new 7 Day Somatic Journey
+            Start a new 7 day alignment
           </AppText>
-          <Pressable
-            onPress={() => {
-              addHapticFeedback(HapticStrength.Medium)
-              if (hasSomaticJourneyScheduled) {
-                setShowReturnToCourseModal(true)
-              } else {
-                setLifetimeChosenTimegateJourney(true)
-                router.push("/(chakras)/DateSelection")
-              }
+          <LinearGradient
+            colors={[
+              "rgba(180, 60, 60, 0.5)",
+              "rgba(200, 120, 60, 0.45)",
+              "rgba(220, 180, 60, 0.45)",
+              "rgba(100, 180, 120, 0.45)",
+              "rgba(80, 140, 200, 0.45)",
+              "rgba(100, 80, 180, 0.45)",
+              "rgba(140, 80, 160, 0.5)",
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              width: "100%",
+              maxWidth: 280,
+              height: 4,
+              borderRadius: 2,
+              marginBottom: 20,
             }}
-            style={({ pressed }) => [pressed && { opacity: 0.9 }]}
-            accessibilityLabel="Start a new 7 Day Journey"
-            accessibilityHint={
-              hasSomaticJourneyScheduled
-                ? "Continue current course or start a new one"
-                : "Choose when to begin your 7-day journey"
-            }
-          >
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 16,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "rgba(212, 165, 116, 0.4)",
-                backgroundColor: "rgba(212, 165, 116, 0.08)",
+          />
+          {inCourseMode ? (
+            <View style={{ width: "100%", maxWidth: 320, gap: 12 }}>
+              <Pressable
+                onPress={() => {
+                  addHapticFeedback(HapticStrength.Medium)
+                  setLifetimeChosenTimegateJourney(true)
+                  router.replace("/(chakras)/ChakraHome")
+                }}
+                style={({ pressed }) => [
+                  {
+                    paddingVertical: 16,
+                    paddingHorizontal: 24,
+                    borderRadius: 14,
+                    backgroundColor: "rgba(168, 201, 154, 0.22)",
+                    borderWidth: 1,
+                    borderColor: "rgba(168, 201, 154, 0.5)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
+                  pressed && { opacity: 0.88 },
+                ]}
+                accessibilityLabel="Return to course"
+                accessibilityHint="Go back to your current 7-day course"
+              >
+                <AppText
+                  font="instrument-semibold"
+                  size="base"
+                  style={{ color: "rgba(255, 255, 255, 0.98)" }}
+                >
+                  Return
+                </AppText>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  addHapticFeedback(HapticStrength.Medium)
+                  clearLifetimeCourseForNewStart()
+                  router.replace("/(chakras)/DateSelection")
+                }}
+                style={({ pressed }) => [
+                  {
+                    paddingVertical: 16,
+                    paddingHorizontal: 24,
+                    borderRadius: 14,
+                    backgroundColor: "rgba(255, 255, 255, 0.06)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255, 255, 255, 0.2)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
+                  pressed && { opacity: 0.88 },
+                ]}
+                accessibilityLabel="Reset"
+                accessibilityHint="Clear course and choose a new start date"
+              >
+                <AppText
+                  font="instrument-medium"
+                  size="base"
+                  style={{ color: "rgba(255, 255, 255, 0.88)" }}
+                >
+                  Reset
+                </AppText>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Medium)
+                router.push("/(chakras)/DateSelection")
               }}
+              style={({ pressed }) => [
+                {
+                  paddingVertical: 16,
+                  paddingHorizontal: 28,
+                  borderRadius: 14,
+                  backgroundColor: "rgba(212, 165, 116, 0.12)",
+                  borderWidth: 1,
+                  borderColor: "rgba(212, 165, 116, 0.45)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 200,
+                },
+                pressed && { opacity: 0.9 },
+              ]}
+              accessibilityLabel="Enter Course Mode"
+              accessibilityHint="Choose start date and enter 7-day course mode"
             >
               <AppText
                 font="instrument-medium"
-                size="sm"
-                style={{ color: "rgba(255,255,255,0.9)" }}
+                size="base"
+                style={{ color: "rgba(255, 255, 255, 0.95)" }}
               >
-                Start a new 7 Day Journey
+                Enter Course Mode
               </AppText>
-            </View>
-          </Pressable>
+            </Pressable>
+          )}
         </View>
 
-        {/* Discover Your Ego Archetype – own section with clear spacing so it never sticks to the journey button above */}
-        <View style={{ marginTop: 40, marginBottom: 24, alignItems: "center" }}>
+        {/* Discover Your Ego Archetype – lower in frame, thin gradient gold wire rounded button */}
+        <View style={{ marginTop: 88, marginBottom: 56, alignItems: "center" }}>
           <Pressable
             onPress={() => {
               addHapticFeedback(HapticStrength.Light)
               Linking.openURL(ARCHETYPE_QUIZ_URL)
             }}
-            style={({ pressed }) => [
-              {
-                paddingVertical: 12,
-                paddingHorizontal: 28,
-                borderRadius: 24,
-                backgroundColor: "rgba(28, 28, 28, 0.95)",
-                borderWidth: 1,
-                borderColor: "rgba(212, 165, 116, 0.6)",
-                minHeight: 44,
-                justifyContent: "center",
-                alignItems: "center",
-              },
-              pressed && { opacity: 0.9 },
-            ]}
+            style={({ pressed }) => [pressed && { opacity: 0.9 }]}
             accessibilityLabel="Discover Your Ego Archetype"
             accessibilityHint="Open archetype quiz in browser"
           >
-            <AppText
-              font="cormorant-regular"
-              size="sm"
-              style={{ color: "rgba(212, 165, 116, 0.95)" }}
+            <LinearGradient
+              colors={[
+                "rgba(212, 165, 116, 0.85)",
+                "rgba(184, 134, 80, 0.75)",
+                "rgba(212, 165, 116, 0.85)",
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                padding: 1,
+                borderRadius: 24,
+                minHeight: 44,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
             >
-              Discover Your Ego Archetype
-            </AppText>
+              <View
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 24,
+                  borderRadius: 23,
+                  backgroundColor: "rgba(12, 12, 12, 0.98)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <AppText
+                  font="cormorant-regular"
+                  size="sm"
+                  style={{
+                    color: "#D4A574",
+                    fontWeight: "600",
+                  }}
+                >
+                  Discover Your Ego Archetype
+                </AppText>
+              </View>
+            </LinearGradient>
           </Pressable>
         </View>
 
@@ -811,34 +950,53 @@ export default function ChakraHub() {
             </Pressable>
           </View>
         )}
+          </Animated.View>
+        )}
       </ScrollView>
 
-      {/* Profile overlay after ScrollView so it receives touches on Android */}
-      <Pressable
-        onPress={() => {
-          addHapticFeedback(HapticStrength.Light)
-          useProfileSheetStore.getState().open()
-        }}
-        style={{
-          position: "absolute",
-          top: Math.max(insets.top, 8) + 12,
-          right: 16,
-          zIndex: 100,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          borderWidth: 1,
-          borderColor: "rgba(255, 255, 255, 0.15)",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilityLabel="Profile menu"
-        accessibilityHint="View your profile and Soul School ID"
-      >
-        <Ionicons name="menu" size={22} color="rgba(255, 255, 255, 0.9)" />
-      </Pressable>
+        {/* Alpha and omega – mystical symbols attached to very bottom of screen */}
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            paddingBottom: Math.max(insets.bottom, 12),
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+          }}
+          pointerEvents="none"
+        >
+          <AppText
+            font="cormorant-italic"
+            style={{
+              color: "rgba(212, 165, 116, 0.8)",
+              fontSize: 24,
+            }}
+          >
+            α
+          </AppText>
+          <AppText
+            font="cormorant-italic"
+            style={{
+              color: "rgba(212, 165, 116, 0.5)",
+              fontSize: 16,
+            }}
+          >
+            ✧
+          </AppText>
+          <AppText
+            font="cormorant-italic"
+            style={{
+              color: "rgba(212, 165, 116, 0.8)",
+              fontSize: 24,
+            }}
+          >
+            Ω
+          </AppText>
+        </View>
 
       <GoodbyeModal
         isVisible={isGoodbyeVisible}
@@ -849,18 +1007,6 @@ export default function ChakraHub() {
         navigateToHubOnHome={false}
       />
 
-      <ReturnToCourseModal
-        visible={showReturnToCourseModal}
-        onClose={() => setShowReturnToCourseModal(false)}
-        onContinueCurrent={() => {
-          setLifetimeChosenTimegateJourney(true)
-          router.replace("/(chakras)/ChakraHome")
-        }}
-        onStartNew={() => {
-          clearLifetimeCourseForNewStart()
-          router.replace("/(chakras)/DateSelection")
-        }}
-      />
     </SafeAreaView>
   )
 }

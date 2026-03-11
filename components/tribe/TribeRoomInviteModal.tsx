@@ -4,8 +4,16 @@
  * Clear opening copy, visible invite message/link, primary Share, embedded share list.
  */
 
-import React, { useState, useEffect } from "react"
-import { Modal, View, Pressable, ScrollView } from "react-native"
+import React, { useState, useEffect, useMemo } from "react"
+import {
+  Modal,
+  View,
+  Pressable,
+  ScrollView,
+  Platform,
+  useWindowDimensions,
+  StyleSheet,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
@@ -43,7 +51,24 @@ export function TribeRoomInviteModal({
   onInviteSent,
   onFindFriends,
 }: TribeRoomInviteModalProps) {
+  const { width: windowWidth } = useWindowDimensions()
   const [resolvedReferralCode, setResolvedReferralCode] = useState<string | null>(null)
+  // When closed, keep Modal in tree with visible={false} briefly so native layer releases touches, then unmount so we don't leave a Modal blocking taps (e.g. hamburger/profile in Tribe Chat).
+  const [shouldRenderModal, setShouldRenderModal] = useState(visible)
+
+  const cardWidth = useMemo(() => {
+    const padding = 32
+    const max = 420
+    return Math.min(windowWidth - padding * 2, max)
+  }, [windowWidth])
+  useEffect(() => {
+    if (visible) {
+      setShouldRenderModal(true)
+      return
+    }
+    const t = setTimeout(() => setShouldRenderModal(false), 280)
+    return () => clearTimeout(t)
+  }, [visible])
 
   useEffect(() => {
     if (visible && !referralCodeProp) {
@@ -81,7 +106,7 @@ export function TribeRoomInviteModal({
     onClose()
   }
 
-  if (!visible) return null
+  if (!shouldRenderModal) return null
 
   return (
     <Modal
@@ -89,9 +114,14 @@ export function TribeRoomInviteModal({
       transparent
       animationType="fade"
       onRequestClose={handleClose}
+      statusBarTranslucent={Platform.OS === "android"}
     >
-      <Pressable style={modalOverlay} onPress={handleClose}>
-        <Pressable style={modalCard} onPress={(e) => e.stopPropagation()}>
+      {visible ? (
+      <Pressable style={styles.overlay} onPress={handleClose}>
+        <Pressable
+          style={[styles.card, { width: cardWidth }]}
+          onPress={(e) => e.stopPropagation()}
+        >
           <LinearGradient
             colors={[
               "rgba(28, 28, 32, 0.98)",
@@ -101,13 +131,13 @@ export function TribeRoomInviteModal({
             ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={gradientInner}
+            style={styles.gradientInner}
           >
-            <View style={headerRow}>
-              <AppText font="instrument-semibold" size="xl" style={headerTitle}>
+            <View style={styles.headerRow}>
+              <AppText font="instrument-semibold" size="xl" style={styles.headerTitle}>
                 Add to Room
               </AppText>
-              <Pressable onPress={handleClose} hitSlop={12} style={closeBtn}>
+              <Pressable onPress={handleClose} hitSlop={12} style={styles.closeBtn}>
                 <Ionicons
                   name="close"
                   size={24}
@@ -116,37 +146,36 @@ export function TribeRoomInviteModal({
               </Pressable>
             </View>
 
-            <AppText font="instrument-regular" size="base" style={subtitle}>
+            <AppText font="instrument-regular" size="base" style={styles.subtitle}>
               {INVITE_OPENING_COPY}
             </AppText>
 
-            {/* What they'll receive: full message + link, scroll if needed */}
-            <View style={previewBox}>
-              <AppText font="instrument-regular" size="sm" style={previewLabel}>
+            <View style={styles.previewBox}>
+              <AppText font="instrument-regular" size="sm" style={styles.previewLabel}>
                 {INVITE_PREVIEW_LABEL}
               </AppText>
-              <AppText font="instrument-regular" size="xs" style={previewHint}>
+              <AppText font="instrument-regular" size="xs" style={styles.previewHint}>
                 {INVITE_PREVIEW_HINT}
               </AppText>
               <ScrollView
-                style={previewScroll}
+                style={styles.previewScroll}
                 nestedScrollEnabled
                 showsVerticalScrollIndicator={false}
               >
                 <AppText
                   font="instrument-regular"
                   size="sm"
-                  style={previewText}
+                  style={styles.previewText}
                 >
                   {inviteMessage}
                 </AppText>
               </ScrollView>
-              <AppText font="instrument-regular" size="sm" style={previewLink}>
+              <AppText font="instrument-regular" size="sm" style={styles.previewLink}>
                 {referralLink}
               </AppText>
             </View>
 
-            <Pressable onPress={handleSystemShare} style={primaryBtn}>
+            <Pressable onPress={handleSystemShare} style={styles.primaryBtn}>
               <LinearGradient
                 colors={[
                   "rgba(135, 174, 115, 0.35)",
@@ -155,7 +184,7 @@ export function TribeRoomInviteModal({
                 ]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={primaryBtnInner}
+                style={styles.primaryBtnInner}
               >
                 <Ionicons
                   name="share-social"
@@ -166,7 +195,7 @@ export function TribeRoomInviteModal({
                 <AppText
                   font="instrument-semibold"
                   size="base"
-                  style={primaryBtnText}
+                  style={styles.primaryBtnText}
                 >
                   Share
                 </AppText>
@@ -183,7 +212,7 @@ export function TribeRoomInviteModal({
             />
 
             {onFindFriends && (
-              <Pressable onPress={handleFindFriends} style={findFriendsBtn}>
+              <Pressable onPress={handleFindFriends} style={styles.findFriendsBtn}>
                 <LinearGradient
                   colors={[
                     "rgba(6, 182, 212, 0.15)",
@@ -191,7 +220,7 @@ export function TribeRoomInviteModal({
                   ]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={findFriendsBtnInner}
+                  style={styles.findFriendsBtnInner}
                 >
                   <Ionicons
                     name="people-outline"
@@ -202,7 +231,7 @@ export function TribeRoomInviteModal({
                   <AppText
                     font="instrument-medium"
                     size="sm"
-                    style={findFriendsBtnText}
+                    style={styles.findFriendsBtnText}
                   >
                     Find friends on Soul School
                   </AppText>
@@ -212,107 +241,123 @@ export function TribeRoomInviteModal({
           </LinearGradient>
         </Pressable>
       </Pressable>
+      ) : null}
     </Modal>
   )
 }
 
-const modalOverlay = {
-  flex: 1,
-  backgroundColor: "rgba(0, 0, 0, 0.8)",
-  justifyContent: "center" as const,
-  alignItems: "center" as const,
-  padding: 24,
-}
-const modalCard = {
-  width: "100%" as const,
-  maxWidth: 340,
-  borderRadius: 20,
-  overflow: "hidden" as const,
-  borderWidth: 1,
-  borderColor: "rgba(135, 174, 115, 0.4)",
-  shadowColor: "rgba(6, 182, 212, 0.2)",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.6,
-  shadowRadius: 16,
-  elevation: 12,
-}
-const gradientInner = {
-  padding: 24,
-  alignItems: "stretch" as const,
-  minHeight: 1,
-}
-const headerRow = {
-  flexDirection: "row" as const,
-  justifyContent: "space-between" as const,
-  alignItems: "center" as const,
-  marginBottom: 20,
-}
-const headerTitle = { color: "rgba(255,255,255,0.98)" }
-const closeBtn = { padding: 8 }
-const subtitle = {
-  color: "rgba(255,255,255,0.88)",
-  lineHeight: 22,
-  marginBottom: 22,
-}
-const previewBox = {
-  backgroundColor: "rgba(0, 0, 0, 0.35)",
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: "rgba(6, 182, 212, 0.2)",
-  paddingVertical: 16,
-  paddingHorizontal: 16,
-  marginBottom: 22,
-  minHeight: 100,
-}
-const previewLabel = {
-  color: "rgba(6, 182, 212, 0.9)",
-  marginBottom: 4,
-}
-const previewHint = {
-  color: "rgba(255,255,255,0.6)",
-  marginBottom: 10,
-  fontSize: 12,
-}
-const previewScroll = {
-  maxHeight: 140,
-  marginBottom: 10,
-}
-const previewText = {
-  color: "rgba(255,255,255,0.82)",
-  lineHeight: 22,
-}
-const previewLink = {
-  color: "rgba(255,255,255,0.65)",
-  marginTop: 4,
-  lineHeight: 20,
-}
-const primaryBtn = {
-  borderRadius: 14,
-  marginBottom: 20,
-  overflow: "hidden" as const,
-  borderWidth: 1,
-  borderColor: "rgba(135, 174, 115, 0.5)",
-}
-const primaryBtnInner = {
-  flexDirection: "row" as const,
-  alignItems: "center" as const,
-  justifyContent: "center" as const,
-  paddingVertical: 14,
-  paddingHorizontal: 20,
-}
-const primaryBtnText = { color: "#B8D4A8" }
-const findFriendsBtn = {
-  marginTop: 20,
-  borderRadius: 14,
-  overflow: "hidden" as const,
-  borderWidth: 1,
-  borderColor: "rgba(6, 182, 212, 0.3)",
-}
-const findFriendsBtnInner = {
-  flexDirection: "row" as const,
-  alignItems: "center" as const,
-  justifyContent: "center" as const,
-  paddingVertical: 14,
-  paddingHorizontal: 20,
-}
-const findFriendsBtnText = { color: "rgba(168, 201, 154, 0.95)" }
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.82)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingVertical: 28,
+  },
+  card: {
+    maxWidth: 420,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(135, 174, 115, 0.38)",
+    shadowColor: "rgba(6, 182, 212, 0.18)",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 14,
+  },
+  gradientInner: {
+    paddingHorizontal: 28,
+    paddingVertical: 26,
+    alignItems: "stretch",
+    minHeight: 1,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  headerTitle: {
+    color: "rgba(255,255,255,0.98)",
+    flex: 1,
+  },
+  closeBtn: {
+    padding: 8,
+    marginRight: -8,
+  },
+  subtitle: {
+    color: "rgba(255,255,255,0.88)",
+    lineHeight: 24,
+    marginBottom: 20,
+    paddingRight: 8,
+  },
+  previewBox: {
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(6, 182, 212, 0.22)",
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    minHeight: 100,
+  },
+  previewLabel: {
+    color: "rgba(6, 182, 212, 0.92)",
+    marginBottom: 6,
+  },
+  previewHint: {
+    color: "rgba(255,255,255,0.62)",
+    marginBottom: 12,
+    fontSize: 12,
+  },
+  previewScroll: {
+    maxHeight: 160,
+    marginBottom: 12,
+  },
+  previewText: {
+    color: "rgba(255,255,255,0.84)",
+    lineHeight: 22,
+  },
+  previewLink: {
+    color: "rgba(255,255,255,0.68)",
+    marginTop: 6,
+    lineHeight: 20,
+    fontSize: 13,
+  },
+  primaryBtn: {
+    borderRadius: 16,
+    marginBottom: 18,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(135, 174, 115, 0.48)",
+  },
+  primaryBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  primaryBtnText: {
+    color: "#B8D4A8",
+  },
+  findFriendsBtn: {
+    marginTop: 18,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(6, 182, 212, 0.28)",
+  },
+  findFriendsBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+  },
+  findFriendsBtnText: {
+    color: "rgba(168, 201, 154, 0.95)",
+  },
+})

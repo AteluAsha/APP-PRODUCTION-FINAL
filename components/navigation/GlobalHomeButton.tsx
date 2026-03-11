@@ -49,6 +49,9 @@ export const GlobalHomeButton: React.FC = () => {
   )
   const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
 
+  // Lifetime: no floating chakra icon; navigation is via PermanentMenuBar only.
+  if (hasLifetimeAccess) return null
+
   // Hide on Chakras101, CommitmentGate, EnergyExchange, WelcomeScreen, DateSelection, and WaitingScreen
   // Use both pathname and segments for reliable detection
   // WelcomeScreen is the index route - check segments array for empty or just ['(chakras)']
@@ -89,6 +92,14 @@ export const GlobalHomeButton: React.FC = () => {
   // EARLY RETURN - Most important check first
   // Goodbye modal open: hide so global home doesn't block modal's home/back touches
   if (isGoodbyeVisible) {
+    return null
+  }
+
+  // Lifetime home (ChakraHub): remove chakra icon entirely; profile/hamburger are in the header
+  const isChakraHubLifetime =
+    hasLifetimeAccess &&
+    (pathname?.startsWith("/(chakras)/ChakraHub") || pathname?.includes("/ChakraHub"))
+  if (isChakraHubLifetime) {
     return null
   }
 

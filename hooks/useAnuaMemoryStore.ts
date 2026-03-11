@@ -98,7 +98,19 @@ export interface AnuaMemoryState {
     context?: string // e.g., "post-meditation", "reminder", "check-in"
   }[]
 
+  // Messages the user marked as "resonates" (for teaching Anua)
+  resonatedMessages: { messageId: string; text: string; chakraDay: number }[]
+  hasSeenResonateTooltip: boolean
+
   // Actions
+  addResonatedMessage: (
+    messageId: string,
+    text: string,
+    chakraDay: number,
+  ) => void
+  removeResonatedMessage: (messageId: string) => void
+  hasResonatedWithMessage: (messageId: string) => boolean
+  setHasSeenResonateTooltip: (value: boolean) => void
   setUserName: (name: string) => void
   addMeditationReflection: (reflection: MeditationReflection) => void
   addUserInsight: (insight: UserInsight) => void
@@ -137,6 +149,8 @@ export const useAnuaMemoryStore = create<AnuaMemoryState>()(
         challenges: [],
       },
       conversationHistory: [],
+      resonatedMessages: [],
+      hasSeenResonateTooltip: false,
       chakraBlocks: [],
       healthPatterns: [],
       notificationPreferences: {
@@ -188,6 +202,38 @@ export const useAnuaMemoryStore = create<AnuaMemoryState>()(
             },
           ],
         })),
+
+      addResonatedMessage: (
+        messageId: string,
+        text: string,
+        chakraDay: number,
+      ) =>
+        set((state) => {
+          if (
+            state.resonatedMessages.some((r) => r.messageId === messageId)
+          ) {
+            return state
+          }
+          return {
+            resonatedMessages: [
+              ...state.resonatedMessages,
+              { messageId, text, chakraDay },
+            ],
+          }
+        }),
+
+      removeResonatedMessage: (messageId: string) =>
+        set((state) => ({
+          resonatedMessages: state.resonatedMessages.filter(
+            (r) => r.messageId !== messageId,
+          ),
+        })),
+
+      hasResonatedWithMessage: (messageId: string) =>
+        get().resonatedMessages.some((r) => r.messageId === messageId),
+
+      setHasSeenResonateTooltip: (value: boolean) =>
+        set({ hasSeenResonateTooltip: value }),
 
       getMemoryContext: () => {
         const state = get()

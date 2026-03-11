@@ -14,7 +14,7 @@ import {
 import { useFonts } from "expo-font"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
-import { useEffect } from "react"
+import { useEffect, useRef, useCallback } from "react"
 import "react-native-reanimated"
 import { useColorScheme } from "@/hooks/useColorScheme"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
@@ -39,6 +39,7 @@ import { GlobalAnuaChat } from "@/components/navigation/GlobalAnuaChat"
 import { GlobalTribeChat } from "@/components/navigation/GlobalTribeChat"
 import { FloatingUIRevealStrip } from "@/components/navigation/FloatingUIRevealStrip"
 import { PathSelectionGate } from "@/components/navigation/PathSelectionGate"
+import { ChakraHubHeader } from "@/components/navigation/ChakraHubHeader"
 import { ProfileSheet } from "@/components/profile/ProfileSheet"
 import { InviteRefApplier } from "@/components/invite/InviteRefApplier"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
@@ -70,14 +71,13 @@ export default function RootLayout() {
   useEffect(() => {
     SplashScreen.preventAutoHideAsync().catch(() => {})
   }, [])
-  // Hide native splash when we paint our custom hero so user sees SplashScreenReveal.
-  useEffect(() => {
-    if (!showHeroLogo) return
-    const t = setTimeout(() => {
-      SplashScreen.hideAsync().catch(() => {})
-    }, 80)
-    return () => clearTimeout(t)
-  }, [showHeroLogo])
+  // Hide native splash only after hero fade-in is complete so we never jump (native stays visible while our overlay fades in).
+  const hideNativeSplashOnceRef = useRef(false)
+  const handleHeroFadeInComplete = useCallback(() => {
+    if (hideNativeSplashOnceRef.current) return
+    hideNativeSplashOnceRef.current = true
+    SplashScreen.hideAsync().catch(() => {})
+  }, [])
   // Safety: if still on hero splash after 8s (e.g. animation callback never fired), force transition so app never freezes
   useEffect(() => {
     const t = setTimeout(() => {
@@ -358,6 +358,7 @@ export default function RootLayout() {
       <View style={{ flex: 1, backgroundColor: "#000000" }}>
         <SplashScreenReveal
           onAnimationComplete={handleHeroLogoComplete}
+          onFadeInComplete={handleHeroFadeInComplete}
           assetsReady={assetsReady}
         />
       </View>
@@ -406,8 +407,9 @@ export default function RootLayout() {
                     backgroundColor: "transparent",
                   })}
                 />
+                <ProfileSheet />
+                <ChakraHubHeader />
               </Animated.View>
-              <ProfileSheet />
               {/* TribeChatModal not in codebase; add when component exists: import from "@/components/tribe/TribeChatModal" and render <TribeChatModal /> */}
             </View>
           </BottomSheetModalProvider>

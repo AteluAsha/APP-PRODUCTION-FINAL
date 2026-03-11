@@ -12,6 +12,7 @@ import {
   onSnapshot,
   doc,
   setDoc,
+  deleteDoc,
   type Unsubscribe,
   type Timestamp,
 } from "firebase/firestore"
@@ -167,6 +168,24 @@ export function useTribeFriends(
     [roomId],
   )
 
+  const removeMember = useCallback(
+    async (memberId: string): Promise<{ ok: boolean; error?: string }> => {
+      if (!db) return { ok: false, error: "Firebase not configured" }
+      try {
+        const membersRef = collection(db, "tribeRooms", roomId, "members")
+        await deleteDoc(doc(membersRef, memberId))
+        return { ok: true }
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Failed to remove member"
+        if (__DEV__)
+          console.warn("[useTribeFriends] removeMember error:", err)
+        return { ok: false, error: msg }
+      }
+    },
+    [roomId],
+  )
+
   return {
     connected,
     pending,
@@ -174,6 +193,7 @@ export function useTribeFriends(
     error,
     addPendingInvite,
     setMemberConnected,
+    removeMember,
   }
 }
 

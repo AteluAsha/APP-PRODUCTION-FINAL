@@ -50,6 +50,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { LinearGradient } from "expo-linear-gradient"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { TOUCH } from "@/constants/layout"
+import { useAnuaMemoryStore } from "@/hooks/useAnuaMemoryStore"
+import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
 
 /** Max characters for one Anua message; well under Gemini input token limit. */
 const ANUA_INPUT_MAX_LENGTH = 25000
@@ -711,6 +713,7 @@ As you prepare, I'd love to understand your starting point. How do you currently
           onStartRecording={startRecording}
           onStopRecordingAndSend={stopRecordingAndSend}
           androidModalHeight={androidModalHeight}
+          chakraDay={chakraDay}
         />
       </ErrorBoundary>
     </SafeAreaProvider>
@@ -882,6 +885,7 @@ const AnuaChatContent: React.FC<{
   onStopRecordingAndSend: () => void
   /** On Android, set from Modal onShow so scroll area gets known-good height (forces re-layout). */
   androidModalHeight?: number | null
+  chakraDay: number
 }> = ({
   onClose,
   useVoice,
@@ -900,9 +904,34 @@ const AnuaChatContent: React.FC<{
   onStartRecording,
   onStopRecordingAndSend,
   androidModalHeight,
+  chakraDay,
 }) => {
   const { height: windowHeight } = useWindowDimensions()
   const insets = useSafeAreaInsets()
+  const addResonatedMessage = useAnuaMemoryStore((s) => s.addResonatedMessage)
+  const removeResonatedMessage = useAnuaMemoryStore(
+    (s) => s.removeResonatedMessage,
+  )
+  const hasResonatedWithMessage = useAnuaMemoryStore(
+    (s) => s.hasResonatedWithMessage,
+  )
+  const hasSeenResonateTooltip = useAnuaMemoryStore(
+    (s) => s.hasSeenResonateTooltip,
+  )
+  const setHasSeenResonateTooltip = useAnuaMemoryStore(
+    (s) => s.setHasSeenResonateTooltip,
+  )
+  const addNote = useJourneyNotesStore((s) => s.addNote)
+  const [noteSentForMessageId, setNoteSentForMessageId] = useState<
+    string | null
+  >(null)
+
+  useEffect(() => {
+    if (!noteSentForMessageId) return
+    const t = setTimeout(() => setNoteSentForMessageId(null), 2000)
+    return () => clearTimeout(t)
+  }, [noteSentForMessageId])
+
   // On Android inside Modal, use known-good height from onShow when available; else Dimensions.get("window") so scroll area has valid height.
   const effectiveHeight =
     Platform.OS === "android"
@@ -1010,12 +1039,12 @@ const AnuaChatContent: React.FC<{
           </View>
         </View>
 
-        {/* Close button: dedicated top-most layer so it always receives touches (Android). */}
+        {/* Close button: dedicated top-most layer so it always receives touches (Android). Top of safe content; on Android align with header row (logo). */}
         <View
           pointerEvents="box-none"
           style={{
             position: "absolute",
-            top: insets.top,
+            top: Platform.OS === "android" ? 18 : insets.top,
             right: 16,
             zIndex: 9999,
             ...(Platform.OS === "android" && { elevation: 9999 }),
@@ -1255,6 +1284,114 @@ const AnuaChatContent: React.FC<{
                   >
                     {formatTime(message.timestamp)}
                   </AppText>
+                  {!message.isUser && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginTop: 10,
+                        gap: 12,
+                        flexWrap: "wrap",
+                        width: "100%",
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Pressable
+                          onPress={() => {
+                            addHapticFeedback(HapticStrength.Light)
+                            if (!hasSeenResonateTooltip) {
+                              setHasSeenResonateTooltip(true)
+                            }
+                            if (hasResonatedWithMessage(message.id)) {
+                              removeResonatedMessage(message.id)
+                            } else {
+                              addResonatedMessage(
+                                message.id,
+                                message.text,
+                                chakraDay,
+                              )
+                            }
+                          }}
+                          hitSlop={8}
+                          style={{ padding: 4 }}
+                        >
+                          <Ionicons
+                            name={
+                              hasResonatedWithMessage(message.id)
+                                ? "heart"
+                                : "heart-outline"
+                            }
+                            size={20}
+                            color={
+                              hasResonatedWithMessage(message.id)
+                                ? "rgba(212, 165, 116, 0.95)"
+                                : "rgba(212, 197, 169, 0.8)"
+                            }
+                          />
+                        </Pressable>
+                        {hasResonatedWithMessage(message.id) && (
+                          <AppText
+                            font="instrument-regular"
+                            size="xs"
+                            style={{
+                              color: "rgba(212, 197, 169, 0.95)",
+                              fontStyle: "italic",
+                            }}
+                          >
+                            This resonates
+                          </AppText>
+                        )}
+                      </View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Pressable
+                          onPress={() => {
+                            addHapticFeedback(HapticStrength.Light)
+                            addNote({
+                              chakraDay,
+                              content: message.text,
+                              type: "journey",
+                            })
+                            setNoteSentForMessageId(message.id)
+                          }}
+                          hitSlop={8}
+                          style={{ paddingVertical: 4, paddingHorizontal: 2 }}
+                        >
+                          <AppText
+                            font="instrument-regular"
+                            size="xs"
+                            style={{
+                              color: "rgba(168, 201, 154, 0.9)",
+                              textDecorationLine: "underline",
+                            }}
+                          >
+                            Send to notes
+                          </AppText>
+                        </Pressable>
+                        {noteSentForMessageId === message.id && (
+                          <AppText
+                            font="instrument-regular"
+                            size="xs"
+                            style={{ color: "rgba(135, 174, 115, 0.95)" }}
+                          >
+                            Added to Notes
+                          </AppText>
+                        )}
+                      </View>
+                    </View>
+                  )}
                 </View>
               </View>
             ))}

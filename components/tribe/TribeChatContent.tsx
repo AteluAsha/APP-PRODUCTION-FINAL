@@ -23,20 +23,155 @@ import { Ionicons } from "@expo/vector-icons"
 import { useTribeChat, type TribeMessage } from "@/hooks/useTribeChat"
 import { useTribeFriends } from "@/hooks/useTribeFriends"
 import { useTribeInvitesToMe } from "@/hooks/useTribeInvitesToMe"
+import { useTribeBlockStore } from "@/hooks/useTribeBlockStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { TribeRoomInviteModal } from "@/components/tribe/TribeRoomInviteModal"
 import { TribeFriendsMenu } from "@/components/tribe/TribeFriendsMenu"
 import { FindFriendsModal } from "@/components/tribe/FindFriendsModal"
-import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
 import { formatDate } from "@/utils/date"
 import { getUserId } from "@/src/services/userId"
 import type { TribeFriend } from "@/types/tribe"
+import type { TribeInvite } from "@/src/services/tribeInvites"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { LinearGradient } from "expo-linear-gradient"
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context"
 
 const SENDER_NAME = "Guest"
+
+function PendingInviteCard({
+  inv,
+  onAccept,
+  onDecline,
+  onBlock,
+  presenceDisplayName,
+  presenceAvatarUrl,
+}: {
+  inv: TribeInvite
+  onAccept: (inviteId: string, displayName: string, avatarUrl?: string) => Promise<{ ok: boolean; error?: string }>
+  onDecline: (inviteId: string) => Promise<{ ok: boolean; error?: string }>
+  onBlock: () => void
+  presenceDisplayName: string
+  presenceAvatarUrl?: string | null
+}) {
+  return (
+    <View style={pendingInviteCardStyles.card}>
+      <View style={pendingInviteCardStyles.row}>
+        {inv.fromAvatarUrl ? (
+          <Image
+            source={{ uri: inv.fromAvatarUrl }}
+            style={pendingInviteCardStyles.avatar}
+          />
+        ) : (
+          <View style={pendingInviteCardStyles.avatarPlaceholder}>
+            <Ionicons name="person" size={20} color="rgba(255,255,255,0.5)" />
+          </View>
+        )}
+        <AppText font="instrument-medium" size="base" style={pendingInviteCardStyles.name}>
+          {inv.fromDisplayName} invited you to their tribe
+        </AppText>
+      </View>
+      <View style={pendingInviteCardStyles.actions}>
+        <Pressable
+          onPress={async () => {
+            addHapticFeedback(HapticStrength.Medium)
+            const res = await onAccept(inv.id, presenceDisplayName, presenceAvatarUrl ?? undefined)
+            if (!res.ok && __DEV__) console.warn("[TribeChat] accept invite:", res.error)
+          }}
+          style={({ pressed }) => [pendingInviteCardStyles.acceptBtn, pressed && { opacity: 0.9 }]}
+        >
+          <AppText font="instrument-semibold" size="sm" style={pendingInviteCardStyles.acceptBtnText}>
+            Accept transmission
+          </AppText>
+        </Pressable>
+        <Pressable
+          onPress={async () => {
+            addHapticFeedback(HapticStrength.Light)
+            await onDecline(inv.id)
+          }}
+          style={({ pressed }) => [pendingInviteCardStyles.declineBtn, pressed && { opacity: 0.9 }]}
+        >
+          <AppText font="instrument-regular" size="sm" style={pendingInviteCardStyles.declineBtnText}>
+            Decline
+          </AppText>
+        </Pressable>
+        <Pressable
+          onPress={onBlock}
+          style={({ pressed }) => [pendingInviteCardStyles.blockBtn, pressed && { opacity: 0.9 }]}
+        >
+          <AppText font="instrument-regular" size="sm" style={pendingInviteCardStyles.blockBtnText}>
+            Block
+          </AppText>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
+const pendingInviteCardStyles = StyleSheet.create({
+  card: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "rgba(135, 174, 115, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.25)",
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 10,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  avatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  name: { color: "#fff", flex: 1 },
+  actions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    alignItems: "center",
+  },
+  acceptBtn: {
+    flex: 1,
+    minWidth: 120,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "rgba(135, 174, 115, 0.35)",
+    alignItems: "center",
+  },
+  acceptBtnText: { color: "#B8D4A8" },
+  declineBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    justifyContent: "center",
+  },
+  declineBtnText: { color: "rgba(255,255,255,0.7)" },
+  blockBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "rgba(220, 38, 38, 0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(220, 38, 38, 0.35)",
+    justifyContent: "center",
+  },
+  blockBtnText: { color: "rgba(248, 113, 113, 0.95)" },
+})
 
 function getSenderGradient(senderName: string): [string, string] {
   const n = senderName.toLowerCase()
@@ -117,18 +252,23 @@ export function TribeChatContent({
     roomId,
     enabled,
   )
-  const { connected: firestoreConnected, pending: firestorePending } =
-    useTribeFriends(roomId, enabled)
+  const {
+    connected: firestoreConnected,
+    pending: firestorePending,
+    removeMember,
+  } = useTribeFriends(roomId, enabled)
   const {
     pendingInvites,
     accept: acceptTribeInvite,
     decline: declineTribeInvite,
   } = useTribeInvitesToMe(enabled)
+  const { isBlocked, blockUser } = useTribeBlockStore()
   const presenceDisplayName = usePresenceStore((s) => s.displayName)
   const presenceAvatarUrl = usePresenceStore((s) => s.profileImageUri)
   const [inputText, setInputText] = useState("")
   const [sending, setSending] = useState(false)
   const [sharingFromNotes, setSharingFromNotes] = useState(false)
+  const [showPendingExpanded, setShowPendingExpanded] = useState(false)
 
   useEffect(() => {
     if (initialMessage?.trim()) {
@@ -154,6 +294,10 @@ export function TribeChatContent({
   }, [courseStartDate])
 
   const hasInvited = (invitedFriends?.length ?? 0) > 0
+  const filteredPendingInvites = useMemo(
+    () => pendingInvites.filter((inv) => !isBlocked(inv.fromUserId)),
+    [pendingInvites, isBlocked],
+  )
   const hasConnectedFriend = useMemo(
     () =>
       messages.some(
@@ -163,7 +307,7 @@ export function TribeChatContent({
       ),
     [messages],
   )
-  const hasPendingInvitesToMe = pendingInvites.length > 0
+  const hasPendingInvitesToMe = filteredPendingInvites.length > 0
   const showDescription =
     !hasInvited && !hasConnectedFriend && !hasPendingInvitesToMe
   const showPending = hasInvited && !hasConnectedFriend && !hasPendingInvitesToMe
@@ -234,25 +378,30 @@ export function TribeChatContent({
     }
   }, [inputText, sendMessage, sending, displayNameForSend, onClearInitialMessage])
 
+  const gradientColors =
+    Platform.OS === "android"
+      ? ["#0e1216", "#0c1014", "#0a0e12", "#0e1216"]
+      : [
+          "rgba(0, 0, 0, 0.85)",
+          "rgba(8, 12, 16, 0.88)",
+          "rgba(12, 18, 24, 0.9)",
+          "rgba(0, 0, 0, 0.85)",
+        ]
+
   return (
     <SafeAreaProvider>
       <SafeAreaView
-        style={styles.safeArea}
+        style={[styles.safeArea, Platform.OS === "android" && styles.safeAreaAndroid]}
         edges={["top", "bottom", "left", "right"]}
       >
         <ImageBackground
           source={require("@/assets/images/root.png")}
           style={styles.bgImage}
           resizeMode="cover"
-          imageStyle={styles.bgImageStyle}
+          imageStyle={[styles.bgImageStyle, Platform.OS === "android" && styles.bgImageStyleAndroid]}
         >
           <LinearGradient
-            colors={[
-              "rgba(0, 0, 0, 0.85)",
-              "rgba(8, 12, 16, 0.88)",
-              "rgba(12, 18, 24, 0.9)",
-              "rgba(0, 0, 0, 0.85)",
-            ]}
+            colors={gradientColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradient}
@@ -267,21 +416,21 @@ export function TribeChatContent({
                   <Ionicons
                     name="close"
                     size={26}
-                    color="rgba(255,255,255,0.9)"
+                    color={Platform.OS === "android" ? "#ffffff" : "rgba(255,255,255,0.9)"}
                   />
                 </Pressable>
                 <View style={styles.titleStack}>
                   <AppText
                     font="instrument-bold"
                     size="2xl"
-                    style={styles.titleTribe}
+                    style={[styles.titleTribe, Platform.OS === "android" && styles.titleTribeAndroid]}
                   >
                     Tribe
                   </AppText>
                   <AppText
                     font="instrument-regular"
                     size="sm"
-                    style={styles.titleChat}
+                    style={[styles.titleChat, Platform.OS === "android" && styles.titleChatAndroid]}
                   >
                     chat
                   </AppText>
@@ -291,69 +440,78 @@ export function TribeChatContent({
                 <Pressable
                   onPress={() => {
                     addHapticFeedback(HapticStrength.Light)
-                    useProfileSheetStore.getState().open()
+                    setShowFriendsMenu(true)
                   }}
-                  hitSlop={12}
-                  style={styles.menuBtnWrap}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                  style={({ pressed }) => [
+                    styles.hamburgerBtn,
+                    pressed && styles.hamburgerBtnPressed,
+                  ]}
+                  accessibilityLabel="Menu"
+                  accessibilityHint="Open My Tribe: connections, invite, find friends"
                 >
                   <Ionicons
                     name="menu"
-                    size={24}
-                    color="rgba(255,255,255,0.9)"
+                    size={26}
+                    color="rgba(255, 255, 255, 0.9)"
                   />
                 </Pressable>
-                {showChat && (
+                <View style={styles.headerRightActions}>
+                  {showChat && (
+                    <Pressable
+                      onPress={() => {
+                        addHapticFeedback(HapticStrength.Light)
+                        setShowInviteModal(true)
+                      }}
+                      hitSlop={12}
+                      style={[styles.addBtnWrap, styles.addBtnWrapSpaced]}
+                      accessibilityLabel="Add a connection"
+                      accessibilityHint="Invite friends to this chat group"
+                    >
+                      <LinearGradient
+                        colors={[
+                          "rgba(135, 174, 115, 0.25)",
+                          "rgba(6, 182, 212, 0.15)",
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.addBtnGradient, { paddingHorizontal: 10 }]}
+                      >
+                        <Ionicons
+                          name="person-add-outline"
+                          size={20}
+                          color={Platform.OS === "android" ? "#ffffff" : "rgba(255,255,255,0.95)"}
+                        />
+                      </LinearGradient>
+                    </Pressable>
+                  )}
                   <Pressable
                     onPress={() => {
                       addHapticFeedback(HapticStrength.Light)
-                      setShowInviteModal(true)
+                      setShowFriendsMenu(true)
                     }}
                     hitSlop={12}
-                    style={[styles.addBtnWrap, { marginRight: 8 }]}
-                    accessibilityLabel="Add a connection"
-                    accessibilityHint="Invite a friend to this chat group"
+                    style={styles.addBtnWrap}
+                    accessibilityLabel="My Tribe"
+                    accessibilityHint="Open My Tribe: connections and invite"
                   >
                     <LinearGradient
                       colors={[
-                        "rgba(135, 174, 115, 0.25)",
-                        "rgba(6, 182, 212, 0.15)",
+                        "rgba(135, 174, 115, 0.35)",
+                        "rgba(6, 182, 212, 0.2)",
                       ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
-                      style={[styles.addBtnGradient, { paddingHorizontal: 10 }]}
+                      style={styles.addBtnGradient}
                     >
                       <Ionicons
-                        name="person-add-outline"
-                        size={20}
-                        color="rgba(255,255,255,0.95)"
+                        name="people-outline"
+                        size={22}
+                        color={Platform.OS === "android" ? "#ffffff" : "rgba(255,255,255,0.95)"
                       />
                     </LinearGradient>
                   </Pressable>
-                )}
-                <Pressable
-                  onPress={() => {
-                    addHapticFeedback(HapticStrength.Light)
-                    setShowFriendsMenu(true)
-                  }}
-                  hitSlop={12}
-                  style={styles.addBtnWrap}
-                >
-                  <LinearGradient
-                    colors={[
-                      "rgba(135, 174, 115, 0.35)",
-                      "rgba(6, 182, 212, 0.2)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.addBtnGradient}
-                  >
-                    <Ionicons
-                      name="people-outline"
-                      size={22}
-                      color="rgba(255,255,255,0.95)"
-                    />
-                  </LinearGradient>
-                </Pressable>
+                </View>
               </View>
             </View>
 
@@ -362,7 +520,49 @@ export function TribeChatContent({
               behavior={Platform.OS === "ios" ? "padding" : undefined}
               keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
             >
-              {hasPendingInvitesToMe && (
+              {/* When connected: show compact pending strip; chat is primary */}
+              {showChat && hasPendingInvitesToMe && (
+                <View style={styles.pendingStrip}>
+                  <AppText font="instrument-regular" size="sm" style={styles.pendingStripText}>
+                    You have {filteredPendingInvites.length} pending invite
+                    {filteredPendingInvites.length !== 1 ? "s" : ""}
+                  </AppText>
+                  <Pressable
+                    onPress={() => {
+                      addHapticFeedback(HapticStrength.Light)
+                      setShowPendingExpanded((v) => !v)
+                    }}
+                    hitSlop={8}
+                    style={styles.pendingStripBtn}
+                  >
+                    <AppText font="instrument-medium" size="sm" style={styles.pendingStripBtnText}>
+                      {showPendingExpanded ? "Hide" : "View"}
+                    </AppText>
+                  </Pressable>
+                </View>
+              )}
+              {showChat && hasPendingInvitesToMe && showPendingExpanded && (
+                <View style={styles.pendingCardsWrap}>
+                  {filteredPendingInvites.map((inv) => (
+                    <PendingInviteCard
+                      key={inv.id}
+                      inv={inv}
+                      onAccept={acceptTribeInvite}
+                      onDecline={declineTribeInvite}
+                      onBlock={() => {
+                        addHapticFeedback(HapticStrength.Light)
+                        declineTribeInvite(inv.id)
+                        blockUser(inv.fromUserId)
+                      }}
+                      presenceDisplayName={presenceDisplayName || "Soul"}
+                      presenceAvatarUrl={presenceAvatarUrl}
+                    />
+                  ))}
+                </View>
+              )}
+
+              {/* Full pending view when not yet connected */}
+              {hasPendingInvitesToMe && !showChat && (
                 <ScrollView
                   style={styles.emptyScroll}
                   contentContainerStyle={styles.emptyContent}
@@ -371,132 +571,32 @@ export function TribeChatContent({
                   <AppText
                     font="instrument-bold"
                     size="xl"
-                    style={styles.descriptionTitle}
+                    style={[styles.descriptionTitle, Platform.OS === "android" && styles.descriptionTitleAndroid]}
                   >
                     Pending invites
                   </AppText>
                   <AppText
                     font="instrument-regular"
                     size="base"
-                    style={styles.descriptionBody}
+                    style={[styles.descriptionBody, Platform.OS === "android" && styles.descriptionBodyAndroid]}
                   >
-                    Someone invited you to their tribe. Create the connection to
+                    Someone invited you to their tribe. Accept the transmission to
                     join and chat together.
                   </AppText>
-                  {pendingInvites.map((inv) => (
-                    <View
+                  {filteredPendingInvites.map((inv) => (
+                    <PendingInviteCard
                       key={inv.id}
-                      style={{
-                        marginTop: 16,
-                        padding: 16,
-                        borderRadius: 12,
-                        backgroundColor: "rgba(135, 174, 115, 0.12)",
-                        borderWidth: 1,
-                        borderColor: "rgba(135, 174, 115, 0.25)",
+                      inv={inv}
+                      onAccept={acceptTribeInvite}
+                      onDecline={declineTribeInvite}
+                      onBlock={() => {
+                        addHapticFeedback(HapticStrength.Light)
+                        declineTribeInvite(inv.id)
+                        blockUser(inv.fromUserId)
                       }}
-                    >
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          marginBottom: 12,
-                          gap: 10,
-                        }}
-                      >
-                        {inv.fromAvatarUrl ? (
-                          <Image
-                            source={{ uri: inv.fromAvatarUrl }}
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 20,
-                              backgroundColor: "rgba(255,255,255,0.08)",
-                            }}
-                          />
-                        ) : (
-                          <View
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 20,
-                              backgroundColor: "rgba(255,255,255,0.1)",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <Ionicons
-                              name="person"
-                              size={20}
-                              color="rgba(255,255,255,0.5)"
-                            />
-                          </View>
-                        )}
-                        <AppText
-                          font="instrument-medium"
-                          size="base"
-                          style={{ color: "#fff", flex: 1 }}
-                        >
-                          {inv.fromDisplayName} invited you to their tribe
-                        </AppText>
-                      </View>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          gap: 10,
-                        }}
-                      >
-                        <Pressable
-                          onPress={async () => {
-                            addHapticFeedback(HapticStrength.Medium)
-                            const res = await acceptTribeInvite(
-                              inv.id,
-                              presenceDisplayName || "Soul",
-                              presenceAvatarUrl ?? undefined,
-                            )
-                            if (!res.ok && __DEV__)
-                              console.warn("[TribeChat] accept invite:", res.error)
-                          }}
-                          style={({ pressed }) => ({
-                            flex: 1,
-                            paddingVertical: 12,
-                            borderRadius: 10,
-                            backgroundColor: "rgba(135, 174, 115, 0.35)",
-                            alignItems: "center",
-                            opacity: pressed ? 0.9 : 1,
-                          })}
-                        >
-                          <AppText
-                            font="instrument-semibold"
-                            size="sm"
-                            style={{ color: "#B8D4A8" }}
-                          >
-                            Create the Connection
-                          </AppText>
-                        </Pressable>
-                        <Pressable
-                          onPress={async () => {
-                            addHapticFeedback(HapticStrength.Light)
-                            await declineTribeInvite(inv.id)
-                          }}
-                          style={({ pressed }) => ({
-                            paddingVertical: 12,
-                            paddingHorizontal: 16,
-                            borderRadius: 10,
-                            backgroundColor: "rgba(255,255,255,0.08)",
-                            justifyContent: "center",
-                            opacity: pressed ? 0.9 : 1,
-                          })}
-                        >
-                          <AppText
-                            font="instrument-regular"
-                            size="sm"
-                            style={{ color: "rgba(255,255,255,0.7)" }}
-                          >
-                            Decline
-                          </AppText>
-                        </Pressable>
-                      </View>
-                    </View>
+                      presenceDisplayName={presenceDisplayName || "Soul"}
+                      presenceAvatarUrl={presenceAvatarUrl}
+                    />
                   ))}
                 </ScrollView>
               )}
@@ -510,14 +610,14 @@ export function TribeChatContent({
                   <AppText
                     font="instrument-bold"
                     size="xl"
-                    style={styles.descriptionTitle}
+                    style={[styles.descriptionTitle, Platform.OS === "android" && styles.descriptionTitleAndroid]}
                   >
                     The Shared Experience
                   </AppText>
                   <AppText
                     font="instrument-regular"
                     size="base"
-                    style={styles.descriptionBody}
+                    style={[styles.descriptionBody, Platform.OS === "android" && styles.descriptionBodyAndroid]}
                   >
                     Connect with friends on the same 7-day journey. Share
                     insights, hold space for each other, and grow together.
@@ -563,13 +663,13 @@ export function TribeChatContent({
                       <Ionicons
                         name="people-outline"
                         size={20}
-                        color="rgba(255,255,255,0.95)"
+                        color={Platform.OS === "android" ? "#ffffff" : "rgba(255,255,255,0.95)"}
                         style={{ marginRight: 8 }}
                       />
                       <AppText
                         font="instrument-semibold"
                         size="base"
-                        style={styles.inviteBtnText}
+                        style={[styles.inviteBtnText, Platform.OS === "android" && styles.inviteBtnTextAndroid]}
                       >
                         Invite a Friend
                       </AppText>
@@ -587,17 +687,17 @@ export function TribeChatContent({
                   <AppText
                     font="instrument-bold"
                     size="xl"
-                    style={styles.descriptionTitle}
+                    style={[styles.descriptionTitle, Platform.OS === "android" && styles.descriptionTitleAndroid]}
                   >
                     The Shared Experience
                   </AppText>
                   <AppText
                     font="instrument-regular"
                     size="base"
-                    style={styles.descriptionBody}
+                    style={[styles.descriptionBody, Platform.OS === "android" && styles.descriptionBodyAndroid]}
                   >
-                    Your invite is pending. When your friend joins Soul School,
-                    you&apos;ll see them here and can start chatting.
+                    When your friends join Soul School, you&apos;ll see them
+                    here and can start chatting.
                   </AppText>
                   <LinearGradient
                     colors={[
@@ -610,6 +710,13 @@ export function TribeChatContent({
                     end={{ x: 1, y: 0 }}
                     style={styles.colorLines}
                   />
+                  <AppText
+                    font="instrument-italic"
+                    size="lg"
+                    style={[styles.sacredQuote, Platform.OS === "android" && styles.sacredQuoteAndroid]}
+                  >
+                    &ldquo;This is your sacred space. You decide the energy in your tribe.&rdquo;
+                  </AppText>
                   <Pressable
                     onPress={handleInvitePress}
                     style={({ pressed }) => [
@@ -630,13 +737,13 @@ export function TribeChatContent({
                       <Ionicons
                         name="add"
                         size={20}
-                        color="rgba(255,255,255,0.9)"
+                        color={Platform.OS === "android" ? "#ffffff" : "rgba(255,255,255,0.9)"}
                         style={{ marginRight: 8 }}
                       />
                       <AppText
                         font="instrument-medium"
                         size="sm"
-                        style={styles.inviteBtnText}
+                        style={[styles.inviteBtnText, Platform.OS === "android" && styles.inviteBtnTextAndroid]}
                       >
                         Invite Another
                       </AppText>
@@ -758,12 +865,12 @@ export function TribeChatContent({
                       <Ionicons
                         name="people-outline"
                         size={20}
-                        color="rgba(168, 201, 154, 0.95)"
+                        color={Platform.OS === "android" ? "#b8d4a8" : "rgba(168, 201, 154, 0.95)"}
                       />
                       <AppText
                         font="instrument-medium"
                         size="sm"
-                        style={styles.footerAddText}
+                        style={[styles.footerAddText, Platform.OS === "android" && styles.footerAddTextAndroid]}
                       >
                         Add someone & invite to connect
                       </AppText>
@@ -808,6 +915,8 @@ export function TribeChatContent({
         suggested={suggestedList}
         currentUserId={currentUserId ?? undefined}
         currentDisplayName={presenceDisplayName || SENDER_NAME}
+        roomId={roomId}
+        onRemoveMember={removeMember}
       />
     </SafeAreaProvider>
   )
@@ -815,8 +924,10 @@ export function TribeChatContent({
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
+  safeAreaAndroid: { backgroundColor: "#0a0e12" },
   bgImage: { flex: 1 },
   bgImageStyle: { opacity: 0.12 },
+  bgImageStyleAndroid: { opacity: 0.18 },
   gradient: { flex: 1, padding: 16 },
   headerBar: {
     flexDirection: "row",
@@ -829,6 +940,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(135, 174, 115, 0.15)",
+    zIndex: 10,
+    elevation: 10,
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   backBtn: { padding: 6 },
@@ -838,14 +951,66 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     lineHeight: 32,
   },
+  titleTribeAndroid: { color: "#ffffff" },
   titleChat: {
     color: "rgba(168, 201, 154, 0.85)",
     letterSpacing: 2,
     marginTop: -2,
   },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  menuBtnWrap: { padding: 8 },
+  titleChatAndroid: { color: "#b8d4a8" },
+  sacredQuote: {
+    color: "rgba(255, 255, 255, 0.72)",
+    fontStyle: "italic",
+    marginTop: 20,
+    marginBottom: 18,
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  sacredQuoteAndroid: {
+    color: "rgba(255, 255, 255, 0.95)",
+  },
+  pendingStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    backgroundColor: "rgba(135, 174, 115, 0.1)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(135, 174, 115, 0.2)",
+  },
+  pendingStripText: {
+    color: "rgba(255, 255, 255, 0.88)",
+  },
+  pendingStripBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  pendingStripBtnText: {
+    color: "rgba(168, 201, 154, 0.95)",
+    textDecorationLine: "underline",
+  },
+  pendingCardsWrap: {
+    paddingHorizontal: 8,
+    paddingBottom: 12,
+  },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 0 },
+  hamburgerBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  hamburgerBtnPressed: { opacity: 0.8 },
+  headerRightActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   addBtnWrap: { borderRadius: 22, overflow: "hidden" },
+  addBtnWrapSpaced: { marginRight: 8 },
   addBtnGradient: {
     width: 44,
     height: 44,
@@ -864,11 +1029,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: "center",
   },
+  descriptionTitleAndroid: {
+    color: "#ffffff",
+  },
   descriptionBody: {
     color: "rgba(255, 255, 255, 0.82)",
     lineHeight: 26,
     marginBottom: 24,
     textAlign: "center",
+  },
+  descriptionBodyAndroid: {
+    color: "rgba(255, 255, 255, 0.95)",
   },
   colorLines: {
     height: 3,
@@ -908,6 +1079,7 @@ const styles = StyleSheet.create({
   },
   inviteBtnPressed: { opacity: 0.85 },
   inviteBtnText: { color: "rgba(255, 255, 255, 0.95)" },
+  inviteBtnTextAndroid: { color: "#ffffff" },
   messageScroll: { flex: 1 },
   listContent: { paddingVertical: 8, paddingBottom: 16 },
   messageRow: { marginBottom: 14, paddingHorizontal: 8, flexDirection: "row" },
@@ -1001,4 +1173,5 @@ const styles = StyleSheet.create({
   },
   footerAddBtnPressed: { opacity: 0.8 },
   footerAddText: { color: "rgba(135, 174, 115, 0.95)" },
+  footerAddTextAndroid: { color: "#b8d4a8" },
 })

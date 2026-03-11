@@ -32,7 +32,7 @@ module.exports = {
     orientation: "portrait",
     icon: APP_ICON_BLACK,
     splash: {
-      image: "./assets/images/SoulSchool_Error_HeroLogo.png",
+      image: "./assets/images/SoulSchool_HERO_Logo.png",
       backgroundColor: "#000000",
       resizeMode: "contain",
       imageWidth: 126,
@@ -83,7 +83,7 @@ module.exports = {
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/SoulSchool_Error_HeroLogo.png",
+          image: "./assets/images/SoulSchool_HERO_Logo.png",
           backgroundColor: "#000000",
           resizeMode: "contain",
           imageWidth: 126,

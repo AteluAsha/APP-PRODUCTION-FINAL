@@ -30,5 +30,8 @@ export const REVIEW_URL = "https://www.soulschool.app/community"
 // Soul School hero site – archetype quiz (waiting room + ChakraHub)
 export const ARCHETYPE_QUIZ_URL = "https://www.soulschool.app/archetypequiz"
 
+// Contact / support email (opens in device mail client)
+export const SUPPORT_EMAIL = "hello@soulschool.app"
+
 // Share message template
 export const SHARE_MESSAGE = `Join me on Soul School - A 7-day journey through the chakras for healing and awakening. ✨`

@@ -28,6 +28,8 @@ export interface AudioTrackRowProps {
   isPlaying?: boolean
   downloadedIds?: Set<string>
   downloadingId?: string | null
+  /** True when this track is in the download queue but not currently downloading */
+  isQueued?: boolean
   /** Optional content to render on the right, before download (e.g. Drop In button) */
   rightContent?: React.ReactNode
 }
@@ -49,6 +51,7 @@ export const AudioTrackRow = ({
   isPlaying = false,
   downloadedIds = new Set(),
   downloadingId = null,
+  isQueued = false,
   rightContent,
 }: AudioTrackRowProps) => {
   const isDownloaded = audioId ? localUri || downloadedIds.has(audioId) : false
@@ -156,27 +159,52 @@ export const AudioTrackRow = ({
           {rightContent != null ? (
             <View style={{ marginRight: 8 }}>{rightContent}</View>
           ) : null}
-          {/* Download icon - consistent spacing */}
-          {((canDownload && url) || localUri) && (
+          {/* Download: show when canDownload (crystal bowl etc.); disabled when no url yet */}
+          {canDownload && (
             <Pressable
               onPress={() => onDownload?.()}
-              disabled={isDownloading || !!localUri}
+              disabled={isDownloading || !!localUri || isQueued || !url}
               style={{
-                width: 40,
+                minWidth: 56,
                 height: 40,
                 alignItems: "center",
                 justifyContent: "center",
+                opacity: url ? 1 : 0.5,
               }}
             >
               {isDownloading ? (
-                <ActivityIndicator size="small" color="#87AE73" />
+                <>
+                  <ActivityIndicator size="small" color="#87AE73" />
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={{ color: "rgba(135,174,115,0.9)", marginTop: 2 }}
+                  >
+                    Downloading
+                  </AppText>
+                </>
+              ) : isQueued ? (
+                <>
+                  <Ionicons
+                    name="time-outline"
+                    size={22}
+                    color="rgba(255,255,255,0.6)"
+                  />
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={{ color: "rgba(255,255,255,0.6)", marginTop: 2 }}
+                  >
+                    Queued
+                  </AppText>
+                </>
               ) : isDownloaded || localUri ? (
                 <Ionicons name="checkmark-circle" size={24} color="#87AE73" />
               ) : (
                 <Ionicons
                   name="cloud-download-outline"
                   size={24}
-                  color="rgba(255,255,255,0.7)"
+                  color={url ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.4)"}
                 />
               )}
             </Pressable>

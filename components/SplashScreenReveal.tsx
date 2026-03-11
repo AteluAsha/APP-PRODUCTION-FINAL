@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useRef } from "react"
-import { View, Image, StyleSheet } from "react-native"
+import { View, Image, StyleSheet, Platform } from "react-native"
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,28 +19,43 @@ import Animated, {
 
 interface SplashScreenRevealProps {
   onAnimationComplete?: () => void
+  onFirstPaint?: () => void
+  onFadeInComplete?: () => void
   assetsReady?: boolean // Whether critical assets have loaded
 }
 
 export const SplashScreenReveal: React.FC<SplashScreenRevealProps> = ({
   onAnimationComplete,
+  onFirstPaint,
+  onFadeInComplete,
   assetsReady = false,
 }) => {
   const opacity = useSharedValue(0)
   const scale = useSharedValue(0.9)
   const breathingScale = useSharedValue(1) // Separate scale for breathing effect
   const completedRef = useRef(false)
+  const firstPaintFiredRef = useRef(false)
+  const fadeInCompleteFiredRef = useRef(false)
 
   useEffect(() => {
     // Start animation immediately - no delay
     // This ensures the hero logo is the FIRST thing users see
     // Luxury feel: Smooth, gentle, plenty of time for flow and ease
 
-    // Fade in gently - smooth entrance
-    opacity.value = withTiming(1, {
-      duration: 1500, // Longer, more luxurious fade in
-      easing: Easing.out(Easing.ease),
-    })
+    // Fade in gently - smooth entrance; notify when done so native splash can hide without a jump
+    opacity.value = withTiming(
+      1,
+      {
+        duration: 1500, // Longer, more luxurious fade in
+        easing: Easing.out(Easing.ease),
+      },
+      (finished) => {
+        if (finished && onFadeInComplete && !fadeInCompleteFiredRef.current) {
+          fadeInCompleteFiredRef.current = true
+          runOnJS(onFadeInComplete)()
+        }
+      },
+    )
 
     // Initial scale up gently - subtle reveal
     scale.value = withTiming(1, {
@@ -115,7 +130,7 @@ export const SplashScreenReveal: React.FC<SplashScreenRevealProps> = ({
       clearTimeout(mainTimeout)
       clearTimeout(safetyTimeout)
     }
-  }, [opacity, scale, breathingScale, onAnimationComplete, assetsReady])
+  }, [opacity, scale, breathingScale, onAnimationComplete, onFadeInComplete, assetsReady])
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -124,8 +139,14 @@ export const SplashScreenReveal: React.FC<SplashScreenRevealProps> = ({
     }
   })
 
+  const handleLayout = () => {
+    if (firstPaintFiredRef.current) return
+    firstPaintFiredRef.current = true
+    onFirstPaint?.()
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={handleLayout}>
       <Animated.View style={[styles.logoContainer, animatedStyle]}>
         <Image
           source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
@@ -150,7 +171,7 @@ const styles = StyleSheet.create({
     marginTop: -28,
   },
   logo: {
-    width: 390,
-    height: 195,
+    width: Platform.OS === "android" ? 312 : 390,
+    height: Platform.OS === "android" ? 156 : 195,
   },
 })

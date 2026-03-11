@@ -1,10 +1,12 @@
 /**
- * Find Friends Modal
+ * Find Friends Modal – Add a friend on Soul School
  *
- * Primary: system share. Backup: ShareDestinationPicker (Copy link, choose app).
+ * Primary: Soul School ID input → lookup → profile card → Connect (tribe invite).
+ * Secondary: Copy link / Share invite link.
+ * Recipient sees invite in Tribe Chat and can accept the transmission.
  */
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import {
   Modal,
   View,
@@ -12,18 +14,18 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Platform,
+  useWindowDimensions,
+  TextInput,
+  Image,
+  KeyboardAvoidingView,
 } from "react-native"
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import * as Clipboard from "expo-clipboard"
 import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import {
-  isContactsAvailable,
-  requestContactsPermission,
-  getDeviceContacts,
-  type ContactInfo,
-} from "@/src/services/contactSync"
 import {
   generateInviteMessage,
   generateReferralLink,
@@ -31,6 +33,11 @@ import {
 } from "@/utils/shareDestinations"
 import { ShareDestinationPicker } from "@/components/sharing/ShareDestinationPicker"
 import { getUserId } from "@/src/services/userId"
+import { getUserProfile, type UserProfile } from "@/src/services/profileService"
+import { createTribeInvite } from "@/src/services/tribeInvites"
+import { usePresenceStore } from "@/hooks/usePresenceStore"
+
+const ROOM_ID = "global-trial-tribe"
 
 export interface FindFriendsModalProps {
   visible: boolean
@@ -42,6 +49,9 @@ export interface FindFriendsModalProps {
   referralCode?: string
 }
 
+type LookupStatus = "idle" | "loading" | "found" | "not_found" | "self" | "error"
+type ConnectStatus = "idle" | "sending" | "sent" | "error"
+
 export function FindFriendsModal({
   visible,
   onClose,
@@ -49,26 +59,49 @@ export function FindFriendsModal({
   courseStartDateISO,
   referralCode: referralCodeProp,
 }: FindFriendsModalProps) {
-  const [status, setStatus] = useState<
-    | "idle"
-    | "requesting"
-    | "loading"
-    | "ready"
-    | "denied"
-    | "unavailable"
-    | "error"
-  >("idle")
-  const [contacts, setContacts] = useState<ContactInfo[]>([])
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const insets = useSafeAreaInsets()
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
+  const cardWidth = useMemo(
+    () => Math.min(windowWidth - 64, 420),
+    [windowWidth],
+  )
+
+  const presenceDisplayName = usePresenceStore((s) => s.displayName)
+  const presenceAvatarUrl = usePresenceStore((s) => s.profileImageUri)
+
+  const [soulSchoolIdInput, setSoulSchoolIdInput] = useState("")
+  const [lookupStatus, setLookupStatus] = useState<LookupStatus>("idle")
+  const [lookupProfile, setLookupProfile] = useState<UserProfile | null>(null)
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle")
+  const [connectError, setConnectError] = useState<string | null>(null)
   const [showCopied, setShowCopied] = useState(false)
   const [showSharePicker, setShowSharePicker] = useState(false)
   const [resolvedReferralCode, setResolvedReferralCode] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [shouldRenderModal, setShouldRenderModal] = useState(visible)
+
+  useEffect(() => {
+    if (visible) {
+      setShouldRenderModal(true)
+      getUserId().then(setCurrentUserId).catch(() => setCurrentUserId(null))
+    } else {
+      const t = setTimeout(() => setShouldRenderModal(false), 280)
+      return () => clearTimeout(t)
+    }
+  }, [visible])
 
   useEffect(() => {
     if (visible && !referralCodeProp) {
       getUserId().then(setResolvedReferralCode).catch(() => setResolvedReferralCode(null))
     } else if (!visible) {
       setResolvedReferralCode(null)
+      setSoulSchoolIdInput("")
+      setLookupStatus("idle")
+      setLookupProfile(null)
+      setConnectStatus("idle")
+      setConnectError(null)
+      setShowCopied(false)
+      setShowSharePicker(false)
     }
   }, [visible, referralCodeProp])
 
@@ -80,46 +113,60 @@ export function FindFriendsModal({
     senderSoulSchoolId: referralCode,
   })
 
-  const loadContacts = useCallback(async () => {
-    if (!visible) return
-    setStatus("requesting")
-    setErrorMessage(null)
-    const available = await isContactsAvailable()
-    if (!available) {
-      setStatus("unavailable")
+  const handleLookup = useCallback(async () => {
+    const trimmed = soulSchoolIdInput.trim()
+    if (!trimmed) return
+    addHapticFeedback(HapticStrength.Light)
+    setLookupStatus("loading")
+    setLookupProfile(null)
+    setConnectStatus("idle")
+    setConnectError(null)
+    const myId = currentUserId ?? (await getUserId().catch(() => ""))
+    if (trimmed === myId) {
+      setLookupStatus("self")
       return
     }
-    const granted = await requestContactsPermission()
-    if (!granted) {
-      setStatus("denied")
-      return
-    }
-    setStatus("loading")
     try {
-      const list = await getDeviceContacts()
-      setContacts(list)
-      setStatus("ready")
+      const profile = await getUserProfile(trimmed)
+      if (profile) {
+        setLookupProfile(profile)
+        setLookupStatus("found")
+      } else {
+        setLookupStatus("not_found")
+      }
+    } catch {
+      setLookupStatus("error")
+    }
+  }, [soulSchoolIdInput, currentUserId])
+
+  const handleConnect = useCallback(async () => {
+    if (!lookupProfile || connectStatus === "sending") return
+    addHapticFeedback(HapticStrength.Medium)
+    setConnectStatus("sending")
+    setConnectError(null)
+    try {
+      const fromUserId = await getUserId()
+      const result = await createTribeInvite(
+        fromUserId,
+        lookupProfile.id,
+        presenceDisplayName || "A soul",
+        presenceAvatarUrl ?? undefined,
+        ROOM_ID,
+      )
+      if (result.ok) {
+        setConnectStatus("sent")
+      } else {
+        setConnectStatus("error")
+        setConnectError(result.error ?? "Could not send invite")
+      }
     } catch (e) {
-      if (__DEV__) console.warn("[FindFriendsModal] getDeviceContacts:", e)
-      setErrorMessage("Could not load contacts.")
-      setStatus("error")
+      setConnectStatus("error")
+      setConnectError("Could not send invite")
+      if (__DEV__) console.warn("[FindFriendsModal] createTribeInvite:", e)
     }
-  }, [visible])
+  }, [lookupProfile, connectStatus, presenceDisplayName, presenceAvatarUrl])
 
-  useEffect(() => {
-    if (visible && status === "idle") {
-      loadContacts()
-    }
-    if (!visible) {
-      setStatus("idle")
-      setContacts([])
-      setErrorMessage(null)
-      setShowCopied(false)
-      setShowSharePicker(false)
-    }
-  }, [visible, status, loadContacts])
-
-  const handleCopyLink = async () => {
+  const handleCopyLink = useCallback(async () => {
     addHapticFeedback(HapticStrength.Medium)
     setShowCopied(true)
     try {
@@ -128,28 +175,318 @@ export function FindFriendsModal({
     } catch {
       setShowCopied(false)
     }
-  }
+  }, [referralLink])
 
-  const handleSystemShare = async () => {
+  const handleSystemShare = useCallback(async () => {
     addHapticFeedback(HapticStrength.Medium)
     await openSystemShare({
       message: inviteMessage,
       url: referralLink,
       title: "Join me on Soul School",
     })
-  }
+  }, [inviteMessage, referralLink])
 
-  const handleOpenBackupPicker = () => {
-    addHapticFeedback(HapticStrength.Light)
-    setShowSharePicker(true)
-  }
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     addHapticFeedback(HapticStrength.Light)
     onClose()
-  }
+  }, [onClose])
 
-  if (!visible) return null
+  if (!shouldRenderModal) return null
+
+  const overlayWrapStyle = [
+    styles.overlayWrap,
+    {
+      paddingTop: Math.max(insets.top, 24),
+      paddingBottom: Math.max(insets.bottom, 24),
+      paddingLeft: Math.max(insets.left, 32),
+      paddingRight: Math.max(insets.right, 32),
+    },
+  ]
+  const rootStyle = [
+    styles.overlayWrapRoot,
+    { backgroundColor: Platform.OS === "android" ? "rgba(0, 0, 0, 0.92)" : "rgba(0, 0, 0, 0.85)" },
+  ]
+
+  const androidModalRootStyle =
+    Platform.OS === "android"
+      ? [styles.overlayWrapRoot, { width: windowWidth, height: windowHeight, backgroundColor: "rgba(0, 0, 0, 0.92)" }]
+      : null
+
+  const modalContent = (
+    <>
+      <View style={rootStyle}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} />
+        <View style={overlayWrapStyle} pointerEvents="box-none">
+          <Pressable
+            style={[styles.card, { width: cardWidth }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <LinearGradient
+                  colors={
+                    Platform.OS === "android"
+                      ? ["#1e2022", "#1a1c1e", "#181c1e", "#1c1e22"]
+                      : [
+                          "rgba(28, 28, 32, 0.98)",
+                          "rgba(22, 26, 28, 0.98)",
+                          "rgba(20, 28, 30, 0.98)",
+                          "rgba(26, 28, 32, 0.98)",
+                        ]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradient}
+                >
+              <View style={styles.headerRow}>
+                <AppText font="instrument-semibold" size="xl" style={styles.title}>
+                  Find friends on Soul School
+                </AppText>
+                <Pressable onPress={handleClose} hitSlop={12} style={styles.closeBtn}>
+                  <Ionicons name="close" size={24} color="rgba(255,255,255,0.7)" />
+                </Pressable>
+              </View>
+
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={styles.keyboardView}
+              >
+                <ScrollView
+                  style={styles.scroll}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {/* Section 1: Add by Soul School ID */}
+                  <AppText font="instrument-medium" size="sm" style={styles.sectionLabel}>
+                    Add by Soul School ID
+                  </AppText>
+                  <AppText font="instrument-regular" size="xs" style={styles.sectionHint}>
+                    Ask your friend for their Soul School ID or Soul Signature from Profile.
+                  </AppText>
+                  <TextInput
+                    value={soulSchoolIdInput}
+                    onChangeText={(t) => {
+                      setSoulSchoolIdInput(t)
+                      if (lookupStatus !== "idle") setLookupStatus("idle")
+                    }}
+                    placeholder="Soul Signature or Soul School ID"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    style={styles.input}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    spellCheck={false}
+                  />
+                  <Pressable
+                    onPress={handleLookup}
+                    disabled={!soulSchoolIdInput.trim() || lookupStatus === "loading"}
+                    style={[
+                      styles.lookupBtn,
+                      (!soulSchoolIdInput.trim() || lookupStatus === "loading") &&
+                        styles.lookupBtnDisabled,
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={
+                        soulSchoolIdInput.trim() && lookupStatus !== "loading"
+                          ? ["rgba(135, 174, 115, 0.4)", "rgba(107, 142, 90, 0.25)"]
+                          : ["rgba(135, 174, 115, 0.15)", "rgba(107, 142, 90, 0.1)"]
+                      }
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.lookupBtnInner}
+                    >
+                      {lookupStatus === "loading" ? (
+                        <ActivityIndicator size="small" color="rgba(168, 201, 154, 0.95)" />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="search"
+                            size={18}
+                            color={
+                              soulSchoolIdInput.trim() && lookupStatus !== "loading"
+                                ? "#B8D4A8"
+                                : "rgba(168, 201, 154, 0.5)"
+                            }
+                            style={{ marginRight: 8 }}
+                          />
+                          <AppText
+                            font="instrument-semibold"
+                            size="sm"
+                            style={[
+                              styles.lookupBtnText,
+                              (!soulSchoolIdInput.trim() || lookupStatus === "loading") &&
+                                styles.lookupBtnTextDisabled,
+                            ]}
+                          >
+                            Look up
+                          </AppText>
+                        </>
+                      )}
+                    </LinearGradient>
+                  </Pressable>
+
+                  {lookupStatus === "self" && (
+                    <AppText font="instrument-regular" size="sm" style={styles.errorMsg}>
+                      You can&apos;t invite yourself.
+                    </AppText>
+                  )}
+                  {lookupStatus === "not_found" && (
+                    <AppText font="instrument-regular" size="sm" style={styles.errorMsg}>
+                      No Soul School member found with this ID.
+                    </AppText>
+                  )}
+                  {lookupStatus === "error" && (
+                    <AppText font="instrument-regular" size="sm" style={styles.errorMsg}>
+                      Could not look up. Try again.
+                    </AppText>
+                  )}
+
+                  {lookupStatus === "found" && lookupProfile && (
+                    <View style={styles.profileCard}>
+                      <View style={styles.profileRow}>
+                        {lookupProfile.avatarUrl ? (
+                          <Image
+                            source={{ uri: lookupProfile.avatarUrl }}
+                            style={styles.profileAvatar}
+                          />
+                        ) : (
+                          <View style={[styles.profileAvatar, styles.profileAvatarPlaceholder]}>
+                            <Ionicons name="person" size={24} color="rgba(255,255,255,0.5)" />
+                          </View>
+                        )}
+                        <View style={styles.profileInfo}>
+                          <AppText
+                            font="instrument-semibold"
+                            size="base"
+                            style={styles.profileName}
+                            numberOfLines={1}
+                          >
+                            {lookupProfile.displayName || "Soul"}
+                          </AppText>
+                          {lookupProfile.location ? (
+                            <AppText
+                              font="instrument-regular"
+                              size="xs"
+                              style={styles.profileLocation}
+                              numberOfLines={1}
+                            >
+                              {lookupProfile.location}
+                            </AppText>
+                          ) : null}
+                        </View>
+                      </View>
+                      {connectStatus === "sent" ? (
+                        <View style={styles.sentRow}>
+                          <Ionicons name="checkmark-circle" size={20} color="rgba(135, 174, 115, 0.95)" />
+                          <AppText font="instrument-regular" size="sm" style={styles.sentText}>
+                            Invite sent. They&apos;ll see it in Tribe Chat to accept the transmission.
+                          </AppText>
+                        </View>
+                      ) : (
+                        <>
+                          <Pressable
+                            onPress={handleConnect}
+                            disabled={connectStatus === "sending"}
+                            style={[
+                              styles.connectBtn,
+                              connectStatus === "sending" && styles.connectBtnDisabled,
+                            ]}
+                          >
+                            <LinearGradient
+                              colors={
+                                connectStatus === "sending"
+                                  ? ["rgba(135, 174, 115, 0.15)", "rgba(107, 142, 90, 0.1)"]
+                                  : ["rgba(135, 174, 115, 0.35)", "rgba(6, 182, 212, 0.12)"]
+                              }
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              style={styles.connectBtnInner}
+                            >
+                              {connectStatus === "sending" ? (
+                                <ActivityIndicator size="small" color="rgba(168, 201, 154, 0.9)" />
+                              ) : (
+                                <>
+                                  <Ionicons
+                                    name="person-add"
+                                    size={18}
+                                    color="#B8D4A8"
+                                    style={{ marginRight: 8 }}
+                                  />
+                                  <AppText font="instrument-semibold" size="sm" style={styles.connectBtnText}>
+                                    Connect
+                                  </AppText>
+                                </>
+                              )}
+                            </LinearGradient>
+                          </Pressable>
+                          {connectStatus === "error" && connectError && (
+                            <AppText font="instrument-regular" size="xs" style={styles.errorMsg}>
+                              {connectError}
+                            </AppText>
+                          )}
+                        </>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Section 2: Or share your invite link */}
+                  <View style={styles.divider} />
+                  <AppText font="instrument-medium" size="sm" style={styles.sectionLabel}>
+                    Or share your invite link
+                  </AppText>
+                  <View style={styles.shareRow}>
+                    <Pressable
+                      onPress={handleCopyLink}
+                      disabled={showCopied}
+                      style={styles.copyBtn}
+                    >
+                      <LinearGradient
+                        colors={
+                          showCopied
+                            ? ["rgba(135, 174, 115, 0.2)", "rgba(107, 142, 90, 0.12)"]
+                            : ["rgba(135, 174, 115, 0.28)", "rgba(6, 182, 212, 0.08)"]
+                        }
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.copyBtnInner}
+                      >
+                        <Ionicons
+                          name={showCopied ? "checkmark" : "copy-outline"}
+                          size={18}
+                          color="#B8D4A8"
+                          style={{ marginRight: 6 }}
+                        />
+                        <AppText font="instrument-medium" size="xs" style={styles.copyBtnText}>
+                          {showCopied ? "Copied!" : "Copy link"}
+                        </AppText>
+                      </LinearGradient>
+                    </Pressable>
+                    <Pressable onPress={handleSystemShare} style={styles.shareBtn}>
+                      <LinearGradient
+                        colors={["rgba(255,255,255,0.1)", "rgba(6, 182, 212, 0.04)"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.shareBtnInner}
+                      >
+                        <Ionicons name="share-outline" size={18} color="rgba(255,255,255,0.9)" style={{ marginRight: 6 }} />
+                        <AppText font="instrument-regular" size="xs" style={styles.shareBtnText}>
+                          Share
+                        </AppText>
+                      </LinearGradient>
+                    </Pressable>
+                  </View>
+                  <Pressable onPress={() => setShowSharePicker(true)} style={styles.chooseAppLink}>
+                    <AppText font="instrument-regular" size="xs" style={styles.chooseAppText}>
+                      Copy link or choose app
+                    </AppText>
+                  </Pressable>
+                </ScrollView>
+              </KeyboardAvoidingView>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </View>
+    </>
+  )
 
   return (
     <Modal
@@ -157,291 +494,21 @@ export function FindFriendsModal({
       transparent
       animationType="fade"
       onRequestClose={handleClose}
+      statusBarTranslucent={Platform.OS === "android"}
     >
-      <Pressable style={styles.overlay} onPress={handleClose}>
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <LinearGradient
-            colors={[
-              "rgba(18, 22, 28, 0.97)",
-              "rgba(14, 18, 24, 0.98)",
-              "rgba(20, 26, 32, 0.97)",
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradient}
-          >
-            <View style={styles.header}>
-              <AppText font="instrument-bold" size="lg" style={styles.title}>
-                Find friends
-              </AppText>
-              <Pressable
-                onPress={handleClose}
-                hitSlop={12}
-                style={styles.closeBtn}
-              >
-                <Ionicons
-                  name="close"
-                  size={26}
-                  color="rgba(255,255,255,0.8)"
-                />
-              </Pressable>
-            </View>
-
-            {status === "requesting" || status === "loading" ? (
-              <View style={styles.centered}>
-                <ActivityIndicator
-                  size="large"
-                  color="rgba(135, 174, 115, 0.9)"
-                />
-                <AppText
-                  font="instrument-regular"
-                  size="sm"
-                  style={styles.hint}
-                >
-                  {status === "requesting"
-                    ? "Checking permission…"
-                    : "Loading contacts…"}
-                </AppText>
-              </View>
-            ) : status === "unavailable" ? (
-              <View style={styles.shareFallback}>
-                <AppText
-                  font="instrument-regular"
-                  size="base"
-                  style={styles.fallbackLead}
-                >
-                  Share your invite via Messages, WhatsApp, Instagram, or any
-                  app.
-                </AppText>
-                <Pressable
-                  onPress={handleCopyLink}
-                  disabled={showCopied}
-                  style={styles.primaryBtn}
-                >
-                  <LinearGradient
-                    colors={[
-                      "rgba(135, 174, 115, 0.28)",
-                      "rgba(135, 174, 115, 0.18)",
-                      "rgba(6, 182, 212, 0.08)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.primaryBtnInner}
-                  >
-                    {showCopied ? (
-                      <AppText
-                        font="instrument-medium"
-                        size="base"
-                        style={styles.primaryBtnText}
-                      >
-                        Link copied!
-                      </AppText>
-                    ) : (
-                      <>
-                        <Ionicons
-                          name="copy-outline"
-                          size={20}
-                          color="#B8D4A8"
-                          style={{ marginRight: 8 }}
-                        />
-                        <AppText
-                          font="instrument-medium"
-                          size="base"
-                          style={styles.primaryBtnText}
-                        >
-                          Copy link
-                        </AppText>
-                      </>
-                    )}
-                  </LinearGradient>
-                </Pressable>
-                <Pressable
-                  onPress={handleSystemShare}
-                  style={styles.secondaryBtn}
-                >
-                  <LinearGradient
-                    colors={[
-                      "rgba(255,255,255,0.1)",
-                      "rgba(255,255,255,0.05)",
-                      "rgba(6, 182, 212, 0.04)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.secondaryBtnInner}
-                  >
-                    <Ionicons
-                      name="share-outline"
-                      size={18}
-                      color="rgba(255,255,255,0.9)"
-                      style={{ marginRight: 8 }}
-                    />
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={styles.secondaryBtnText}
-                    >
-                      Share to Messages, WhatsApp, Instagram…
-                    </AppText>
-                  </LinearGradient>
-                </Pressable>
-                <Pressable
-                  onPress={handleOpenBackupPicker}
-                  style={styles.backupLink}
-                >
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={styles.backupLinkText}
-                  >
-                    Copy link or choose app
-                  </AppText>
-                </Pressable>
-              </View>
-            ) : status === "denied" ? (
-              <View style={styles.centered}>
-                <Ionicons
-                  name="people-outline"
-                  size={48}
-                  color="rgba(135, 174, 115, 0.5)"
-                />
-                <AppText
-                  font="instrument-regular"
-                  size="base"
-                  style={styles.deniedText}
-                >
-                  Contacts access was denied. You can invite friends by sharing
-                  the link below or from Add to Room.
-                </AppText>
-                <Pressable
-                  onPress={handleSystemShare}
-                  style={[styles.secondaryBtn, { marginTop: 16 }]}
-                >
-                  <LinearGradient
-                    colors={[
-                      "rgba(255,255,255,0.1)",
-                      "rgba(6, 182, 212, 0.04)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.secondaryBtnInner}
-                  >
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={styles.secondaryBtnText}
-                    >
-                      Share to Messages, WhatsApp…
-                    </AppText>
-                  </LinearGradient>
-                </Pressable>
-                <Pressable
-                  onPress={handleOpenBackupPicker}
-                  style={styles.backupLink}
-                >
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={styles.backupLinkText}
-                  >
-                    Copy link or choose app
-                  </AppText>
-                </Pressable>
-              </View>
-            ) : status === "error" ? (
-              <View style={styles.centered}>
-                <AppText
-                  font="instrument-regular"
-                  size="sm"
-                  style={styles.errorText}
-                >
-                  {errorMessage}
-                </AppText>
-              </View>
-            ) : status === "ready" ? (
-              <>
-                <AppText
-                  font="instrument-regular"
-                  size="sm"
-                  style={styles.subtitle}
-                >
-                  Invite your contacts to Soul School. They can join you in the
-                  room once they have the app.
-                </AppText>
-                <ScrollView
-                  style={styles.list}
-                  contentContainerStyle={styles.listContent}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {contacts.length === 0 ? (
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={styles.emptyText}
-                    >
-                      No contacts with phone or email found.
-                    </AppText>
-                  ) : (
-                    contacts.slice(0, 100).map((contact) => (
-                      <Pressable
-                        key={contact.id}
-                        onPress={handleSystemShare}
-                        style={({ pressed }) => [
-                          styles.row,
-                          pressed && styles.rowPressed,
-                        ]}
-                      >
-                        <View style={styles.avatar}>
-                          <Ionicons
-                            name="person"
-                            size={20}
-                            color="rgba(168, 201, 154, 0.8)"
-                          />
-                        </View>
-                        <AppText
-                          font="instrument-medium"
-                          size="sm"
-                          style={styles.rowName}
-                          numberOfLines={1}
-                        >
-                          {contact.displayName}
-                        </AppText>
-                        <Ionicons
-                          name="share-outline"
-                          size={20}
-                          color="rgba(135, 174, 115, 0.9)"
-                        />
-                      </Pressable>
-                    ))
-                  )}
-                </ScrollView>
-                {contacts.length > 100 && (
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={styles.cappedHint}
-                  >
-                    Showing first 100. Use search in your messages to invite
-                    others.
-                  </AppText>
-                )}
-                <Pressable
-                  onPress={handleOpenBackupPicker}
-                  style={styles.backupLink}
-                >
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={styles.backupLinkText}
-                  >
-                    Copy link or choose app
-                  </AppText>
-                </Pressable>
-              </>
-            ) : null}
-          </LinearGradient>
-        </Pressable>
-      </Pressable>
+      {visible ? (
+        Platform.OS === "android" ? (
+          <View style={androidModalRootStyle}>
+            <SafeAreaProvider style={styles.safeAreaProviderFill}>
+              {modalContent}
+            </SafeAreaProvider>
+          </View>
+        ) : (
+          <SafeAreaProvider style={styles.safeAreaProviderFill}>
+            {modalContent}
+          </SafeAreaProvider>
+        )
+      ) : null}
 
       <ShareDestinationPicker
         visible={showSharePicker}
@@ -456,112 +523,218 @@ export function FindFriendsModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  safeAreaProviderFill: { flex: 1 },
+  overlayWrapRoot: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    width: "100%",
+  },
+  overlayWrap: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    width: "100%",
   },
   card: {
-    width: "100%",
-    maxWidth: 360,
-    maxHeight: "80%",
+    maxWidth: 420,
+    maxHeight: "88%",
     borderRadius: 24,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(135, 174, 115, 0.35)",
-    shadowColor: "rgba(6, 182, 212, 0.2)",
+    borderWidth: 1.5,
+    borderColor: "rgba(135, 174, 115, 0.38)",
+    shadowColor: "rgba(6, 182, 212, 0.18)",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowRadius: 20,
+    elevation: 14,
   },
-  gradient: { padding: 24 },
-  header: {
+  gradient: {
+    flex: 1,
+    minHeight: 200,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 28,
+    paddingVertical: 26,
+    paddingBottom: 32,
+  },
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
-  },
-  title: { color: "rgba(255,255,255,0.98)" },
-  closeBtn: { padding: 6 },
-  centered: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 32,
-  },
-  hint: { color: "rgba(255,255,255,0.7)", marginTop: 12 },
-  deniedText: {
-    color: "rgba(255,255,255,0.8)",
-    textAlign: "center",
-    marginTop: 16,
-    paddingHorizontal: 16,
-  },
-  errorText: { color: "rgba(251, 191, 36, 0.9)" },
-  shareFallback: { paddingVertical: 8 },
-  fallbackLead: {
-    color: "rgba(255,255,255,0.85)",
-    textAlign: "center",
     marginBottom: 20,
-    paddingHorizontal: 8,
   },
-  primaryBtn: {
-    borderRadius: 14,
+  title: {
+    color: "rgba(255,255,255,0.98)",
+    flex: 1,
+  },
+  closeBtn: {
+    padding: 8,
+    marginRight: -8,
+  },
+  sectionLabel: {
+    color: "rgba(212, 197, 169, 0.95)",
+    marginBottom: 6,
+  },
+  sectionHint: {
+    color: "rgba(255,255,255,0.58)",
     marginBottom: 12,
-    overflow: "hidden" as const,
-    borderWidth: 1,
-    borderColor: "rgba(135, 174, 115, 0.5)",
+    lineHeight: 18,
   },
-  primaryBtnInner: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-  },
-  primaryBtnText: { color: "#B8D4A8" },
-  secondaryBtn: {
+  input: {
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
     borderRadius: 14,
-    overflow: "hidden" as const,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-  },
-  secondaryBtnInner: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
+    borderColor: "rgba(135, 174, 115, 0.28)",
     paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    color: "#fff",
+    fontSize: 15,
+    marginBottom: 14,
   },
-  secondaryBtnText: { color: "rgba(255,255,255,0.9)" },
-  backupLink: { paddingVertical: 8, alignItems: "center" as const },
-  backupLinkText: { color: "rgba(255,255,255,0.5)" },
-  subtitle: {
-    color: "rgba(255,255,255,0.78)",
+  lookupBtn: {
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.45)",
     marginBottom: 16,
   },
-  list: { maxHeight: 320 },
-  listContent: { paddingBottom: 16 },
-  emptyText: { color: "rgba(255,255,255,0.6)" },
-  row: {
+  lookupBtnDisabled: {
+    opacity: 0.7,
+  },
+  lookupBtnInner: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: 20,
   },
-  rowPressed: { opacity: 0.8 },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  lookupBtnText: {
+    color: "#B8D4A8",
+  },
+  lookupBtnTextDisabled: {
+    color: "rgba(168, 201, 154, 0.6)",
+  },
+  errorMsg: {
+    color: "rgba(251, 191, 36, 0.9)",
+    marginBottom: 12,
+  },
+  profileCard: {
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(6, 182, 212, 0.22)",
+    padding: 18,
+    marginBottom: 20,
+  },
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  profileAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 14,
+  },
+  profileAvatarPlaceholder: {
     backgroundColor: "rgba(135, 174, 115, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
-  rowName: { flex: 1, color: "rgba(255,255,255,0.9)" },
-  cappedHint: { color: "rgba(255,255,255,0.5)", marginTop: 8 },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    color: "rgba(255,255,255,0.95)",
+  },
+  profileLocation: {
+    color: "rgba(255,255,255,0.6)",
+    marginTop: 2,
+  },
+  connectBtn: {
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.5)",
+  },
+  connectBtnDisabled: {
+    opacity: 0.8,
+  },
+  connectBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  connectBtnText: {
+    color: "#B8D4A8",
+  },
+  sentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 8,
+  },
+  sentText: {
+    color: "rgba(135, 174, 115, 0.95)",
+    flex: 1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginVertical: 22,
+  },
+  shareRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 10,
+  },
+  copyBtn: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.4)",
+  },
+  copyBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  copyBtnText: {
+    color: "#B8D4A8",
+  },
+  shareBtn: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  shareBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  shareBtnText: {
+    color: "rgba(255,255,255,0.9)",
+  },
+  chooseAppLink: {
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  chooseAppText: {
+    color: "rgba(255,255,255,0.5)",
+  },
 })

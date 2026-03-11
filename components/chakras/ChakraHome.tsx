@@ -497,6 +497,8 @@ export const ChakraHome = () => {
     isLoadingChakras,
   ])
 
+  const contentReady = !isLoadingChakras && chakraData.length === 7
+
   const closeModal = () => {
     clearCompletedChakra()
   }
@@ -726,6 +728,15 @@ export const ChakraHome = () => {
     )
   }
 
+  if (!contentReady) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "#000000" }}
+        edges={["top", "bottom"]}
+      />
+    )
+  }
+
   return (
     <Animated.View
       entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
@@ -893,7 +904,7 @@ export const ChakraHome = () => {
             renderChakraDisplay()}
         </ScrollView>
 
-        {/* Overlays after ScrollView so they receive touches on Android */}
+        {/* Overlays after ScrollView so they receive touches on Android. Lifetime course-mode exit (global: iOS + Android). */}
         {hasLifetimeAccess && (
           <Pressable
             onPress={() => {
@@ -918,8 +929,8 @@ export const ChakraHome = () => {
               borderColor: "rgba(255, 255, 255, 0.2)",
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel="Return to Hub"
-            accessibilityHint="Tap to return to your sacred space"
+            accessibilityLabel="Return to lifetime"
+            accessibilityHint="Exit course mode and return to lifetime hub"
           >
             <View style={{ gap: 4 }}>
               <View

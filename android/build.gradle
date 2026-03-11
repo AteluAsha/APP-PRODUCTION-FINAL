@@ -38,14 +38,11 @@ allprojects {
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
     }
+    // Single image-cropper: bsky uses CanHub API; substitute vanniktech with CanHub to avoid duplicate classes
     configurations.all {
         resolutionStrategy {
-            // Unify image cropper: bsky-app-expo-image-crop-tool needs 4.6.0 API; force all to vanniktech 4.6.0.
-            eachDependency { details ->
-                if (details.requested.group == 'com.github.CanHub' && details.requested.name == 'Android-Image-Cropper') {
-                    details.useTarget 'com.vanniktech:android-image-cropper:4.6.0'
-                    details.because 'Resolve duplicate Android-Image-Cropper; bsky crop tool requires 4.6.0 API'
-                }
+            dependencySubstitution {
+                substitute module('com.vanniktech:android-image-cropper') using module('com.github.CanHub:Android-Image-Cropper:4.3.1')
             }
         }
     }

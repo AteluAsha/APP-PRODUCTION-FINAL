@@ -1,13 +1,16 @@
 /**
  * Somatic Journey modal (lifetime only)
  *
- * Shown when a lifetime user taps "Start a new 7 Day Journey" and a course is
- * already scheduled (courseStartDate set). Offers:
- * - Continue current course → ChakraHome
- * - Start a new one → clear course, DateSelection
+ * Shown when a lifetime user in course mode taps "Return or new session" on ChakraHub. Offers:
+ * - Return to course → ChakraHome (stay in course mode)
+ * - New session → clear course, DateSelection (pick new start date)
  *
- * When no course is active, ChakraHub does not show this modal; it goes
- * straight to DateSelection (single "Start new course" path).
+ * When not in course mode, ChakraHub shows "Begin Course Mode" and goes to DateSelection.
+ *
+ * Rebuilt so the card is always centered on-screen (iOS + Android): uses
+ * Dimensions.get("window") for overlay size, View root with flex center, and
+ * backdrop + card (no SafeAreaView wrapper that could push content off-screen).
+ * statusBarTranslucent is set only on Android for correct modal presentation.
  */
 
 import React from "react"
@@ -15,11 +18,10 @@ import {
   Modal,
   View,
   Pressable,
-  Platform,
   StyleSheet,
-  useWindowDimensions,
+  Dimensions,
+  Platform,
 } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { TOUCH } from "@/constants/layout"
@@ -31,20 +33,20 @@ interface ReturnToCourseModalProps {
   onStartNew: () => void
 }
 
+const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get("window")
+const CARD_MAX_WIDTH = Math.min(WINDOW_WIDTH - 48, 320)
+
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1,
+    width: WINDOW_WIDTH,
+    height: WINDOW_HEIGHT,
     backgroundColor: "rgba(0, 0, 0, 0.88)",
-  },
-  safeContent: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
   },
   card: {
-    width: "100%",
-    maxWidth: 320,
+    width: CARD_MAX_WIDTH,
     borderRadius: 20,
     paddingVertical: 28,
     paddingHorizontal: 24,
@@ -104,13 +106,6 @@ export const ReturnToCourseModal: React.FC<ReturnToCourseModalProps> = ({
   onContinueCurrent,
   onStartNew,
 }) => {
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
-
-  const overlayStyle =
-    Platform.OS === "android"
-      ? [styles.overlay, { width: screenWidth, height: screenHeight }]
-      : styles.overlay
-
   const handleContinue = () => {
     addHapticFeedback(HapticStrength.Medium)
     onClose()
@@ -129,72 +124,66 @@ export const ReturnToCourseModal: React.FC<ReturnToCourseModalProps> = ({
       transparent
       animationType="fade"
       onRequestClose={onClose}
-      statusBarTranslucent
+      statusBarTranslucent={Platform.OS === "android"}
     >
-      <Pressable
-        style={overlayStyle}
-        onPress={onClose}
-        accessible={false}
-      >
-        <SafeAreaView
-          style={styles.safeContent}
-          edges={["top", "left", "right", "bottom"]}
-        >
-          <Pressable
-            style={styles.card}
-            onPress={(e) => e.stopPropagation()}
-            accessibilityRole="none"
-          >
-            <AppText font="instrument-bold" size="lg" style={styles.title}>
-              You have a journey in progress
-            </AppText>
-            <AppText font="instrument-regular" size="base" style={styles.body}>
-              Continue your current 7-day course or clear it and choose a new start date.
-            </AppText>
+      <View style={styles.overlay} pointerEvents="box-none">
+        <Pressable
+          style={StyleSheet.absoluteFillObject}
+          onPress={onClose}
+          accessibilityLabel="Close"
+          accessibilityRole="button"
+        />
+        <View style={styles.card} pointerEvents="box-none">
+          <AppText font="instrument-bold" size="lg" style={styles.title}>
+            Return or new session
+          </AppText>
+          <AppText font="instrument-regular" size="base" style={styles.body}>
+            Return to your current 7-day course or start a new session with a
+            different start date.
+          </AppText>
 
-            <View style={styles.buttonColumn}>
-              <Pressable
-                onPress={handleContinue}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && { opacity: 0.88 },
-                ]}
-                hitSlop={TOUCH.hitSlop}
-                accessibilityLabel="Continue current course"
-                accessibilityRole="button"
+          <View style={styles.buttonColumn}>
+            <Pressable
+              onPress={handleContinue}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && { opacity: 0.88 },
+              ]}
+              hitSlop={TOUCH.hitSlop}
+              accessibilityLabel="Return to course"
+              accessibilityRole="button"
+            >
+              <AppText
+                font="instrument-semibold"
+                size="base"
+                style={styles.primaryLabel}
               >
-                <AppText
-                  font="instrument-semibold"
-                  size="base"
-                  style={styles.primaryLabel}
-                >
-                  Continue current course
-                </AppText>
-              </Pressable>
+                Return to course
+              </AppText>
+            </Pressable>
 
-              <Pressable
-                onPress={handleStartNew}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  pressed && { opacity: 0.88 },
-                ]}
-                hitSlop={TOUCH.hitSlop}
-                accessibilityLabel="Start a new one"
-                accessibilityHint="Clears current course and opens date picker"
-                accessibilityRole="button"
+            <Pressable
+              onPress={handleStartNew}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                pressed && { opacity: 0.88 },
+              ]}
+              hitSlop={TOUCH.hitSlop}
+              accessibilityLabel="New session"
+              accessibilityHint="Clear current course and choose a new start date"
+              accessibilityRole="button"
+            >
+              <AppText
+                font="instrument-medium"
+                size="base"
+                style={styles.secondaryLabel}
               >
-                <AppText
-                  font="instrument-medium"
-                  size="base"
-                  style={styles.secondaryLabel}
-                >
-                  Start a new one
-                </AppText>
-              </Pressable>
-            </View>
-          </Pressable>
-        </SafeAreaView>
-      </Pressable>
+                New session
+              </AppText>
+            </Pressable>
+          </View>
+        </View>
+      </View>
     </Modal>
   )
 }

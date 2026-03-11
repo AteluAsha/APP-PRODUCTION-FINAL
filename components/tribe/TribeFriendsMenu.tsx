@@ -5,7 +5,7 @@
  * + Invite More, Find Friends. Hamburger in Tribe Chat header opens this.
  */
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   View,
   Pressable,
@@ -14,6 +14,8 @@ import {
   StyleSheet,
   useWindowDimensions,
   TextInput,
+  Platform,
+  Alert,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -39,6 +41,8 @@ export interface TribeFriendsMenuProps {
   currentUserId?: string
   currentDisplayName?: string
   currentProfilePicUrl?: string
+  roomId?: string
+  onRemoveMember?: (memberId: string) => Promise<void>
 }
 
 export function TribeFriendsMenu({
@@ -53,6 +57,8 @@ export function TribeFriendsMenu({
   currentUserId = "soul-school-guest",
   currentDisplayName = "You",
   currentProfilePicUrl,
+  roomId,
+  onRemoveMember,
 }: TribeFriendsMenuProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("Connected")
   const [copied, setCopied] = useState(false)
@@ -61,9 +67,19 @@ export function TribeFriendsMenu({
     "idle" | "sending" | "sent" | "error"
   >("idle")
   const [connectError, setConnectError] = useState<string | null>(null)
+  const [shouldRenderModal, setShouldRenderModal] = useState(visible)
+  useEffect(() => {
+    if (visible) {
+      setShouldRenderModal(true)
+      return
+    }
+    const t = setTimeout(() => setShouldRenderModal(false), 280)
+    return () => clearTimeout(t)
+  }, [visible])
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
-  const panelWidth = Math.min(width * 0.88, 360)
+  const horizontalPadding = Math.max(insets.left, 20) + Math.max(insets.right, 20)
+  const panelWidth = Math.min(width - horizontalPadding, 440)
 
   const handleConnectById = async () => {
     const trimmed = connectIdInput.trim()
@@ -110,7 +126,7 @@ export function TribeFriendsMenu({
         ? pending
         : suggested
 
-  if (!visible) return null
+  if (!shouldRenderModal) return null
 
   return (
     <Modal
@@ -118,7 +134,9 @@ export function TribeFriendsMenu({
       transparent
       animationType="slide"
       onRequestClose={onClose}
+      statusBarTranslucent={Platform.OS === "android"}
     >
+      {visible ? (
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable
           style={[styles.panel, { width: panelWidth }]}
@@ -135,20 +153,29 @@ export function TribeFriendsMenu({
             style={[styles.gradient, { paddingTop: Math.max(insets.top, 20) }]}
           >
             <View style={styles.header}>
+              <View style={styles.headerRow}>
+                <AppText
+                  font="instrument-bold"
+                  size="lg"
+                  style={styles.headerTitle}
+                >
+                  My Tribe
+                </AppText>
+                <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
+                  <Ionicons
+                    name="close"
+                    size={26}
+                    color="rgba(255,255,255,0.9)"
+                  />
+                </Pressable>
+              </View>
               <AppText
-                font="instrument-bold"
-                size="lg"
-                style={styles.headerTitle}
+                font="instrument-regular"
+                size="xs"
+                style={styles.sovereignCopy}
               >
-                My Tribe
+                Your sacred space. You decide the energy in your tribe.
               </AppText>
-              <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-                <Ionicons
-                  name="close"
-                  size={26}
-                  color="rgba(255,255,255,0.9)"
-                />
-              </Pressable>
             </View>
 
             {/* Your profile */}
@@ -363,6 +390,44 @@ export function TribeFriendsMenu({
                         Pending
                       </AppText>
                     )}
+                    {activeTab === "Connected" &&
+                      roomId &&
+                      onRemoveMember && (
+                        <Pressable
+                          onPress={() => {
+                            addHapticFeedback(HapticStrength.Light)
+                            Alert.alert(
+                              "Remove from tribe",
+                              `Remove ${f.displayName} from your tribe? This is your sacred space—you decide who is present.`,
+                              [
+                                { text: "Cancel", style: "cancel" },
+                                {
+                                  text: "Remove",
+                                  style: "destructive",
+                                  onPress: () => onRemoveMember(f.id),
+                                },
+                              ]
+                            )
+                          }}
+                          style={({ pressed }) => [
+                            styles.removeFromTribeBtn,
+                            pressed && { opacity: 0.8 },
+                          ]}
+                        >
+                          <Ionicons
+                            name="person-remove-outline"
+                            size={18}
+                            color="rgba(248, 113, 113, 0.95)"
+                          />
+                          <AppText
+                            font="instrument-regular"
+                            size="xs"
+                            style={styles.removeFromTribeText}
+                          >
+                            Remove
+                          </AppText>
+                        </Pressable>
+                      )}
                   </View>
                 ))
               )}
@@ -438,6 +503,7 @@ export function TribeFriendsMenu({
           </LinearGradient>
         </Pressable>
       </Pressable>
+      ) : null}
     </Modal>
   )
 }
@@ -451,7 +517,7 @@ const styles = StyleSheet.create({
   },
   panel: {
     flex: 1,
-    maxWidth: 360,
+    maxWidth: 440,
     borderLeftWidth: 1,
     borderLeftColor: "rgba(135, 174, 115, 0.2)",
     shadowColor: "#000",
@@ -460,19 +526,26 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
   },
-  gradient: { flex: 1, padding: 20 },
+  gradient: { flex: 1, paddingHorizontal: 24, paddingVertical: 20 },
   header: {
+    marginBottom: 20,
+  },
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
   },
   headerTitle: { color: "rgba(255,255,255,0.98)" },
   closeBtn: { padding: 6 },
+  sovereignCopy: {
+    color: "rgba(255, 255, 255, 0.55)",
+    marginTop: 6,
+    fontStyle: "italic",
+  },
   profileCard: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: 20,
     borderRadius: 14,
     backgroundColor: "rgba(0,0,0,0.4)",
     borderWidth: 1,
@@ -486,7 +559,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(135, 174, 115, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 14,
   },
   profileInfo: { flex: 1 },
   profileName: { color: "rgba(255,255,255,0.98)" },
@@ -495,27 +568,27 @@ const styles = StyleSheet.create({
   copiedText: { color: "rgba(135, 174, 115, 0.9)", marginTop: 2, fontSize: 11 },
   editBtn: { padding: 8 },
   connectByIdSection: {
-    marginBottom: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    marginBottom: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     borderRadius: 14,
     backgroundColor: "rgba(0,0,0,0.3)",
     borderWidth: 1,
     borderColor: "rgba(135, 174, 115, 0.2)",
   },
-  connectByIdLabel: { color: "rgba(255,255,255,0.95)", marginBottom: 4 },
+  connectByIdLabel: { color: "rgba(255,255,255,0.95)", marginBottom: 6 },
   connectByIdHint: {
     color: "rgba(255,255,255,0.5)",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   connectByIdInput: {
     backgroundColor: "rgba(0,0,0,0.4)",
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     color: "#ffffff",
     fontSize: 14,
-    marginBottom: 8,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: "rgba(135, 174, 115, 0.25)",
   },
@@ -526,17 +599,17 @@ const styles = StyleSheet.create({
   connectByIdBtn: {
     backgroundColor: "rgba(135, 174, 115, 0.3)",
     borderRadius: 10,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(135, 174, 115, 0.4)",
   },
   connectByIdBtnDisabled: { opacity: 0.5 },
   connectByIdBtnText: { color: "rgba(255,255,255,0.95)" },
-  tabRow: { flexDirection: "row", marginBottom: 12, gap: 4 },
+  tabRow: { flexDirection: "row", marginBottom: 16, gap: 6 },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.06)",
@@ -549,23 +622,23 @@ const styles = StyleSheet.create({
   tabText: { color: "rgba(255,255,255,0.7)" },
   tabTextActive: { color: "rgba(255,255,255,0.98)" },
   listScroll: { flex: 1 },
-  listContent: { paddingBottom: 16 },
+  listContent: { paddingBottom: 24 },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 32,
-    paddingHorizontal: 24,
+    paddingVertical: 40,
+    paddingHorizontal: 28,
   },
   emptyText: {
     color: "rgba(255,255,255,0.6)",
     textAlign: "center",
-    marginTop: 12,
+    marginTop: 14,
   },
   friendRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
@@ -580,9 +653,18 @@ const styles = StyleSheet.create({
   },
   friendName: { flex: 1, color: "rgba(255,255,255,0.9)" },
   pendingLabel: { color: "rgba(212, 165, 116, 0.9)", marginLeft: 8 },
+  removeFromTribeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginLeft: 8,
+  },
+  removeFromTribeText: { color: "rgba(248, 113, 113, 0.95)" },
   actions: {
-    gap: 10,
-    paddingTop: 12,
+    gap: 12,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: "rgba(135, 174, 115, 0.15)",
   },

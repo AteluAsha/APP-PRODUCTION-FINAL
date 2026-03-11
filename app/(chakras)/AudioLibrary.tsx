@@ -16,7 +16,7 @@ import {
   Dimensions,
 } from "react-native"
 import { useRouter, useLocalSearchParams } from "expo-router"
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { ActionBar } from "@/components/ActionBar"
 import BackgroundOpacity from "@/components/BackgroundOpacity"
 import { AppText } from "@/components/AppText"
@@ -51,6 +51,7 @@ import {
 import {
   downloadAndCacheAudio,
   downloadAndCacheAudioResumable,
+  downloadAndCacheAudioResumableWithTimeout,
 } from "@/src/utils/audioDownload"
 import { storage } from "@/src/services/firebase"
 import { preloadFullFilesForChakra } from "@/src/utils/audioPreloadManifest"
@@ -64,6 +65,12 @@ import { CHAKRA_NAMES } from "@/constants/chakras/chakraConstants"
 import { AudioTrackRow } from "@/components/chakras/AudioTrackRow"
 import { DropInButton } from "@/components/chakras/DropInButton"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+
+/** Timeout per full-file download in download-all (non–crystal bowl) so one stuck file doesn't block. */
+const FULL_FILE_DOWNLOAD_TIMEOUT_MS = 120 * 1000
+/** Timeout per crystal-bowl (resumable) in download-all; 1hr files need longer. */
+const DOWNLOAD_ALL_CRYSTAL_BOWL_TIMEOUT_MS = 5 * 60 * 1000
+const KEEP_AWAKE_TAG = "AudioLibraryDownloadAll"
 
 const CHAKRA_ORDER: Chakra[] = [
   Chakra.ROOT,
@@ -144,7 +151,19 @@ const AudioLibrary = () => {
   const setPendingTrackKey = useCurrentAudioStore((s) => s.setPendingTrackKey)
   const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set())
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  /** Queue for manual per-track downloads: process one by one, show "Queued" until download starts */
+  const [downloadQueue, setDownloadQueue] = useState<
+    Array<{ audioId: string; url: string; isCrystalBowl: boolean }>
+  >([])
   const [isDownloadingAll, setIsDownloadingAll] = useState(false)
+  /** When download-all hit an error or timeout, show "Stalled" and let user tap Continue */
+  const [downloadAllStalled, setDownloadAllStalled] = useState(false)
+  const [downloadAllLastError, setDownloadAllLastError] = useState<string | null>(null)
+  /** Progress for "Downloading X of Y" */
+  const [downloadAllProgress, setDownloadAllProgress] = useState<{
+    current: number
+    total: number
+  } | null>(null)
   const [preparingPlaybackId, setPreparingPlaybackId] = useState<string | null>(
     null,
   )
@@ -156,7 +175,6 @@ const AudioLibrary = () => {
 
   // APP2 only: redirect trial users
   const router = useRouter()
-  const insets = useSafeAreaInsets()
   useEffect(() => {
     if (!hasLifetimeAccess) {
       router.replace("/(chakras)/ChakraHome")
@@ -744,44 +762,101 @@ const AudioLibrary = () => {
   const handleDownloadAll = useCallback(async () => {
     if (isDownloadingAll || downloadingId) return
     const toDownload = downloadAllTasks.filter((t) => !downloadedIds.has(t.audioId))
-    if (toDownload.length === 0) return
+    if (toDownload.length === 0) {
+      setDownloadAllStalled(false)
+      setDownloadAllLastError(null)
+      return
+    }
     addHapticFeedback(HapticStrength.Light)
+    setDownloadAllStalled(false)
+    setDownloadAllLastError(null)
     setIsDownloadingAll(true)
+    setDownloadAllProgress({ current: 0, total: toDownload.length })
     try {
-      for (const { url, audioId, isCrystalBowl } of toDownload) {
+      const KeepAwake = require("expo-keep-awake")
+      await KeepAwake.activateKeepAwakeAsync?.(KEEP_AWAKE_TAG)
+    } catch {
+      // KeepAwake optional (may not be installed); continue without it
+    }
+    let hadError = false
+    try {
+      for (let i = 0; i < toDownload.length; i++) {
+        const { url, audioId, isCrystalBowl } = toDownload[i]
+        setDownloadAllProgress({ current: i + 1, total: toDownload.length })
         try {
-          await (isCrystalBowl
-            ? downloadAndCacheAudioResumable(url, audioId)
-            : downloadAndCacheAudio(url, audioId))
+          if (isCrystalBowl) {
+            await downloadAndCacheAudioResumableWithTimeout(
+              url,
+              audioId,
+              DOWNLOAD_ALL_CRYSTAL_BOWL_TIMEOUT_MS,
+            )
+          } else {
+            const timeoutPromise = new Promise<never>((_, reject) =>
+              setTimeout(
+                () => reject(new Error("Download timeout")),
+                FULL_FILE_DOWNLOAD_TIMEOUT_MS,
+              ),
+            )
+            await Promise.race([
+              downloadAndCacheAudio(url, audioId),
+              timeoutPromise,
+            ])
+          }
           setDownloadedIds((prev) => new Set(prev).add(audioId))
         } catch (e) {
+          hadError = true
+          const msg = e instanceof Error ? e.message : String(e)
+          setDownloadAllLastError(msg)
+          setDownloadAllStalled(true)
           if (__DEV__) console.warn("[AudioLibrary] Download all: failed for", audioId, e)
+          // Continue to next file so we don't block the rest
         }
       }
     } finally {
+      try {
+        const KeepAwake = require("expo-keep-awake")
+        KeepAwake.deactivateKeepAwake?.(KEEP_AWAKE_TAG)
+      } catch {
+        // ignore
+      }
       setIsDownloadingAll(false)
+      setDownloadAllProgress(null)
+      if (hadError) setDownloadAllStalled(true)
     }
   }, [downloadAllTasks, downloadedIds, isDownloadingAll, downloadingId])
 
   const handleDownload = useCallback(
-    async (url: string, audioId: string) => {
-      if (!url || downloadingId) return
-      setDownloadingId(audioId)
+    (url: string, audioId: string) => {
+      if (!url || downloadedIds.has(audioId)) return
+      if (downloadQueue.some((q) => q.audioId === audioId) || downloadingId === audioId)
+        return
+      const isCrystalBowl = audioId.startsWith("crystal_bowl_")
+      setDownloadQueue((prev) => [...prev, { audioId, url, isCrystalBowl }])
       addHapticFeedback(HapticStrength.Light)
-      try {
-        const isCrystalBowl = audioId.startsWith("crystal_bowl_")
-        await (isCrystalBowl
-          ? downloadAndCacheAudioResumable(url, audioId)
-          : downloadAndCacheAudio(url, audioId))
-        setDownloadedIds((prev) => new Set(prev).add(audioId))
-      } catch (e) {
-        if (__DEV__) console.warn("[AudioLibrary] Download failed:", e)
-      } finally {
-        setDownloadingId(null)
-      }
     },
-    [downloadingId],
+    [downloadedIds, downloadQueue, downloadingId],
   )
+
+  // Process download queue one at a time
+  useEffect(() => {
+    if (downloadingId !== null || downloadQueue.length === 0) return
+    const [first, ...rest] = downloadQueue
+    setDownloadingId(first.audioId)
+    setDownloadQueue(rest)
+    const downloadFn = first.isCrystalBowl
+      ? downloadAndCacheAudioResumable(first.url, first.audioId)
+      : downloadAndCacheAudio(first.url, first.audioId)
+    downloadFn
+      .then(() => {
+        setDownloadedIds((prev) => new Set(prev).add(first.audioId))
+      })
+      .catch((e) => {
+        if (__DEV__) console.warn("[AudioLibrary] Download failed:", first.audioId, e)
+      })
+      .finally(() => {
+        setDownloadingId(null)
+      })
+  }, [downloadingId, downloadQueue])
 
   // APP1 (trial) never sees Music Room; redirect above sends them to ChakraHome. Only APP2 can set audioOrigin "music-room".
   if (!hasLifetimeAccess) return null
@@ -827,17 +902,18 @@ const AudioLibrary = () => {
             bottomGradientHeight={0}
             backgroundOpacity={0.75}
           />
-          {/* ScrollView first so ActionBar overlay receives touches on Android */}
-        <ScrollView
-          ref={scrollRef}
-          showsVerticalScrollIndicator={false}
-          {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
-          contentContainerStyle={{
-            paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
-            paddingHorizontal: 16,
-          }}
-        >
-          <View style={{ paddingTop: 64, paddingBottom: 24 }}>
+          {/* Header + Download all: fixed outside ScrollView so always visible and tappable (not tied to fade/reveal) */}
+          <View
+            style={{
+              paddingTop: 56,
+              paddingBottom: 16,
+              paddingHorizontal: 16,
+              zIndex: 2,
+              ...(Platform.OS === "android" && { elevation: 2 }),
+            }}
+            pointerEvents="box-none"
+            collapsable={false}
+          >
             <AppText
               font="cormorant-regular"
               size="xl"
@@ -863,42 +939,69 @@ const AudioLibrary = () => {
             >
               Where sound meets soul.
             </AppText>
-            <Pressable
-              onPress={handleDownloadAll}
-              disabled={isDownloadingAll || downloadingId !== null}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                alignSelf: "center",
-                marginTop: 20,
-                paddingVertical: 14,
-                paddingHorizontal: 28,
-                gap: 10,
-                opacity: pressed ? 0.7 : 1,
-                minWidth: 260,
-              })}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Ionicons
-                name="cloud-download-outline"
-                size={20}
-                color="rgba(255,255,255,0.7)"
-              />
+            {/* Download line: one row, icon + text together; spaced below subtitle so not aligned with track play buttons */}
+            <View style={{ marginTop: 20, alignItems: "center" }}>
+              <Pressable
+                onPress={handleDownloadAll}
+                disabled={(isDownloadingAll && !downloadAllStalled) || downloadingId !== null}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  gap: 6,
+                  opacity: pressed ? 0.88 : 1,
+                })}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                pointerEvents="auto"
+                collapsable={false}
+              >
+                <Ionicons
+                  name="cloud-download-outline"
+                  size={18}
+                  color="rgba(255,255,255,0.7)"
+                />
+                <AppText
+                  font="cormorant-italic"
+                  size="xs"
+                  style={{
+                    color: "rgba(255,255,255,0.75)",
+                    fontSize: 13,
+                  }}
+                >
+                  {downloadAllStalled
+                    ? "Stalled — tap to continue"
+                    : isDownloadingAll && downloadAllProgress
+                      ? `Downloading ${downloadAllProgress.current} of ${downloadAllProgress.total}…`
+                      : "Download for offline listening"}
+                </AppText>
+              </Pressable>
+            </View>
+            {downloadAllLastError && downloadAllStalled && (
               <AppText
-                font="cormorant-italic"
-                size="sm"
+                font="instrument-regular"
+                size="xs"
                 style={{
-                  color: "rgba(255,255,255,0.75)",
+                  color: "rgba(255,200,150,0.9)",
                   textAlign: "center",
-                  fontSize: 15,
+                  marginTop: 4,
                 }}
               >
-                {isDownloadingAll ? "Downloading…" : "Download for offline listening"}
+                Last error: {downloadAllLastError}
               </AppText>
-            </Pressable>
+            )}
           </View>
-
+          {/* ScrollView: chakra list only; header and Download all are fixed above */}
+        <ScrollView
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
+          contentContainerStyle={{
+            paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
+            paddingHorizontal: 16,
+          }}
+        >
           {CHAKRA_ORDER.map((chakra, index) => {
             const content = chakraContent[chakra]
             const soundBathContent = content.soundBath
@@ -1056,6 +1159,10 @@ const AudioLibrary = () => {
                   isPlaying={isPlaying}
                   downloadedIds={downloadedIds}
                   downloadingId={downloadingId}
+                  isQueued={
+                    downloadQueue.some((q) => q.audioId === tuningForkId) &&
+                    downloadingId !== tuningForkId
+                  }
                   onPlay={() =>
                     handleRowPress(
                       `${chakra}_0`,
@@ -1098,6 +1205,10 @@ const AudioLibrary = () => {
                   isPlaying={isPlaying}
                   downloadedIds={downloadedIds}
                   downloadingId={downloadingId}
+                  isQueued={
+                    downloadQueue.some((q) => q.audioId === crystalBowlId) &&
+                    downloadingId !== crystalBowlId
+                  }
                   onPlay={() =>
                     handleRowPress(
                       `${chakra}_1`,
@@ -1139,6 +1250,10 @@ const AudioLibrary = () => {
                       isPlaying={isPlaying}
                       downloadedIds={downloadedIds}
                       downloadingId={downloadingId}
+                      isQueued={
+                        downloadQueue.some((q) => q.audioId === embodimentId) &&
+                        downloadingId !== embodimentId
+                      }
                       onPlay={() =>
                         handlePlayEmbodimentFullPlayer(chakra, "part1")
                       }
@@ -1168,6 +1283,11 @@ const AudioLibrary = () => {
                       isPlaying={isPlaying}
                       downloadedIds={downloadedIds}
                       downloadingId={downloadingId}
+                      isQueued={
+                        downloadQueue.some(
+                          (q) => q.audioId === embodimentPartTwoId,
+                        ) && downloadingId !== embodimentPartTwoId
+                      }
                       onPlay={() =>
                         handlePlayEmbodimentFullPlayer(chakra, "part2")
                       }
@@ -1205,6 +1325,10 @@ const AudioLibrary = () => {
                     isPlaying={isPlaying}
                     downloadedIds={downloadedIds}
                     downloadingId={downloadingId}
+                    isQueued={
+                      downloadQueue.some((q) => q.audioId === embodimentId) &&
+                      downloadingId !== embodimentId
+                    }
                     onPlay={() =>
                       handlePlayEmbodimentFullPlayer(chakra, "single")
                     }
@@ -1246,6 +1370,12 @@ const AudioLibrary = () => {
                     isPlaying={isPlaying}
                     downloadedIds={downloadedIds}
                     downloadingId={downloadingId}
+                    isQueued={
+                      downloadQueue.some(
+                        (q) => q.audioId === getHeadToHeartAudioId(chakra),
+                      ) &&
+                      downloadingId !== getHeadToHeartAudioId(chakra)
+                    }
                     onPlay={() => handlePlayHeadToHeartFullPlayer(chakra)}
                     onDownload={() => {
                       const url = ancestralByChakra[chakra].url
@@ -1266,7 +1396,7 @@ const AudioLibrary = () => {
           <ActionBar
             useXButton={true}
             xButtonPosition="left"
-            xButtonTop={Math.max(insets.top, 8) + 4}
+            xButtonTop={0}
             onXPress={handleClose}
           />
         </View>

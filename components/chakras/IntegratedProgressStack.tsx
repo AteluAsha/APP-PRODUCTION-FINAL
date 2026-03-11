@@ -262,6 +262,9 @@ export const IntegratedProgressStack = ({
             // Current day title: show for current day (completed or not) so each day/chakra is labeled on APP1 and APP2
             const showCurrentDayTitle =
               !showAllChakrasForLifetimeHub && isCurrentDay
+            // Lifetime hub only: same day title style but pinned to left wall, aligned with current day's chakra ball (changes daily)
+            const showLifetimeLeftDayTitle =
+              showAllChakrasForLifetimeHub && isCurrentDay
 
             return (
               <View
@@ -278,6 +281,60 @@ export const IntegratedProgressStack = ({
                   }),
                 }}
               >
+                {/* Lifetime hub only: day title pinned to left phone wall, same style as trial, vertically aligned with this row's chakra ball */}
+                {showLifetimeLeftDayTitle && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      justifyContent: "center",
+                      paddingLeft: Math.max(insets.left, 16),
+                      maxWidth: "50%",
+                    }}
+                    pointerEvents="none"
+                  >
+                    <View
+                      style={{
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: 2,
+                      }}
+                    >
+                      <AppText
+                        font="cormorant-regular"
+                        size="xs"
+                        numberOfLines={1}
+                        style={{
+                          fontFamily: "CormorantGaramond",
+                          fontWeight: "600",
+                          color: "#ffffff",
+                          textShadowColor: "rgba(0, 0, 0, 0.8)",
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 4,
+                        }}
+                      >
+                        {dayName}
+                      </AppText>
+                      <AppText
+                        font="cormorant-regular"
+                        size="xs"
+                        numberOfLines={1}
+                        style={{
+                          fontFamily: "CormorantGaramond",
+                          color: "#ffffff",
+                          textShadowColor: "rgba(0, 0, 0, 0.8)",
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 4,
+                        }}
+                      >
+                        {chakraName} Day
+                      </AppText>
+                    </View>
+                  </View>
+                )}
+
                 {/* APP_1/APP_2: Day title above chakra ball – in-flow layout so it renders on Android (absolute + bottom 100% is unreliable) */}
                 {showCurrentDayTitle && (
                   <View

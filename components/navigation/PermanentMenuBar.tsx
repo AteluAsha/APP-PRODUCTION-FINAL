@@ -377,8 +377,7 @@ export const PermanentMenuBar: React.FC = () => {
   }
 
   return (
-    <View style={{ opacity: 1 }} pointerEvents="auto" collapsable={false}>
-    <>
+    <View style={{ opacity: 1 }} pointerEvents="box-none" collapsable={false}>
       {/* Menu Bar - Vertical (left wall) for healing screens, Horizontal (bottom) for others */}
       {useVerticalLayout ? (
         <Animated.View
@@ -467,7 +466,6 @@ export const PermanentMenuBar: React.FC = () => {
         }}
         isLimitedMode={false} // App 2 always has full access
       />
-    </>
     </View>
   )
 }

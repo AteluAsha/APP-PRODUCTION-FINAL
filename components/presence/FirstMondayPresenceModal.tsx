@@ -25,6 +25,8 @@ import * as ImagePicker from "expo-image-picker"
 import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
+import { getUserId } from "@/src/services/userId"
+import { updateUserProfile } from "@/src/services/profileService"
 
 export interface FirstMondayPresenceModalProps {
   visible: boolean
@@ -55,6 +57,19 @@ export function FirstMondayPresenceModal({
     setHasCompletedFirstMondayPresence(true)
     onClose()
     onComplete?.()
+    if (trimmed) {
+      getUserId()
+        .then((id) => {
+          if (id) {
+            return updateUserProfile(id, { displayName: trimmed })
+          }
+        })
+        .catch(() => {
+          if (__DEV__) {
+            console.warn("[FirstMondayPresenceModal] Firestore name sync skipped")
+          }
+        })
+    }
   }
 
   const handleLater = () => {

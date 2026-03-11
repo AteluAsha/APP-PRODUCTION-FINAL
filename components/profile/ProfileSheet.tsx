@@ -37,10 +37,14 @@ import { linkUserId, ENTITLEMENT_ID, PRODUCT_IDS } from "@/src/services/revenuec
 import { uploadProfileImage } from "@/src/services/imageUpload"
 import { updateUserProfile, getUserProfile } from "@/src/services/profileService"
 import { deleteAccountAndClearLocalState } from "@/src/services/deleteAccount"
+import {
+  addCommunityEmail,
+  isValidEmail,
+} from "@/src/services/communityEmailList"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { PROJECT_STARSEED_URL, CONTRIBUTE_URL } from "@/constants/sharing"
+import { PROJECT_STARSEED_URL, CONTRIBUTE_URL, SUPPORT_EMAIL } from "@/constants/sharing"
 
-type MenuSection = "profile" | "account" | "soulschool" | null
+type MenuSection = "profile" | "account" | "help" | "soulschool" | null
 
 function getAccountStatusLabel(
   hasLifetimeAccess: boolean,
@@ -53,9 +57,23 @@ function getAccountStatusLabel(
   return "Lifetime"
 }
 
-export const ProfileSheet: React.FC = () => {
+export interface ProfileSheetProps {
+  /** When true, render as full-screen content (no Modal). Used by ProfileMenu route on Android. */
+  asScreen?: boolean
+  /** Called when user closes the menu in asScreen mode (e.g. router.back() + close()). */
+  onClose?: () => void
+  /** When true with asScreen, show only profile view: Soul School ID, name, photo (editable). */
+  profileOnly?: boolean
+}
+
+export const ProfileSheet: React.FC<ProfileSheetProps> = ({
+  asScreen = false,
+  onClose,
+  profileOnly = false,
+}) => {
   const router = useRouter()
   const { isOpen, close } = useProfileSheetStore()
+  const effectiveOpen = isOpen || asScreen
   const displayName = usePresenceStore((s) => s.displayName)
   const profileImageUri = usePresenceStore((s) => s.profileImageUri)
   const location = usePresenceStore((s) => s.location)
@@ -64,7 +82,7 @@ export const ProfileSheet: React.FC = () => {
   const setLocation = usePresenceStore((s) => s.setLocation)
   const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
   const { customerInfo } = useRevenueCat()
-  const { connected: tribeConnected } = useTribeFriends("global-trial-tribe", isOpen)
+  const { connected: tribeConnected } = useTribeFriends("global-trial-tribe", effectiveOpen)
 
   const [section, setSection] = useState<MenuSection>(null)
   const [userId, setUserId] = useState<string>("")
@@ -77,9 +95,28 @@ export const ProfileSheet: React.FC = () => {
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [isRequestingNewId, setIsRequestingNewId] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [androidContentVisible, setAndroidContentVisible] = useState(false)
+  const [communityEmail, setCommunityEmail] = useState("")
+  const [isSubmittingCommunityEmail, setIsSubmittingCommunityEmail] =
+    useState(false)
+  const [communityEmailSuccess, setCommunityEmailSuccess] = useState(false)
+  const [communityEmailError, setCommunityEmailError] = useState<string | null>(
+    null,
+  )
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && Platform.OS === "android") {
+      setAndroidContentVisible(false)
+      const t = setTimeout(() => setAndroidContentVisible(true), 80)
+      return () => clearTimeout(t)
+    }
+    if (!isOpen && Platform.OS === "android") {
+      setAndroidContentVisible(false)
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (effectiveOpen) {
       setSection(null)
       getUserId().then(async (id) => {
         setUserId(id)
@@ -104,7 +141,7 @@ export const ProfileSheet: React.FC = () => {
       setEditLocation(location ?? "")
       setEditing(false)
     }
-  }, [isOpen, displayName, profileImageUri, location])
+  }, [effectiveOpen, displayName, profileImageUri, location])
 
   const handleClose = () => {
     addHapticFeedback(HapticStrength.Light)
@@ -116,6 +153,8 @@ export const ProfileSheet: React.FC = () => {
     addHapticFeedback(HapticStrength.Light)
     setSection(null)
   }
+
+  const handleCloseFinal = onClose ?? handleClose
 
   const handleDeleteAccount = () => {
     addHapticFeedback(HapticStrength.Light)
@@ -147,6 +186,32 @@ export const ProfileSheet: React.FC = () => {
     if (!userId) return
     addHapticFeedback(HapticStrength.Medium)
     await Clipboard.setStringAsync(userId)
+  }
+
+  const handleSubscribeCommunityEmail = async () => {
+    const trimmed = communityEmail.trim()
+    if (!trimmed) {
+      setCommunityEmailError("Enter your email")
+      return
+    }
+    if (!isValidEmail(trimmed)) {
+      setCommunityEmailError("Please enter a valid email")
+      return
+    }
+    addHapticFeedback(HapticStrength.Light)
+    setCommunityEmailError(null)
+    setIsSubmittingCommunityEmail(true)
+    try {
+      await addCommunityEmail(trimmed)
+      setCommunityEmailSuccess(true)
+      setCommunityEmail("")
+      setTimeout(() => setCommunityEmailSuccess(false), 4000)
+    } catch (e) {
+      if (__DEV__) console.warn("[ProfileSheet] addCommunityEmail:", e)
+      setCommunityEmailError("Couldn’t add email. Try again later.")
+    } finally {
+      setIsSubmittingCommunityEmail(false)
+    }
   }
 
   const handleRequestNewId = () => {
@@ -310,26 +375,26 @@ export const ProfileSheet: React.FC = () => {
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen && !asScreen) return null
 
-  const sectionTitle =
-    section === "profile"
+  const sectionTitle = profileOnly
+    ? "Profile"
+    : section === "profile"
       ? "Profile"
       : section === "account"
         ? "Account"
-        : section === "soulschool"
-          ? "Soul School"
-          : null
+        : section === "help"
+          ? "Help"
+          : section === "soulschool"
+            ? "Soul School"
+            : null
 
-  return (
-    <Modal
-      visible={isOpen}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
+  const innerContent = (
+    <Pressable
+      style={profileOnly ? styles.profileOnlyCard : styles.card}
+      onPress={(e) => e.stopPropagation()}
     >
-      <Pressable style={styles.overlay} onPress={handleClose}>
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+      {(Platform.OS !== "android" || androidContentVisible || asScreen) && (
           <LinearGradient
             colors={[
               "rgba(28, 28, 32, 0.92)",
@@ -338,10 +403,10 @@ export const ProfileSheet: React.FC = () => {
             ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.gradient}
+            style={profileOnly ? styles.profileOnlyGradient : styles.gradient}
           >
             <View style={styles.header}>
-              {section ? (
+              {!profileOnly && section ? (
                 <Pressable
                   onPress={handleBackToMenu}
                   hitSlop={12}
@@ -360,7 +425,7 @@ export const ProfileSheet: React.FC = () => {
                 {sectionTitle ?? "I am"}
               </AppText>
               <Pressable
-                onPress={handleClose}
+                onPress={handleCloseFinal}
                 hitSlop={12}
                 style={styles.closeBtn}
               >
@@ -372,7 +437,264 @@ export const ProfileSheet: React.FC = () => {
               </Pressable>
             </View>
 
-            {section === null ? (
+            {profileOnly ? (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.profileOnlyScrollContent}
+              >
+                <View style={styles.profileOnlyIdBlock}>
+                  <AppText font="instrument-regular" size="xs" style={styles.idLabel}>
+                    Soul School ID
+                  </AppText>
+                  <View style={styles.idKeyBox}>
+                    <AppText
+                      font="instrument-bold"
+                      style={styles.idValue}
+                      numberOfLines={2}
+                      selectable
+                    >
+                      {userId || "Loading…"}
+                    </AppText>
+                    <Pressable
+                      onPress={handleCopyId}
+                      style={styles.copyBtn}
+                      hitSlop={8}
+                      disabled={!userId}
+                    >
+                      <Ionicons name="copy-outline" size={18} color="rgba(212, 175, 55, 0.9)" />
+                    </Pressable>
+                  </View>
+                  <Pressable
+                    onPress={handleRequestNewId}
+                    style={styles.requestNewIdBtn}
+                    disabled={isRequestingNewId || !userId}
+                  >
+                    {isRequestingNewId ? (
+                      <ActivityIndicator size="small" color="rgba(212, 175, 55, 0.8)" />
+                    ) : (
+                      <AppText font="instrument-regular" size="xs" style={styles.requestNewIdText}>
+                        Request new ID
+                      </AppText>
+                    )}
+                  </Pressable>
+                </View>
+                {!editing ? (
+                  <>
+                    <View style={styles.profileOnlyAvatarWrap}>
+                      {profileImageUri ? (
+                        <Image
+                          source={{ uri: profileImageUri }}
+                          style={styles.profileOnlyAvatar}
+                        />
+                      ) : (
+                        <View style={styles.profileOnlyAvatarPlaceholder}>
+                          <Ionicons
+                            name="person"
+                            size={48}
+                            color="rgba(135, 174, 115, 0.8)"
+                          />
+                        </View>
+                      )}
+                    </View>
+                    {displayName ? (
+                      <AppText
+                        font="instrument-medium"
+                        size="xl"
+                        style={styles.profileOnlyDisplayName}
+                      >
+                        {displayName}
+                      </AppText>
+                    ) : (
+                      <View style={styles.profileOnlyNamePlaceholder} />
+                    )}
+                    {location ? (
+                      <AppText
+                        font="instrument-regular"
+                        size="sm"
+                        style={styles.profileOnlyLocation}
+                      >
+                        {location}
+                      </AppText>
+                    ) : null}
+                    <View style={styles.profileOnlyEditRow}>
+                      <Pressable
+                        onPress={() => {
+                          addHapticFeedback(HapticStrength.Light)
+                          setEditing(true)
+                          setEditName(displayName ?? "")
+                          setEditPhotoUri(profileImageUri)
+                        }}
+                        style={styles.editBtn}
+                      >
+                        <Ionicons
+                          name="pencil"
+                          size={18}
+                          color="rgba(168, 201, 154, 0.95)"
+                        />
+                        <AppText
+                          font="instrument-medium"
+                          size="sm"
+                          style={styles.editBtnText}
+                        >
+                          Edit name & photo
+                        </AppText>
+                      </Pressable>
+                      {profileImageUri ? (
+                        <Pressable
+                          onPress={handleRemovePhoto}
+                          style={styles.removePhotoBtn}
+                        >
+                          <AppText
+                            font="instrument-regular"
+                            size="xs"
+                            style={styles.removePhotoText}
+                          >
+                            Remove photo
+                          </AppText>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <AppText
+                      font="instrument-semibold"
+                      size="sm"
+                      style={[styles.label, styles.profileOnlyLabel]}
+                    >
+                      Name
+                    </AppText>
+                    <View style={styles.inputWrap}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="What do you want to be called?"
+                        placeholderTextColor="rgba(255,255,255,0.4)"
+                        value={editName}
+                        onChangeText={setEditName}
+                        maxLength={40}
+                      />
+                    </View>
+                    <AppText
+                      font="instrument-semibold"
+                      size="sm"
+                      style={[styles.label, { marginTop: 16 }]}
+                    >
+                      Location (optional)
+                    </AppText>
+                    <View style={styles.inputWrap}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="City, region, or country"
+                        placeholderTextColor="rgba(255,255,255,0.4)"
+                        value={editLocation}
+                        onChangeText={setEditLocation}
+                        maxLength={60}
+                      />
+                    </View>
+                    <AppText
+                      font="instrument-semibold"
+                      size="sm"
+                      style={[styles.label, { marginTop: 16 }]}
+                    >
+                      Photo
+                    </AppText>
+                    <Pressable
+                      onPress={pickPhoto}
+                      style={styles.photoBtn}
+                      disabled={isPickingPhoto}
+                    >
+                      {isPickingPhoto ? (
+                        <ActivityIndicator
+                          size="small"
+                          color="rgba(255,255,255,0.7)"
+                        />
+                      ) : editPhotoUri ? (
+                        <Image
+                          source={{ uri: editPhotoUri }}
+                          style={styles.photoPreview}
+                        />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="person"
+                            size={28}
+                            color="rgba(255, 255, 255, 0.5)"
+                          />
+                          <AppText
+                            font="instrument-regular"
+                            size="sm"
+                            style={styles.photoBtnText}
+                          >
+                            Add photo
+                          </AppText>
+                        </>
+                      )}
+                    </Pressable>
+                    {editPhotoUri ? (
+                      <Pressable
+                        onPress={handleRemovePhoto}
+                        style={[styles.removePhotoBtn, { marginBottom: 8 }]}
+                      >
+                        <AppText
+                          font="instrument-regular"
+                          size="xs"
+                          style={styles.removePhotoText}
+                        >
+                          Remove photo
+                        </AppText>
+                      </Pressable>
+                    ) : null}
+                    {photoError ? (
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={styles.errorText}
+                      >
+                        {photoError}
+                      </AppText>
+                    ) : null}
+                    <Pressable
+                      onPress={handleSaveEdit}
+                      style={[styles.saveBtn, { marginTop: 8 }]}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <AppText
+                          font="instrument-semibold"
+                          size="sm"
+                          style={styles.saveBtnText}
+                        >
+                          Save
+                        </AppText>
+                      )}
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setEditing(false)}
+                      style={styles.cancelBtn}
+                      disabled={isSaving}
+                    >
+                      <AppText
+                        font="instrument-regular"
+                        size="sm"
+                        style={styles.cancelBtnText}
+                      >
+                        Cancel
+                      </AppText>
+                    </Pressable>
+                  </>
+                )}
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={styles.profileOnlyDisclaimer}
+                >
+                  We do not share your information with anyone. It all stays
+                  right here, with you.
+                </AppText>
+              </ScrollView>
+            ) : section === null ? (
               <View style={styles.menuRows}>
                 <Pressable
                   onPress={() => {
@@ -411,6 +733,23 @@ export const ProfileSheet: React.FC = () => {
                 <Pressable
                   onPress={() => {
                     addHapticFeedback(HapticStrength.Light)
+                    setSection("help")
+                  }}
+                  style={styles.menuRow}
+                >
+                  <Ionicons
+                    name="help-buoy-outline"
+                    size={22}
+                    color="rgba(168, 201, 154, 0.95)"
+                  />
+                  <AppText font="instrument-medium" size="base" style={styles.menuRowText}>
+                    Help
+                  </AppText>
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    addHapticFeedback(HapticStrength.Light)
                     setSection("soulschool")
                   }}
                   style={styles.menuRow}
@@ -426,6 +765,37 @@ export const ProfileSheet: React.FC = () => {
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
                 </Pressable>
               </View>
+            ) : section === "help" ? (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+              >
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={styles.helpBlurb}
+                >
+                  We are not a corporation—we are healers and humans. Please let us know if
+                  there is any way we can help. We will hear you.
+                </AppText>
+                <Pressable
+                  onPress={() => {
+                    addHapticFeedback(HapticStrength.Light)
+                    Linking.openURL(`mailto:${SUPPORT_EMAIL}`)
+                  }}
+                  style={styles.helpContactRow}
+                >
+                  <Ionicons
+                    name="mail-outline"
+                    size={22}
+                    color="rgba(168, 201, 154, 0.95)"
+                  />
+                  <AppText font="instrument-medium" size="sm" style={styles.helpContactText}>
+                    Contact us
+                  </AppText>
+                  <Ionicons name="open-outline" size={18} color="rgba(168, 201, 154, 0.95)" />
+                </Pressable>
+              </ScrollView>
             ) : section === "soulschool" ? (
               <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -549,6 +919,52 @@ export const ProfileSheet: React.FC = () => {
                     )}
                   </Pressable>
                 </View>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={[styles.idLabel, { marginTop: 24 }]}
+                >
+                  Soul School updates and new offerings
+                </AppText>
+                <View style={styles.communityEmailRow}>
+                  <TextInput
+                    value={communityEmail}
+                    onChangeText={(t) => {
+                      setCommunityEmail(t)
+                      setCommunityEmailError(null)
+                    }}
+                    placeholder="Your email"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isSubmittingCommunityEmail}
+                    style={styles.communityEmailInput}
+                  />
+                  <Pressable
+                    onPress={handleSubscribeCommunityEmail}
+                    style={styles.communityEmailBtn}
+                    disabled={isSubmittingCommunityEmail}
+                  >
+                    {isSubmittingCommunityEmail ? (
+                      <ActivityIndicator size="small" color="rgba(212, 175, 55, 0.9)" />
+                    ) : (
+                      <AppText font="instrument-medium" size="xs" style={styles.communityEmailBtnText}>
+                        Add my email
+                      </AppText>
+                    )}
+                  </Pressable>
+                </View>
+                {communityEmailSuccess && (
+                  <AppText font="instrument-regular" size="xs" style={styles.communityEmailSuccess}>
+                    You’re on the list for 7 Chakras Community updates.
+                  </AppText>
+                )}
+                {communityEmailError && (
+                  <AppText font="instrument-regular" size="xs" style={styles.communityEmailError}>
+                    {communityEmailError}
+                  </AppText>
+                )}
                 <AppText
                   font="instrument-regular"
                   size="xs"
@@ -817,7 +1233,32 @@ export const ProfileSheet: React.FC = () => {
               </ScrollView>
             )}
           </LinearGradient>
-        </Pressable>
+          )}
+    </Pressable>
+  )
+  if (asScreen) {
+    return (
+      <View
+        style={[
+          styles.overlay,
+          Platform.OS === "android" && styles.overlayAndroid,
+          profileOnly && styles.profileOnlyOverlay,
+        ]}
+      >
+        {innerContent}
+      </View>
+    )
+  }
+  return (
+    <Modal
+      visible={isOpen}
+      transparent
+      animationType="fade"
+      onRequestClose={handleClose}
+      {...(Platform.OS === "android" && { statusBarTranslucent: true })}
+    >
+      <Pressable style={[styles.overlay, Platform.OS === "android" && styles.overlayAndroid]} onPress={handleClose}>
+        {innerContent}
       </Pressable>
     </Modal>
   )
@@ -830,6 +1271,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
+  },
+  overlayAndroid: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  profileOnlyOverlay: {
+    paddingHorizontal: 20,
+    paddingVertical: 28,
   },
   card: {
     width: "100%",
@@ -845,10 +1297,31 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.5,
         shadowRadius: 24,
       },
-      android: { elevation: 16 },
+      android: { elevation: 24 },
+    }),
+  },
+  profileOnlyCard: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 28,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.25)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0.45,
+        shadowRadius: 28,
+      },
+      android: { elevation: 24 },
     }),
   },
   gradient: { padding: 24 },
+  profileOnlyGradient: {
+    paddingVertical: 28,
+    paddingHorizontal: 28,
+  },
   scrollContent: { alignItems: "center", paddingBottom: 16 },
   header: {
     flexDirection: "row",
@@ -884,6 +1357,29 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
     paddingHorizontal: 8,
+  },
+  helpBlurb: {
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 24,
+    paddingHorizontal: 12,
+  },
+  helpContactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    width: "100%",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.35)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  helpContactText: {
+    color: "rgba(168, 201, 154, 0.95)",
   },
   linkRow: {
     flexDirection: "row",
@@ -922,6 +1418,76 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.04)",
   },
   deleteAccountText: { color: "rgba(255,255,255,0.6)" },
+  profileOnlyScrollContent: {
+    alignItems: "center",
+    paddingBottom: 32,
+    paddingHorizontal: 4,
+    paddingTop: 4,
+  },
+  profileOnlyIdBlock: {
+    width: "100%",
+    marginBottom: 28,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    backgroundColor: "transparent",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(212, 175, 55, 0.4)",
+  },
+  profileOnlyAvatarWrap: {
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 12,
+      },
+      android: { elevation: 8 },
+    }),
+  },
+  profileOnlyAvatar: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+  },
+  profileOnlyAvatarPlaceholder: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profileOnlyDisplayName: {
+    color: "rgba(255,255,255,0.98)",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  profileOnlyNamePlaceholder: { height: 32, marginBottom: 6 },
+  profileOnlyLocation: {
+    color: "rgba(255,255,255,0.7)",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  profileOnlyEditRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    flexWrap: "wrap",
+    marginBottom: 8,
+  },
+  profileOnlyDisclaimer: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 11,
+    marginTop: 28,
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  profileOnlyLabel: { marginTop: 0 },
   avatarWrap: {
     marginBottom: 12,
     ...Platform.select({
@@ -1101,5 +1667,45 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "rgba(212, 175, 55, 0.35)",
+  },
+  communityEmailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    width: "100%",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  communityEmailInput: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    color: "#fff",
+    fontSize: 14,
+  },
+  communityEmailBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(212, 175, 55, 0.5)",
+    backgroundColor: "rgba(212, 175, 55, 0.12)",
+    minWidth: 100,
+    alignItems: "center",
+  },
+  communityEmailBtnText: { color: "rgba(245, 213, 71, 0.95)" },
+  communityEmailSuccess: {
+    color: "rgba(135, 174, 115, 0.95)",
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  communityEmailError: {
+    color: "rgba(255, 180, 100, 0.95)",
+    marginTop: 6,
+    marginBottom: 4,
   },
 })
