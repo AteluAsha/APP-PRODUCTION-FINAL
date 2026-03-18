@@ -116,6 +116,7 @@
     "jest-expo": "~53.0.14",
     "metro-minify-terser": "^0.82.1",
     "node-addon-api": "^8.0.0",
+    "node-gyp": "^10.0.0",
     "patch-package": "^8.0.1",
     "prettier": "^3.3.3",
     "react-dom": "19.0.0",
