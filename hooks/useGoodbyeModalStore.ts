@@ -1,5 +1,5 @@
 /**
- * Tracks when GoodbyeModal is visible so root overlays (FloatingNavButtons,
+ * Tracks when GoodbyeModal is visible so root overlays (PermanentMenuBar,
  * GlobalHomeButton) can hide and not block touches on the goodbye screen.
  */
 

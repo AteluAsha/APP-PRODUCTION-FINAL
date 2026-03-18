@@ -5,9 +5,12 @@
  * Dark, clean, engaging design using chakra imagery for depth and presence.
  *
  * LOCKED: Hero styling on this page must not be changed: opening date line
- * ("I will open on Monday, March 16"), countdown (DAYS/HOURS/MINS/SECS),
- * and the "For Deepest Embodiment" card are fixed. Do not alter layout or
- * styling of these elements.
+ * ("I will open on Monday, March 16"), countdown (DAYS/HOURS/MINS/SECS).
+ * "For Deepest Embodiment" copy lives in ClarityMomentModal (shown once on entry).
+ *
+ * LOCKED FOR PRODUCTION (iOS waiting room): Layout, countdown position (iOS marginTop),
+ * Build Your Tribe fixed strip above menu bar, and While You Wait button are finalized.
+ * Do not change without explicit product request.
  *
  * Friends invited list: Only on Tribe screen, not here. Build Your Tribe
  * button opens invite modal; invited list is not shown on waiting room.
@@ -47,7 +50,6 @@ import Animated, {
 } from "react-native-reanimated"
 import { getCurrentWeekStartDateISO, formatDate } from "@/utils/date"
 import { InviteFriendModal } from "@/components/invite/InviteFriendModal"
-import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { getChakraName } from "@/constants/chakras/chakraConstants"
 import { chakraContent } from "@/constants/chakras/content"
@@ -68,6 +70,10 @@ import {
   scheduleJourneyReminders,
 } from "@/src/services/journeyNotifications"
 import { CommunicationReminderModal } from "@/components/chakras/CommunicationReminderModal"
+import { ClarityMomentModal } from "@/components/chakras/ClarityMomentModal"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+
+const CLARITY_MOMENT_SEEN_KEY = "waiting_room_clarity_moment_seen_v2"
 
 // Countdown clock dimensions - larger for presence, softer feminine design
 // Android: 10% larger for better visibility on device
@@ -75,6 +81,9 @@ const COUNTDOWN_BOX_SIZE = Platform.OS === "android" ? 70 : 64
 const COUNTDOWN_BOX_GAP = Platform.OS === "android" ? 7 : 6
 const COUNTDOWN_BOX_RADIUS = Platform.OS === "android" ? 13 : 12
 const COUNTDOWN_LABEL_MARGIN = 4
+
+/** Offset from screen bottom so Build Your Tribe strip sits just above PermanentMenuBar (menu bar content height + gap). */
+const BUILD_TRIBE_ABOVE_MENU_OFFSET = 80
 
 // Chakra images for mysterious background effect
 const CHAKRA_IMAGES = [
@@ -146,7 +155,17 @@ export const WaitingScreen = ({
   })
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showCommunicationModal, setShowCommunicationModal] = useState(false)
+  const [showClarityMomentModal, setShowClarityMomentModal] = useState(true)
   const currentDay = getCurrentDayOfWeek()
+
+  // Clarity Moment: show once per user; persist so we don't show again on later visits
+  useEffect(() => {
+    let cancelled = false
+    AsyncStorage.getItem(CLARITY_MOMENT_SEEN_KEY).then((value) => {
+      if (!cancelled && value === "true") setShowClarityMomentModal(false)
+    })
+    return () => { cancelled = true }
+  }, [])
   const chakraName = getChakraName(currentDay)
   const isFocused = useIsFocused()
   const [appState, setAppState] = useState(AppState.currentState)
@@ -226,11 +245,6 @@ export const WaitingScreen = ({
       cancelled = true
     }
   }, [])
-
-  const handleAnuaPress = () => {
-    addHapticFeedback(HapticStrength.Light)
-    useAnuaChatStore.getState().open({ isWaitingRoom: true })
-  }
 
   // Handle invite friend - opens beautiful custom modal matching app design
   const handleInviteFriend = () => {
@@ -344,7 +358,7 @@ export const WaitingScreen = ({
         })}
       </View>
 
-      {/* ScrollView from RNGH so fixed overlays (back, bottom block) receive touches on Android */}
+      {/* ScrollView from RNGH so overlays receive touches on Android; no fixed bottom block—only PermanentMenuBar in _layout */}
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
@@ -353,8 +367,8 @@ export const WaitingScreen = ({
           paddingTop: Math.max(insets.top, 16) + (hasLifetimeAccess ? 20 : 20),
           paddingBottom:
             Math.max(insets.bottom, 4) +
-            (hasLifetimeAccess ? Math.max(insets.bottom, 16) + 60 : 290) +
-            SCROLL_BREATHING_BOTTOM_PADDING, // Trial: space for fixed bottom block (compact)
+            (hasLifetimeAccess ? Math.max(insets.bottom, 16) + 60 : 72) +
+            SCROLL_BREATHING_BOTTOM_PADDING, // Trial: space for PermanentMenuBar; Build Your Tribe at previous position
           ...(hasLifetimeAccess
             ? { justifyContent: "space-between" }
             : { flexDirection: "column" }), // Trial: top section + centered clock block
@@ -404,7 +418,7 @@ export const WaitingScreen = ({
               </AppText>
             </View>
 
-            {/* Countdown - larger, bold numbers, softer feminine design */}
+            {/* Countdown - larger, bold numbers, softer feminine design (iOS: moved down for TestFlight) */}
             {!(completedTrialCourses === 2 && !hasLifetimeAccess) && (
               <View
                 style={{
@@ -422,6 +436,7 @@ export const WaitingScreen = ({
                   shadowOpacity: 0.5,
                   shadowRadius: 20,
                   elevation: 6,
+                  ...(Platform.OS === "ios" && { marginTop: -16 }),
                 }}
               >
                 <View
@@ -621,19 +636,19 @@ export const WaitingScreen = ({
               </View>
             )}
 
-            {/* While You Wait – archetype quiz (hero-style, under countdown) */}
+            {/* While You Wait – narrow, small, separate element (archetype quiz link) */}
             <Pressable
               onPress={() => {
                 addHapticFeedback(HapticStrength.Light)
                 Linking.openURL(ARCHETYPE_QUIZ_URL)
               }}
               style={{
-                marginTop: 20,
+                marginTop: 56,
                 alignSelf: "center",
-                maxWidth: 280,
-                paddingVertical: 12,
-                paddingHorizontal: 24,
-                borderRadius: 24,
+                maxWidth: 200,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 16,
                 backgroundColor: "rgba(28, 28, 28, 0.95)",
                 borderWidth: 1,
                 borderColor: "rgba(212, 165, 116, 0.7)",
@@ -643,140 +658,12 @@ export const WaitingScreen = ({
             >
               <AppText
                 font="cormorant-regular"
-                size="base"
+                size="sm"
                 style={{ color: "rgba(212, 165, 116, 0.95)", textAlign: "center" }}
               >
                 While You Wait
               </AppText>
             </Pressable>
-
-            {/* Bottom section - compact For Deepest Embodiment and invite */}
-            <View
-              style={{ width: "100%", maxWidth: 384, alignItems: "center" }}
-            >
-              <View
-                style={{
-                  width: "100%",
-                  paddingHorizontal: 16,
-                  marginBottom: 20,
-                }}
-              >
-                <View
-                  style={{
-                    width: "100%",
-                    borderRadius: 10,
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    backgroundColor: "rgba(0, 0, 0, 0.4)",
-                    borderWidth: 1,
-                    borderColor: "rgba(6, 182, 212, 0.5)",
-                    shadowColor: "rgba(6, 182, 212, 0.2)",
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.4,
-                    shadowRadius: 6,
-                  }}
-                >
-                  <View
-                    style={{ alignItems: "center", width: "100%", minWidth: 0 }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginBottom: 4,
-                      }}
-                    >
-                      <Ionicons
-                        name="headset"
-                        size={16}
-                        color="rgba(6, 182, 212, 0.8)"
-                        style={{ marginRight: 6 }}
-                      />
-                      <AppText
-                        font="instrument-medium"
-                        size="xs"
-                        style={{
-                          color: "rgba(255,255,255,0.9)",
-                          textAlign: "center",
-                        }}
-                      >
-                        For Deepest Embodiment
-                      </AppText>
-                    </View>
-                    <View style={{ width: "100%", minWidth: 0 }}>
-                      <AppText
-                        font="instrument-regular"
-                        size="xs"
-                        style={{
-                          color: "rgba(255,255,255,0.85)",
-                          lineHeight: 18,
-                          fontStyle: "italic",
-                          textAlign: "center",
-                        }}
-                      >
-                        This course is designed for somatic gnosis that works best when
-                        you awaken 1 hour before your day and sit with your
-                        earphones and remove all distractions.
-                      </AppText>
-                    </View>
-                  </View>
-                </View>
-              </View>
-              {courseStartDate && (
-                <View
-                  style={{
-                    width: "100%",
-                    paddingHorizontal: 16,
-                    marginTop: 16,
-                    marginBottom: 16,
-                  }}
-                >
-                  <Pressable
-                    onPress={handleInviteFriend}
-                    style={{
-                      borderRadius: 16,
-                      overflow: "hidden",
-                      borderWidth: 1,
-                      borderColor: "rgba(135, 174, 115, 0.45)",
-                    }}
-                  >
-                    <LinearGradient
-                      colors={[
-                        "rgba(135, 174, 115, 0.18)",
-                        "rgba(135, 174, 115, 0.1)",
-                        "rgba(6, 182, 212, 0.06)",
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{
-                        padding: 12,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Ionicons
-                        name="person-add"
-                        size={18}
-                        color="rgba(135, 174, 115, 0.95)"
-                        style={{ marginRight: 8 }}
-                      />
-                      <AppText
-                        font="instrument-regular"
-                        size="sm"
-                        style={{
-                          color: "rgba(255,255,255,0.9)",
-                          textAlign: "center",
-                        }}
-                      >
-                        Build Your Tribe
-                      </AppText>
-                    </LinearGradient>
-                  </Pressable>
-                </View>
-              )}
-            </View>
           </>
         ) : (
           <>
@@ -821,7 +708,7 @@ export const WaitingScreen = ({
               </AppText>
             </View>
 
-            {/* Center block - I will open + clock - stays centered */}
+            {/* Center block - I will open + clock - stays centered (iOS: moved down for TestFlight) */}
             <View
               style={{
                 flex: 1,
@@ -829,6 +716,7 @@ export const WaitingScreen = ({
                 alignItems: "center",
                 maxWidth: 384,
                 width: "100%",
+                ...(Platform.OS === "ios" && { marginTop: -12 }),
               }}
             >
               {/* Date text - centered, clear spacing above countdown */}
@@ -1080,7 +968,7 @@ export const WaitingScreen = ({
                 </View>
               )}
 
-              {/* While You Wait – archetype quiz (hero-style, under countdown) */}
+              {/* While You Wait – narrow, small, separate element (archetype quiz link) */}
               {!(completedTrialCourses === 2) && (
                 <Pressable
                   onPress={() => {
@@ -1088,12 +976,12 @@ export const WaitingScreen = ({
                     Linking.openURL(ARCHETYPE_QUIZ_URL)
                   }}
                   style={{
-                    marginTop: 20,
+                    marginTop: 56,
                     alignSelf: "center",
-                    maxWidth: 280,
-                    paddingVertical: 12,
-                    paddingHorizontal: 24,
-                    borderRadius: 24,
+                    maxWidth: 200,
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    borderRadius: 16,
                     backgroundColor: "rgba(28, 28, 28, 0.95)",
                     borderWidth: 1,
                     borderColor: "rgba(212, 165, 116, 0.7)",
@@ -1103,18 +991,14 @@ export const WaitingScreen = ({
                 >
                   <AppText
                     font="cormorant-regular"
-                    size="base"
+                    size="sm"
                     style={{ color: "rgba(212, 165, 116, 0.95)", textAlign: "center" }}
                   >
                     While You Wait
                   </AppText>
                 </Pressable>
               )}
-
-              {/* Deepest Embodiment + Build Your Tribe moved to fixed bottom block above icon bar */}
             </View>
-
-            {/* Action buttons (Preview Course, Chakras 101) moved to trial waiting room menu bar - single row with Tribe + Anua */}
           </>
         )}
       </ScrollView>
@@ -1137,6 +1021,67 @@ export const WaitingScreen = ({
       >
         <Ionicons name="arrow-back" size={24} color="rgba(255, 255, 255, 1)" />
       </Pressable>
+
+      {/* Build Your Tribe – fixed strip pinned just above menu bar (trial and lifetime) */}
+      {courseStartDate && (
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: Math.max(insets.bottom, 4) + BUILD_TRIBE_ABOVE_MENU_OFFSET,
+            paddingHorizontal: 24,
+            zIndex: 10001,
+            ...(Platform.OS === "android" && { elevation: 10002 }),
+          }}
+          pointerEvents="box-none"
+        >
+          <Pressable
+            onPress={handleInviteFriend}
+            style={{
+              width: "100%",
+              borderRadius: 12,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: "rgba(135, 174, 115, 0.4)",
+            }}
+          >
+            <LinearGradient
+              colors={[
+                "rgba(135, 174, 115, 0.28)",
+                "rgba(135, 174, 115, 0.15)",
+                "rgba(6, 182, 212, 0.08)",
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons
+                name="person-add"
+                size={18}
+                color="rgba(135, 174, 115, 1)"
+                style={{ marginRight: 10 }}
+              />
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{
+                  color: "rgba(255,255,255,0.95)",
+                  textAlign: "center",
+                }}
+              >
+                Build Your Tribe
+              </AppText>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      )}
 
       {hasLifetimeAccess && onExitCourseMode && (
         <View
@@ -1221,304 +1166,7 @@ export const WaitingScreen = ({
         </View>
       )}
 
-      {!hasLifetimeAccess && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: Platform.OS === "android" ? 40 : 0,
-            left: 0,
-            right: 0,
-            paddingBottom: Math.max(insets.bottom, 4) + 20,
-            zIndex: 10001,
-            ...(Platform.OS === "android" && { elevation: 10002 }),
-          }}
-          pointerEvents="auto"
-          collapsable={false}
-        >
-          <View style={{ paddingHorizontal: 28, paddingBottom: 16 }}>
-            <View
-              style={{
-                width: "100%",
-                borderRadius: 8,
-                paddingVertical: 8,
-                paddingHorizontal: 10,
-                backgroundColor: "rgba(0, 0, 0, 0.4)",
-                borderWidth: Platform.OS === "android" ? 1.5 : 1,
-                borderColor: "rgba(6, 182, 212, 0.5)",
-                shadowColor: "rgba(6, 182, 212, 0.2)",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.4,
-                shadowRadius: 6,
-                marginBottom: 12,
-              }}
-            >
-              <View
-                style={{ alignItems: "center", width: "100%", minWidth: 0 }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 3,
-                  }}
-                >
-                  <Ionicons
-                    name="headset"
-                    size={14}
-                    color="rgba(6, 182, 212, 0.8)"
-                    style={{ marginRight: 4 }}
-                  />
-                  <AppText
-                    font="instrument-medium"
-                    size="xs"
-                    style={{
-                      color: "rgba(255,255,255,0.9)",
-                      textAlign: "center",
-                    }}
-                  >
-                    For Deepest Embodiment
-                  </AppText>
-                </View>
-                <AppText
-                  font="instrument-regular"
-                  size="xs"
-                  style={{
-                    color: "rgba(255,255,255,0.85)",
-                    lineHeight: 18,
-                    fontStyle: "italic",
-                    textAlign: "center",
-                  }}
-                >
-                  This course is designed for somatic gnosis that works best when
-                  you awaken 1 hour before your day and sit with your earphones
-                  and remove all distractions.
-                </AppText>
-              </View>
-            </View>
-            {courseStartDate && (
-              <>
-                <Pressable
-                  onPress={handleInviteFriend}
-                  style={{
-                    marginTop: 16,
-                    marginBottom: 16,
-                    borderRadius: 8,
-                    overflow: "hidden",
-                    borderWidth: 1,
-                    borderColor: "rgba(135, 174, 115, 0.45)",
-                    ...(Platform.OS === "android" && { zIndex: 10003, elevation: 10003 }),
-                  }}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <LinearGradient
-                    colors={[
-                      "rgba(135, 174, 115, 0.18)",
-                      "rgba(135, 174, 115, 0.1)",
-                      "rgba(6, 182, 212, 0.06)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      padding: 8,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons
-                      name="person-add"
-                      size={14}
-                      color="rgba(135, 174, 115, 0.95)"
-                      style={{ marginRight: 5 }}
-                    />
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={{
-                        color: "rgba(255,255,255,0.9)",
-                        textAlign: "center",
-                      }}
-                    >
-                      Build Your Tribe
-                    </AppText>
-                  </LinearGradient>
-                </Pressable>
-              </>
-            )}
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "flex-end",
-              paddingHorizontal: 16,
-              gap: 20,
-              marginTop: 12,
-            }}
-          >
-            {onPreviewPress && (
-              <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
-                <AppText
-                  font="instrument-regular"
-                  size="xs"
-                  style={{
-                    color: "rgba(255,255,255,0.7)",
-                    textAlign: "center",
-                    marginBottom: 4,
-                    fontSize: 10,
-                    height: 14,
-                  }}
-                  numberOfLines={1}
-                >
-                  Preview
-                </AppText>
-                <Pressable
-                  onPress={onPreviewPress}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: "rgba(0, 0, 0, 0.6)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityLabel="Preview Course"
-                >
-                  <Image
-                    source={
-                      chakraContent[Chakra.SOLAR_PLEXUS].chakraHeaderImage
-                    }
-                    style={{ width: 32, height: 32, opacity: 0.95 }}
-                    resizeMode="contain"
-                  />
-                </Pressable>
-              </View>
-            )}
-            {onLearnAboutChakrasPress && (
-              <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
-                <AppText
-                  font="instrument-regular"
-                  size="xs"
-                  style={{
-                    color: "rgba(255,255,255,0.7)",
-                    textAlign: "center",
-                    marginBottom: 4,
-                    fontSize: 10,
-                    height: 14,
-                  }}
-                  numberOfLines={1}
-                >
-                  Chakras 101
-                </AppText>
-                <Pressable
-                  onPress={onLearnAboutChakrasPress}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: "rgba(0, 0, 0, 0.6)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityLabel="Chakras 101"
-                >
-                  <Image
-                    source={require("@/assets/images/7chakras.png")}
-                    style={{ width: 32, height: 32, opacity: 0.95 }}
-                    resizeMode="contain"
-                  />
-                </Pressable>
-              </View>
-            )}
-            <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                style={{
-                  color: "rgba(255,255,255,0.7)",
-                  textAlign: "center",
-                  marginBottom: 4,
-                  fontSize: 10,
-                  height: 14,
-                }}
-                numberOfLines={1}
-              >
-                tribe
-              </AppText>
-              <Pressable
-                onPress={() => {
-                  addHapticFeedback(HapticStrength.Light)
-                  router.push("/(chakras)/TribeChat")
-                }}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: "rgba(0, 0, 0, 0.7)",
-                  borderWidth: 1,
-                  borderColor: "rgba(135, 174, 115, 0.5)",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  shadowColor: "#87AE73",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 6,
-                  elevation: 6,
-                }}
-              >
-                <Ionicons
-                  name="chatbubble-ellipses"
-                  size={22}
-                  color="rgba(135, 174, 115, 0.95)"
-                />
-              </Pressable>
-            </View>
-            <View style={{ alignItems: "center", flex: 1, maxWidth: 64 }}>
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                style={{
-                  color: "rgba(255,255,255,0.7)",
-                  textAlign: "center",
-                  marginBottom: 4,
-                  fontSize: 10,
-                  height: 14,
-                }}
-                numberOfLines={1}
-              >
-                Anua
-              </AppText>
-              <Pressable
-                onPress={handleAnuaPress}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  overflow: "hidden",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  shadowColor: "#9D4EDD",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.4,
-                  shadowRadius: 8,
-                  elevation: 8,
-                }}
-              >
-                <Image
-                  source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
-                  style={{ width: 32, height: 32, borderRadius: 16 }}
-                  resizeMode="cover"
-                />
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      )}
+      {/* Trial waiting room: no fixed bottom block. Only PermanentMenuBar (4 buttons: Preview, Chakras 101, Anua, Notes) at bottom; "For Deepest Embodiment" and "Build Your Tribe" live in scroll content only. */}
 
       {/* Invite Friend Modal - Beautiful custom design matching app style */}
       <InviteFriendModal
@@ -1530,6 +1178,15 @@ export const WaitingScreen = ({
           // Add friend to list when invite is sent
           const friendLabel = `Friend ${invitedFriends.length + 1}`
           addInvitedFriend(friendLabel)
+        }}
+      />
+
+      {/* Clarity Moment: shown once on first entry to waiting room; tap Present to enter */}
+      <ClarityMomentModal
+        visible={showClarityMomentModal}
+        onPresent={() => {
+          setShowClarityMomentModal(false)
+          AsyncStorage.setItem(CLARITY_MOMENT_SEEN_KEY, "true").catch(() => {})
         }}
       />
 

@@ -16,7 +16,7 @@
  * LAYERS (hard-baked over background; render synchronously so underlying image text never shows):
  * 1. Background: Welcomeheader + WelcomeMain.png (card with baked-in "SEVEN CHAKRAS" strip).
  * 2. Black overlay (section box): absolute box (left 5%, right 5%, top 35%, bottom 10%). No logo; Enter Path words only at bottom of overlay.
- * 3. Content: Two paragraphs (Instrument Sans, 13px, lineHeight 17) inside overlay; Enter Path label at bottom of overlay.
+ * 3. Content: Master body copy (four short paragraphs, Instrument Sans 13px, lineHeight 17); bold: Monday, Sunday, map to your soul, Head to Heart. Enter Path label at bottom of overlay.
  * 4. Enter Path: Pressable with "Enter Path" text only; tap to DateSelection (trial) or ChakraHub (lifetime).
  *
  * Do not defer or conditionally render the overlay—it must be in the same frame as the Image
@@ -42,6 +42,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { LinearGradient } from "expo-linear-gradient"
 import {
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
@@ -200,35 +201,51 @@ export default function WelcomeScreen() {
                   borderRadius: 12,
                 }}
               >
-                <View style={{ flex: 1, paddingHorizontal: 14 }}>
+                <View style={{ flex: 1, paddingHorizontal: 18 }}>
                   <View style={{ flex: 1, justifyContent: "center", marginTop: 16 }}>
-                  <Text
+                    <Text
                       style={{
                         fontFamily: "InstrumentSansRegular",
                         fontSize: 13,
                         color: "#fff",
                         textAlign: "center",
-                        lineHeight: 17,
-                        marginBottom: 14,
+                        lineHeight: 21,
+                        marginBottom: 20,
                       }}
                     >
-                      A wonderful system to integrate the 7 chakras into your life is
-                      to fold them into the 7 days of the week. For this,{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                        we start on Monday
-                      </Text>{" "}
-                      with{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                        your root into the Earth
-                      </Text>{" "}
-                      and{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                        work our way to Sunday
-                      </Text>{" "}
-                      where we spend time in the{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                        Soul Chakra of pure bliss
-                      </Text>
+                      This journey begins on{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>Monday</Text>
+                      {" "}at your root and ends on{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>Sunday</Text>
+                      {" "}in pure bliss.
+                    </Text>
+                    <Text
+                      style={{
+                        fontFamily: "InstrumentSansRegular",
+                        fontSize: 13,
+                        color: "#fff",
+                        textAlign: "center",
+                        lineHeight: 21,
+                        marginBottom: 20,
+                      }}
+                    >
+                      The chakras are the supercomputers of your soul, translating
+                      ancestral wisdom into how you feel, act, and co-create your
+                      life.
+                    </Text>
+                    <Text
+                      style={{
+                        fontFamily: "InstrumentSansRegular",
+                        fontSize: 13,
+                        color: "#fff",
+                        textAlign: "center",
+                        lineHeight: 21,
+                        marginBottom: 20,
+                      }}
+                    >
+                      This is not just about the chakras, this is about how your
+                      chakras reveal the{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>map to your soul</Text>
                       .
                     </Text>
                     <Text
@@ -237,38 +254,48 @@ export default function WelcomeScreen() {
                         fontSize: 13,
                         color: "#fff",
                         textAlign: "center",
-                        lineHeight: 17,
+                        lineHeight: 21,
                       }}
                     >
-                      The chakras are one of the most important aspects of your
-                      authentic self and{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                        have everything to do with what you do, who you are, and how
-                        you feel.
-                      </Text>{" "}
-                      These spinning balls of energy act as the supercomputers
-                      translating the signals from your soul.{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>
-                        Each chakra carries a profound ancestral wisdom
-                      </Text>
-                    , and they all have a direct impact on your emotions, your
-                    deepest wounds, and your ability to co-create life itself.
-                  </Text>
+                      The Path from{" "}
+                      <Text style={{ fontFamily: "InstrumentSansBold" }}>Head to Heart</Text>
+                      {" "}begins...
+                    </Text>
                   </View>
                   <Pressable
                     onPress={handleEnterPath}
-                    style={{ alignItems: "center", paddingVertical: 12, marginTop: 12 }}
+                    style={{ alignItems: "center", marginTop: 16 }}
                     accessibilityLabel="Enter Path"
                     accessibilityRole="button"
                     accessibilityHint="Opens the 7 Chakras in 7 Days course"
                   >
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={{ color: "#fff" }}
+                    <LinearGradient
+                      colors={[
+                        "rgba(30,30,30,0.95)",
+                        "rgba(18,18,18,0.98)",
+                        "rgba(8,8,8,0.95)",
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        paddingVertical: 14,
+                        paddingHorizontal: 32,
+                        borderRadius: 14,
+                        borderWidth: 1,
+                        borderColor: "rgba(255,255,255,0.12)",
+                        minWidth: 160,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      Enter Path
-                    </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="sm"
+                        style={{ color: "#fff" }}
+                      >
+                        Enter Path
+                      </AppText>
+                    </LinearGradient>
                   </Pressable>
                 </View>
               </View>

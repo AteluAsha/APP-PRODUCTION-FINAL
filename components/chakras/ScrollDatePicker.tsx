@@ -7,7 +7,7 @@
 import React, { useState } from "react"
 import { View, ScrollView, Pressable } from "react-native"
 import { AppText } from "@/components/AppText"
-import { getLocalDateISO, getNextMondayDate } from "@/utils/date"
+import { getLocalDateISO, getStartOfWeek } from "@/utils/date"
 
 interface ScrollDatePickerProps {
   onDateSelect: (dateISO: string) => void
@@ -18,13 +18,13 @@ export const ScrollDatePicker: React.FC<ScrollDatePickerProps> = ({
   onDateSelect,
   selectedDateISO,
 }) => {
-  // Generate next 6 Mondays for better swiping experience
+  // First option is this week's Monday (so when today is Monday, user can select today and app opens). Then next 5 Mondays.
   const generateMondays = () => {
     const mondays: string[] = []
-    const nextMonday = getNextMondayDate()
+    const thisWeekMonday = getStartOfWeek(new Date())
 
     for (let i = 0; i < 6; i++) {
-      const date = new Date(nextMonday)
+      const date = new Date(thisWeekMonday)
       date.setDate(date.getDate() + i * 7)
       mondays.push(getLocalDateISO(date))
     }

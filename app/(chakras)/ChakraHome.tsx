@@ -13,7 +13,6 @@ import { useRouter } from "expo-router"
 import { ChakraHome } from "@/components/chakras/ChakraHome"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
-import { StillnessScreen } from "@/components/StillnessScreen"
 
 export default function ChakraHomeScreen() {
   const router = useRouter()
@@ -40,12 +39,13 @@ export default function ChakraHomeScreen() {
     }
   }, [hasLifetimeAccess, lifetimeChosenTimegateJourney, router])
 
+  // Do not render hero logo when redirecting – avoids flash when navigating from in-app (e.g. home icon from course day).
   if (!hasLifetimeAccess && !courseStartDate) {
-    return <StillnessScreen />
+    return null
   }
 
   if (hasLifetimeAccess && !lifetimeChosenTimegateJourney) {
-    return <StillnessScreen />
+    return null
   }
 
   return <ChakraHome />

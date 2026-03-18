@@ -2,8 +2,10 @@
  * Commitment Gate Screen
  *
  * A native React Native screen that appears after the 14-day trial period.
- * Offers two paths: Annual Access (via RevenueCat) or Scholarship (energy exchange).
- * Matches the exact visual design from the provided screenshots.
+ * Offers three paths: New Awakenings ($7/month), The Master Path ($55/year), or The Seeker (energy exchange scholarship).
+ *
+ * Production design: iOS styling is the locked canonical design for both platforms.
+ * All layout and visual styles are hard-coded for the final production build; no platform-specific UI divergence.
  */
 
 import React, { useState } from "react"
@@ -21,7 +23,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { PRODUCT_IDS, ENTITLEMENT_ID } from "@/src/services/revenuecat"
+import { PACKAGE_IDENTIFIERS, ENTITLEMENT_ID } from "@/src/services/revenuecat"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { Ionicons } from "@expo/vector-icons"
 import { ScholarshipModal } from "./ScholarshipModal"
@@ -44,7 +46,7 @@ interface CommitmentGateProps {
   onContinueJourney?: () => void
 }
 
-type AccessOption = "annual" | "scholarship"
+type AccessOption = "monthly" | "annual" | "scholarship"
 
 export const CommitmentGate: React.FC<CommitmentGateProps> = ({
   onComplete,
@@ -53,7 +55,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
   onContinueToTrial2,
   onContinueJourney,
 }) => {
-  const [selectedOption, setSelectedOption] = useState<AccessOption>("annual")
+  const [selectedOption, setSelectedOption] = useState<AccessOption>("monthly")
   const [isProcessing, setIsProcessing] = useState(false)
   const [purchaseError, setPurchaseError] = useState<string | null>(null)
   const [restoreError, setRestoreError] = useState<string | null>(null)
@@ -74,7 +76,8 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
   const router = useRouter()
   const insets = useSafeAreaInsets()
 
-  const yearlyPackage = getProductPackage(PRODUCT_IDS.YEARLY)
+  const monthlyPackage = getProductPackage(PACKAGE_IDENTIFIERS.MONTHLY)
+  const yearlyPackage = getProductPackage(PACKAGE_IDENTIFIERS.ANNUAL)
 
   // Check if user has any unlocked chakra cards
   const hasUnlockedCards = React.useMemo(() => {
@@ -95,14 +98,35 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
 
     addHapticFeedback(HapticStrength.Medium)
 
-    if (selectedOption === "annual") {
-      // Purchase annual subscription via RevenueCat
+    if (selectedOption === "monthly") {
+      // Purchase Monthly Awakening subscription via RevenueCat ($7/month)
       setIsProcessing(true)
       try {
         setPurchaseError(null)
-        await purchase(PRODUCT_IDS.YEARLY)
-        // grantLifetimeAccess is automatically called by useRevenueCat hook
-        // Show celebration modal - onComplete called when user dismisses modal
+        await purchase(PACKAGE_IDENTIFIERS.MONTHLY)
+        setShowAccessGranted(true)
+      } catch (error: any) {
+        if (__DEV__) {
+          console.error("Error processing purchase:", error)
+        }
+        const msg = error?.message || ""
+        if (msg.toLowerCase().includes("cancelled")) {
+          setPurchaseError(null)
+        } else {
+          setPurchaseError(
+            msg ||
+              "Purchase failed. Please try again or use Restore Purchases.",
+          )
+        }
+      } finally {
+        setIsProcessing(false)
+      }
+    } else if (selectedOption === "annual") {
+      // Purchase Full Sanctuary annual via RevenueCat ($55/year)
+      setIsProcessing(true)
+      try {
+        setPurchaseError(null)
+        await purchase(PACKAGE_IDENTIFIERS.ANNUAL)
         setShowAccessGranted(true)
       } catch (error: any) {
         if (__DEV__) {
@@ -162,10 +186,10 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
       .catch(() => {})
     // Grant lifetime access immediately (it's free, not a barter)
     grantLifetimeAccess("scholarship")
-    setShowScholarshipModal(false)
-    // Navigate to Energy Exchange only. Do NOT call onComplete() here — that goes to ChakraHub
-    // and on Android can win over the next replace, skipping Energy Exchange. User reaches
-    // ChakraHub by tapping "Enter Path" on the Energy Exchange screen.
+    // Navigate first so user goes straight to Energy Exchange without seeing the paywall again.
+    // Do NOT close the modal first (setShowScholarshipModal(false)) — that would flash the
+    // CommitmentGate screen before replace. Replace unmounts this screen so the modal goes away.
+    // Do NOT call onComplete() — user reaches ChakraHub via "Enter Path" on Energy Exchange.
     router.replace("/(chakras)/EnergyExchange")
   }
 
@@ -282,7 +306,98 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
 
           {/* Access Options */}
           <View style={styles.optionsContainer}>
-            {/* Annual Access Card - depth and gradient */}
+            {/* Monthly Awakening Card - $7/month */}
+            <Pressable
+              onPress={() => {
+                setSelectedOption("monthly")
+                setPurchaseError(null)
+                setRestoreError(null)
+                addHapticFeedback(HapticStrength.Light)
+              }}
+              style={[
+                styles.optionCardWrap,
+                selectedOption === "monthly" && styles.optionCardSelectedWrap,
+              ]}
+            >
+              <LinearGradient
+                colors={
+                  selectedOption === "monthly"
+                    ? [
+                        "rgba(168, 201, 154, 0.18)",
+                        "rgba(212, 165, 116, 0.12)",
+                        "rgba(6, 182, 212, 0.06)",
+                      ]
+                    : ["rgba(28, 32, 38, 0.95)", "rgba(24, 28, 34, 0.95)"]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.optionCard,
+                  selectedOption === "monthly" && styles.optionCardSelected,
+                ]}
+              >
+                <View style={styles.optionContent}>
+                  <View style={styles.optionLeft}>
+                    <View style={[styles.optionIcon, styles.optionSymbolWrap]}>
+                      <AppText
+                        font="cormorant-italic"
+                        style={styles.optionSymbol}
+                      >
+                        ✧
+                      </AppText>
+                    </View>
+                    <View style={styles.optionTextContainer}>
+                      <AppText
+                        font="instrument-semibold"
+                        size="sm"
+                        style={styles.optionTitle}
+                      >
+                        New Awakenings
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="sm"
+                        style={styles.optionSubtitle}
+                      >
+                        Unlimited access to all teachings
+                      </AppText>
+                      <View style={styles.priceContainer}>
+                        <AppText
+                          font="instrument-bold"
+                          size="lg"
+                          style={styles.priceText}
+                        >
+                          {monthlyPackage
+                            ? formatPrice(monthlyPackage.product.priceString)
+                            : "$7"}
+                        </AppText>
+                        <AppText
+                          font="instrument-regular"
+                          size="sm"
+                          style={styles.pricePeriod}
+                        >
+                          /month
+                        </AppText>
+                      </View>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={styles.priceDescription}
+                      >
+                        Full Access, cancel anytime.
+                      </AppText>
+                    </View>
+                  </View>
+                  <View style={styles.radioButton}>
+                    {selectedOption === "monthly" && (
+                      <View style={styles.radioButtonSelected} />
+                    )}
+                  </View>
+                </View>
+              </LinearGradient>
+            </Pressable>
+
+            {/* Full Sanctuary Card - $55/year (always shown, hard-baked) */}
             <Pressable
               onPress={() => {
                 setSelectedOption("annual")
@@ -314,8 +429,13 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
               >
                 <View style={styles.optionContent}>
                   <View style={styles.optionLeft}>
-                    <View style={[styles.optionIcon, styles.crownIcon]}>
-                      <Ionicons name="diamond" size={16} color="#ffffff" />
+                    <View style={[styles.optionIcon, styles.optionSymbolWrap]}>
+                      <AppText
+                        font="cormorant-italic"
+                        style={styles.optionSymbol}
+                      >
+                        Ω
+                      </AppText>
                     </View>
                     <View style={styles.optionTextContainer}>
                       <AppText
@@ -323,14 +443,14 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                         size="sm"
                         style={styles.optionTitle}
                       >
-                        Complete Sacred Path
+                        The Master Path
                       </AppText>
                       <AppText
                         font="instrument-regular"
                         size="sm"
                         style={styles.optionSubtitle}
                       >
-                        Unlimited access to all teachings
+                        Annual Pass + new healing features
                       </AppText>
                       <View style={styles.priceContainer}>
                         <AppText
@@ -338,16 +458,14 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                           size="lg"
                           style={styles.priceText}
                         >
-                          {yearlyPackage
-                            ? formatPrice(yearlyPackage.product.priceString)
-                            : "$7"}
+                          $55
                         </AppText>
                         <AppText
                           font="instrument-regular"
                           size="sm"
                           style={styles.pricePeriod}
                         >
-                          /year
+                          / Year
                         </AppText>
                       </View>
                       <AppText
@@ -355,7 +473,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                         size="xs"
                         style={styles.priceDescription}
                       >
-                        Open the full course with universal access
+                        Master Path Embodiment
                       </AppText>
                     </View>
                   </View>
@@ -368,7 +486,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
               </LinearGradient>
             </Pressable>
 
-            {/* Scholarship Card - depth and gradient */}
+            {/* Scholarship Card - Energy Exchange (free); orange line at bottom (iOS and Android) */}
             <Pressable
               onPress={() => {
                 setSelectedOption("scholarship")
@@ -401,8 +519,13 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
               >
                 <View style={styles.optionContent}>
                   <View style={styles.optionLeft}>
-                    <View style={[styles.optionIcon, styles.starIcon]}>
-                      <Ionicons name="star" size={16} color="#ffffff" />
+                    <View style={[styles.optionIcon, styles.optionSymbolWrap]}>
+                      <AppText
+                        font="cormorant-italic"
+                        style={styles.optionSymbol}
+                      >
+                        α
+                      </AppText>
                     </View>
                     <View style={styles.optionTextContainer}>
                       <AppText
@@ -410,15 +533,14 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                         size="sm"
                         style={styles.optionTitle}
                       >
-                        Monthly Course Pass
+                        The Seeker
                       </AppText>
                       <AppText
                         font="instrument-regular"
-                        size="xs"
-                        style={styles.scholarshipSubtitle}
+                        size="sm"
+                        style={styles.optionSubtitle}
                       >
-                        Monthly Scholarship Pass with chance to reapply after
-                        the grant has ended.
+                        Energy Exchange Scholarship
                       </AppText>
                       <View style={styles.priceContainer}>
                         <AppText
@@ -428,13 +550,20 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                         >
                           Free
                         </AppText>
+                        <AppText
+                          font="instrument-regular"
+                          size="sm"
+                          style={styles.pricePeriod}
+                        >
+                          / Monthly
+                        </AppText>
                       </View>
                       <AppText
                         font="instrument-regular"
                         size="xs"
                         style={styles.priceDescription}
                       >
-                        Realizing that WE are the value.
+                        Full Access Through Course Grant
                       </AppText>
                     </View>
                   </View>
@@ -444,6 +573,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                     )}
                   </View>
                 </View>
+                <View style={styles.scholarshipOrangeLine} />
               </LinearGradient>
             </Pressable>
           </View>
@@ -496,7 +626,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
           <Pressable
             onPress={handleBeginJourney}
             disabled={isProcessing || revenueCatLoading}
-            style={styles.beginButton}
+            style={[styles.beginButton, styles.beginButtonTopSpacing]}
             accessibilityLabel="Enter Your Sacred Space"
             accessibilityHint="Complete purchase to access all teachings"
           >
@@ -734,16 +864,16 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 20,
-    marginTop: 12,
+    marginBottom: 14,
+    marginTop: 8,
   },
   logo: {
-    width: 200,
-    height: 100,
+    width: 180,
+    height: 90,
   },
   titleContainer: {
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   titleText: {
     color: "#ffffff",
@@ -751,9 +881,10 @@ const styles = StyleSheet.create({
   subtitle: {
     color: "#d1d5db",
     marginTop: 2,
+    marginBottom: 10,
   },
   featuresCardWrap: {
-    marginBottom: 16,
+    marginBottom: 12,
     borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1,
@@ -764,15 +895,16 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+  // Locked production style (iOS canonical): single padding for both platforms
   featuresCard: {
     borderRadius: 14,
-    padding: 14,
+    padding: 10,
     borderWidth: 0,
   },
   featureItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   checkmarkContainer: {
     width: 18,
@@ -788,8 +920,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionsContainer: {
-    gap: 10,
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 16,
   },
   optionCardWrap: {
     borderRadius: 14,
@@ -812,7 +944,7 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     borderRadius: 14,
-    padding: 14,
+    padding: 12,
     borderWidth: 0,
   },
   optionCardSelected: {
@@ -836,11 +968,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 10,
   },
-  crownIcon: {
-    backgroundColor: "#D4A574", // Warm earth tone
+  optionSymbolWrap: {
+    backgroundColor: "transparent",
   },
-  starIcon: {
-    backgroundColor: "#A8C99A", // Light sage
+  optionSymbol: {
+    color: "rgba(212, 165, 116, 0.9)",
+    fontSize: 22,
   },
   optionTextContainer: {
     flex: 1,
@@ -856,6 +989,18 @@ const styles = StyleSheet.create({
   scholarshipSubtitle: {
     color: "rgba(212, 165, 116, 0.9)",
     marginBottom: 4,
+  },
+  scholarshipTagline: {
+    color: "#A8C99A",
+    marginBottom: 4,
+  },
+  scholarshipOrangeLine: {
+    height: 2,
+    backgroundColor: "#D4A574",
+    marginTop: 10,
+    marginHorizontal: -12,
+    marginBottom: -12,
+    alignSelf: "stretch",
   },
   priceContainer: {
     flexDirection: "row",
@@ -918,6 +1063,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
+  },
+  beginButtonTopSpacing: {
+    marginTop: 22,
   },
   beginButtonGradient: {
     paddingVertical: 16,

@@ -39,7 +39,6 @@ import { AppText } from "@/components/AppText"
 import { Chakra } from "@/types/chakras/Chakra"
 import { useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
-import { useScrollRevealFloatingUI } from "@/hooks/useFloatingUIVisibilityStore"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
@@ -52,7 +51,7 @@ import { prepareLongAudioForPlay } from "@/src/utils/crystalBowlPlayback"
 import { storage } from "@/src/services/firebase"
 import { preloadFullFilesForChakra } from "@/src/utils/audioPreloadManifest"
 import { DropInButton } from "@/components/chakras/DropInButton"
-// Social Sanctuary and Anua access handled globally by FloatingNavButtons
+// Social Sanctuary and Anua access handled globally by PermanentMenuBar
 import { getChakraIndex } from "@/utils/chakraMapping"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { getIntegrationMomentContent } from "@/constants/chakras/integrationMomentContent"
@@ -66,7 +65,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false)
   const [currentPill, setCurrentPill] = useState<PillType | null>(null)
   const [integrationModalVisible, setIntegrationModalVisible] = useState(false)
-  // Note: Social Sanctuary and Anua access handled globally by FloatingNavButtons
+  // Note: Social Sanctuary and Anua access handled globally by PermanentMenuBar
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
   const router = useRouter()
 
@@ -113,8 +112,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
     setContentKey((k) => k + 1)
     setTimeout(() => setRefreshing(false), 400)
   }, [])
-
-  const onScrollRevealFloating = useScrollRevealFloatingUI()
 
   const getChakraName = (chakraName: Chakra): string => {
     switch (chakraName) {
@@ -235,7 +232,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
       <ParallaxScrollView
         scrollRef={scrollRef}
         scrollEventThrottle={16}
-        onScroll={onScrollRevealFloating}
         showsVerticalScrollIndicator={false}
         scrollEnabled={true}
         bounces={true}
@@ -752,7 +748,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
         onNavigateHome={handleGoodbyeNavigateHome}
       />
 
-      {/* Note: Social Sanctuary and Anua access is handled globally by FloatingNavButtons */}
+      {/* Note: Social Sanctuary and Anua access is handled globally by PermanentMenuBar */}
     </SafeAreaView>
   )
 }

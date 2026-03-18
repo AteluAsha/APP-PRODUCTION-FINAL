@@ -17,6 +17,7 @@ import {
   openSystemShare,
 } from "@/utils/shareDestinations"
 import { ShareDestinationPicker } from "@/components/sharing/ShareDestinationPicker"
+import { MODAL_CARD_MAX_WIDTH } from "@/constants/layout"
 
 const HERO_ICON = require("@/assets/images/ChakraWheel_ONBLACK_300DPI.png")
 
@@ -198,7 +199,7 @@ const styles = StyleSheet.create({
   },
   cardWrap: {
     width: "100%",
-    maxWidth: 340,
+    maxWidth: MODAL_CARD_MAX_WIDTH,
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,

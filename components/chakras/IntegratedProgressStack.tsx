@@ -37,7 +37,13 @@ import {
   getChakraImage,
   getChakraColor,
 } from "@/constants/chakras/chakraConstants"
-import { TRIAL_HOME_ROOT_CHAKRA } from "@/constants/layout"
+import {
+  TRIAL_HOME_ROOT_CHAKRA,
+  SCROLL_BREATHING_BOTTOM_PADDING,
+  LIFETIME_HUB_STACK_RAISE_IOS,
+  ROOT_BOTTOM_OFFSET_LIFETIME_HUB_IOS,
+  LIFETIME_HUB_CHAKRA_BALL_DIVISOR,
+} from "@/constants/layout"
 import { getTimeRemaining } from "@/utils/date"
 import { formatCountdown } from "@/utils/format"
 
@@ -139,12 +145,40 @@ export const IntegratedProgressStack = ({
   // Find current chakra data
   const currentChakraData = chakraData.find(({ day }) => day === currentDay)
 
-  // LOCKED (Android): Trials home stack placement – constants/layout.ts TRIAL_HOME_ROOT_CHAKRA
-  const bottomPadding = TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING
+  // LOCKED (Android): Trials home stack placement – constants/layout.ts TRIAL_HOME_ROOT_CHAKRA. iOS lifetime hub: pin root ball higher via ROOT_BOTTOM_OFFSET_LIFETIME_HUB_IOS (production-approved).
+  const bottomPadding =
+    showAllChakrasForLifetimeHub && Platform.OS === "ios"
+      ? ROOT_BOTTOM_OFFSET_LIFETIME_HUB_IOS
+      : TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING
   const dayLabelToBallGap = TRIAL_HOME_ROOT_CHAKRA.DAY_LABEL_TO_BALL_GAP
 
-  // Viewport height for base-pinned stack (flex-end); root stays in same place day 1–7, never centered
-  const viewportHeight = windowHeight - insets.top - insets.bottom
+  // Trial home (ChakraHome): ScrollView has paddingTop + paddingBottom; stack must fit in visible area
+  // so the root ball is not cut off (iOS was showing ball below screen). Use reduced viewport when
+  // not in lifetime hub (Android: 32 top; iOS: SCROLL_PADDING_TOP_IOS – LOCKED in layout.ts).
+  const scrollPaddingTop =
+    Platform.OS === "ios"
+      ? TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP_IOS
+      : TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP
+  const scrollPaddingBottom =
+    TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_BOTTOM +
+    SCROLL_BREATHING_BOTTOM_PADDING
+  const viewportHeightForTrialHome =
+    windowHeight -
+    insets.top -
+    insets.bottom -
+    scrollPaddingTop -
+    scrollPaddingBottom
+
+  // Viewport height for base-pinned stack (flex-end). Lifetime hub uses full safe area; trial home uses reduced so stack fits.
+  const viewportHeight = showAllChakrasForLifetimeHub
+    ? windowHeight - insets.top - insets.bottom
+    : viewportHeightForTrialHome
+
+  // iOS lifetime hub only: use a shorter container so the root ball is pinned higher (LOCKED production layout).
+  const stackContainerHeight =
+    showAllChakrasForLifetimeHub && Platform.OS === "ios"
+      ? viewportHeight - LIFETIME_HUB_STACK_RAISE_IOS
+      : viewportHeight
 
   // Next-day preview: midnight countdown when there is a tomorrow (currentDay < 6)
   const [midnightCountdown, setMidnightCountdown] = useState({
@@ -166,13 +200,13 @@ export const IntegratedProgressStack = ({
     return () => clearInterval(interval)
   }, [currentDay])
 
-  // LOCKED: viewport-sized container + stack pinned to base – do not center (trials home)
+  // LOCKED: viewport-sized container + stack pinned to base – do not center (trials home). iOS lifetime hub: shorter container so root ball sits higher (LIFETIME_HUB_STACK_RAISE_IOS). flexGrow (not flex) so min/max height are respected.
   return (
     <View
       style={{
-        flex: 1,
-        minHeight: viewportHeight,
-        maxHeight: viewportHeight,
+        flexGrow: 1,
+        minHeight: stackContainerHeight,
+        maxHeight: stackContainerHeight,
       }}
     >
       {/* Chakra stack – pinned to base (flex-end); same position Monday–Sunday; never center by day */}
@@ -262,9 +296,8 @@ export const IntegratedProgressStack = ({
             // Current day title: show for current day (completed or not) so each day/chakra is labeled on APP1 and APP2
             const showCurrentDayTitle =
               !showAllChakrasForLifetimeHub && isCurrentDay
-            // Lifetime hub only: same day title style but pinned to left wall, aligned with current day's chakra ball (changes daily)
-            const showLifetimeLeftDayTitle =
-              showAllChakrasForLifetimeHub && isCurrentDay
+            // Lifetime hub: day title next to every chakra ball (same row, aligned all the way up)
+            const showLifetimeLeftDayTitle = showAllChakrasForLifetimeHub
 
             return (
               <View
@@ -281,60 +314,6 @@ export const IntegratedProgressStack = ({
                   }),
                 }}
               >
-                {/* Lifetime hub only: day title pinned to left phone wall, same style as trial, vertically aligned with this row's chakra ball */}
-                {showLifetimeLeftDayTitle && (
-                  <View
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      justifyContent: "center",
-                      paddingLeft: Math.max(insets.left, 16),
-                      maxWidth: "50%",
-                    }}
-                    pointerEvents="none"
-                  >
-                    <View
-                      style={{
-                        flexDirection: "column",
-                        alignItems: "flex-start",
-                        gap: 2,
-                      }}
-                    >
-                      <AppText
-                        font="cormorant-regular"
-                        size="xs"
-                        numberOfLines={1}
-                        style={{
-                          fontFamily: "CormorantGaramond",
-                          fontWeight: "600",
-                          color: "#ffffff",
-                          textShadowColor: "rgba(0, 0, 0, 0.8)",
-                          textShadowOffset: { width: 0, height: 1 },
-                          textShadowRadius: 4,
-                        }}
-                      >
-                        {dayName}
-                      </AppText>
-                      <AppText
-                        font="cormorant-regular"
-                        size="xs"
-                        numberOfLines={1}
-                        style={{
-                          fontFamily: "CormorantGaramond",
-                          color: "#ffffff",
-                          textShadowColor: "rgba(0, 0, 0, 0.8)",
-                          textShadowOffset: { width: 0, height: 1 },
-                          textShadowRadius: 4,
-                        }}
-                      >
-                        {chakraName} Day
-                      </AppText>
-                    </View>
-                  </View>
-                )}
-
                 {/* APP_1/APP_2: Day title above chakra ball – in-flow layout so it renders on Android (absolute + bottom 100% is unreliable) */}
                 {showCurrentDayTitle && (
                   <View
@@ -469,50 +448,104 @@ export const IntegratedProgressStack = ({
                   </View>
                 )}
 
-                {/* Chakra container with completion badge - ALWAYS centered */}
-                <View
-                  style={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                    position: "relative",
-                    ...(isCurrentDay
-                      ? { transform: [{ scale: 1.15 }] }
-                      : { transform: [{ scale: 1 }] }), // Current day larger
-                    // APP_1 (Trial): Opacity logic; APP_2 (Lifetime hub): all balls full opacity
-                    opacity: showAllChakrasForLifetimeHub
-                      ? 1.0
-                      : isTeaserPosition
-                        ? 0.15 // Teaser: very low opacity shadow only
-                        : isCompleted ||
-                            hasParticipatedDay(chakraDay) ||
-                            isCurrentDay
-                          ? 1.0 // OPEN: stays open all week
-                          : isMissedDay
-                            ? 0.3 // MISSED: greyed out, not accessible
-                            : 0.4, // FUTURE: safety fallback
-                  }}
-                  accessibilityLabel={
-                    isMissedDay
-                      ? `${getChakraName(chakraDay)} - Missed day`
-                      : isCompleted
-                        ? `${getChakraName(chakraDay)} - Completed`
-                        : `${getChakraName(chakraDay)} - ${isCurrentDay ? "Current day" : "Available"}`
-                  }
-                  accessibilityHint={
-                    isMissedDay
-                      ? "This day was missed and is no longer accessible"
-                      : isCompleted
-                        ? "Tap to revisit this completed chakra"
-                        : isCurrentDay
-                          ? "Tap to open today's chakra"
-                          : "Tap to open this chakra"
-                  }
-                  accessibilityRole="button"
-                >
+                {/* Lifetime hub: day title next to chakra ball (left of ball); trial: ball only in this slot */}
+                {showLifetimeLeftDayTitle ? (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "100%",
+                      gap: 12,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "column",
+                        alignItems: "flex-end",
+                        gap: 2,
+                        maxWidth: "40%",
+                      }}
+                      pointerEvents="none"
+                    >
+                      <AppText
+                        font="cormorant-regular"
+                        size="xs"
+                        numberOfLines={1}
+                        style={{
+                          fontFamily: "CormorantGaramond",
+                          fontWeight: "600",
+                          color: "#ffffff",
+                          textShadowColor: "rgba(0, 0, 0, 0.8)",
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 4,
+                        }}
+                      >
+                        {dayName}
+                      </AppText>
+                      <AppText
+                        font="cormorant-regular"
+                        size="xs"
+                        numberOfLines={1}
+                        style={{
+                          fontFamily: "CormorantGaramond",
+                          color: "#ffffff",
+                          textShadowColor: "rgba(0, 0, 0, 0.8)",
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 4,
+                        }}
+                      >
+                        {chakraName} Day
+                      </AppText>
+                    </View>
+                    <View
+                      style={{
+                        alignItems: "center",
+                        justifyContent: "center",
+                        position: "relative",
+                        ...(isCurrentDay
+                          ? { transform: [{ scale: 1.15 }] }
+                          : { transform: [{ scale: 1 }] }),
+                        opacity: showAllChakrasForLifetimeHub
+                          ? 1.0
+                          : isTeaserPosition
+                            ? 0.15
+                            : isCompleted ||
+                                hasParticipatedDay(chakraDay) ||
+                                isCurrentDay
+                              ? 1.0
+                              : isMissedDay
+                                ? 0.3
+                                : 0.4,
+                      }}
+                      accessibilityLabel={
+                        isMissedDay
+                          ? `${getChakraName(chakraDay)} - Missed day`
+                          : isCompleted
+                            ? `${getChakraName(chakraDay)} - Completed`
+                            : `${getChakraName(chakraDay)} - ${isCurrentDay ? "Current day" : "Available"}`
+                      }
+                      accessibilityHint={
+                        isMissedDay
+                          ? "This day was missed and is no longer accessible"
+                          : isCompleted
+                            ? "Tap to revisit this completed chakra"
+                            : isCurrentDay
+                              ? "Tap to open today's chakra"
+                              : "Tap to open this chakra"
+                      }
+                      accessibilityRole="button"
+                    >
                   {/* Chakra button - larger for current day, disabled for future/missed days */}
                   {/* TEASER: Not clickable (visual shadow only) */}
                   <PulsingButton
                     source={source}
+                    small={showAllChakrasForLifetimeHub}
+                    smallDivisor={
+                      showAllChakrasForLifetimeHub
+                        ? LIFETIME_HUB_CHAKRA_BALL_DIVISOR
+                        : undefined
+                    }
                     isAnimating={
                       isCurrentDay &&
                       !isMissedDay &&
@@ -624,7 +657,146 @@ export const IntegratedProgressStack = ({
                         </View>
                       )
                     })()}
-                </View>
+                    </View>
+                  </View>
+                ) : (
+                  <View
+                    style={{
+                      alignItems: "center",
+                      justifyContent: "center",
+                      position: "relative",
+                      ...(isCurrentDay
+                        ? { transform: [{ scale: 1.15 }] }
+                        : { transform: [{ scale: 1 }] }),
+                      opacity: showAllChakrasForLifetimeHub
+                        ? 1.0
+                        : isTeaserPosition
+                          ? 0.15
+                          : isCompleted ||
+                              hasParticipatedDay(chakraDay) ||
+                              isCurrentDay
+                            ? 1.0
+                            : isMissedDay
+                              ? 0.3
+                              : 0.4,
+                    }}
+                    accessibilityLabel={
+                      isMissedDay
+                        ? `${getChakraName(chakraDay)} - Missed day`
+                        : isCompleted
+                          ? `${getChakraName(chakraDay)} - Completed`
+                          : `${getChakraName(chakraDay)} - ${isCurrentDay ? "Current day" : "Available"}`
+                    }
+                    accessibilityHint={
+                      isMissedDay
+                        ? "This day was missed and is no longer accessible"
+                        : isCompleted
+                          ? "Tap to revisit this completed chakra"
+                          : isCurrentDay
+                            ? "Tap to open today's chakra"
+                            : "Tap to open this chakra"
+                    }
+                    accessibilityRole="button"
+                  >
+                    <PulsingButton
+                      source={source}
+                      small={showAllChakrasForLifetimeHub}
+                      smallDivisor={
+                        showAllChakrasForLifetimeHub
+                          ? LIFETIME_HUB_CHAKRA_BALL_DIVISOR
+                          : undefined
+                      }
+                      isAnimating={
+                        isCurrentDay &&
+                        !isMissedDay &&
+                        chakraDay <= currentDay &&
+                        !isTeaserPosition
+                      }
+                      isBottomChakra={chakraDay === 0}
+                      onPress={() => {
+                        if (
+                          !showAllChakrasForLifetimeHub &&
+                          (chakraDay > currentDay ||
+                            isMissedDay ||
+                            isTeaserPosition)
+                        ) {
+                          return
+                        }
+                        onPress(router)
+                      }}
+                    />
+                    {isCompleted &&
+                      !isMissedDay &&
+                      !isTeaserPosition &&
+                      (() => {
+                        const chakraColor = getChakraColor(chakraDay)
+                        const hexToRgba = (hex: string, alpha: number) => {
+                          const r = parseInt(hex.slice(1, 3), 16)
+                          const g = parseInt(hex.slice(3, 5), 16)
+                          const b = parseInt(hex.slice(5, 7), 16)
+                          return `rgba(${r}, ${g}, ${b}, ${alpha})`
+                        }
+                        const gradientColors: [string, string, string] = [
+                          hexToRgba(chakraColor, 0.7),
+                          hexToRgba(chakraColor, 0.5),
+                          hexToRgba(chakraColor, 0.6),
+                        ]
+                        return (
+                          <View
+                            style={{
+                              position: "absolute",
+                              top: "50%",
+                              right: -20,
+                              transform: [{ translateY: -4 }],
+                              zIndex: 10,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <View
+                              style={{
+                                position: "absolute",
+                                width: 12,
+                                height: 12,
+                                borderRadius: 6,
+                                backgroundColor: hexToRgba(chakraColor, 0.12),
+                                shadowColor: chakraColor,
+                                shadowOffset: { width: 0, height: 0 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 4,
+                              }}
+                            />
+                            <LinearGradient
+                              colors={[gradientColors[0], gradientColors[1], gradientColors[2]]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                justifyContent: "center",
+                                alignItems: "center",
+                                borderWidth: 0.5,
+                                borderColor: hexToRgba(chakraColor, 0.3),
+                                shadowColor: chakraColor,
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.4,
+                                shadowRadius: 2,
+                                elevation: 2,
+                              }}
+                            >
+                              <Feather
+                                name="check"
+                                size={4}
+                                color="rgba(255, 255, 255, 0.95)"
+                                style={{ fontWeight: "bold" }}
+                              />
+                            </LinearGradient>
+                          </View>
+                        )
+                      })()}
+                  </View>
+                )}
               </View>
             )
           })}

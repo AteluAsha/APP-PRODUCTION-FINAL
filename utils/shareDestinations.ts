@@ -91,6 +91,8 @@ export type SystemShareOptions = {
 
 /**
  * Open Messages/SMS with pre-filled text. iOS: Messages. Android: default SMS app.
+ * Does NOT send any message: only opens the system app; the user chooses recipient and taps Send.
+ * App never sends SMS/DMs programmatically (no SEND_SMS permission; no auto-DM).
  */
 export async function openMessages(message: string): Promise<boolean> {
   try {
@@ -127,6 +129,7 @@ export async function openEmail(message: string): Promise<boolean> {
 
 /**
  * Open WhatsApp with pre-filled text. Uses whatsapp://send?text=...
+ * Does NOT send any message: only opens WhatsApp; the user chooses recipient and taps Send.
  * Returns false if WhatsApp is not installed (use openSystemShare as fallback).
  */
 export async function openWhatsApp(message: string): Promise<boolean> {

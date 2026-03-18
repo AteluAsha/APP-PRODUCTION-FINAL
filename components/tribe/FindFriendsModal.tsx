@@ -62,8 +62,8 @@ export function FindFriendsModal({
   const insets = useSafeAreaInsets()
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
   const cardWidth = useMemo(
-    () => Math.min(windowWidth - 64, 420),
-    [windowWidth],
+    () => Math.min(windowWidth - insets.left - insets.right - 48, 520),
+    [windowWidth, insets.left, insets.right],
   )
 
   const presenceDisplayName = usePresenceStore((s) => s.displayName)
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   card: {
-    maxWidth: 420,
+    maxWidth: 520,
     maxHeight: "88%",
     borderRadius: 24,
     overflow: "hidden",

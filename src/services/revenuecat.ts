@@ -6,16 +6,17 @@
  *
  * Key implementation details:
  * - Uses RevenueCat React Native SDK for cross-platform purchases
- * - Manages "Soul School Pro" entitlement for lifetime access
- * - Supports two product types: annual and lifetime (no monthly subscription)
- * - Integrates with payment gate for annual subscription or scholarship
+ * - Manages "premium" entitlement for full sanctuary access
+ * - Fetches the Current offering from the dashboard (no fixed offering id)
+ * - Purchase logic uses Package identifiers ($rc_monthly, $rc_annual); RevenueCat maps to store products per platform
+ * - Scholarship path does not use RevenueCat (energy exchange bypass)
  *
- * Products:
- * - yearly: Annual subscription
- * - lifetime: Lifetime access (via annual payment or scholarship)
+ * Package identifiers (RevenueCat dashboard – same on Apple and Google):
+ * - $rc_monthly: New Awakenings ($7/mo)
+ * - $rc_annual: Full Sanctuary ($55/yr)
  *
  * Entitlement:
- * - "Soul School Pro": Grants full lifetime access to all chakra content
+ * - "premium": Grants full access to all sanctuary content
  */
 
 import Purchases, {
@@ -55,11 +56,8 @@ const getRevenueCatApiKey = (): string | null => {
 // RevenueCat API Key - may be null if not configured
 const REVENUECAT_API_KEY = getRevenueCatApiKey()
 
-// Entitlement identifier
-export const ENTITLEMENT_ID = "Soul School Pro"
-
-// Product identifiers
-// Note: Only annual subscription and lifetime (via scholarship) are available
+// Entitlement identifier (RevenueCat dashboard)
+export const ENTITLEMENT_ID = "premium"
 
 /**
  * Check if RevenueCat is configured
@@ -67,11 +65,37 @@ export const ENTITLEMENT_ID = "Soul School Pro"
 export const isRevenueCatAvailable = (): boolean => {
   return !!REVENUECAT_API_KEY && REVENUECAT_API_KEY !== ""
 }
-// No monthly subscription option
+
+/**
+ * Package identifiers from the Current offering.
+ * Use these for paywall: RevenueCat resolves to the correct store product per platform.
+ */
+export const PACKAGE_IDENTIFIERS = {
+  /** New Awakenings – $7/month */
+  MONTHLY: "$rc_monthly",
+  /** Full Sanctuary – $55/year */
+  ANNUAL: "$rc_annual",
+  /** Optional; only shown if present in Current offering */
+  LIFETIME: "$rc_lifetime",
+} as const
+
+export type PackageIdentifier =
+  (typeof PACKAGE_IDENTIFIERS)[keyof typeof PACKAGE_IDENTIFIERS]
+
+/**
+ * Known store product identifiers for status display only (entitlement.productIdentifier).
+ * Used to show "New Awakenings" / "Full Sanctuary" in Account; not used for purchase.
+ */
+export const KNOWN_PRODUCT_IDS_FOR_LABEL = {
+  MONTHLY: ["ss_monthly_7", "prod46ac7140ca"],
+  ANNUAL: ["ss_yearly_55", "prod817dd44ada"],
+} as const
+
+/** Legacy: product ids for Contribute / other flows that look up by product id. Prefer PACKAGE_IDENTIFIERS for paywall. */
 export const PRODUCT_IDS = {
-  YEARLY: "yearly",
-  LIFETIME: "lifetime",
-  // Energy exchange contributions (Project Starseed 501(c)(3))
+  MONTHLY: PACKAGE_IDENTIFIERS.MONTHLY,
+  YEARLY: PACKAGE_IDENTIFIERS.ANNUAL,
+  LIFETIME: PACKAGE_IDENTIFIERS.LIFETIME,
   CONTRIBUTION_7: "contribution_7",
   CONTRIBUTION_11: "contribution_11",
   CONTRIBUTION_22: "contribution_22",
@@ -127,8 +151,9 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
     // At this point, apiKey is guaranteed to be string (after type guard check)
     const validApiKey: string = apiKey as string
 
-    // Custom log handler: downgrade "no products/offerings" errors to warn so they don't
-    // show the red console error overlay during development. Safe to ignore until production.
+    // Custom log handler: downgrade expected/transient errors to warn so they don't
+    // show the red console error overlay. Network errors are expected when device is offline
+    // or api.revenuecat.com is unreachable (DNS/connectivity).
     Purchases.setLogHandler((level, message) => {
       const isOfferingsConfigError =
         level === LOG_LEVEL.ERROR &&
@@ -136,7 +161,14 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
           message.includes("offerings") ||
           message.includes("safely ignore") ||
           message.includes("configuration"))
-      if (isOfferingsConfigError && __DEV__) {
+      const isNetworkError =
+        level === LOG_LEVEL.ERROR &&
+        (message.includes("NetworkError") ||
+          message.includes("Unable to resolve host") ||
+          message.includes("No address associated with hostname") ||
+          message.includes("Error performing request"))
+      // Downgrade to warn always (not just __DEV__) so device/emulator doesn't show red Console Error when offline or DNS unreachable
+      if (isOfferingsConfigError || isNetworkError) {
         console.warn("[RevenueCat]", message)
         return
       }
@@ -284,7 +316,7 @@ export async function linkUserId(userId: string): Promise<void> {
 }
 
 /**
- * Check if user has active entitlement (Soul School Pro)
+ * Check if user has active entitlement (premium)
  */
 export const hasActiveEntitlement = async (): Promise<boolean> => {
   if (!isInitialized) {
@@ -339,7 +371,8 @@ const isConfigurationError = (error: any): boolean => {
 }
 
 /**
- * Get available offerings (products available for purchase)
+ * Get the Current offering (dashboard "Current" offering).
+ * No fixed offering id – whatever is set as Current in RevenueCat is used.
  */
 export const getOfferings = async (): Promise<PurchasesOffering | null> => {
   if (!isInitialized) {
@@ -441,26 +474,74 @@ export const purchasePackage = async (
 }
 
 /**
- * Purchase a product by identifier
- * Finds the package with matching identifier and purchases it
+ * Alternate identifiers to try when resolving a package.
+ * RevenueCat dashboard may use $rc_* or custom names; App Store product IDs also work.
+ */
+const PACKAGE_ID_FALLBACKS: Record<string, string[]> = {
+  [PACKAGE_IDENTIFIERS.MONTHLY]: [
+    PACKAGE_IDENTIFIERS.MONTHLY,
+    "monthly",
+    ...KNOWN_PRODUCT_IDS_FOR_LABEL.MONTHLY,
+  ],
+  [PACKAGE_IDENTIFIERS.ANNUAL]: [
+    PACKAGE_IDENTIFIERS.ANNUAL,
+    "annual",
+    "yearly",
+    ...KNOWN_PRODUCT_IDS_FOR_LABEL.ANNUAL,
+  ],
+}
+
+function findPackageByIdentifierOrProduct(
+  packages: PurchasesPackage[],
+  id: string,
+): PurchasesPackage | undefined {
+  return (
+    packages.find((pkg) => pkg.identifier === id) ??
+    packages.find((pkg) => pkg.product.identifier === id)
+  )
+}
+
+/**
+ * Resolve a package by primary id or fallback identifiers (for paywall display and purchase).
+ * Use this so RevenueCat dashboard package names don't have to match $rc_monthly / $rc_annual exactly.
+ */
+export function getPackageWithFallback(
+  packages: PurchasesPackage[],
+  packageOrProductId: string,
+): PurchasesPackage | undefined {
+  const idsToTry =
+    PACKAGE_ID_FALLBACKS[packageOrProductId] ?? [packageOrProductId]
+  for (const id of idsToTry) {
+    const pkg = findPackageByIdentifierOrProduct(packages, id)
+    if (pkg) return pkg
+  }
+  return undefined
+}
+
+/**
+ * Purchase by package identifier ($rc_monthly, $rc_annual) or product identifier (fallback).
+ * Tries primary id then common alternates so RevenueCat dashboard naming doesn't have to match exactly.
  */
 export const purchaseProduct = async (
-  productId: ProductId,
+  packageOrProductId: string,
 ): Promise<CustomerInfo> => {
   try {
     const packages = await getPackages()
-    const packageToPurchase = packages.find(
-      (pkg) => pkg.product.identifier === productId,
+    const packageToPurchase = getPackageWithFallback(
+      packages,
+      packageOrProductId,
     )
 
     if (!packageToPurchase) {
-      throw new Error(`Product ${productId} not found`)
+      throw new Error(
+        `Package or product ${packageOrProductId} not found. In RevenueCat, set Current offering package identifiers to $rc_monthly and $rc_annual, or link products with those App Store product IDs.`,
+      )
     }
 
     return await purchasePackage(packageToPurchase)
   } catch (error) {
     if (__DEV__) {
-      console.error(`Error purchasing product ${productId}:`, error)
+      console.error(`Error purchasing ${packageOrProductId}:`, error)
     }
     throw error
   }
@@ -529,20 +610,20 @@ export const presentCustomerCenter = async (): Promise<void> => {
 }
 
 /**
- * Get product information by identifier
+ * Get product by package identifier ($rc_monthly, $rc_annual) or product identifier (fallback).
  */
 export const getProduct = async (
-  productId: ProductId,
+  packageOrProductId: string,
 ): Promise<PurchasesStoreProduct | null> => {
   try {
     const packages = await getPackages()
-    const productPackage = packages.find(
-      (pkg) => pkg.product.identifier === productId,
-    )
-    return productPackage?.product || null
+    const pkg =
+      packages.find((p) => p.identifier === packageOrProductId) ??
+      packages.find((p) => p.product.identifier === packageOrProductId)
+    return pkg?.product ?? null
   } catch (error) {
     if (__DEV__) {
-      console.error(`Error getting product ${productId}:`, error)
+      console.error(`Error getting product ${packageOrProductId}:`, error)
     }
     return null
   }

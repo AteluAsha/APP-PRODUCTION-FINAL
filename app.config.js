@@ -31,11 +31,12 @@ module.exports = {
     version: "1.0.0",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
+    // Opening splash: gentle logo size. After changing, run: npx expo prebuild --clean then build.
     splash: {
       image: "./assets/images/SoulSchool_HERO_Logo.png",
       backgroundColor: "#000000",
       resizeMode: "contain",
-      imageWidth: 126,
+      imageWidth: 88,
     },
     scheme: "soul-school",
     userInterfaceStyle: "dark",
@@ -54,6 +55,8 @@ module.exports = {
           "We need access to your camera to record a video for sharing your journey.",
         NSMicrophoneUsageDescription:
           "We need access to your microphone to record audio with your video.",
+        NSPhotoLibraryUsageDescription:
+          "Soul School uses your photo library so you can choose a profile picture and share images in the community.",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
     },
@@ -69,6 +72,7 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
+      // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
         "CAMERA",
         "RECORD_AUDIO",
@@ -86,7 +90,7 @@ module.exports = {
           image: "./assets/images/SoulSchool_HERO_Logo.png",
           backgroundColor: "#000000",
           resizeMode: "contain",
-          imageWidth: 126,
+          imageWidth: 88, // Match in-app OPENING_LOGO; prebuild --clean after change
         },
       ],
       [

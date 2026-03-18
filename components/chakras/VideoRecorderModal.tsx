@@ -111,7 +111,7 @@ export const VideoRecorderModal: React.FC<VideoRecorderModalProps> = ({
     return (
       <Modal
         visible={visible}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={onClose}
       >
         <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -132,7 +132,7 @@ export const VideoRecorderModal: React.FC<VideoRecorderModalProps> = ({
 
   if (permission.granted === false) {
     return (
-      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <Modal visible={visible} animationType="fade" onRequestClose={onClose}>
         <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
           <View style={styles.permissionContainer}>
             <Ionicons name="camera-outline" size={64} color="#A8C99A" />
@@ -188,7 +188,7 @@ export const VideoRecorderModal: React.FC<VideoRecorderModalProps> = ({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="fade" onRequestClose={onClose}>
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <Pressable onPress={onClose} style={styles.closeButton}>

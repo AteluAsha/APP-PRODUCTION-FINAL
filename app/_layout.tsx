@@ -4,7 +4,7 @@
  * OPENING SEQUENCE (always first): Splash → Path Selection (WelcomeScreen) → 7 Chakras in 7 Days.
  * After Enter Path: DateSelection | Waiting Room | Trial Home | Lifetime Home (ChakraHub).
  */
-import "@/src/utils/splash-keeper"
+import "react-native-reanimated"
 import "../globals.css"
 import {
   DarkTheme,
@@ -14,8 +14,7 @@ import {
 import { useFonts } from "expo-font"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
-import { useEffect, useRef, useCallback } from "react"
-import "react-native-reanimated"
+import { useEffect } from "react"
 import { useColorScheme } from "@/hooks/useColorScheme"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
@@ -25,19 +24,18 @@ import { useRouter, usePathname } from "expo-router"
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av"
 import * as SplashScreen from "expo-splash-screen"
 import { useChakraWeekTransition } from "@/hooks/useChakraWeekTransition"
-import { SplashScreenReveal } from "@/components/SplashScreenReveal"
+import {
+  SOMATIC_SCREEN_TRANSITION_MS,
+  SOMATIC_SCREEN_TRANSITION_MS_IOS,
+} from "@/constants/layout"
 import { useState } from "react"
-import Animated, { FadeIn, Easing } from "react-native-reanimated"
-import { SOMATIC_FADE_IN_MS } from "@/constants/layout"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { PermanentMenuBar } from "@/components/navigation/PermanentMenuBar"
 import { MusicRoomAudioManager } from "@/components/audio/MusicRoomAudioManager"
 import { OtherOriginAudioManager } from "@/components/audio/OtherOriginAudioManager"
-import { FloatingNavButtons } from "@/components/navigation/FloatingNavButtons"
 import { GlobalHomeButton } from "@/components/navigation/GlobalHomeButton"
 import { GlobalAnuaChat } from "@/components/navigation/GlobalAnuaChat"
 import { GlobalTribeChat } from "@/components/navigation/GlobalTribeChat"
-import { FloatingUIRevealStrip } from "@/components/navigation/FloatingUIRevealStrip"
 import { PathSelectionGate } from "@/components/navigation/PathSelectionGate"
 import { ChakraHubHeader } from "@/components/navigation/ChakraHubHeader"
 import { ProfileSheet } from "@/components/profile/ProfileSheet"
@@ -62,35 +60,34 @@ LogBox.ignoreLogs([
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()
-  const [showHeroLogo, setShowHeroLogo] = useState(true)
-  const [assetsReady, setAssetsReady] = useState(false)
+  const [nativeReady, setNativeReady] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
-  // Keep native splash until we explicitly hide it (backup to splash-keeper).
+  // Defer Reanimated/BottomSheet until native module is initialized (fixes iOS crash).
+  // One frame + short delay on both platforms so Reanimated worklets are ready before main app (Android .aab was throwing without delay).
+  useEffect(() => {
+    const delay = Platform.OS === "ios" ? 80 : 80
+    let cancelled = false
+    const id = requestAnimationFrame(() => {
+      if (cancelled) return
+      if (delay > 0) {
+        setTimeout(() => {
+          if (!cancelled) setNativeReady(true)
+        }, delay)
+      } else {
+        setNativeReady(true)
+      }
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(id)
+    }
+  }, [])
+
+  // Keep native splash visible until (chakras) index hides it so opening splash is the first painted screen.
   useEffect(() => {
     SplashScreen.preventAutoHideAsync().catch(() => {})
-  }, [])
-  // Hide native splash only after hero fade-in is complete so we never jump (native stays visible while our overlay fades in).
-  const hideNativeSplashOnceRef = useRef(false)
-  const handleHeroFadeInComplete = useCallback(() => {
-    if (hideNativeSplashOnceRef.current) return
-    hideNativeSplashOnceRef.current = true
-    SplashScreen.hideAsync().catch(() => {})
-  }, [])
-  // Safety: if still on hero splash after 8s (e.g. animation callback never fired), force transition so app never freezes
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setShowHeroLogo((prev) => {
-        if (prev) {
-          if (__DEV__) console.warn("[RootLayout] Splash safety timeout: forcing transition")
-          SplashScreen.hideAsync().catch(() => {})
-          return false
-        }
-        return prev
-      })
-    }, 8000)
-    return () => clearTimeout(t)
   }, [])
 
   useEffect(() => {
@@ -324,20 +321,6 @@ export default function RootLayout() {
     return () => sub.remove()
   }, [router])
 
-  useEffect(() => {
-    if ((fontsLoaded || fontsError) && imagesLoaded && audiosLoaded) {
-      setAssetsReady(true)
-    }
-  }, [fontsLoaded, fontsError, imagesLoaded, audiosLoaded])
-
-  // Native splash is hidden only when transitioning from hero splash to main app (in handleHeroLogoComplete).
-  // Do NOT hide it here — that caused the splash to disappear too early or never be seen.
-
-  const handleHeroLogoComplete = () => {
-    SplashScreen.hideAsync().catch(() => {})
-    setShowHeroLogo(false)
-  }
-
   // Screenshot capture: run "EXPO_PUBLIC_CAPTURE_SCREENS=1 npm run web" to capture all screens.
   // Saves PNGs to Downloads. See SCREEN_INVENTORY_REFERENCE.md for details.
   if (
@@ -353,15 +336,12 @@ export default function RootLayout() {
     )
   }
 
-  if (showHeroLogo) {
+  // iOS crash fix: never mount GestureHandler/BottomSheet until native is ready. Splash runs in (chakras) index.
+  if (!nativeReady) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#000000" }}>
-        <SplashScreenReveal
-          onAnimationComplete={handleHeroLogoComplete}
-          onFadeInComplete={handleHeroFadeInComplete}
-          assetsReady={assetsReady}
-        />
-      </View>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <View style={{ flex: 1, backgroundColor: "transparent" }} />
+      </ThemeProvider>
     )
   }
 
@@ -371,30 +351,25 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <BottomSheetModalProvider>
             <View style={{ flex: 1, backgroundColor: "#000000" }}>
-              <Animated.View
-                style={{ flex: 1 }}
-                entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
-              >
-                <Stack>
-                  <Stack.Screen
-                    name="(chakras)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="AudioPlayer"
-                    options={{ headerShown: false, animation: "fade" }}
-                  />
-                  <Stack.Screen
-                    name="CommunityHalls"
-                    options={{ headerShown: false, animation: "fade" }}
-                  />
+              <View style={{ flex: 1 }}>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    animation: "fade",
+                    animationDuration:
+                      Platform.OS === "ios"
+                        ? SOMATIC_SCREEN_TRANSITION_MS_IOS
+                        : SOMATIC_SCREEN_TRANSITION_MS,
+                  }}
+                >
+                  <Stack.Screen name="(chakras)" />
+                  <Stack.Screen name="AudioPlayer" />
+                  <Stack.Screen name="CommunityHalls" />
                   <Stack.Screen name="+not-found" />
                 </Stack>
                 <MusicRoomAudioManager />
                 <OtherOriginAudioManager />
-                <FloatingUIRevealStrip />
                 <PermanentMenuBar />
-                <FloatingNavButtons />
                 <GlobalHomeButton />
                 <GlobalAnuaChat />
                 <GlobalTribeChat />
@@ -409,7 +384,7 @@ export default function RootLayout() {
                 />
                 <ProfileSheet />
                 <ChakraHubHeader />
-              </Animated.View>
+              </View>
               {/* TribeChatModal not in codebase; add when component exists: import from "@/components/tribe/TribeChatModal" and render <TribeChatModal /> */}
             </View>
           </BottomSheetModalProvider>

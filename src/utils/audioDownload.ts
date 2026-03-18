@@ -228,11 +228,24 @@ export async function downloadAndCacheAudioResumable(
 
     return result.uri
   } catch (error) {
-    if (__DEV__) {
-      console.error(
-        `[audioDownload] Error downloading audio (resumable) ${audioId}:`,
-        error,
+    const errMsg =
+      error instanceof Error ? error.message : String(error)
+    const isNetworkError =
+      /connection abort|software caused|ECONNRESET|ECONNABORTED|network|ETIMEDOUT|ENOTFOUND|resolve host/i.test(
+        errMsg,
       )
+    if (__DEV__) {
+      if (isNetworkError) {
+        console.warn(
+          `[audioDownload] Network error (resumable) ${audioId}, retry later:`,
+          error,
+        )
+      } else {
+        console.error(
+          `[audioDownload] Error downloading audio (resumable) ${audioId}:`,
+          error,
+        )
+      }
     }
     throw error
   }

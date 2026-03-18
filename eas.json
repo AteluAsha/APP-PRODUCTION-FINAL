@@ -11,8 +11,10 @@
     "simulator": {
       "ios": {
         "simulator": true,
-        "buildConfiguration": "Debug"
+        "buildConfiguration": "Debug",
+        "image": "latest"
       },
+      "node": "20.18.0",
       "developmentClient": true,
       "distribution": "internal"
     },
@@ -20,7 +22,10 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   },
   "submit": {

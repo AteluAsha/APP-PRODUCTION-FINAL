@@ -1,3 +1,5 @@
+import { getLocalDateISO } from "@/utils/date"
+
 /**
  * Timegate Service
  *
@@ -179,8 +181,13 @@ export const shouldShowTrialWaitingScreen = (
   isFirstLaunch?: boolean,
   courseStartDate?: string | null,
 ): boolean => {
-  // Development override: show waiting screen for first-time onboarding
+  // Development override: allow testing; but if user selected today (Monday) as start, go straight to trial home
   if (isDevelopmentOverrideActive()) {
+    const startDateIsToday =
+      courseStartDate != null && courseStartDate === getLocalDateISO()
+    if (isMonday && startDateIsToday) {
+      return false
+    }
     if (!journeyStarted && (courseStartDate || isFirstLaunch)) {
       return true
     }
@@ -194,6 +201,13 @@ export const shouldShowTrialWaitingScreen = (
     journeyStarted === undefined
   ) {
     return true // Show waiting screen if we don't have enough info
+  }
+
+  // If they chose today as start date and today is Monday, app opens (no waiting room)
+  const startDateIsToday =
+    courseStartDate != null && courseStartDate === getLocalDateISO()
+  if (hasReachedStartDate && isMonday && startDateIsToday) {
+    return false
   }
 
   return !hasReachedStartDate || !isMonday || !journeyStarted

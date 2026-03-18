@@ -79,7 +79,7 @@ export function TribeFriendsMenu({
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const horizontalPadding = Math.max(insets.left, 20) + Math.max(insets.right, 20)
-  const panelWidth = Math.min(width - horizontalPadding, 440)
+  const panelWidth = Math.min(width - horizontalPadding, 520)
 
   const handleConnectById = async () => {
     const trimmed = connectIdInput.trim()
@@ -132,7 +132,7 @@ export function TribeFriendsMenu({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent={Platform.OS === "android"}
     >
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
   },
   panel: {
     flex: 1,
-    maxWidth: 440,
+    maxWidth: 520,
     borderLeftWidth: 1,
     borderLeftColor: "rgba(135, 174, 115, 0.2)",
     shadowColor: "#000",

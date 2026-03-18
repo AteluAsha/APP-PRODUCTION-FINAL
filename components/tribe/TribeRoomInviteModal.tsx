@@ -58,7 +58,7 @@ export function TribeRoomInviteModal({
 
   const cardWidth = useMemo(() => {
     const padding = 32
-    const max = 420
+    const max = 520
     return Math.min(windowWidth - padding * 2, max)
   }, [windowWidth])
   useEffect(() => {
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     paddingVertical: 28,
   },
   card: {
-    maxWidth: 420,
+    maxWidth: 520,
     borderRadius: 24,
     overflow: "hidden",
     borderWidth: 1.5,

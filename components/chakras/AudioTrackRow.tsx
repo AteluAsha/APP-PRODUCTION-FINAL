@@ -9,6 +9,7 @@ import { View, Pressable, ActivityIndicator } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
+import { DownloadIconCell, type DownloadIconVariant } from "@/components/chakras/DownloadIconCell"
 
 export interface AudioTrackRowProps {
   title: string
@@ -30,6 +31,8 @@ export interface AudioTrackRowProps {
   downloadingId?: string | null
   /** True when this track is in the download queue but not currently downloading */
   isQueued?: boolean
+  /** When true, download button is enabled even without url (parent will resolve URL on tap, e.g. crystal bowl from Firebase) */
+  canResolveDownload?: boolean
   /** Optional content to render on the right, before download (e.g. Drop In button) */
   rightContent?: React.ReactNode
 }
@@ -52,40 +55,62 @@ export const AudioTrackRow = ({
   downloadedIds = new Set(),
   downloadingId = null,
   isQueued = false,
+  canResolveDownload = false,
   rightContent,
 }: AudioTrackRowProps) => {
   const isDownloaded = audioId ? localUri || downloadedIds.has(audioId) : false
   const isDownloading = audioId && downloadingId === audioId
   const showPause = isActiveTrack && isPlaying
+  const isDownloadable = canDownload || canResolveDownload
+  const downloadVariant: DownloadIconVariant = isDownloading
+    ? "downloading"
+    : isQueued
+      ? "queued"
+      : isDownloaded || localUri
+        ? "downloaded"
+        : "cloud"
+  const showDownloadAsDisabled = !isDownloadable
+
+  const playDisabled = isLoading || (disabledWhenUnconnected && !isConnected)
+  const downloadDisabled =
+    showDownloadAsDisabled ||
+    isDownloading ||
+    !!localUri ||
+    isQueued ||
+    (!url && !canResolveDownload)
 
   return (
     <View
       style={{ marginHorizontal: -16, marginBottom: 14, overflow: "hidden" }}
     >
-      <Pressable
-        onPress={onPlay}
-        disabled={isLoading || (disabledWhenUnconnected && !isConnected)}
-        style={({ pressed }) => [pressed && { opacity: 0.85 }]}
+      <LinearGradient
+        colors={[
+          "rgba(255,255,255,0.08)",
+          "rgba(255,255,255,0.05)",
+          "rgba(255,255,255,0.03)",
+        ]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 16,
+          paddingHorizontal: 20,
+          borderTopWidth: 1,
+          borderBottomWidth: 1,
+          borderColor: "rgba(255,255,255,0.08)",
+        }}
       >
-        <LinearGradient
-          colors={[
-            "rgba(255,255,255,0.08)",
-            "rgba(255,255,255,0.05)",
-            "rgba(255,255,255,0.03)",
+        {/* Play area: only this triggers playback. Download has its own touch target below. */}
+        <Pressable
+          onPress={onPlay}
+          disabled={playDisabled}
+          style={({ pressed }) => [
+            { flex: 1, flexDirection: "row", alignItems: "center", minWidth: 0 },
+            pressed && { opacity: 0.85 },
           ]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingVertical: 16,
-            paddingHorizontal: 20,
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor: "rgba(255,255,255,0.08)",
-          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          {/* Play icon - framed with depth */}
           <View
             style={{
               width: 44,
@@ -109,7 +134,6 @@ export const AudioTrackRow = ({
               />
             )}
           </View>
-          {/* Title and subtitle */}
           <View style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
             <View
               style={{
@@ -155,62 +179,26 @@ export const AudioTrackRow = ({
               {durationLabel}
             </AppText>
           </View>
-          {/* Right content (e.g. Drop In) - before download */}
-          {rightContent != null ? (
-            <View style={{ marginRight: 8 }}>{rightContent}</View>
-          ) : null}
-          {/* Download: show when canDownload (crystal bowl etc.); disabled when no url yet */}
-          {canDownload && (
-            <Pressable
-              onPress={() => onDownload?.()}
-              disabled={isDownloading || !!localUri || isQueued || !url}
-              style={{
-                minWidth: 56,
-                height: 40,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: url ? 1 : 0.5,
-              }}
-            >
-              {isDownloading ? (
-                <>
-                  <ActivityIndicator size="small" color="#87AE73" />
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={{ color: "rgba(135,174,115,0.9)", marginTop: 2 }}
-                  >
-                    Downloading
-                  </AppText>
-                </>
-              ) : isQueued ? (
-                <>
-                  <Ionicons
-                    name="time-outline"
-                    size={22}
-                    color="rgba(255,255,255,0.6)"
-                  />
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={{ color: "rgba(255,255,255,0.6)", marginTop: 2 }}
-                  >
-                    Queued
-                  </AppText>
-                </>
-              ) : isDownloaded || localUri ? (
-                <Ionicons name="checkmark-circle" size={24} color="#87AE73" />
-              ) : (
-                <Ionicons
-                  name="cloud-download-outline"
-                  size={24}
-                  color={url ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.4)"}
-                />
-              )}
-            </Pressable>
-          )}
-        </LinearGradient>
-      </Pressable>
+        </Pressable>
+        {/* Right content (e.g. Drop In) - before download */}
+        {rightContent != null ? (
+          <View style={{ marginRight: 8 }}>{rightContent}</View>
+        ) : null}
+        {/* Download: separate touch target – never triggers play. Manual download fail-safe. */}
+        <View pointerEvents="box-none">
+          <DownloadIconCell
+            variant={showDownloadAsDisabled ? "cloud" : downloadVariant}
+            onPress={
+              showDownloadAsDisabled
+                ? undefined
+                : () => {
+                    onDownload?.()
+                  }
+            }
+            disabled={downloadDisabled}
+          />
+        </View>
+      </LinearGradient>
     </View>
   )
 }

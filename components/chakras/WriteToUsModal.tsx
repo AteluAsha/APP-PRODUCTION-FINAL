@@ -62,7 +62,7 @@ export const WriteToUsModal: React.FC<WriteToUsModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >

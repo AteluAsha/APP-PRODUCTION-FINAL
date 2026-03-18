@@ -114,7 +114,7 @@ export const TrialTestFlow: React.FC<TrialTestFlowProps> = ({
   }
 
   return (
-    <View style={[styles.container, { top: Math.max(insets.top, 8) + 8 + 120 }]}>
+    <View style={[styles.container, { top: Math.max(insets.top, 8) + 8 + 56 }]}>
       {/* Tiny icon-only buttons in vertical stack */}
       <View style={styles.buttonStack}>
         {/* Reset onboarding: see full Welcome → DateSelection → Begin flow */}

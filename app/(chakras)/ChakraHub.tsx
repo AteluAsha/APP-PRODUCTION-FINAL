@@ -41,6 +41,7 @@ import GoodbyeModal from "@/components/chakras/GoodbyeModal"
 import { useFocusEffect } from "@react-navigation/native"
 import {
   FLOATING_NAV_SCROLL_BOTTOM_PADDING,
+  LIFETIME_HUB_STACK_RAISE_IOS,
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
   TRIAL_HOME_ROOT_CHAKRA,
@@ -126,6 +127,11 @@ export default function ChakraHub() {
 
   const { height: windowHeight } = useWindowDimensions()
   const viewportHeight = windowHeight - insets.top - insets.bottom
+  /** iOS: shorter block so stack (pinned to bottom of block) sits higher – LOCKED production layout. */
+  const stackBlockHeight =
+    Platform.OS === "ios"
+      ? viewportHeight - LIFETIME_HUB_STACK_RAISE_IOS
+      : viewportHeight
 
   // Same shape as ChakraHome: day, affirmation, description, source, onPress for IntegratedProgressStack
   const stackChakraData = useMemo(() => {
@@ -139,6 +145,14 @@ export default function ChakraHub() {
     }))
   }, [chakrasData])
   const contentReady = !isLoadingChakras && stackChakraData.length === 7
+
+  /** Dev-only: confirm iOS lifetime stack block is on the correct code path (contentReady and stack rendered). */
+  useEffect(() => {
+    if (__DEV__ && Platform.OS === "ios" && contentReady) {
+      // eslint-disable-next-line no-console
+      console.log("[ChakraHub] iOS lifetime stack block rendering (contentReady=true, stackChakraData.length=7)")
+    }
+  }, [contentReady])
 
   useFocusEffect(
     React.useCallback(() => {
@@ -220,9 +234,41 @@ export default function ChakraHub() {
       {__DEV__ && (
         <TrialTestFlow onUnlockNextDay={() => {}} currentDay={currentDay} />
       )}
+      {/* DEV: Visible proof this screen is the one being updated. If you don't see this banner, the app is not loading the new bundle. */}
+      {__DEV__ && Platform.OS === "ios" && (
+        <View
+          style={{
+            backgroundColor: "#00FF00",
+            paddingVertical: 6,
+            paddingHorizontal: 12,
+            alignItems: "center",
+            zIndex: 9999,
+          }}
+          pointerEvents="none"
+        >
+          <AppText font="instrument-medium" size="xs" style={{ color: "#000" }}>
+            CHAKRAHUB UPDATED — bundle loaded
+          </AppText>
+        </View>
+      )}
       <ActionBar onBackPress={handleBack} showBackButton={false} />
+      {/* iOS lifetime: chakra stack in its own block; no extra top padding. Alpha/omega are a separate overlay (below) and do not affect this stack. */}
+      {Platform.OS === "ios" && contentReady && (
+        <View style={{ height: stackBlockHeight, paddingTop: 0 }}>
+          <IntegratedProgressStack
+            currentDay={currentDay}
+            hasCompletedChakra={hasCompletedChakra}
+            hasParticipatedDay={hasParticipatedDay}
+            allChakrasCompleted={allChakrasCompleted}
+            hasLifetimeAccess={true}
+            inCourseMode={inCourseMode}
+            showAllChakrasForLifetimeHub={true}
+            chakraData={stackChakraData}
+            router={router}
+          />
+        </View>
+      )}
       {/* ScrollView first so overlay rendered after it receives touches on Android */}
-
       <ScrollView
         style={{ flex: 1, backgroundColor: "#000000" }}
         showsVerticalScrollIndicator={false}
@@ -230,7 +276,10 @@ export default function ChakraHub() {
         contentContainerStyle={{
           flexGrow: 1,
           minHeight: "100%",
-          paddingTop: Math.max(TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP, 56),
+          paddingTop:
+            Platform.OS === "ios"
+              ? 0
+              : Math.max(TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP, 56),
           paddingBottom:
             FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
         }}
@@ -242,26 +291,27 @@ export default function ChakraHub() {
             entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
             style={{ flexGrow: 1 }}
           >
-            {/* Viewport-sized block: same placement as trial home (IntegratedProgressStack) */}
-            <View
-              style={{
-                minHeight: viewportHeight,
-                maxHeight: viewportHeight,
-              }}
-            >
-              <IntegratedProgressStack
-            currentDay={currentDay}
-            hasCompletedChakra={hasCompletedChakra}
-            hasParticipatedDay={hasParticipatedDay}
-            allChakrasCompleted={allChakrasCompleted}
-            hasLifetimeAccess={true}
-            inCourseMode={inCourseMode}
-            showAllChakrasForLifetimeHub={true}
-            chakraData={stackChakraData}
-            router={router}
-              />
-            </View>
-
+            {/* Android: stack inside ScrollView. iOS: stack is rendered above ScrollView. */}
+            {Platform.OS !== "ios" && (
+              <View
+                style={{
+                  minHeight: stackBlockHeight,
+                  maxHeight: stackBlockHeight,
+                }}
+              >
+                <IntegratedProgressStack
+                  currentDay={currentDay}
+                  hasCompletedChakra={hasCompletedChakra}
+                  hasParticipatedDay={hasParticipatedDay}
+                  allChakrasCompleted={allChakrasCompleted}
+                  hasLifetimeAccess={true}
+                  inCourseMode={inCourseMode}
+                  showAllChakrasForLifetimeHub={true}
+                  chakraData={stackChakraData}
+                  router={router}
+                />
+              </View>
+            )}
             {/* Sanctuary and actions – scroll to reveal; title up, first button pushed down for cleaner look */}
             <View style={{ paddingTop: 38, paddingHorizontal: 20, marginBottom: 24 }}>
           <AppText
@@ -954,7 +1004,7 @@ export default function ChakraHub() {
         )}
       </ScrollView>
 
-        {/* Alpha and omega – mystical symbols attached to very bottom of screen */}
+        {/* Alpha and omega – separate overlay pinned to bottom of phone; NOT part of chakra stack. Stack layout is independent; do not wrap stack with this. */}
         <View
           style={{
             position: "absolute",

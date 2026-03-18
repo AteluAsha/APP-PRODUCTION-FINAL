@@ -19,7 +19,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { formatDate } from "@/utils/date"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { TOUCH } from "@/constants/layout"
+import { TOUCH, MODAL_CARD_MAX_WIDTH } from "@/constants/layout"
 
 interface DateConfirmationModalProps {
   visible: boolean
@@ -41,7 +41,7 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
   const { width: screenWidth } = useWindowDimensions()
   if (!selectedDateISO) return null
 
-  const cardWidth = Math.min(screenWidth - 48, 320)
+  const cardWidth = Math.min(screenWidth - 48, MODAL_CARD_MAX_WIDTH)
   const dateStr = formatDate(new Date(selectedDateISO + "T00:00:00"))
   const confirmLabel = isCourseMode
     ? "Confirm start date"

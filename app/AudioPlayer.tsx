@@ -357,6 +357,16 @@ const AudioPlayer = () => {
       )
 
       setTrack(sound)
+
+      // Wait for sound to be loaded before calling methods (Android can resolve createAsync before native load)
+      const waitMs = Platform.OS === "android" ? 60 : 20
+      const maxAttempts = 25
+      for (let i = 0; i < maxAttempts; i++) {
+        const st = await sound.getStatusAsync()
+        if (st.isLoaded) break
+        await new Promise((r) => setTimeout(r, waitMs))
+      }
+
       const progressIntervalMs = isEmulatorOrSimulator()
         ? 1000
         : PROGRESS_UPDATE_INTERVAL_MS
@@ -684,8 +694,10 @@ const AudioPlayer = () => {
 
   const bottomBarOpacity = useSharedValue(1)
   useEffect(() => {
+    const duration =
+      Platform.OS === "ios" ? 420 : 300
     bottomBarOpacity.value = withTiming(controlsVisible ? 1 : 0, {
-      duration: 300,
+      duration,
     })
   }, [controlsVisible, bottomBarOpacity])
 
@@ -1066,6 +1078,7 @@ const AudioPlayer = () => {
               style={{ padding: 8 }}
               onPress={() => handleControlPress(rewind10)}
               underlayColor="transparent"
+              activeOpacity={Platform.OS === "ios" ? 0.72 : 1}
             >
               <Rewind10
                 width={ICON.skipControl}
@@ -1076,6 +1089,7 @@ const AudioPlayer = () => {
             <TouchableHighlight
               onPress={() => handleControlPress(togglePlayPause)}
               underlayColor="transparent"
+              activeOpacity={Platform.OS === "ios" ? 0.72 : 1}
               style={{
                 width: ICON.playPauseCircle,
                 height: ICON.playPauseCircle,
@@ -1097,6 +1111,7 @@ const AudioPlayer = () => {
               style={{ padding: 8 }}
               onPress={() => handleControlPress(forward10)}
               underlayColor="transparent"
+              activeOpacity={Platform.OS === "ios" ? 0.72 : 1}
             >
               <Forward10
                 width={ICON.skipControl}
@@ -1136,16 +1151,26 @@ const AudioPlayer = () => {
               )
             }}
             onPressIn={() => {
-              notesButtonScale.value = withSpring(0.88, {
-                damping: 14,
-                stiffness: 260,
-              })
+              if (Platform.OS === "ios") {
+                notesButtonScale.value = withTiming(0.92, {
+                  duration: 200,
+                })
+              } else {
+                notesButtonScale.value = withSpring(0.88, {
+                  damping: 14,
+                  stiffness: 260,
+                })
+              }
             }}
             onPressOut={() => {
-              notesButtonScale.value = withSpring(1, {
-                damping: 14,
-                stiffness: 260,
-              })
+              if (Platform.OS === "ios") {
+                notesButtonScale.value = withTiming(1, { duration: 260 })
+              } else {
+                notesButtonScale.value = withSpring(1, {
+                  damping: 14,
+                  stiffness: 260,
+                })
+              }
             }}
             delayPressIn={Platform.OS === "android" ? ANDROID_PRESS_DELAY_MS : undefined}
             hitSlop={TOUCH.hitSlop}

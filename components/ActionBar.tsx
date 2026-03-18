@@ -1,5 +1,5 @@
 import React from "react"
-import { TouchableOpacity } from "react-native"
+import { TouchableOpacity, Platform } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -83,7 +83,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           ...shadowStyle,
         }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        activeOpacity={0.7}
+        activeOpacity={Platform.OS === "ios" ? 0.78 : 0.7}
         accessibilityLabel="Close"
         accessibilityHint="Closes the audio player"
       >
@@ -107,7 +107,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
         ...shadowStyle,
       }}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      activeOpacity={0.7}
+      activeOpacity={Platform.OS === "ios" ? 0.78 : 0.7}
       accessibilityLabel="Back"
       accessibilityHint="Go back to previous screen"
     >

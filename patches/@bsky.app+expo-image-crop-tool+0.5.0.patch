@@ -1,0 +1,13 @@
+diff --git a/node_modules/@bsky.app/expo-image-crop-tool/android/src/main/java/xyz/blueskyweb/expoimagecroptool/CropperActivity.kt b/node_modules/@bsky.app/expo-image-crop-tool/android/src/main/java/xyz/blueskyweb/expoimagecroptool/CropperActivity.kt
+index 1234567..89abcde 100644
+--- a/node_modules/@bsky.app/expo-image-crop-tool/android/src/main/java/xyz/blueskyweb/expoimagecroptool/CropperActivity.kt
++++ b/node_modules/@bsky.app/expo-image-crop-tool/android/src/main/java/xyz/blueskyweb/expoimagecroptool/CropperActivity.kt
+@@ -285,7 +285,7 @@ class CropperActivity : AppCompatActivity() {
+         }
+ 
+     val bmap =
+-      cropView?.getCroppedImage()
++      cropView?.getCroppedImage(0, 0)
+         ?: run {
+           setResult(CropperError.GetData.getResultCode(), null)
+           finish()

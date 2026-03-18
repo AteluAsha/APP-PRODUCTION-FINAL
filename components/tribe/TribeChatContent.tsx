@@ -507,7 +507,7 @@ export function TribeChatContent({
                       <Ionicons
                         name="people-outline"
                         size={22}
-                        color={Platform.OS === "android" ? "#ffffff" : "rgba(255,255,255,0.95)"
+                        color={Platform.OS === "android" ? "#ffffff" : "rgba(255,255,255,0.95)"}
                       />
                     </LinearGradient>
                   </Pressable>
@@ -995,7 +995,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingBottom: 12,
   },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 0 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
   hamburgerBtn: {
     width: 48,
     height: 48,
@@ -1005,7 +1005,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.15)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
   hamburgerBtnPressed: { opacity: 0.8 },
   headerRightActions: { flexDirection: "row", alignItems: "center", gap: 8 },

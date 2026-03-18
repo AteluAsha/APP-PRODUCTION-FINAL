@@ -40,7 +40,6 @@ import { DAY_NAMES, getDayName } from "@/constants/chakras/chakraConstants"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { MenuBarMiniPlayer } from "@/components/navigation/MenuBarMiniPlayer"
-import { SocialSanctuaryModal } from "@/components/social/SocialSanctuaryModal"
 import { getChakraName } from "@/constants/chakras/chakraConstants"
 import { Image } from "react-native"
 interface MenuItem {
@@ -97,6 +96,16 @@ const MENU_ITEM_CONFIG = {
     pulseDelay: 1400,
     geometryIcon: "circle" as const,
   },
+  preview: {
+    gradient: ["#FCD34D", "#F59E0B", "#D97706"], // Solar - preview course
+    pulseDelay: 100,
+    geometryIcon: "star" as const,
+  },
+  chakras101: {
+    gradient: ["#FCD34D", "#F59E0B", "#D97706"], // Solar - Chakras 101
+    pulseDelay: 200,
+    geometryIcon: "hexagon" as const,
+  },
 }
 
 export const PermanentMenuBar: React.FC = () => {
@@ -106,8 +115,13 @@ export const PermanentMenuBar: React.FC = () => {
   const insets = useSafeAreaInsets()
   const [localMenuOpen, setLocalMenuOpen] = useState(false) // Local state for animations
   const setIsMenuOpen = useMenuBarStore((state) => state.setIsMenuOpen)
+  const isWaitingScreenVisible = useMenuBarStore(
+    (state) => state.isWaitingScreenVisible,
+  )
+  const waitingRoomActions = useMenuBarStore(
+    (state) => state.waitingRoomActions,
+  )
 
-  const [isSanctuaryModalVisible, setIsSanctuaryModalVisible] = useState(false)
   const currentDay = getCurrentDayOfWeek()
   const chakraName = getChakraName(currentDay)
   const contextChakraDay =
@@ -120,7 +134,7 @@ export const PermanentMenuBar: React.FC = () => {
   const source = useCurrentAudioStore((s) => s.source)
   const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
   const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
-  // Lifetime menu bar is permanently visible. Hide/reveal applies only to trial floating icons (FloatingNavButtons).
+  // Lifetime menu bar is permanently visible. Trial uses same menu bar (4 or 5 items).
 
   // Determine if we're on a home/landing screen where menu should be hidden by default
   // NOTE: All hooks must run unconditionally (Rules of Hooks) - no early return before hooks
@@ -212,9 +226,98 @@ export const PermanentMenuBar: React.FC = () => {
   }
 
   // Menu items with energetic configurations
-  // APP_2 (Lifetime): Sanctuary between Music and Anua so the full label fits
+  // Trial waiting room: exactly 4 buttons – Preview, Chakras 101, Anua, Notes (no Tribe, no arrow).
+  // Trial elsewhere: Sanctuary, Anua, Notes, Tribe + arrow.
+  // APP_2 (Lifetime): Full bar. Lifetime on waiting room: no menu bar.
   const menuItems: MenuItem[] = useMemo(() => {
-    const items: MenuItem[] = [
+    const sanctuaryItem: MenuItem = {
+      id: "community",
+      iconComponent: "feather",
+      label: "Sanctuary",
+      route: "/CommunityHalls",
+      isActive: getIsActive("/CommunityHalls"),
+      gradient: MENU_ITEM_CONFIG.sanctuary.gradient,
+      pulseDelay: MENU_ITEM_CONFIG.sanctuary.pulseDelay,
+      geometryIcon: MENU_ITEM_CONFIG.sanctuary.geometryIcon,
+    }
+    const anuaItem: MenuItem = {
+      id: "anua",
+      iconComponent: "leaf",
+      label: "Anua",
+      onPress: () =>
+        useAnuaChatStore.getState().open({
+          chakraDayOverride: contextChakraDay ?? undefined,
+        }),
+      isActive: false,
+      gradient: MENU_ITEM_CONFIG.anua.gradient,
+      pulseDelay: MENU_ITEM_CONFIG.anua.pulseDelay,
+      geometryIcon: MENU_ITEM_CONFIG.anua.geometryIcon,
+    }
+    const notesItem: MenuItem = {
+      id: "notes",
+      iconComponent: "leaf",
+      label: "Notes",
+      onPress: () => {
+        router.push(
+          `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
+        )
+      },
+      isActive: false,
+      gradient: MENU_ITEM_CONFIG.notes.gradient,
+      pulseDelay: MENU_ITEM_CONFIG.notes.pulseDelay,
+      geometryIcon: MENU_ITEM_CONFIG.notes.geometryIcon,
+    }
+    const tribeItem: MenuItem = {
+      id: "tribe",
+      iconComponent: "leaf",
+      label: "Tribe",
+      route: "/(chakras)/TribeChat",
+      isActive: false,
+      gradient: MENU_ITEM_CONFIG.tribe.gradient,
+      pulseDelay: MENU_ITEM_CONFIG.tribe.pulseDelay,
+      geometryIcon: MENU_ITEM_CONFIG.tribe.geometryIcon,
+    }
+
+    // Trial waiting room: ONLY these 4 options (Preview, Chakras 101, Anua, Notes). No Tribe. Toggle arrow is shown so user can expand/collapse the bar.
+    // From waiting room, Anua ALWAYS opens directly to Anua chat (never Social Sanctuary modal).
+    if (!hasLifetimeAccess && isWaitingScreenVisible) {
+      const previewItem: MenuItem = {
+        id: "preview",
+        iconComponent: "feather",
+        label: "Preview",
+        onPress: () => waitingRoomActions.onPreviewPress?.(),
+        isActive: false,
+        gradient: MENU_ITEM_CONFIG.preview.gradient,
+        pulseDelay: MENU_ITEM_CONFIG.preview.pulseDelay,
+        geometryIcon: MENU_ITEM_CONFIG.preview.geometryIcon,
+      }
+      const chakras101Item: MenuItem = {
+        id: "chakras101",
+        iconComponent: "chakraCard",
+        label: "Chakras 101",
+        onPress: () => waitingRoomActions.onChakras101Press?.(),
+        isActive: false,
+        gradient: MENU_ITEM_CONFIG.chakras101.gradient,
+        pulseDelay: MENU_ITEM_CONFIG.chakras101.pulseDelay,
+        geometryIcon: MENU_ITEM_CONFIG.chakras101.geometryIcon,
+      }
+      const anuaWaitingRoomItem: MenuItem = {
+        ...anuaItem,
+        onPress: () =>
+          useAnuaChatStore.getState().open({
+            chakraDayOverride: contextChakraDay ?? undefined,
+          }),
+      }
+      return [previewItem, chakras101Item, anuaWaitingRoomItem, notesItem]
+    }
+
+    if (!hasLifetimeAccess) {
+      // Trial (not waiting room): Sanctuary → CommunityHalls, Anua → chat, Notes, Tribe + arrow (all go directly)
+      return [sanctuaryItem, anuaItem, notesItem, tribeItem]
+    }
+
+    // Lifetime: Music, Sanctuary, Anua, Notes, Tribe, Gallery
+    return [
       {
         id: "music",
         iconComponent: "audio",
@@ -225,52 +328,10 @@ export const PermanentMenuBar: React.FC = () => {
         pulseDelay: MENU_ITEM_CONFIG.audio.pulseDelay,
         geometryIcon: MENU_ITEM_CONFIG.audio.geometryIcon,
       },
-      {
-        id: "community",
-        iconComponent: "feather",
-        label: "Sanctuary",
-        route: "/CommunityHalls",
-        isActive: getIsActive("/CommunityHalls"),
-        gradient: MENU_ITEM_CONFIG.sanctuary.gradient,
-        pulseDelay: MENU_ITEM_CONFIG.sanctuary.pulseDelay,
-        geometryIcon: MENU_ITEM_CONFIG.sanctuary.geometryIcon,
-      },
-      {
-        id: "anua",
-        iconComponent: "leaf",
-        label: "Anua",
-        onPress: () => {
-          setIsSanctuaryModalVisible(true)
-        },
-        isActive: false,
-        gradient: MENU_ITEM_CONFIG.anua.gradient,
-        pulseDelay: MENU_ITEM_CONFIG.anua.pulseDelay,
-        geometryIcon: MENU_ITEM_CONFIG.anua.geometryIcon,
-      },
-      {
-        id: "notes",
-        iconComponent: "leaf",
-        label: "Notes",
-        onPress: () => {
-          router.push(
-            `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
-          )
-        },
-        isActive: false,
-        gradient: MENU_ITEM_CONFIG.notes.gradient,
-        pulseDelay: MENU_ITEM_CONFIG.notes.pulseDelay,
-        geometryIcon: MENU_ITEM_CONFIG.notes.geometryIcon,
-      },
-      {
-        id: "tribe",
-        iconComponent: "leaf",
-        label: "Tribe",
-        route: "/(chakras)/TribeChat",
-        isActive: false,
-        gradient: MENU_ITEM_CONFIG.tribe.gradient,
-        pulseDelay: MENU_ITEM_CONFIG.tribe.pulseDelay,
-        geometryIcon: MENU_ITEM_CONFIG.tribe.geometryIcon,
-      },
+      sanctuaryItem,
+      anuaItem,
+      notesItem,
+      tribeItem,
       {
         id: "gallery",
         iconComponent: "chakraCard",
@@ -282,14 +343,12 @@ export const PermanentMenuBar: React.FC = () => {
         geometryIcon: MENU_ITEM_CONFIG.gallery.geometryIcon,
       },
     ]
-
-    return items
-  }, [pathname])
+  }, [pathname, hasLifetimeAccess, isWaitingScreenVisible, waitingRoomActions])
 
   const handleItemPress = (item: MenuItem) => {
     addHapticFeedback(HapticStrength.Light)
-    // Android: open Anua chat directly (skip SocialSanctuaryModal so touches work)
-    if (item.id === "anua" && Platform.OS === "android") {
+    // Anua: always open chat directly (iOS and Android). No Sanctuary modal in between.
+    if (item.id === "anua") {
       useAnuaChatStore.getState().open({
         chakraDayOverride: contextChakraDay ?? undefined,
       })
@@ -302,39 +361,22 @@ export const PermanentMenuBar: React.FC = () => {
     }
   }
 
-  // Hide menu bar completely if user doesn't have lifetime access (APP_2 only)
-  // Exception: trial shows mini player when Sound Healing crystal bowl is playing (other origin)
-  if (!hasLifetimeAccess && !(source && audioOrigin === "other")) {
-    return null
-  }
-
   // Goodbye modal open: hide so menu bar doesn't block modal touches
   if (isGoodbyeVisible) {
     return null
   }
 
-  // Hide menu bar on WelcomeScreen and DateSelection (onboarding flow)
-  // ChakraHub (lifetime home) SHOWS the menu bar - users need access to Music, Community, Notes, Anua
-  const segmentsLength: number = segments.length
-  const isRootChakrasRoute =
-    segmentsLength === 0 ||
-    (segmentsLength === 1 && segments[0] === "(chakras)") ||
+  // Hide menu bar on WelcomeScreen, DateSelection, and index (stillness) only. ChakraHome and ChakraHub SHOW the menu bar.
+  const isWelcomeScreen =
     pathname === "/(chakras)" ||
     pathname === "/(chakras)/" ||
     pathname === "/(chakras)/index" ||
     pathname === "/" ||
-    (pathname &&
-      pathname.startsWith("/(chakras)") &&
-      pathname.split("/").filter(Boolean).length <= 2)
-
-  const isWelcomeScreen =
-    isRootChakrasRoute ||
-    segments.includes("WelcomeScreen") ||
     pathname?.includes("/WelcomeScreen") ||
     pathname?.includes("WelcomeScreen") ||
-    pathname?.includes("index")
+    segments.includes("WelcomeScreen")
 
-  // EARLY RETURN - Hide on onboarding/selection screens only (NOT ChakraHub)
+  // EARLY RETURN - Hide on onboarding/selection/stillness only (NOT ChakraHome, NOT ChakraHub)
   if (
     segments.includes("DateSelection") ||
     pathname?.includes("/DateSelection") ||
@@ -343,7 +385,6 @@ export const PermanentMenuBar: React.FC = () => {
     !pathname || // Safety: hide if pathname is undefined
     pathname === "/"
   ) {
-    // Safety: hide on root
     return null
   }
 
@@ -371,13 +412,24 @@ export const PermanentMenuBar: React.FC = () => {
     return null
   }
 
-  // Trial with crystal bowl (other): only mini player, no menu items
-  if (!hasLifetimeAccess) {
-    return <MenuBarMiniPlayer />
+  // Lifetime user viewing trial waiting room: no menu bar (they have "Exit course mode" / return to lifetime).
+  if (isWaitingScreenVisible && hasLifetimeAccess) {
+    return null
   }
 
+  const waitingRoomBarStyle =
+    isWaitingScreenVisible &&
+    !hasLifetimeAccess &&
+    Platform.OS === "android"
+      ? { elevation: 24, zIndex: 9999 }
+      : undefined
+
   return (
-    <View style={{ opacity: 1 }} pointerEvents="box-none" collapsable={false}>
+    <View
+      style={[{ opacity: 1 }, waitingRoomBarStyle]}
+      pointerEvents="box-none"
+      collapsable={false}
+    >
       {/* Menu Bar - Vertical (left wall) for healing screens, Horizontal (bottom) for others */}
       {useVerticalLayout ? (
         <Animated.View
@@ -405,16 +457,37 @@ export const PermanentMenuBar: React.FC = () => {
               styles.container,
               { paddingBottom: Math.max(insets.bottom, 4) },
               animatedMenuStyle,
+              isWaitingScreenVisible &&
+                !hasLifetimeAccess && { paddingRight: 16 }, // Space for arrow on trial waiting room
+              // Trial waiting room only: center icons and use inner wrapper so they sit closer together. Lifetime: spread across full width (space-between).
+              isWaitingScreenVisible && !hasLifetimeAccess
+                ? { justifyContent: "center" as const }
+                : { justifyContent: "space-between" as const },
             ]}
           >
-            {menuItems.map((item) => (
-              <MenuBarItem
-                key={item.id}
-                item={item}
-                onPress={() => handleItemPress(item)}
-                isVertical={false}
-              />
-            ))}
+            {isWaitingScreenVisible && !hasLifetimeAccess ? (
+              <View style={styles.horizontalMenuInner}>
+                {menuItems.map((item) => (
+                  <MenuBarItem
+                    key={item.id}
+                    item={item}
+                    onPress={() => handleItemPress(item)}
+                    isVertical={false}
+                  />
+                ))}
+              </View>
+            ) : (
+              <>
+                {menuItems.map((item) => (
+                  <MenuBarItem
+                    key={item.id}
+                    item={item}
+                    onPress={() => handleItemPress(item)}
+                    isVertical={false}
+                  />
+                ))}
+              </>
+            )}
           </Animated.View>
         </>
       )}
@@ -422,7 +495,7 @@ export const PermanentMenuBar: React.FC = () => {
       {/* Mini player - above Music icon, stays when menu toggles closed */}
       <MenuBarMiniPlayer />
 
-      {/* Arrow Button - Right side to avoid covering first menu icon when open */}
+      {/* Arrow Button - toggle menu (shown on trial waiting room and elsewhere) */}
       <Animated.View
         style={[
           styles.arrowContainer,
@@ -454,18 +527,6 @@ export const PermanentMenuBar: React.FC = () => {
         </Pressable>
       </Animated.View>
 
-      {/* Social Sanctuary Modal - APP_2 only */}
-      <SocialSanctuaryModal
-        visible={isSanctuaryModalVisible}
-        onClose={() => setIsSanctuaryModalVisible(false)}
-        chakraDay={currentDay}
-        chakraName={chakraName}
-        onOpenAnuaChat={() => {
-          setIsSanctuaryModalVisible(false)
-          setTimeout(() => useAnuaChatStore.getState().open(), 200)
-        }}
-        isLimitedMode={false} // App 2 always has full access
-      />
     </View>
   )
 }
@@ -687,6 +748,18 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
                 }}
                 resizeMode="cover"
               />
+            ) : item.id === "chakras101" ? (
+              <Image
+                source={require("@/assets/images/7chakras.png")}
+                style={{ width: 24, height: 24 }}
+                resizeMode="contain"
+              />
+            ) : item.id === "preview" ? (
+              <Ionicons
+                name="sparkles"
+                size={20}
+                color={item.isActive ? item.gradient[0] : "rgba(252, 211, 77, 0.9)"}
+              />
             ) : item.iconComponent === "chakraCard" ? (
               <ChakraCardIcon
                 size={20}
@@ -774,7 +847,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: "rgba(135, 174, 115, 0.15)",
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     paddingTop: 10,
     paddingBottom: 4,
@@ -786,6 +859,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 5,
+  },
+  horizontalMenuInner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    maxWidth: 280,
+    alignSelf: "center",
   },
   verticalContainer: {
     position: "absolute",

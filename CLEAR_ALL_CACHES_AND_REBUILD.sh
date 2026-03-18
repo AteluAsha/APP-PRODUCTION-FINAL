@@ -53,6 +53,8 @@ echo ""
 open -a Simulator 2>/dev/null || true
 
 # Build and run on iOS simulator. This starts Metro automatically after the build.
+# Note: Metro is started by expo run:ios without --clear. We already cleared .cache and .expo above.
+# For guaranteed fresh bundle: in one terminal run "env -u CI npx expo start --clear", then in another run "env -u CI npx expo run:ios --no-bundler".
 # env -u CI so the app stays connected to Metro for real-time reload (Cmd+R in simulator).
 env -u CI npx expo run:ios
 

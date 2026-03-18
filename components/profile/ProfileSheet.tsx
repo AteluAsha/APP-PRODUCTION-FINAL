@@ -7,7 +7,7 @@
  * "Return to Soul School Course Selection" (Soul School section) is the only way to path selection after date is set.
  */
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useMemo } from "react"
 import {
   Modal,
   View,
@@ -20,7 +20,9 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  useWindowDimensions,
 } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -33,13 +35,15 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
 import { useTribeFriends } from "@/hooks/useTribeFriends"
 import { getUserId, requestNewUserId } from "@/src/services/userId"
-import { linkUserId, ENTITLEMENT_ID, PRODUCT_IDS } from "@/src/services/revenuecat"
+import { linkUserId, ENTITLEMENT_ID, KNOWN_PRODUCT_IDS_FOR_LABEL } from "@/src/services/revenuecat"
 import { uploadProfileImage } from "@/src/services/imageUpload"
 import { updateUserProfile, getUserProfile } from "@/src/services/profileService"
 import { deleteAccountAndClearLocalState } from "@/src/services/deleteAccount"
 import {
   addCommunityEmail,
   isValidEmail,
+  FIREBASE_NOT_INITIALIZED,
+  isCommunityEmailStorageAvailable,
 } from "@/src/services/communityEmailList"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { PROJECT_STARSEED_URL, CONTRIBUTE_URL, SUPPORT_EMAIL } from "@/constants/sharing"
@@ -53,7 +57,11 @@ function getAccountStatusLabel(
   if (!hasLifetimeAccess) return "Trials Exploring (Weekly Access)"
   const entitlement = customerInfo?.entitlements?.active?.[ENTITLEMENT_ID]
   const productId = entitlement?.productIdentifier
-  if (productId === PRODUCT_IDS.YEARLY) return "Master Embodiment (Annual Access)"
+  if (!productId) return "Lifetime"
+  if (KNOWN_PRODUCT_IDS_FOR_LABEL.MONTHLY.includes(productId))
+    return "New Awakenings"
+  if (KNOWN_PRODUCT_IDS_FOR_LABEL.ANNUAL.includes(productId))
+    return "Full Sanctuary"
   return "Lifetime"
 }
 
@@ -103,6 +111,14 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
   const [communityEmailError, setCommunityEmailError] = useState<string | null>(
     null,
   )
+
+  const insets = useSafeAreaInsets()
+  const { width: windowWidth } = useWindowDimensions()
+  const cardMaxWidth = useMemo(() => {
+    const padding = 48
+    const max = 520
+    return Math.min(windowWidth - insets.left - insets.right - padding, max)
+  }, [windowWidth, insets.left, insets.right])
 
   useEffect(() => {
     if (isOpen && Platform.OS === "android") {
@@ -198,6 +214,12 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
       setCommunityEmailError("Please enter a valid email")
       return
     }
+    if (!isCommunityEmailStorageAvailable()) {
+      setCommunityEmailError(
+        "Email signup isn't available in this build. Use the full app when connected to add your email.",
+      )
+      return
+    }
     addHapticFeedback(HapticStrength.Light)
     setCommunityEmailError(null)
     setIsSubmittingCommunityEmail(true)
@@ -208,7 +230,11 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
       setTimeout(() => setCommunityEmailSuccess(false), 4000)
     } catch (e) {
       if (__DEV__) console.warn("[ProfileSheet] addCommunityEmail:", e)
-      setCommunityEmailError("Couldn’t add email. Try again later.")
+      const msg =
+        e instanceof Error && e.message === FIREBASE_NOT_INITIALIZED
+          ? "Email signup isn't available in this build. Use the full app when connected to add your email."
+          : "Couldn't add email. Try again later."
+      setCommunityEmailError(msg)
     } finally {
       setIsSubmittingCommunityEmail(false)
     }
@@ -348,18 +374,11 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
               : cropped.path
           setEditPhotoUri(uri)
         } catch (cropperError) {
-          const msg =
-            cropperError instanceof Error
-              ? cropperError.message
-              : String(cropperError)
-          if (
-            msg.includes("native module") ||
-            msg.includes("ExpoImageCropTool")
-          ) {
-            setEditPhotoUri(pickedUri)
-          } else {
-            throw cropperError
+          // Any cropper failure (e.g. iOS ph:// URI, native module): use picked image without crop so app never crashes
+          if (__DEV__) {
+            console.warn("[ProfileSheet] pickPhoto cropper fallback:", cropperError)
           }
+          setEditPhotoUri(pickedUri)
         }
       } else {
         setEditPhotoUri(pickedUri)
@@ -391,7 +410,10 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
 
   const innerContent = (
     <Pressable
-      style={profileOnly ? styles.profileOnlyCard : styles.card}
+      style={[
+        profileOnly ? styles.profileOnlyCard : styles.card,
+        { maxWidth: cardMaxWidth },
+      ]}
       onPress={(e) => e.stopPropagation()}
     >
       {(Platform.OS !== "android" || androidContentVisible || asScreen) && (
@@ -883,6 +905,39 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                 <AppText font="instrument-medium" size="sm" style={styles.statusValue}>
                   {getAccountStatusLabel(hasLifetimeAccess, customerInfo)}
                 </AppText>
+                {!hasLifetimeAccess ? (
+                  <Pressable
+                    onPress={() => {
+                      addHapticFeedback(HapticStrength.Light)
+                      close()
+                      router.push("/(chakras)/Paywall")
+                    }}
+                    style={styles.upgradeRow}
+                  >
+                    <Ionicons
+                      name="sparkles-outline"
+                      size={20}
+                      color="rgba(212, 175, 55, 0.95)"
+                    />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <AppText
+                        font="instrument-medium"
+                        size="sm"
+                        style={styles.upgradeRowText}
+                      >
+                        Open Full Course
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={[styles.upgradeRowText, { opacity: 0.8, marginTop: 2 }]}
+                      >
+                        Upgrade to lifetime access
+                      </AppText>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+                  </Pressable>
+                ) : null}
                 <View style={styles.idBlock}>
                   <AppText font="instrument-regular" size="xs" style={styles.idLabel}>
                     Soul School ID
@@ -965,13 +1020,6 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                     {communityEmailError}
                   </AppText>
                 )}
-                <AppText
-                  font="instrument-regular"
-                  size="xs"
-                  style={styles.cacheNote}
-                >
-                  Audio is downloaded for offline listening; avoid clearing app cache for the best experience.
-                </AppText>
                 <Pressable
                   onPress={() => {
                     addHapticFeedback(HapticStrength.Light)
@@ -987,6 +1035,13 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   </AppText>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
                 </Pressable>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={styles.cacheNote}
+                >
+                  Audio is downloaded for offline listening; avoid clearing app cache for the best experience.
+                </AppText>
                 <Pressable
                   onPress={handleDeleteAccount}
                   style={styles.deleteAccountBtn}
@@ -1407,10 +1462,12 @@ const styles = StyleSheet.create({
   },
   statusValue: { color: "rgba(255,255,255,0.9)", marginBottom: 20 },
   deleteAccountBtn: {
+    alignSelf: "center",
     width: "100%",
+    maxWidth: 280,
     alignItems: "center",
-    paddingVertical: 14,
-    marginTop: 24,
+    paddingVertical: 10,
+    marginTop: 16,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,

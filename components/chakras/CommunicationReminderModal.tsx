@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { MODAL_CARD_MAX_WIDTH } from "@/constants/layout"
 
 interface CommunicationReminderModalProps {
   visible: boolean
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    maxWidth: 320,
+    maxWidth: MODAL_CARD_MAX_WIDTH,
     borderRadius: 18,
     overflow: "hidden",
     borderWidth: 1,

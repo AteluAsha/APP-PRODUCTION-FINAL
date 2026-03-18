@@ -182,7 +182,7 @@ const GoodbyeModal = ({
     }
   }, [isVisible, opacity, pulseScale, cardScale])
 
-  // Sync visibility to store so root overlays (FloatingNavButtons, GlobalHomeButton) can hide
+  // Sync visibility to store so root overlays (PermanentMenuBar, GlobalHomeButton) can hide
   const setGoodbyeVisible = useGoodbyeModalStore((s) => s.setGoodbyeVisible)
   useEffect(() => {
     setGoodbyeVisible(isVisible)
@@ -209,6 +209,26 @@ const GoodbyeModal = ({
             },
           ]}
         >
+          {/* DEV: Visible proof GoodbyeModal is the one being updated. If you don't see this strip, the app is not loading the new bundle. */}
+          {__DEV__ && Platform.OS === "ios" && isVisible && (
+            <View
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: "#FF00FF",
+                paddingVertical: 6,
+                alignItems: "center",
+                zIndex: 10002,
+              }}
+              pointerEvents="none"
+            >
+              <AppText font="instrument-medium" size="xs" style={{ color: "#fff" }}>
+                GOODBYE UPDATED — bundle loaded
+              </AppText>
+            </View>
+          )}
           {/* Integration pause: "Take a breath..." – show first, then main content */}
           {showIntegrationPrompt ? (
             <Pressable
@@ -235,11 +255,10 @@ const GoodbyeModal = ({
             </Pressable>
           ) : (
           <>
-          {/* On Android: column layout so bottom section is in-flow; no absolute = no black gap. */}
-          {/* pointerEvents="box-none" so empty areas don't block Back/Home buttons rendered after. */}
-          <View style={{ flex: 1, flexDirection: "column" }} pointerEvents="box-none">
+          {/* Android + iOS: column layout; bottom section in-flow (position relative) so it's one page, not overlay. */}
+          <View style={{ flex: 1, flexDirection: "column", minHeight: 0 }} pointerEvents="box-none">
           <ScrollView
-            style={{ flex: 1 }}
+            style={{ flex: 1, minHeight: 0 }}
             {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
             contentContainerStyle={[
               {
@@ -256,7 +275,8 @@ const GoodbyeModal = ({
                     flexGrow: 0,
                   }
                 : {
-                    paddingBottom: 24 + 280,
+                    // iOS: reserve enough space so closing text isn't covered by gift card/button (locked layout).
+                    paddingBottom: 24 + 320,
                   },
             ]}
             showsVerticalScrollIndicator={false}
@@ -352,16 +372,18 @@ const GoodbyeModal = ({
             </View>
           </ScrollView>
 
-          {/* SECTION 2: Bottom - Gift + Tomorrow + Home (pulled up from bottom of frame). */}
+          {/* SECTION 2: Bottom - Gift + Open Your Gift + Home. In-flow on both platforms so it's the same "page" as scroll content (no separate overlay/menu bar); Home at bottom of column with safe area padding. */}
           <View
             style={[
               styles.bottomSection,
               {
-                paddingBottom: Platform.OS === "android" ? bottomInset + 48 : bottomInset + 24,
-                ...(Platform.OS !== "android" && { bottom: 40 }),
+                paddingBottom: Platform.OS === "android" ? bottomInset + 48 : bottomInset + 20,
               },
               Platform.OS === "android" && styles.bottomSectionInFlow,
               Platform.OS === "android" && { zIndex: 10, elevation: 10 },
+              Platform.OS === "ios" && styles.bottomSectionInFlow,
+              Platform.OS === "ios" && styles.bottomSectionInFlowIOS,
+              __DEV__ && { borderWidth: 3, borderColor: "lime" },
             ]}
             collapsable={false}
             pointerEvents="box-none"
@@ -376,10 +398,19 @@ const GoodbyeModal = ({
               ]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={styles.goldSeparator}
+              style={[
+                styles.goldSeparator,
+                Platform.OS === "ios" && styles.goldSeparatorIOS,
+              ]}
             />
             {chakraCardImage && (
-              <View style={styles.giftSectionWrap} pointerEvents="box-none">
+              <View
+                style={[
+                  styles.giftSectionWrap,
+                  Platform.OS === "ios" && styles.giftSectionWrapIOS,
+                ]}
+                pointerEvents="box-none"
+              >
                 {Platform.OS === "android" ? (
                   <>
                     <TouchableOpacity
@@ -434,16 +465,17 @@ const GoodbyeModal = ({
                       <Animated.View style={cardAnimatedStyle}>
                         <Image
                           source={chakraCardImage}
-                          style={styles.cardThumb}
+                          style={[styles.cardThumb, styles.cardThumbIOS]}
                           resizeMode="cover"
                         />
                       </Animated.View>
                     </Pressable>
-                    <View style={styles.giftCardSpacer} />
+                    <View style={[styles.giftCardSpacer, styles.giftCardSpacerIOS]} />
                     <Pressable
                       onPress={handleOpenGift}
                       style={({ pressed }) => [
                         styles.openGiftButtonWrap,
+                        styles.openGiftButtonWrapIOS,
                         pressed && styles.openGiftButtonPressed,
                       ]}
                       hitSlop={{ top: 12, bottom: 12, left: 24, right: 24 }}
@@ -457,9 +489,12 @@ const GoodbyeModal = ({
                         ]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={styles.openGiftButtonGradientFrame}
+                        style={[
+                          styles.openGiftButtonGradientFrame,
+                          styles.openGiftButtonGradientFrameIOS,
+                        ]}
                       >
-                        <View style={styles.openGiftButton}>
+                        <View style={[styles.openGiftButton, styles.openGiftButtonIOS]}>
                           <AppText font="instrument-medium" size="sm" style={{ color: "#fff" }}>
                             Open Your Gift
                           </AppText>
@@ -472,9 +507,15 @@ const GoodbyeModal = ({
             )}
 
             {/* Explicit spacer so Open Your Gift and Home never appear crushed (all days 1–7) */}
-            <View style={styles.giftToHomeSpacer} pointerEvents="none" />
+            <View
+              style={[
+                styles.giftToHomeSpacer,
+                Platform.OS === "ios" && styles.giftToHomeSpacerIOS,
+              ]}
+              pointerEvents="none"
+            />
 
-            {/* Home button - primary exit */}
+            {/* Home button - primary exit (iOS: pinned to bottom of screen) */}
             <Pressable
               onPress={handleNavigateHome}
               style={({ pressed }) => [
@@ -486,11 +527,25 @@ const GoodbyeModal = ({
                 Home
               </AppText>
             </Pressable>
+            {/* Dev-only: 1px line at bottom to confirm bottom section is at overlay bottom on iOS */}
+            {__DEV__ && Platform.OS === "ios" && (
+              <View
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 1,
+                  backgroundColor: "rgba(255,0,0,0.5)",
+                }}
+                pointerEvents="none"
+              />
+            )}
           </View>
           </View>
           </>
           )}
-          {/* Back and Home rendered last so they draw on top and receive touches (no overlay block). */}
+          {/* Back only (no top-right X): return to chakra day; Home is in the bottom section. */}
           <Pressable
             onPress={() => {
               addHapticFeedback(HapticStrength.Light)
@@ -514,40 +569,6 @@ const GoodbyeModal = ({
               size={28}
               color="rgba(255, 255, 255, 0.9)"
             />
-          </Pressable>
-          <Pressable
-            onPress={handleNavigateHome}
-            style={{
-              position: "absolute",
-              top: topInset,
-              right: 16,
-              zIndex: 10003,
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.15)",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel={hasLifetimeAccess ? "Close" : "Home"}
-            accessibilityHint="Return to home"
-          >
-            {hasLifetimeAccess ? (
-              <Ionicons
-                name="close"
-                size={28}
-                color="rgba(255, 255, 255, 0.9)"
-              />
-            ) : (
-              <Image
-                source={require("@/assets/images/7chakras.png")}
-                style={{ width: 22, height: 22, opacity: 0.9 }}
-                resizeMode="contain"
-              />
-            )}
           </Pressable>
         </Animated.View>
     </>
@@ -633,6 +654,9 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 20,
   },
+  goldSeparatorIOS: {
+    marginBottom: 12,
+  },
   bottomSection: {
     position: "absolute",
     bottom: 0,
@@ -643,13 +667,18 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     paddingHorizontal: 24,
   },
-  /** Android: in-flow so no absolute positioning; bring section up (less top padding). */
+  /** Android + iOS: in-flow so bottom section is part of the same page as ScrollView (not a separate absolute overlay).
+   * Android: less top padding. iOS: avoids "menu bar" feel; card + Open Your Gift + Home sit at bottom of column. */
   bottomSectionInFlow: {
     position: "relative",
     bottom: undefined,
     left: undefined,
     right: undefined,
     paddingTop: 10,
+  },
+  /** iOS in-flow: slightly more top padding than Android for gold separator spacing. */
+  bottomSectionInFlowIOS: {
+    paddingTop: 12,
   },
   cardThumb: {
     width: 83,
@@ -658,9 +687,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(168, 201, 154, 0.35)",
   },
+  /** iOS: smaller chakra card so it doesn't cover closing text (all days). */
+  cardThumbIOS: {
+    width: 50,
+    height: 62,
+    borderRadius: 8,
+  },
   giftSectionWrap: {
     alignItems: "center",
     width: "100%",
+  },
+  /** iOS: minimal top margin so card/button sit lower with the bottom block. */
+  giftSectionWrapIOS: {
+    marginTop: 8,
   },
   chakraCardPressable: {
     alignItems: "center",
@@ -670,15 +709,26 @@ const styles = StyleSheet.create({
     height: 28,
     width: "100%",
   },
+  giftCardSpacerIOS: {
+    height: 10,
+  },
   openGiftButtonWrap: {
     alignSelf: "center",
     minHeight: 48,
     justifyContent: "center",
   },
+  /** iOS: smaller button (all days). */
+  openGiftButtonWrapIOS: {
+    minHeight: 34,
+  },
   /** Fixed-height spacer between Open Your Gift and Home – guarantees visual separation (all days 1–7). */
   giftToHomeSpacer: {
     height: 40,
     width: "100%",
+  },
+  /** iOS: tighter so Home sits closer to button and stays at bottom. */
+  giftToHomeSpacerIOS: {
+    height: 24,
   },
   openGiftButtonPressed: {
     opacity: 0.9,
@@ -690,6 +740,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  openGiftButtonGradientFrameIOS: {
+    padding: 1.5,
+  },
   openGiftButton: {
     paddingVertical: 12,
     paddingHorizontal: 30,
@@ -697,6 +750,11 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     borderColor: "transparent",
     backgroundColor: "rgba(0, 0, 0, 0.35)",
+  },
+  /** iOS: smaller Open Your Gift button (all days). */
+  openGiftButtonIOS: {
+    paddingVertical: 6,
+    paddingHorizontal: 18,
   },
   tomorrowBlock: {
     width: "100%",

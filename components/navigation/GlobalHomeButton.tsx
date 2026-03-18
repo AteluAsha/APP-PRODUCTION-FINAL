@@ -8,30 +8,18 @@
  * For lifetime users: navigates to ChakraHub
  */
 
-import React, { useEffect, useRef } from "react"
-import { Pressable, StyleSheet, Platform, Animated } from "react-native"
+import React from "react"
+import { View, Pressable, StyleSheet, Platform, Image } from "react-native"
 import { useRouter, usePathname, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { Image } from "react-native"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
-import { AppText } from "@/components/AppText"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { ICON, ANDROID_PRESS_DELAY_MS } from "@/constants/layout"
-import { useFloatingUIVisibilityStore } from "@/hooks/useFloatingUIVisibilityStore"
 
 export const GlobalHomeButton: React.FC = () => {
-  const visible = useFloatingUIVisibilityStore((s) => s.visible)
-  const opacityRef = useRef(new Animated.Value(1)).current
-  useEffect(() => {
-    Animated.timing(opacityRef, {
-      toValue: visible ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start()
-  }, [visible, opacityRef])
   const router = useRouter()
   const pathname = usePathname()
   const segments = useSegments()
@@ -115,7 +103,6 @@ export const GlobalHomeButton: React.FC = () => {
     segments.includes("TribeChat") ||
     segments.includes("AudioPlayer") ||
     segments.includes("AnuaChat") ||
-    segments.includes("GiftChakra") ||
     pathname?.includes("/Chakras101") ||
     pathname?.includes("/CommitmentGate") ||
     pathname?.includes("/DevPaywall") ||
@@ -133,9 +120,6 @@ export const GlobalHomeButton: React.FC = () => {
     pathname?.includes("AnuaChat") ||
     pathname === "AnuaChat" ||
     (segments.length > 0 && segments[segments.length - 1] === "AnuaChat") ||
-    pathname?.includes("/GiftChakra") ||
-    pathname?.includes("GiftChakra") ||
-    (segments.length > 0 && segments[segments.length - 1] === "GiftChakra") ||
     isWelcomeScreen ||
     shouldHideOnWaitingScreen || // Hide when waiting screen is shown
     !pathname || // Safety: hide if pathname is undefined
@@ -195,16 +179,15 @@ export const GlobalHomeButton: React.FC = () => {
   }
 
   return (
-    <Animated.View
+    <View
       style={[
         styles.homeButtonWrap,
         {
           top: Math.max(insets.top, 8) + 8,
           right: 16,
-          opacity: opacityRef,
         },
       ]}
-      pointerEvents={visible ? "auto" : "none"}
+      pointerEvents="auto"
     >
       <Pressable
         onPress={handlePress}
@@ -218,7 +201,7 @@ export const GlobalHomeButton: React.FC = () => {
           resizeMode="contain"
         />
       </Pressable>
-    </Animated.View>
+    </View>
   )
 }
 

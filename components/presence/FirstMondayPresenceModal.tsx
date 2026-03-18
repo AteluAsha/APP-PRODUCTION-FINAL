@@ -27,6 +27,7 @@ import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { getUserId } from "@/src/services/userId"
 import { updateUserProfile } from "@/src/services/profileService"
+import { MODAL_CARD_MAX_WIDTH } from "@/constants/layout"
 
 export interface FirstMondayPresenceModalProps {
   visible: boolean
@@ -315,10 +316,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 24,
   },
-  keyboardView: { width: "100%", maxWidth: 360 },
+  keyboardView: { width: "100%", maxWidth: MODAL_CARD_MAX_WIDTH },
   cardWrap: {
     width: "100%",
-    maxWidth: 360,
+    maxWidth: MODAL_CARD_MAX_WIDTH,
     borderRadius: 24,
     overflow: "hidden",
     borderWidth: 1,

@@ -24,7 +24,7 @@ const CRYSTAL_BOWL_FOLDER = "crystal_Bowl_Meditation_Audio"
 const CRYSTAL_BOWL_FILES: Record<Chakra, string> = {
   [Chakra.ROOT]: "Day1_396hz_CrystalBowlSoundBath_Hero2.mov",
   [Chakra.SACRAL]: "Day2_417hz_1Hour_CrystalBowl_SoundBath.aac",
-  [Chakra.SOLAR_PLEXUS]: "Day3_528hz_CrystalBowl_1Hour_SoundBath.aac",
+  [Chakra.SOLAR_PLEXUS]: "Day3_528hz_CrystalBowlMeditation_FrequencyHealing.aac",
   [Chakra.HEART]: "Day4_639hz_CrystalBowl_Meditation_FrequencyHealing.aac",
   [Chakra.THROAT]: "Day5_741Hz_CrystalBowlMeditation.aac",
   [Chakra.THIRD_EYE]: "Day6_852hz_ChakraBowl_Medittion_Audio.aac",

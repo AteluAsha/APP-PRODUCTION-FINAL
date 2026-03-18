@@ -23,7 +23,12 @@ import { Ionicons } from "@expo/vector-icons"
 import { ScrollDatePicker } from "@/components/chakras/ScrollDatePicker"
 import { DateConfirmationModal } from "@/components/chakras/DateConfirmationModal"
 import { InviteFriendModal } from "@/components/invite/InviteFriendModal"
-import { formatDate, getLocalDateISO, getNextMondayDate } from "@/utils/date"
+import {
+  formatDate,
+  getLocalDateISO,
+  getNextMondayDate,
+  hasReachedCourseStartDate,
+} from "@/utils/date"
 import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { getChakraName } from "@/constants/chakras/chakraConstants"
@@ -116,12 +121,28 @@ export default function DateSelectionScreen() {
 
   // Begin Your Journey: three doors for trial users (Lifetime does not use these—they go WelcomeScreen → ChakraHub).
   // If no start date has been confirmed, show reminder to choose a Monday (Android & iOS).
+  // When today is Monday and start date is missing or in the future, set start to today so user goes direct to trials home (not waiting room).
   const handleBeginJourney = useCallback(() => {
     addHapticFeedback(HapticStrength.Medium)
     const state = useChakraJourneyStore.getState()
+    const todayISO = getLocalDateISO()
+    const today = new Date(todayISO + "T00:00:00")
+    const isMondayToday = today.getDay() === 1
+
     if (!state.courseStartDate) {
-      setShowPickDateReminder(true)
-      return
+      if (isMondayToday) {
+        state.setInitialOpenDate(todayISO)
+        state.setCourseStartDate(todayISO)
+      } else {
+        setShowPickDateReminder(true)
+        return
+      }
+    } else if (
+      isMondayToday &&
+      !hasReachedCourseStartDate(state.courseStartDate)
+    ) {
+      state.setInitialOpenDate(todayISO)
+      state.setCourseStartDate(todayISO)
     }
 
     const bothTrialsActuallyCompleted =

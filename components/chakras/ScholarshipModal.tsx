@@ -58,7 +58,7 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
@@ -138,8 +138,8 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
                       size="xs"
                       style={styles.hint}
                     >
-                      Monthly Scholarship Pass with chance to reapply after the
-                      grant has ended.
+                      Energy exchange (free) – refreshes monthly, reapply when
+                      grant ends.
                     </AppText>
                     <AppText
                       font="instrument-medium"

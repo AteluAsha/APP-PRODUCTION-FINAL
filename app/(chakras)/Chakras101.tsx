@@ -6,14 +6,12 @@ import { ActionBarAnimated } from "@/components/ActionBarAnimated"
 import Animated, { useAnimatedRef } from "react-native-reanimated"
 import { useRouter } from "expo-router"
 import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
-import { useScrollRevealFloatingUI } from "@/hooks/useFloatingUIVisibilityStore"
 
 const Chakras101 = () => {
   const { width } = useWindowDimensions()
   const { top } = useSafeAreaInsets()
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
   const router = useRouter()
-  const onScrollRevealFloating = useScrollRevealFloatingUI()
 
   // Always use router.back() to return to the previous screen.
   // From pill (ChakraTemplate): back → chakra day page. From home/waiting: back → ChakraHome.
@@ -32,7 +30,6 @@ const Chakras101 = () => {
       {/* ScrollView first so ActionBar overlay receives touches on Android */}
       <Animated.ScrollView
         ref={scrollRef}
-        onScroll={onScrollRevealFloating}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{

@@ -3,13 +3,13 @@ import {
   hasActiveEntitlement,
   getCustomerInfo,
   getPackages,
+  getPackageWithFallback,
   purchaseProduct,
   restorePurchases,
   presentCustomerCenter,
   syncPurchaseStatus,
   type CustomerInfo,
   type PurchasesPackage,
-  PRODUCT_IDS,
   ENTITLEMENT_ID,
 } from "@/src/services/revenuecat"
 import { useChakraJourneyStore } from "./useChakraJourneyStore"
@@ -110,14 +110,14 @@ export const useRevenueCat = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Empty deps - only run once on mount
 
-  // Purchase a product
+  // Purchase by package identifier ($rc_monthly, $rc_annual) or product id
   const purchase = useCallback(
-    async (productId: (typeof PRODUCT_IDS)[keyof typeof PRODUCT_IDS]) => {
+    async (packageOrProductId: string) => {
       try {
         setIsLoading(true)
         setError(null)
 
-        const info = await purchaseProduct(productId)
+        const info = await purchaseProduct(packageOrProductId)
 
         // Check if purchase granted entitlement
         const hasEntitlement =
@@ -188,10 +188,11 @@ export const useRevenueCat = () => {
     }
   }, [checkStatus])
 
-  // Get specific product package
+  // Get package by package identifier ($rc_monthly, $rc_annual) or product id (fallback).
+  // Uses same fallback list as purchase so RevenueCat dashboard naming can vary.
   const getProductPackage = useCallback(
-    (productId: (typeof PRODUCT_IDS)[keyof typeof PRODUCT_IDS]) => {
-      return packages.find((pkg) => pkg.product.identifier === productId)
+    (packageOrProductId: string): PurchasesPackage | undefined => {
+      return getPackageWithFallback(packages, packageOrProductId)
     },
     [packages],
   )

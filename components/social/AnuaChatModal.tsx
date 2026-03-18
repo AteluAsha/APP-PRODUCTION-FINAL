@@ -797,7 +797,7 @@ export const AnuaChatModal: React.FC<AnuaChatModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType={Platform.OS === "android" ? "fade" : "slide"}
+      animationType="fade"
       presentationStyle={Platform.OS === "android" ? "fullScreen" : "pageSheet"}
       onRequestClose={onClose}
       onShow={() => {

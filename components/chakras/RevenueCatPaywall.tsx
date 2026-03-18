@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
-import { PRODUCT_IDS } from "@/src/services/revenuecat"
+import { PACKAGE_IDENTIFIERS } from "@/src/services/revenuecat"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -25,7 +25,7 @@ interface RevenueCatPaywallProps {
  * RevenueCat Paywall Component
  *
  * Displays available subscription and purchase options using RevenueCat packages.
- * Supports annual and lifetime products (no monthly subscription).
+ * Supports New Awakenings ($7/month), The Master Path ($55/year), and Lifetime.
  */
 export const RevenueCatPaywall = ({
   onDismiss,
@@ -85,10 +85,10 @@ export const RevenueCatPaywall = ({
     }
   }
 
-  // Get product packages
-  // Note: Only annual and lifetime are available (no monthly)
-  const yearlyPackage = getProductPackage(PRODUCT_IDS.YEARLY)
-  const lifetimePackage = getProductPackage(PRODUCT_IDS.LIFETIME)
+  // Get packages from Current offering ($rc_monthly, $rc_annual, $rc_lifetime)
+  const monthlyPackage = getProductPackage(PACKAGE_IDENTIFIERS.MONTHLY)
+  const yearlyPackage = getProductPackage(PACKAGE_IDENTIFIERS.ANNUAL)
+  const lifetimePackage = getProductPackage(PACKAGE_IDENTIFIERS.LIFETIME)
 
   // Format price
   const formatPrice = (price: string, period?: string) => {
@@ -115,11 +115,11 @@ export const RevenueCatPaywall = ({
     <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
       <ScrollView
         className="flex-1 bg-black"
-        contentContainerClassName="p-8"
+        contentContainerClassName="p-6"
         showsVerticalScrollIndicator={false}
       >
         {/* Header with Soul School logo */}
-        <View className="items-center mb-8">
+        <View className="items-center mb-6">
           {onDismiss && (
             <Pressable
               onPress={onDismiss}
@@ -164,19 +164,133 @@ export const RevenueCatPaywall = ({
           </View>
         )}
 
-        {/* Product Options */}
-        <View className="gap-4 mb-6">
-          {/* Lifetime Option (always shown) */}
+        {/* Product Options: 1. Monthly, 2. Full Sanctuary, 3. Lifetime */}
+        <View className="gap-3 mb-6">
+          {/* 1. New Awakenings ($7/month) */}
+          {!showLifetimeOnly && monthlyPackage && (
+            <Pressable
+              onPress={() => handlePurchase(PACKAGE_IDENTIFIERS.MONTHLY)}
+              disabled={purchasing !== null}
+              className="w-full border-2 border-white/50 py-5 px-6 rounded-2xl active:opacity-80 active:scale-95 disabled:opacity-50"
+              accessibilityLabel="New Awakenings subscription"
+              accessibilityHint="Full access for $7 per month"
+            >
+              <View className="items-center">
+                {purchasing === PACKAGE_IDENTIFIERS.MONTHLY ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <>
+                    <AppText
+                      font="instrument-bold"
+                      size="xl"
+                      className="mb-2 text-white"
+                    >
+                      New Awakenings
+                    </AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      className="mb-1 text-[#A8C99A]"
+                    >
+                      Unlimited access to all teachings
+                    </AppText>
+                    <View className="flex-row items-baseline gap-1">
+                      <AppText
+                        font="instrument-bold"
+                        size="lg"
+                        className="text-white"
+                      >
+                        {monthlyPackage.product.priceString}
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="sm"
+                        className="text-gray-400"
+                      >
+                        /month
+                      </AppText>
+                    </View>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      className="mt-2 text-white/70"
+                    >
+                      Full Access, cancel anytime.
+                    </AppText>
+                  </>
+                )}
+              </View>
+            </Pressable>
+          )}
+
+          {/* 2. The Master Path ($55/year) - always shown, hard-baked */}
+          {!showLifetimeOnly && (
+            <Pressable
+              onPress={() => handlePurchase(PACKAGE_IDENTIFIERS.ANNUAL)}
+              disabled={purchasing !== null}
+              className="w-full border-2 border-white/50 py-5 px-6 rounded-2xl active:opacity-80 active:scale-95 disabled:opacity-50"
+              accessibilityLabel="The Master Path annual subscription"
+              accessibilityHint="Full access for $55 per year"
+            >
+              <View className="items-center">
+                {purchasing === PACKAGE_IDENTIFIERS.ANNUAL ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <>
+                    <AppText
+                      font="instrument-bold"
+                      size="xl"
+                      className="mb-2 text-white"
+                    >
+                      The Master Path
+                    </AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      className="mb-1 text-[#A8C99A]"
+                    >
+                      Annual Pass + new healing features
+                    </AppText>
+                    <View className="flex-row items-baseline gap-1">
+                      <AppText
+                        font="instrument-bold"
+                        size="lg"
+                        className="text-white"
+                      >
+                        $55
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="sm"
+                        className="text-gray-400"
+                      >
+                        / Year
+                      </AppText>
+                    </View>
+                    <AppText
+                      font="instrument-regular"
+                      size="sm"
+                      className="mt-2 text-white/70"
+                    >
+                      Master Path Embodiment
+                    </AppText>
+                  </>
+                )}
+              </View>
+            </Pressable>
+          )}
+
+          {/* 3. Lifetime Option */}
           {lifetimePackage && (
             <Pressable
-              onPress={() => handlePurchase(PRODUCT_IDS.LIFETIME)}
+              onPress={() => handlePurchase(PACKAGE_IDENTIFIERS.LIFETIME)}
               disabled={purchasing !== null}
-              className="w-full bg-white py-6 px-8 rounded-2xl active:opacity-80 active:scale-95 disabled:opacity-50"
+              className="w-full bg-white py-5 px-6 rounded-2xl active:opacity-80 active:scale-95 disabled:opacity-50"
               accessibilityLabel="Lifetime Access"
               accessibilityHint="One-time purchase for full access"
             >
               <View className="items-center">
-                {purchasing === PRODUCT_IDS.LIFETIME ? (
+                {purchasing === PACKAGE_IDENTIFIERS.LIFETIME ? (
                   <ActivityIndicator color="#000000" />
                 ) : (
                   <>
@@ -200,47 +314,6 @@ export const RevenueCatPaywall = ({
                       className="mt-2 text-black/70"
                     >
                       One-time purchase
-                    </AppText>
-                  </>
-                )}
-              </View>
-            </Pressable>
-          )}
-
-          {/* Annual Option (only if not lifetime-only) */}
-          {!showLifetimeOnly && yearlyPackage && (
-            <Pressable
-              onPress={() => handlePurchase(PRODUCT_IDS.YEARLY)}
-              disabled={purchasing !== null}
-              className="w-full border-2 border-white/50 py-6 px-8 rounded-2xl active:opacity-80 active:scale-95 disabled:opacity-50"
-              accessibilityLabel="Annual subscription"
-              accessibilityHint="Lifetime access with yearly payment"
-            >
-              <View className="items-center">
-                {purchasing === PRODUCT_IDS.YEARLY ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <>
-                    <AppText
-                      font="instrument-bold"
-                      size="xl"
-                      className="mb-2 text-white"
-                    >
-                      Annual
-                    </AppText>
-                    <AppText
-                      font="instrument-medium"
-                      size="lg"
-                      className="text-white"
-                    >
-                      {formatPrice(yearlyPackage.product.priceString, "year")}
-                    </AppText>
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      className="mt-2 text-white/70"
-                    >
-                      Lifetime access
                     </AppText>
                   </>
                 )}

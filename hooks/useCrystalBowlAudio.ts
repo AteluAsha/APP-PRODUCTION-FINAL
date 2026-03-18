@@ -5,7 +5,7 @@
  * Paths are case-sensitive. In Firebase Console → Storage, ensure folder and
  * filenames match exactly:
  *   Folder: crystal_Bowl_Meditation_Audio
- *   Files:  Day1_396hz_CrystalBowlSoundBath_Hero2.mov, Day2_417hz_1Hour_CrystalBowl_SoundBath.aac, Day3_528hz_CrystalBowl_1Hour_SoundBath.aac, etc.
+ *   Files:  Day1_396hz_CrystalBowlSoundBath_Hero2.mov, Day2_417hz_1Hour_CrystalBowl_SoundBath.aac, Day3_528hz_CrystalBowlMeditation_FrequencyHealing.aac, etc.
  */
 
 import { useState, useEffect } from "react"
@@ -25,7 +25,7 @@ export const CRYSTAL_BOWL_STORAGE_FOLDER = FIREBASE_CRYSTAL_BOWL_FOLDER
 const CHAKRA_TO_CRYSTAL_BOWL_FILE: Record<Chakra, string> = {
   [Chakra.ROOT]: "Day1_396hz_CrystalBowlSoundBath_Hero2.mov",
   [Chakra.SACRAL]: "Day2_417hz_1Hour_CrystalBowl_SoundBath.aac",
-  [Chakra.SOLAR_PLEXUS]: "Day3_528hz_CrystalBowl_1Hour_SoundBath.aac",
+  [Chakra.SOLAR_PLEXUS]: "Day3_528hz_CrystalBowlMeditation_FrequencyHealing.aac",
   [Chakra.HEART]: "Day4_639hz_CrystalBowl_Meditation_FrequencyHealing.aac",
   [Chakra.THROAT]: "Day5_741Hz_CrystalBowlMeditation.aac",
   [Chakra.THIRD_EYE]: "Day6_852hz_ChakraBowl_Medittion_Audio.aac",

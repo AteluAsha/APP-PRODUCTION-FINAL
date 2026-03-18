@@ -140,18 +140,21 @@ export default function NotesAlongTheWay() {
 
   const insets = useSafeAreaInsets()
 
+  // Swipe cycle includes "all": all → 0 → 1 → … → 6 → all (and reverse).
   const goNextChakraDay = useCallback(() => {
     addHapticFeedback(HapticStrength.Light)
     setSelectedChakraDay((prev) => {
       if (prev === "all") return 0
-      return (prev + 1) % 7
+      if (prev === 6) return "all"
+      return prev + 1
     })
   }, [])
   const goPrevChakraDay = useCallback(() => {
     addHapticFeedback(HapticStrength.Light)
     setSelectedChakraDay((prev) => {
       if (prev === "all") return 6
-      return (prev - 1 + 7) % 7
+      if (prev === 0) return "all"
+      return prev - 1
     })
   }, [])
 
@@ -210,33 +213,34 @@ export default function NotesAlongTheWay() {
         style={StyleSheet.absoluteFill}
       />
 
-      <GestureDetector gesture={panGesture} style={styles.swipeArea}>
-        <View style={styles.swipeZone}>
-          <View style={styles.header} collapsable={false}>
-            <AppText
-              font="instrument-bold"
-              size="2xl"
-              style={[styles.headerText, { color: "#ffffff", marginBottom: 4 }]}
-            >
-              Notes Along the Way
-            </AppText>
-            <AppText
-              font="instrument-regular"
-              size="sm"
-              style={{ color: "rgba(255,255,255,0.7)" }}
-            >
-              {notesCount === 0
-                ? "Your reflections will appear here"
-                : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
-            </AppText>
+      <GestureDetector gesture={panGesture}>
+        <View style={[styles.swipeArea, styles.swipeAreaInner]}>
+          <View style={styles.swipeZone}>
+            <View style={styles.header} collapsable={false}>
+              <AppText
+                font="instrument-bold"
+                size="2xl"
+                style={[styles.headerText, { color: "#ffffff", marginBottom: 4 }]}
+              >
+                Notes Along the Way
+              </AppText>
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+              >
+                {notesCount === 0
+                  ? "Your reflections will appear here"
+                  : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
+              </AppText>
+            </View>
+            <ChakraDaySelector
+              selectedDay={selectedChakraDay}
+              onSelect={setSelectedChakraDay}
+            />
           </View>
-          <ChakraDaySelector
-            selectedDay={selectedChakraDay}
-            onSelect={setSelectedChakraDay}
-          />
-        </View>
 
-        <KeyboardAvoidingView
+          <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboardView}
           keyboardVerticalOffset={0}
@@ -451,6 +455,7 @@ export default function NotesAlongTheWay() {
             </View>
           </View>
         </KeyboardAvoidingView>
+        </View>
       </GestureDetector>
     </SafeAreaView>
   )
@@ -464,6 +469,9 @@ const styles = StyleSheet.create({
   swipeArea: {
     flex: 1,
   },
+  swipeAreaInner: {
+    flex: 1,
+  },
   swipeZone: {
     paddingHorizontal: 24,
     paddingTop: 16,
@@ -473,6 +481,8 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     minHeight: 56,
     justifyContent: "center",
+    // Clear ActionBar back button (left 16 + width 40 = 56px); add gap so title never overlaps on iOS and globally
+    paddingLeft: 48,
   },
   headerText: {
     textShadowColor: "rgba(135, 174, 115, 0.4)",

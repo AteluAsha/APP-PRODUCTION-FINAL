@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect } from "react"
-import { View, Image, ImageSourcePropType, StyleSheet } from "react-native"
+import { View, Image, ImageSourcePropType, StyleSheet, Platform } from "react-native"
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,8 +20,9 @@ const SIZE = 130
 const PULSE_DURATION = 4800
 const EASE = Easing.inOut(Easing.sin)
 
-/** Master embodiment: pulse up to 70% larger (scale 1.7), very slow, soft loop */
+/** Master embodiment: pulse up to 70% larger (scale 1.7), very slow, soft loop. iOS: 20% smaller at peak (1.36) for full audio player. */
 const EMBODIMENT_PULSE_SCALE_MAX = 1.7
+const EMBODIMENT_PULSE_SCALE_MAX_IOS = 1.36 // 20% smaller at peak for all days
 const EMBODIMENT_PULSE_HALF_DURATION_MS = 22000
 
 interface PulsingChakraBallProps {
@@ -39,9 +40,12 @@ export const PulsingChakraBall = ({
 
   useEffect(() => {
     if (embodimentPulse) {
-      // 70% larger than current size (1 → 1.7), very slow, forward-and-back loop, soft ease
+      const scaleMax =
+        Platform.OS === "ios"
+          ? EMBODIMENT_PULSE_SCALE_MAX_IOS
+          : EMBODIMENT_PULSE_SCALE_MAX
       scale.value = withRepeat(
-        withTiming(EMBODIMENT_PULSE_SCALE_MAX, {
+        withTiming(scaleMax, {
           duration: EMBODIMENT_PULSE_HALF_DURATION_MS,
           easing: EASE,
         }),

@@ -21,7 +21,6 @@ import {
 import { WaitingScreen } from "@/components/chakras/WaitingScreen"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { IntegratedProgressStack } from "@/components/chakras/IntegratedProgressStack"
-import { PreviewJourney } from "@/components/chakras/PreviewJourney"
 import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
 import { useShallow } from "zustand/react/shallow"
 import { useChakrasData } from "@/hooks/useChakrasData"
@@ -30,7 +29,7 @@ import { SealOfTheInitiate } from "@/components/chakras/SealOfTheInitiate"
 import { JourneySummaryGift } from "@/components/chakras/JourneySummaryGift"
 import { GraceOfThePresence } from "@/components/chakras/GraceOfThePresence"
 import { RestingBlessing } from "@/components/chakras/RestingBlessing"
-// Anua access is handled globally by FloatingNavButtons
+// Anua access is handled globally by PermanentMenuBar
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
 import { Image } from "react-native"
@@ -42,11 +41,13 @@ import {
 // PermanentMenuBar is now rendered globally in app/_layout.tsx
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
+import { useMenuBarStore } from "@/hooks/useMenuBarStore"
 import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
 import { FirstMondayPresenceModal } from "@/components/presence/FirstMondayPresenceModal"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { useStoreRehydration } from "@/hooks/useStoreRehydration"
 import {
+  OPENING_LOGO,
   TRIAL_HOME_ROOT_CHAKRA,
   SCROLL_BREATHING_BOTTOM_PADDING,
   SOMATIC_FADE_IN_MS,
@@ -161,13 +162,10 @@ export const ChakraHome = () => {
   // Get Anua introduction state
   // AnuaIntroductionPopup temporarily disabled
 
-  // Note: Anua access is handled globally by FloatingNavButtons
+  // Note: Anua access is handled globally by PermanentMenuBar
 
   // Whether to show waiting screen (show if not Monday and journey not started)
   const [showWaitingScreen, setShowWaitingScreen] = useState(false)
-
-  // Whether to show preview journey screen
-  const [showPreview, setShowPreview] = useState(false)
 
   // Whether to show payment gate (Day 14 - Sunday of second trial)
   const [showPaymentGate, setShowPaymentGate] = useState(false)
@@ -451,6 +449,30 @@ export const ChakraHome = () => {
     }
   }, [showWaitingScreen, journeyStarted, hasLifetimeAccess])
 
+  // Sync waiting screen visibility to menu bar: hide bar for lifetime (they have "Exit course mode"); trial gets 4-button bar.
+  useEffect(() => {
+    const { setWaitingScreenVisible, setWaitingRoomActions } =
+      useMenuBarStore.getState()
+    if (showWaitingScreen) {
+      setWaitingScreenVisible(true)
+      if (!hasLifetimeAccess) {
+        setWaitingRoomActions({
+          onPreviewPress: handlePreviewPress,
+          onChakras101Press: handleLearnAboutChakrasPress,
+        })
+      } else {
+        setWaitingRoomActions({})
+      }
+    } else {
+      setWaitingScreenVisible(false)
+      setWaitingRoomActions({})
+    }
+    return () => {
+      setWaitingScreenVisible(false)
+      setWaitingRoomActions({})
+    }
+  }, [showWaitingScreen, hasLifetimeAccess, handlePreviewPress, handleLearnAboutChakrasPress])
+
   useEffect(() => {
     // Bookkeeping when completedChakra is set (from day screen or from focus when returning with completed day).
     if (completedChakra) {
@@ -503,15 +525,9 @@ export const ChakraHome = () => {
     clearCompletedChakra()
   }
 
-  // Preview handler for the waiting screen - Show PreviewJourney component
+  // Preview handler for the waiting screen – navigate to Preview route (Stack fade, no jolt)
   const handlePreviewPress = () => {
-    setShowPreview(true)
-  }
-
-  // Handler to return from preview to waiting screen
-  const handleBackFromPreview = () => {
-    setShowPreview(false)
-    // Don't set showWaitingScreen back to true - let the normal flow handle it
+    router.push("/(chakras)/Preview")
   }
 
   // Gallery handler - navigate to gallery of gnosis
@@ -528,9 +544,6 @@ export const ChakraHome = () => {
   // Toggle waiting screen (for testing)
   const toggleWaitingScreen = () => {
     setShowWaitingScreen(!showWaitingScreen)
-    if (showPreview) {
-      setShowPreview(false)
-    }
   }
 
   // Check if user has any unlocked chakra cards (across all trials)
@@ -569,7 +582,7 @@ export const ChakraHome = () => {
     router,
   ])
 
-  // Note: Anua access is handled globally by FloatingNavButtons
+  // Note: Anua access is handled globally by PermanentMenuBar
 
   // ALL HOOKS MUST BE ABOVE THIS LINE - NO HOOKS AFTER EARLY RETURNS
 
@@ -634,11 +647,6 @@ export const ChakraHome = () => {
         onBack={() => router.back()}
       />
     )
-  }
-
-  // If showing preview journey screen, render it instead of chakras or waiting screen
-  if (showPreview) {
-    return <PreviewJourney onBackPress={handleBackFromPreview} />
   }
 
   // Waiting room. Route wrapper redirects trial users without courseStartDate to WelcomeScreen.
@@ -728,12 +736,24 @@ export const ChakraHome = () => {
     )
   }
 
+  // Soft transition: when content is not ready, show same black + logo as opening (OPENING_LOGO)
+  // so the handoff from index (OpeningSplash) has no size pop or glitch
   if (!contentReady) {
+    const logoW = OPENING_LOGO.width[Platform.OS === "ios" ? "ios" : "android"]
+    const logoH = OPENING_LOGO.height[Platform.OS === "ios" ? "ios" : "android"]
     return (
       <SafeAreaView
         style={{ flex: 1, backgroundColor: "#000000" }}
         edges={["top", "bottom"]}
-      />
+      >
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Image
+            source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
+            style={{ width: logoW, height: logoH }}
+            resizeMode="contain"
+          />
+        </View>
+      </SafeAreaView>
     )
   }
 
@@ -752,8 +772,14 @@ export const ChakraHome = () => {
           style={{ flex: 1 }}
           contentContainerStyle={{
             flexGrow: 1,
-            paddingTop: TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP,
-            paddingBottom: TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_BOTTOM + SCROLL_BREATHING_BOTTOM_PADDING,
+            // iOS: SCROLL_PADDING_TOP_IOS so stack and ball fit on screen (matches IntegratedProgressStack viewport – LOCKED)
+            paddingTop:
+              Platform.OS === "ios"
+                ? TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP_IOS
+                : TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP,
+            paddingBottom:
+              TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_BOTTOM +
+              SCROLL_BREATHING_BOTTOM_PADDING,
             minHeight: "100%",
           }}
           showsVerticalScrollIndicator={false}
@@ -1019,7 +1045,7 @@ export const ChakraHome = () => {
           <Ionicons name="menu" size={22} color="rgba(255, 255, 255, 0.9)" />
         </Pressable>
 
-        {/* Note: Anua access is handled globally by FloatingNavButtons */}
+        {/* Note: Anua access is handled globally by PermanentMenuBar */}
 
         <GoodbyeModal
           isVisible={isGoodbyeVisible}
@@ -1041,7 +1067,7 @@ export const ChakraHome = () => {
           onComplete={() => setShowFirstMondayPresenceModal(false)}
         />
 
-        {/* Note: Anua Chat is handled globally by FloatingNavButtons via SocialSanctuaryModal */}
+        {/* Note: Anua Chat is handled globally by PermanentMenuBar (menu Anua button opens chat directly) */}
 
         {/* Permanent Menu Bar - Now rendered globally in app/_layout.tsx */}
 

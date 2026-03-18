@@ -2,6 +2,8 @@
 
 To see JS/TS changes on Android, the app must load the bundle from Metro and you must reload after edits.
 
+**After an Android build:** Always reload from Metro (e.g. shake → Reload, or press `r` in the Metro terminal) so the app runs the latest JS bundle. Otherwise you may see an old UI (e.g. waiting room missing menu bar arrow, Build Your Tribe, or Clarity Moment).
+
 ## Real Android device not loading
 
 On a **physical device** (not emulator), the app must reach Metro on your computer. The device cannot use `10.0.2.2` (that is for the emulator only). Use your computer's **LAN IP** (e.g. `192.168.1.x`) so the phone and Mac are on the same Wi‑Fi and the app can load the bundle.
@@ -19,6 +21,32 @@ REACT_NATIVE_PACKAGER_HOSTNAME=192.168.1.XXX env -u CI npx expo run:android
 Replace `192.168.1.XXX` with your computer's IP. Device and computer must be on the same Wi‑Fi.
 
 **Check device is seen:** `adb devices` should list your phone. If not, enable USB debugging (or wireless debugging on Android 11+) and connect.
+
+## After reopening the app on a real device (hero bundle only)
+
+When you **reopen** the app on a physical device (e.g. after force-close or reload), the app may load a **cached JavaScript bundle** from the device instead of the latest bundle from Metro. That can show an old screen (e.g. "Audio Library ghost" – an outdated Frequency of Gnosis layout).
+
+To ensure the app always runs the **current** (hero) code:
+
+1. **Before each test:** Run with Metro in the same process and keep it running:
+   ```bash
+   REACT_NATIVE_PACKAGER_HOSTNAME=<your-LAN-IP> env -u CI npx expo run:android
+   ```
+   (or `npm run android:device`). Keep the terminal open so the app stays connected to Metro.
+
+2. **After every reopen:** Trigger a **full reload** so the app fetches the latest bundle from Metro:
+   - In the **Metro terminal**, press **`r`**, or
+   - On the **device**, shake → **Reload**.
+   Do not assume the app is on the latest bundle until you have reloaded.
+
+3. **If you still see an old screen (e.g. Audio Library ghost)** after nuclear clean or reload:
+   - **Uninstall** the app from the device (removes the on-device cached bundle).
+   - With Metro running, **reinstall** using the same command as in step 1 so the first bundle the app loads is from Metro.
+   - After the app opens, trigger a reload (step 2) to confirm the latest bundle is active.
+
+In development builds, the "hero" marker (small label in the Audio Library header) appears only when the current bundle is running; if you do not see it after opening Music → Audio Library, the app is likely using a cached bundle and you should reload or uninstall/reinstall as above.
+
+If the app **opens directly** to a screen like Audio Library (or another deep screen) instead of ChakraHub/home when you reopen it, the dev client may have restored the last route; trigger a **full reload** (step 2) so the correct bundle and home flow run.
 
 **If build fails with "SDK location not found":** Set the Android SDK path so Gradle can build. Either:
 - `export ANDROID_HOME=$HOME/Library/Android/sdk` (macOS default if you use Android Studio), then run `npm run android:device` again; or
@@ -106,6 +134,10 @@ Follow this checklist so the new bundle actually loads:
    In a second terminal: `npm run android:run`. When the app is up, trigger a reload (press `r` in the Metro terminal or double-tap R in the emulator). In the dev client, ensure you are connected to **`http://10.0.2.2:8081`**, not a 192.168.x.x URL.
 
 No native rebuild is required for JS-only changes; a reload with the app connected to Metro is enough.
+
+## UI architecture: remove don't hide
+
+ChakraHome and WaitingScreen do **not** render any legacy bottom menu or duplicate icons. The only bottom navigation is **PermanentMenuBar** in `app/_layout.tsx`. Old components (e.g. FloatingNavButtons) were removed from the codebase, not hidden—so there are no hidden layers blocking content or causing touch/layout issues.
 
 ## "Failed to open app" / "Error loading app"
 

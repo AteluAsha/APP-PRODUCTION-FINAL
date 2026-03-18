@@ -1,6 +1,6 @@
 /**
  * Zustand store for tracking PillBottomSheet visibility
- * Used to hide FloatingNavButtons when pill bottom sheet is open
+ * Used when pill bottom sheet is open (e.g. for overlay behavior)
  */
 
 import { create } from "zustand"

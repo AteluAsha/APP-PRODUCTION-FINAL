@@ -300,7 +300,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       presentationStyle={Platform.OS === "android" ? "fullScreen" : "pageSheet"}
       onRequestClose={onClose}
       statusBarTranslucent={Platform.OS === "android"}

@@ -1,11 +1,28 @@
-import React from "react"
-import { View } from "react-native"
-import { Stack } from "expo-router"
+import React, { useEffect, useRef } from "react"
+import { View, Platform } from "react-native"
+import { Stack, usePathname, useRouter } from "expo-router"
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
 import { SafeAreaProvider } from "react-native-safe-area-context"
-import { SOMATIC_SCREEN_TRANSITION_MS } from "@/constants/layout"
+import {
+  SOMATIC_SCREEN_TRANSITION_MS,
+  SOMATIC_SCREEN_TRANSITION_MS_IOS,
+} from "@/constants/layout"
 
 const ChakrasLayout = () => {
+  const pathname = usePathname()
+  const router = useRouter()
+  const coldStartCheckDone = useRef(false)
+
+  // If the app reopens with a restored route of Audio Library (stale bundle risk), send user to index so index.tsx runs and replaces to ChakraHub/home.
+  useEffect(() => {
+    if (coldStartCheckDone.current) return
+    if (pathname == null || pathname === "") return
+    coldStartCheckDone.current = true
+    if (pathname.includes("AudioLibrary")) {
+      router.replace("/(chakras)/")
+    }
+  }, [pathname, router])
+
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1 }} pointerEvents="box-none">
@@ -14,7 +31,10 @@ const ChakrasLayout = () => {
             screenOptions={{
               headerShown: false,
               animation: "fade",
-              animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
+              animationDuration:
+                Platform.OS === "ios"
+                  ? SOMATIC_SCREEN_TRANSITION_MS_IOS
+                  : SOMATIC_SCREEN_TRANSITION_MS,
             }}
           >
             <Stack.Screen name="index" />
@@ -25,7 +45,10 @@ const ChakrasLayout = () => {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
-                animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
+                animationDuration:
+                  Platform.OS === "ios"
+                    ? SOMATIC_SCREEN_TRANSITION_MS_IOS
+                    : SOMATIC_SCREEN_TRANSITION_MS,
                 gestureEnabled: true,
               }}
             />
@@ -34,7 +57,10 @@ const ChakrasLayout = () => {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
-                animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
+                animationDuration:
+                  Platform.OS === "ios"
+                    ? SOMATIC_SCREEN_TRANSITION_MS_IOS
+                    : SOMATIC_SCREEN_TRANSITION_MS,
                 gestureEnabled: true,
               }}
             />
@@ -43,7 +69,10 @@ const ChakrasLayout = () => {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
-                animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
+                animationDuration:
+                  Platform.OS === "ios"
+                    ? SOMATIC_SCREEN_TRANSITION_MS_IOS
+                    : SOMATIC_SCREEN_TRANSITION_MS,
                 gestureEnabled: true,
               }}
             />
@@ -52,7 +81,10 @@ const ChakrasLayout = () => {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
-                animationDuration: SOMATIC_SCREEN_TRANSITION_MS,
+                animationDuration:
+                  Platform.OS === "ios"
+                    ? SOMATIC_SCREEN_TRANSITION_MS_IOS
+                    : SOMATIC_SCREEN_TRANSITION_MS,
                 gestureEnabled: true,
               }}
             />
@@ -61,6 +93,7 @@ const ChakrasLayout = () => {
             <Stack.Screen name="DateSelection" />
             <Stack.Screen name="ChakraHub" />
             <Stack.Screen name="CoursePreview" />
+            <Stack.Screen name="Preview" />
             <Stack.Screen name="[chakra]" />
             <Stack.Screen name="SoundBath" />
             <Stack.Screen name="AudioLibrary" />

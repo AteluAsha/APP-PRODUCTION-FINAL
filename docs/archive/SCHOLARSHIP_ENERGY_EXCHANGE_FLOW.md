@@ -16,8 +16,7 @@ CommitmentGate (paywall)
 ScholarshipModal
   → User enters reason and taps "Enter Energy Exchange"
   → handleScholarshipContinue: logScholarshipRequest, grantLifetimeAccess("scholarship")
-  → onComplete() (closes paywall)
-  → router.replace("/(chakras)/EnergyExchange")
+  → router.replace("/(chakras)/EnergyExchange")  // do not call onComplete(); user reaches ChakraHub via Enter Path on Energy Exchange
 
 Energy Exchange (full screen)
   → User sees: "You're in—your path awaits"
@@ -71,7 +70,7 @@ CommitmentGate
 
 | File                                        | Role                                                                  |
 | ------------------------------------------- | --------------------------------------------------------------------- |
-| `components/chakras/CommitmentGate.tsx`     | handleScholarshipContinue: onComplete + router.replace EnergyExchange |
+| `components/chakras/CommitmentGate.tsx`     | handleScholarshipContinue: router.replace EnergyExchange (no onComplete) |
 | `components/chakras/AccessGrantedModal.tsx` | Paid/restore celebration (sage design)                                |
 | `components/chakras/ScholarshipModal.tsx`   | Form; button "Enter Energy Exchange"                                  |
 | `app/(chakras)/EnergyExchange.tsx`          | Full screen; Enter Path, exchange options                             |
