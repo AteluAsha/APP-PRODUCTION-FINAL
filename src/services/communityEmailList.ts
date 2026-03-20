@@ -1,8 +1,8 @@
 /**
- * Community Email List – 7 Chakras Community
+ * Community Email List – SOUL SCHOOL Community
  *
- * Stores email signups from Account (Soul School updates and new offerings)
- * in Firestore for the "7 Chakras Community" list. Same flow on iOS and Android.
+ * Stores email signups from Account (SOUL SCHOOL updates and new offerings)
+ * in Firestore for the SOUL SCHOOL Community list. Same flow on iOS and Android.
  */
 
 import { collection, addDoc, Timestamp } from "firebase/firestore"
@@ -26,7 +26,7 @@ export function isCommunityEmailStorageAvailable(): boolean {
 }
 
 /**
- * Add an email to the 7 Chakras Community list (Soul School updates and new offerings).
+ * Add an email to the SOUL SCHOOL Community list (SOUL SCHOOL updates and new offerings).
  * Idempotent by email: we do not dedupe in Firestore; dedupe can be done when exporting.
  * Throws with message FIREBASE_NOT_INITIALIZED when Firebase is not configured (e.g. dev build without .env).
  */

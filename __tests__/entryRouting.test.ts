@@ -84,9 +84,9 @@ describe("Entry routing (splash → first screen)", () => {
 })
 
 describe("Path selection rule (welcome after date set)", () => {
-  /** Allowed call sites that may navigate to WelcomeScreen when user already has courseStartDate. Only ProfileSheet Soul School section "Return to Soul School Course Selection". */
+  /** Allowed call sites that may navigate to WelcomeScreen when user already has courseStartDate. Only ProfileSheet SOUL SCHOOL section "Return to SOUL SCHOOL Course Selection". */
   const ALLOWED_WELCOME_NAVIGATORS_AFTER_DATE = [
-    "ProfileSheet", // Soul School → Return to Soul School Course Selection
+    "ProfileSheet", // SOUL SCHOOL → Return to SOUL SCHOOL Course Selection
   ]
 
   it("only explicit user action may open path selection after date is set", () => {

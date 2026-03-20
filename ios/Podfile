@@ -13,7 +13,7 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
-target 'SoulSchool' do
+target 'SOULSCHOOL' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
@@ -49,16 +49,6 @@ target 'SoulSchool' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
-
-    # Hermes replace script can hang in some environments (with-environment.sh / nvm).
-    # For Debug we do not need to replace; make the phase a no-op so the build proceeds.
-    installer.pods_project.targets.each do |target|
-      target.build_phases.each do |phase|
-        if phase.respond_to?(:name) && phase.name && phase.name.include?('Hermes') && phase.respond_to?(:shell_script)
-          phase.shell_script = "exit 0\n"
-        end
-      end
-    end
 
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.

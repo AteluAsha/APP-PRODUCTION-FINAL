@@ -7,29 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		11A79D4F677D16FFCC2ACCD3 /* libPods-SoulSchool.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BC9864F9D2F880270707C8D0 /* libPods-SoulSchool.a */; };
+		0CD170251E62FB8428680C94 /* libPods-SOULSCHOOL.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AAF993F405F428126EF5EF50 /* libPods-SOULSCHOOL.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		217EDAB5B02A740E6CE37D1A /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D75B79CFC2055A2E53FDBD0 /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		3EB6CE895288846F8C28920C /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1513D4D4239650E5A1E79625 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		BCA4D8ECCA578C2BC7957E0E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F0B46675530755C25BC67AE2 /* PrivacyInfo.xcprivacy */; };
+		D246478B5D8455985E0075CF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 257A6ACCD3E67038775FD399 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		13B07F961A680F5B00A75B9A /* SoulSchool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoulSchool.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = SoulSchool/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoulSchool/Info.plist; sourceTree = "<group>"; };
-		1513D4D4239650E5A1E79625 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-SoulSchool/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = SoulSchool/SplashScreen.storyboard; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* SOULSCHOOL.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SOULSCHOOL.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = SOULSCHOOL/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = SOULSCHOOL/Info.plist; sourceTree = "<group>"; };
+		257A6ACCD3E67038775FD399 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = SOULSCHOOL/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		5D75B79CFC2055A2E53FDBD0 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-SOULSCHOOL/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		707C163A7CFC81CFD116CAB1 /* Pods-SOULSCHOOL.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SOULSCHOOL.release.xcconfig"; path = "Target Support Files/Pods-SOULSCHOOL/Pods-SOULSCHOOL.release.xcconfig"; sourceTree = "<group>"; };
+		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = SOULSCHOOL/SplashScreen.storyboard; sourceTree = "<group>"; };
+		AAF993F405F428126EF5EF50 /* libPods-SOULSCHOOL.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SOULSCHOOL.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		BC9864F9D2F880270707C8D0 /* libPods-SoulSchool.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SoulSchool.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		C34B450E07D8C7AAC96A5FC3 /* Pods-SoulSchool.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SoulSchool.release.xcconfig"; path = "Target Support Files/Pods-SoulSchool/Pods-SoulSchool.release.xcconfig"; sourceTree = "<group>"; };
+		E908BE21CC8F7AC21BF939FC /* Pods-SOULSCHOOL.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SOULSCHOOL.debug.xcconfig"; path = "Target Support Files/Pods-SOULSCHOOL/Pods-SOULSCHOOL.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F0B46675530755C25BC67AE2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = SoulSchool/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = SoulSchool/AppDelegate.swift; sourceTree = "<group>"; };
-		F11748442D0722820044C1D9 /* SoulSchool-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "SoulSchool-Bridging-Header.h"; path = "SoulSchool/SoulSchool-Bridging-Header.h"; sourceTree = "<group>"; };
-		FFB6F0139503D7495D0BCA48 /* Pods-SoulSchool.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SoulSchool.debug.xcconfig"; path = "Target Support Files/Pods-SoulSchool/Pods-SoulSchool.debug.xcconfig"; sourceTree = "<group>"; };
+		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = SOULSCHOOL/AppDelegate.swift; sourceTree = "<group>"; };
+		F11748442D0722820044C1D9 /* SOULSCHOOL-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "SOULSCHOOL-Bridging-Header.h"; path = "SOULSCHOOL/SOULSCHOOL-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,44 +37,60 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				11A79D4F677D16FFCC2ACCD3 /* libPods-SoulSchool.a in Frameworks */,
+				0CD170251E62FB8428680C94 /* libPods-SOULSCHOOL.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		13B07FAE1A68108700A75B9A /* SoulSchool */ = {
+		0993AAB7D02117C0FACEB6F1 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				E908BE21CC8F7AC21BF939FC /* Pods-SOULSCHOOL.debug.xcconfig */,
+				707C163A7CFC81CFD116CAB1 /* Pods-SOULSCHOOL.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		13B07FAE1A68108700A75B9A /* SOULSCHOOL */ = {
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
-				F11748442D0722820044C1D9 /* SoulSchool-Bridging-Header.h */,
+				F11748442D0722820044C1D9 /* SOULSCHOOL-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				F0B46675530755C25BC67AE2 /* PrivacyInfo.xcprivacy */,
+				257A6ACCD3E67038775FD399 /* PrivacyInfo.xcprivacy */,
 			);
-			name = SoulSchool;
+			name = SOULSCHOOL;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				BC9864F9D2F880270707C8D0 /* libPods-SoulSchool.a */,
+				AAF993F405F428126EF5EF50 /* libPods-SOULSCHOOL.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		30C7160DEBAEE22A4E90D182 /* Pods */ = {
+		43703ADAFD87BE594D8DD64F /* SOULSCHOOL */ = {
 			isa = PBXGroup;
 			children = (
-				FFB6F0139503D7495D0BCA48 /* Pods-SoulSchool.debug.xcconfig */,
-				C34B450E07D8C7AAC96A5FC3 /* Pods-SoulSchool.release.xcconfig */,
+				5D75B79CFC2055A2E53FDBD0 /* ExpoModulesProvider.swift */,
 			);
-			name = Pods;
-			path = Pods;
+			name = SOULSCHOOL;
+			sourceTree = "<group>";
+		};
+		665455F5D388CE22734E42FF /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				43703ADAFD87BE594D8DD64F /* SOULSCHOOL */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -87,12 +103,12 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* SoulSchool */,
+				13B07FAE1A68108700A75B9A /* SOULSCHOOL */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				30C7160DEBAEE22A4E90D182 /* Pods */,
-				D8616122F37EABC214C01ACC /* ExpoModulesProviders */,
+				0993AAB7D02117C0FACEB6F1 /* Pods */,
+				665455F5D388CE22734E42FF /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -102,7 +118,7 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* SoulSchool.app */,
+				13B07F961A680F5B00A75B9A /* SOULSCHOOL.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -113,48 +129,32 @@
 				BB2F792C24A3F905000567C9 /* Expo.plist */,
 			);
 			name = Supporting;
-			path = SoulSchool/Supporting;
-			sourceTree = "<group>";
-		};
-		BFEA784E68CECDB1D99F70BD /* SoulSchool */ = {
-			isa = PBXGroup;
-			children = (
-				1513D4D4239650E5A1E79625 /* ExpoModulesProvider.swift */,
-			);
-			name = SoulSchool;
-			sourceTree = "<group>";
-		};
-		D8616122F37EABC214C01ACC /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				BFEA784E68CECDB1D99F70BD /* SoulSchool */,
-			);
-			name = ExpoModulesProviders;
+			path = SOULSCHOOL/Supporting;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		13B07F861A680F5B00A75B9A /* SoulSchool */ = {
+		13B07F861A680F5B00A75B9A /* SOULSCHOOL */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "SoulSchool" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "SOULSCHOOL" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				3EB369AB906C8CFDC890AC66 /* [Expo] Configure project */,
+				48C3A79B68ED473BACCAD92D /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				9052E4C010BDB60E3A6A79B1 /* [CP] Embed Pods Frameworks */,
+				042DAE2700EE8A7491362C6C /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = SoulSchool;
-			productName = SoulSchool;
-			productReference = 13B07F961A680F5B00A75B9A /* SoulSchool.app */;
+			name = SOULSCHOOL;
+			productName = SOULSCHOOL;
+			productReference = 13B07F961A680F5B00A75B9A /* SOULSCHOOL.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -170,7 +170,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "SoulSchool" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "SOULSCHOOL" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -183,7 +183,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* SoulSchool */,
+				13B07F861A680F5B00A75B9A /* SOULSCHOOL */,
 			);
 		};
 /* End PBXProject section */
@@ -196,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				BCA4D8ECCA578C2BC7957E0E /* PrivacyInfo.xcprivacy in Resources */,
+				D246478B5D8455985E0075CF /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -218,6 +218,24 @@
 			shellPath = /bin/sh;
 			shellScript = "if [[ -f \"$PODS_ROOT/../.xcode.env\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env\"\nfi\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# The project root by default is one level up from the ios directory\nexport PROJECT_ROOT=\"$PROJECT_DIR\"/..\n\nif [[ \"$CONFIGURATION\" = *Debug* ]]; then\n  export SKIP_BUNDLING=1\nfi\nif [[ -z \"$ENTRY_FILE\" ]]; then\n  # Set the entry JS file using the bundler's entry resolution.\n  export ENTRY_FILE=\"$(\"$NODE_BINARY\" -e \"require('expo/scripts/resolveAppEntry')\" \"$PROJECT_ROOT\" ios absolute | tail -n 1)\"\nfi\n\nif [[ -z \"$CLI_PATH\" ]]; then\n  # Use Expo CLI\n  export CLI_PATH=\"$(\"$NODE_BINARY\" --print \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\")\"\nfi\nif [[ -z \"$BUNDLE_COMMAND\" ]]; then\n  # Default Expo CLI command for bundling\n  export BUNDLE_COMMAND=\"export:embed\"\nfi\n\n# Source .xcode.env.updates if it exists to allow\n# SKIP_BUNDLING to be unset if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.updates\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.updates\"\nfi\n# Source local changes to allow overrides\n# if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n`\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\"`\n\n";
 		};
+		042DAE2700EE8A7491362C6C /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-SOULSCHOOL/Pods-SOULSCHOOL-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-SOULSCHOOL/Pods-SOULSCHOOL-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -233,14 +251,14 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-SoulSchool-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-SOULSCHOOL-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		3EB369AB906C8CFDC890AC66 /* [Expo] Configure project */ = {
+		48C3A79B68ED473BACCAD92D /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -257,7 +275,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-SoulSchool/expo-configure-project.sh\"\n";
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-SOULSCHOOL/expo-configure-project.sh\"\n";
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -265,7 +283,7 @@
 			files = (
 			);
 			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-SoulSchool/Pods-SoulSchool-resources.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-SOULSCHOOL/Pods-SOULSCHOOL-resources.sh",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXApplication/ExpoApplication_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
@@ -312,25 +330,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-SoulSchool/Pods-SoulSchool-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		9052E4C010BDB60E3A6A79B1 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-SoulSchool/Pods-SoulSchool-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-SoulSchool/Pods-SoulSchool-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-SOULSCHOOL/Pods-SOULSCHOOL-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -341,7 +341,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				3EB6CE895288846F8C28920C /* ExpoModulesProvider.swift in Sources */,
+				217EDAB5B02A740E6CE37D1A /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -350,18 +350,18 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = FFB6F0139503D7495D0BCA48 /* Pods-SoulSchool.debug.xcconfig */;
+			baseConfigurationReference = E908BE21CC8F7AC21BF939FC /* Pods-SOULSCHOOL.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = SoulSchool/SoulSchool.entitlements;
+				CODE_SIGN_ENTITLEMENTS = SOULSCHOOL/SOULSCHOOL.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"FB_SONARKIT_ENABLED=1",
 				);
-				INFOPLIST_FILE = SoulSchool/Info.plist;
+				INFOPLIST_FILE = SOULSCHOOL/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -375,8 +375,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.sevenchakras.SevenChakras;
-				PRODUCT_NAME = SoulSchool;
-				SWIFT_OBJC_BRIDGING_HEADER = "SoulSchool/SoulSchool-Bridging-Header.h";
+				PRODUCT_NAME = SOULSCHOOL;
+				SWIFT_OBJC_BRIDGING_HEADER = "SOULSCHOOL/SOULSCHOOL-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -386,13 +386,13 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C34B450E07D8C7AAC96A5FC3 /* Pods-SoulSchool.release.xcconfig */;
+			baseConfigurationReference = 707C163A7CFC81CFD116CAB1 /* Pods-SOULSCHOOL.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = SoulSchool/SoulSchool.entitlements;
+				CODE_SIGN_ENTITLEMENTS = SOULSCHOOL/SOULSCHOOL.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				INFOPLIST_FILE = SoulSchool/Info.plist;
+				INFOPLIST_FILE = SOULSCHOOL/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -404,10 +404,10 @@
 					"-ObjC",
 					"-lc++",
 				);
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG -D EXPO_CONFIGURATION_RELEASE";
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.sevenchakras.SevenChakras;
-				PRODUCT_NAME = SoulSchool;
-				SWIFT_OBJC_BRIDGING_HEADER = "SoulSchool/SoulSchool-Bridging-Header.h";
+				PRODUCT_NAME = SOULSCHOOL;
+				SWIFT_OBJC_BRIDGING_HEADER = "SOULSCHOOL/SOULSCHOOL-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -541,7 +541,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "SoulSchool" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "SOULSCHOOL" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -550,7 +550,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "SoulSchool" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "SOULSCHOOL" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,

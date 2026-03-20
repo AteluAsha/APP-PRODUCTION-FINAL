@@ -1,7 +1,7 @@
 /**
  * Firebase Service Configuration
  *
- * Initializes Firebase App, Firestore, and Cloud Storage for the Soul School app.
+ * Initializes Firebase App, Firestore, and Cloud Storage for the SOUL SCHOOL app.
  * Implements offline persistence to ensure the app remains connected to the soul
  * even without network connectivity.
  *
@@ -77,7 +77,7 @@ if (app) {
     // Initialize Firestore with offline persistence enabled
     // In Firebase v11, persistence is enabled by default with initializeFirestore
     db = initializeFirestore(app, {
-      // Enable offline persistence with 200MB cache for Soul School's expansion
+      // Enable offline persistence with 200MB cache for SOUL SCHOOL's expansion
       // Increased from 100MB to support more cached content and better offline experience
       cacheSizeBytes: 200 * 1024 * 1024, // 200MB cache size
     })

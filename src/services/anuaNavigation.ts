@@ -83,7 +83,7 @@ export const parseNavigationRequest = async (
     // If no direct match, use Anua to interpret the request
     const interpretationPrompt = `A student has requested: "${userRequest}"
 
-Based on this request, determine which screen in the Soul School app they want to navigate to.
+Based on this request, determine which screen in the SOUL SCHOOL app they want to navigate to.
 
 Available screens:
 - Day 1-7 / Root, Sacral, Solar Plexus, Heart, Throat, Third Eye, Crown chakras

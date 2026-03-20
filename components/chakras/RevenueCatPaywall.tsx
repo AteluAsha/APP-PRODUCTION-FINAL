@@ -1,11 +1,19 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import {
   View,
   Pressable,
   ActivityIndicator,
   ScrollView,
   Image,
+  StyleSheet,
 } from "react-native"
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated"
+import { SOMATIC_SPINNER_FADE_OUT_MS } from "@/constants/layout"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
@@ -44,6 +52,28 @@ export const RevenueCatPaywall = ({
   } = useRevenueCat()
 
   const [purchasing, setPurchasing] = useState<string | null>(null)
+
+  const [paywallLoaderDismissed, setPaywallLoaderDismissed] = useState(false)
+  const paywallLoaderOpacity = useSharedValue(1)
+
+  useEffect(() => {
+    if (isLoading) {
+      paywallLoaderOpacity.value = 1
+      setPaywallLoaderDismissed(false)
+      return
+    }
+    paywallLoaderOpacity.value = withTiming(
+      0,
+      { duration: SOMATIC_SPINNER_FADE_OUT_MS },
+      (finished) => {
+        if (finished) runOnJS(setPaywallLoaderDismissed)(true)
+      },
+    )
+  }, [isLoading, paywallLoaderOpacity])
+
+  const paywallLoaderStyle = useAnimatedStyle(() => ({
+    opacity: paywallLoaderOpacity.value,
+  }))
 
   const handlePurchase = async (productId: string) => {
     try {
@@ -98,27 +128,16 @@ export const RevenueCatPaywall = ({
     return price
   }
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
-        <View className="flex-1 justify-center items-center bg-black">
-          <ActivityIndicator size="large" color="#ffffff" />
-          <AppText font="instrument-regular" size="lg" className="mt-4">
-            Preparing your path...
-          </AppText>
-        </View>
-      </SafeAreaView>
-    )
-  }
-
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
+      <View style={{ flex: 1 }}>
+      {!isLoading && (
       <ScrollView
         className="flex-1 bg-black"
         contentContainerClassName="p-6"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with Soul School logo */}
+        {/* Header with SOUL SCHOOL logo */}
         <View className="items-center mb-6">
           {onDismiss && (
             <Pressable
@@ -140,7 +159,7 @@ export const RevenueCatPaywall = ({
             size="3xl"
             className="text-center mb-4"
           >
-            Unlock Soul School Pro
+            Unlock SOUL SCHOOL Pro
           </AppText>
           <AppText
             font="instrument-regular"
@@ -370,7 +389,7 @@ export const RevenueCatPaywall = ({
             size="xs"
             className="text-center text-white/50 mb-4"
           >
-            Soul School is operated by Project Starseed, an IRS-recognized
+            SOUL SCHOOL is operated by Project Starseed, an IRS-recognized
             501(c)(3) tax-exempt organization. All donations are tax-deductible.
           </AppText>
 
@@ -467,6 +486,27 @@ export const RevenueCatPaywall = ({
           )}
         </View>
       </ScrollView>
+      )}
+      {(isLoading || !paywallLoaderDismissed) && (
+        <Animated.View
+          pointerEvents={isLoading ? "auto" : "none"}
+          style={[
+            StyleSheet.absoluteFillObject,
+            { justifyContent: "center", alignItems: "center", backgroundColor: "#000" },
+            paywallLoaderStyle,
+          ]}
+        >
+          {isLoading ? (
+            <>
+              <ActivityIndicator size="large" color="#ffffff" />
+              <AppText font="instrument-regular" size="lg" className="mt-4">
+                Preparing your path...
+              </AppText>
+            </>
+          ) : null}
+        </Animated.View>
+      )}
+      </View>
     </SafeAreaView>
   )
 }

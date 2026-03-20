@@ -27,11 +27,11 @@ export const CONTRIBUTE_URL = "https://projectstarseed.org/contribute"
 // PENDING: Replace with App Store review URL when app is published
 export const REVIEW_URL = "https://www.soulschool.app/community"
 
-// Soul School hero site – archetype quiz (waiting room + ChakraHub)
+// SOUL SCHOOL hero site – archetype quiz (waiting room + ChakraHub)
 export const ARCHETYPE_QUIZ_URL = "https://www.soulschool.app/archetypequiz"
 
 // Contact / support email (opens in device mail client)
 export const SUPPORT_EMAIL = "hello@soulschool.app"
 
 // Share message template
-export const SHARE_MESSAGE = `Join me on Soul School - A 7-day journey through the chakras for healing and awakening. ✨`
+export const SHARE_MESSAGE = `Join me on SOUL SCHOOL — 7 Chakras: The Map from Self to Soul. ✨`

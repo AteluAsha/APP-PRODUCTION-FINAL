@@ -16,14 +16,11 @@
  *
  * Content varies by chakraDay (0-6); layout is identical for all 7 days.
  */
-import ResponsiveImage from "@/components/ResponsiveImage"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { AppText } from "@/components/AppText"
 import React, { useState, useEffect } from "react"
 import {
   View,
   Image,
-  useWindowDimensions,
   Pressable,
   TouchableOpacity,
   StyleSheet,
@@ -84,7 +81,6 @@ const GoodbyeModal = ({
   const currentChakra =
     chakraDay !== undefined ? getChakraFromDay(chakraDay) : Chakra.ROOT
   const isLastDay = chakraDay === 6
-  const { width } = useWindowDimensions()
   const opacity = useSharedValue(0)
   const pulseScale = useSharedValue(1)
   const cardScale = useSharedValue(1)
@@ -209,26 +205,6 @@ const GoodbyeModal = ({
             },
           ]}
         >
-          {/* DEV: Visible proof GoodbyeModal is the one being updated. If you don't see this strip, the app is not loading the new bundle. */}
-          {__DEV__ && Platform.OS === "ios" && isVisible && (
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                backgroundColor: "#FF00FF",
-                paddingVertical: 6,
-                alignItems: "center",
-                zIndex: 10002,
-              }}
-              pointerEvents="none"
-            >
-              <AppText font="instrument-medium" size="xs" style={{ color: "#fff" }}>
-                GOODBYE UPDATED — bundle loaded
-              </AppText>
-            </View>
-          )}
           {/* Integration pause: "Take a breath..." – show first, then main content */}
           {showIntegrationPrompt ? (
             <Pressable
@@ -255,32 +231,25 @@ const GoodbyeModal = ({
             </Pressable>
           ) : (
           <>
-          {/* Android + iOS: column layout; bottom section in-flow (position relative) so it's one page, not overlay. */}
-          <View style={{ flex: 1, flexDirection: "column", minHeight: 0 }} pointerEvents="box-none">
+          {/* Single ScrollView: hero + flex spacer + gift/footer scroll as one unit (no split panes). */}
           <ScrollView
             style={{ flex: 1, minHeight: 0 }}
             {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
-            contentContainerStyle={[
-              {
-                paddingTop: 44 + topInset,
-                paddingHorizontal: 24,
-                maxWidth: 420,
-                alignSelf: "center",
-                width: "100%",
-              },
-              Platform.OS === "android"
-                ? {
-                    paddingTop: 56 + topInset + 48,
-                    paddingBottom: 24,
-                    flexGrow: 0,
-                  }
-                : {
-                    // iOS: reserve enough space so closing text isn't covered by gift card/button (locked layout).
-                    paddingBottom: 24 + 320,
-                  },
-            ]}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingTop:
+                Platform.OS === "android"
+                  ? 56 + topInset + 48
+                  : 44 + topInset,
+              paddingHorizontal: 24,
+              paddingBottom: 60 + bottomInset,
+              maxWidth: 420,
+              alignSelf: "center",
+              width: "100%",
+            }}
             showsVerticalScrollIndicator={false}
           >
+            <View style={styles.scrollInnerColumn} collapsable={false}>
             {/* LOCKED SECTION: From top line through "Wonderful work" and affirmationBottomLine.
                 Do not move, reflow, or change layout/typography; Crown goodbye is Android master. */}
             <View key="lockedHeroSection" collapsable={false}>
@@ -370,24 +339,20 @@ const GoodbyeModal = ({
 
             <View style={styles.affirmationBottomLine} />
             </View>
-          </ScrollView>
 
-          {/* SECTION 2: Bottom - Gift + Open Your Gift + Home. In-flow on both platforms so it's the same "page" as scroll content (no separate overlay/menu bar); Home at bottom of column with safe area padding. */}
-          <View
-            style={[
-              styles.bottomSection,
-              {
-                paddingBottom: Platform.OS === "android" ? bottomInset + 48 : bottomInset + 20,
-              },
-              Platform.OS === "android" && styles.bottomSectionInFlow,
-              Platform.OS === "android" && { zIndex: 10, elevation: 10 },
-              Platform.OS === "ios" && styles.bottomSectionInFlow,
-              Platform.OS === "ios" && styles.bottomSectionInFlowIOS,
-              __DEV__ && { borderWidth: 3, borderColor: "lime" },
-            ]}
-            collapsable={false}
-            pointerEvents="box-none"
-          >
+            {/* Pushes gift/Home toward bottom when content is shorter than viewport */}
+            <View style={styles.scrollFooterSpacer} />
+
+            {/* SECTION 2: Gift + Open Your Gift + Home — inside ScrollView (no absolute). */}
+            <View
+              style={[
+                styles.scrollFooter,
+                Platform.OS === "android" && styles.scrollFooterAndroid,
+                Platform.OS === "ios" && styles.scrollFooterIOS,
+              ]}
+              collapsable={false}
+              pointerEvents="box-none"
+            >
             {/* Subtle gold separator above bottom section */}
             <LinearGradient
               colors={[
@@ -515,7 +480,7 @@ const GoodbyeModal = ({
               pointerEvents="none"
             />
 
-            {/* Home button - primary exit (iOS: pinned to bottom of screen) */}
+            {/* Home button - primary exit (flows at end of scroll content) */}
             <Pressable
               onPress={handleNavigateHome}
               style={({ pressed }) => [
@@ -527,22 +492,9 @@ const GoodbyeModal = ({
                 Home
               </AppText>
             </Pressable>
-            {/* Dev-only: 1px line at bottom to confirm bottom section is at overlay bottom on iOS */}
-            {__DEV__ && Platform.OS === "ios" && (
-              <View
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height: 1,
-                  backgroundColor: "rgba(255,0,0,0.5)",
-                }}
-                pointerEvents="none"
-              />
-            )}
-          </View>
-          </View>
+            </View>
+            </View>
+          </ScrollView>
           </>
           )}
           {/* Back only (no top-right X): return to chakra day; Home is in the bottom section. */}
@@ -657,27 +609,25 @@ const styles = StyleSheet.create({
   goldSeparatorIOS: {
     marginBottom: 12,
   },
-  bottomSection: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+  /** Single ScrollView inner column: hero + flex spacer + footer. */
+  scrollInnerColumn: {
+    flexGrow: 1,
+    width: "100%",
+  },
+  /** Expands between hero and footer so Home sits low on tall viewports. */
+  scrollFooterSpacer: {
+    flexGrow: 1,
+    minHeight: 0,
+  },
+  /** Footer block inside ScrollView (no position absolute). */
+  scrollFooter: {
     width: "100%",
     alignItems: "center",
-    paddingTop: 28,
-    paddingHorizontal: 24,
   },
-  /** Android + iOS: in-flow so bottom section is part of the same page as ScrollView (not a separate absolute overlay).
-   * Android: less top padding. iOS: avoids "menu bar" feel; card + Open Your Gift + Home sit at bottom of column. */
-  bottomSectionInFlow: {
-    position: "relative",
-    bottom: undefined,
-    left: undefined,
-    right: undefined,
+  scrollFooterAndroid: {
     paddingTop: 10,
   },
-  /** iOS in-flow: slightly more top padding than Android for gold separator spacing. */
-  bottomSectionInFlowIOS: {
+  scrollFooterIOS: {
     paddingTop: 12,
   },
   cardThumb: {

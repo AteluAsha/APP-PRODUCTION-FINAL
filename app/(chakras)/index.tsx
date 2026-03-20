@@ -1,26 +1,15 @@
 /**
- * (chakras) entry – Opening only
+ * (chakras) entry – routing only after root AnimatedSplashScreen finishes.
  *
- * Single path: OpeningSplash (logo, fade in → somatic pulse until ready → soft fade to first screen).
- * Native splash is hidden shortly after mount so in-app splash is visible. When store is rehydrated
- * and nav is ready, splash receives appReady and fades out, then navigates:
- * - Lifetime → ChakraHub
- * - Trial, after trial 1 → DateSelection
- * - Trial, has courseStartDate → ChakraHome
- * - Trial, first time → WelcomeScreen
- *
- * Fallback: if appReady never becomes true (e.g. nav state or rehydration slow in simulator),
- * we force ready after FORCE_READY_MS so the app never stays stuck on the splash.
+ * Root _layout shows: native shield → JS pulsing hero while fonts/preload → fade out.
+ * This screen stays black until store + nav are ready, then replaces to the first route.
  */
 import React, { useRef, useEffect, useCallback, useState } from "react"
-import { View, Platform } from "react-native"
+import { View } from "react-native"
 import { useRouter, useRootNavigationState } from "expo-router"
-import * as SplashScreen from "expo-splash-screen"
 import { useStoreRehydration } from "@/hooks/useStoreRehydration"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { OpeningSplash } from "@/components/OpeningSplash"
 
-const HIDE_NATIVE_SPLASH_MS = Platform.OS === "ios" ? 80 : 50
 const FORCE_READY_MS = 5000
 
 export default function HomeScreen() {
@@ -47,13 +36,6 @@ export default function HomeScreen() {
     return () => clearTimeout(t)
   }, [])
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      SplashScreen.hideAsync().catch(() => {})
-    }, HIDE_NATIVE_SPLASH_MS)
-    return () => clearTimeout(t)
-  }, [])
-
   const navigate = useCallback(() => {
     if (navigatedRef.current) return
     navigatedRef.current = true
@@ -72,9 +54,10 @@ export default function HomeScreen() {
     router.replace("/(chakras)/WelcomeScreen")
   }, [hasLifetimeAccess, completedTrialCourses, courseStartDate, router])
 
-  return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      <OpeningSplash appReady={appReady} onComplete={navigate} />
-    </View>
-  )
+  useEffect(() => {
+    if (!appReady) return
+    navigate()
+  }, [appReady, navigate])
+
+  return <View style={{ flex: 1, backgroundColor: "#000000" }} />
 }

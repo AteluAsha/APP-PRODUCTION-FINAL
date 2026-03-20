@@ -2,7 +2,12 @@ import { View, Pressable, Platform } from "react-native"
 import { ScrollView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import PulsingButton from "@/components/chakras/PulsingButton"
-import Animated, { FadeIn, FadeOut, Easing } from "react-native-reanimated"
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated"
 import React, { useRef } from "react"
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { AppText } from "@/components/AppText"
@@ -10,6 +15,7 @@ import { useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import GoodbyeModal from "@/components/chakras/GoodbyeModal"
+import { SomaticHeroImage } from "@/components/ui/SomaticHeroImage"
 import { getChakraIndex, getChakraFromDay } from "@/utils/chakraMapping"
 import { chakraContent } from "@/constants/chakras/content"
 import {
@@ -32,7 +38,6 @@ import { RestingBlessing } from "@/components/chakras/RestingBlessing"
 // Anua access is handled globally by PermanentMenuBar
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
-import { Image } from "react-native"
 import { getNextDayUnlockTimeString } from "@/utils/unlockTime"
 import {
   shouldShowWaitingScreen as shouldShowWaitingScreenCheck,
@@ -426,23 +431,28 @@ export const ChakraHome = () => {
 
   // Start HERO course audio preload when trial user sees main home (not waiting room).
   // Ensures dev-bypass path also gets preload so embodiment/meditation etc. load faster on real device.
+  // Guard: persist only after heads complete (same as WaitingScreen).
   useEffect(() => {
     if (hasLifetimeAccess || !journeyStarted || showWaitingScreen) return
     let cancelled = false
     getAudioPreloadStarted().then((alreadyStarted) => {
       if (cancelled || alreadyStarted) return
-      setAudioPreloadStarted().then(() => {
-        import("@/src/utils/audioPreloadManifest").then(
-          ({ preloadAllAudioHeads, preloadAllAudioFullFiles }) => {
-            if (cancelled) return
-            preloadAllAudioHeads(storage)
-              .then(() => {
-                if (!cancelled) return preloadAllAudioFullFiles(storage)
+      import("@/src/utils/audioPreloadManifest").then(
+        ({ preloadAllAudioHeads, preloadAllAudioFullFiles }) => {
+          if (cancelled) return
+          preloadAllAudioHeads(storage)
+            .then(() => {
+              if (cancelled) return
+              return setAudioPreloadStarted().then(() => {
+                if (cancelled) return
+                return preloadAllAudioFullFiles(storage)
               })
-              .catch(() => {})
-          },
-        )
-      })
+            })
+            .catch((err) => {
+              console.warn("[ChakraHome] audio preload chain failed", err)
+            })
+        },
+      )
     })
     return () => {
       cancelled = true
@@ -520,6 +530,22 @@ export const ChakraHome = () => {
   ])
 
   const contentReady = !isLoadingChakras && chakraData.length === 7
+
+  const homeContentOpacity = useSharedValue(0)
+  const homeMainContentStyle = useAnimatedStyle(() => ({
+    opacity: homeContentOpacity.value,
+  }))
+
+  useEffect(() => {
+    if (contentReady) {
+      homeContentOpacity.value = withTiming(1, {
+        duration: SOMATIC_FADE_IN_MS,
+        easing: Easing.out(Easing.ease),
+      })
+    } else {
+      homeContentOpacity.value = 0
+    }
+  }, [contentReady, homeContentOpacity])
 
   const closeModal = () => {
     clearCompletedChakra()
@@ -650,7 +676,7 @@ export const ChakraHome = () => {
   }
 
   // Waiting room. Route wrapper redirects trial users without courseStartDate to WelcomeScreen.
-  // Path selection after first date only via hamburger "Return to Soul School Course Selection".
+  // Path selection after first date only via hamburger "Return to SOUL SCHOOL Course Selection".
   // pointerEvents="box-none" so the wrapper never captures touches; only WaitingScreen (and its overlays) receive them (fixes Android stuck layer).
   const needsWaiting =
     !storeRehydrationReady || showWaitingScreen
@@ -700,8 +726,7 @@ export const ChakraHome = () => {
   // Show error state if fetching failed (with smooth fade-in)
   if (chakrasError) {
     return (
-      <Animated.View
-        entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
+      <View
         style={{
           flex: 1,
           justifyContent: "center",
@@ -732,12 +757,12 @@ export const ChakraHome = () => {
         >
           Please try again, or continue your journey
         </AppText>
-      </Animated.View>
+      </View>
     )
   }
 
   // Soft transition: when content is not ready, show same black + logo as opening (OPENING_LOGO)
-  // so the handoff from index (OpeningSplash) has no size pop or glitch
+  // so the handoff from root AnimatedSplashScreen / index has no size pop or glitch
   if (!contentReady) {
     const logoW = OPENING_LOGO.width[Platform.OS === "ios" ? "ios" : "android"]
     const logoH = OPENING_LOGO.height[Platform.OS === "ios" ? "ios" : "android"]
@@ -747,7 +772,7 @@ export const ChakraHome = () => {
         edges={["top", "bottom"]}
       >
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Image
+          <SomaticHeroImage
             source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
             style={{ width: logoW, height: logoH }}
             resizeMode="contain"
@@ -758,10 +783,7 @@ export const ChakraHome = () => {
   }
 
   return (
-    <Animated.View
-      entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
-      style={{ flex: 1 }}
-    >
+    <Animated.View style={[{ flex: 1 }, homeMainContentStyle]}>
       <SafeAreaView
         style={{ flex: 1, backgroundColor: "#000000" }}
         edges={["top", "bottom"]}
@@ -871,7 +893,7 @@ export const ChakraHome = () => {
                       justifyContent: "center",
                     }}
                   >
-                    <Image
+                    <SomaticHeroImage
                       source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
                       style={{ width: 28, height: 14 }}
                       resizeMode="contain"
@@ -1011,7 +1033,7 @@ export const ChakraHome = () => {
             accessibilityLabel="Chakras 101"
             accessibilityHint="Learn about the 7 chakras"
           >
-            <Image
+            <SomaticHeroImage
               source={require("@/assets/images/7chakras.png")}
               style={{ width: 24, height: 24 }}
               resizeMode="contain"
@@ -1040,7 +1062,7 @@ export const ChakraHome = () => {
           }}
           hitSlop={Platform.OS === "android" ? { top: 16, bottom: 16, left: 16, right: 16 } : { top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityLabel="Profile menu"
-          accessibilityHint="View your profile and Soul School ID"
+          accessibilityHint="View your profile and SOUL SCHOOL ID"
         >
           <Ionicons name="menu" size={22} color="rgba(255, 255, 255, 0.9)" />
         </Pressable>

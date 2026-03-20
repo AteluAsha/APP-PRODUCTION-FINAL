@@ -2,7 +2,7 @@
  * Audio Library Screen (APP2 / Lifetime Access Only)
  *
  * SINGLE SOURCE OF TRUTH: This is the only Audio Library screen. The download-all
- * row and every track row use DownloadIconCell only (60×44, icon 26), white-only
+ * row and every track row use DownloadIconCell only (60×44 cell, icons ~20/21), white-only
  * styling, no alternate or ghost layout. Locked production design.
  *
  * Spotify-like audio library with all sound healing content organized by chakra.
@@ -20,8 +20,8 @@ import {
   Dimensions,
 } from "react-native"
 import { useRouter, useLocalSearchParams } from "expo-router"
-import { SafeAreaView } from "react-native-safe-area-context"
-import { ActionBar } from "@/components/ActionBar"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
+import { Ionicons } from "@expo/vector-icons"
 import BackgroundOpacity from "@/components/BackgroundOpacity"
 import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
@@ -46,6 +46,7 @@ import {
 import {
   useEmbodimentAudio,
   getEmbodimentAudioId,
+  type EmbodimentAudioUrls,
 } from "@/hooks/useEmbodimentAudio"
 import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import {
@@ -61,6 +62,11 @@ import {
 import { ref, getDownloadURL } from "firebase/storage"
 import { storage } from "@/src/services/firebase"
 import { FIREBASE_CRYSTAL_BOWL_FOLDER } from "@/constants/firebaseStoragePaths"
+import {
+  buildSanctuaryDownloadManifest,
+  SANCTUARY_TRACK_COUNT,
+  type SanctuaryDownloadRow,
+} from "@/constants/sanctuaryAudioManifest"
 import { preloadFullFilesForChakra } from "@/src/utils/audioPreloadManifest"
 import {
   prepareCrystalBowlForPlay,
@@ -88,6 +94,36 @@ const CHAKRA_ORDER: Chakra[] = [
   Chakra.THIRD_EYE,
   Chakra.CROWN,
 ]
+
+/** Resolve hook URL for a manifest row (may be "" until hooks finish; download-all uses storagePath fallback). */
+function resolveSanctuaryRowUrl(
+  row: SanctuaryDownloadRow,
+  ctx: {
+    tuningForkByChakra: Record<Chakra, { url: string | null }>
+    crystalBowlByChakra: Record<Chakra, { url: string | null }>
+    embodimentByChakra: Record<Chakra, EmbodimentAudioUrls>
+    ancestralByChakra: Record<Chakra, { url: string | null }>
+  },
+): string {
+  const { chakra, rowKind } = row
+  const emb = ctx.embodimentByChakra[chakra]
+  switch (rowKind) {
+    case "tuning_fork":
+      return ctx.tuningForkByChakra[chakra].url ?? ""
+    case "crystal_bowl":
+      return ctx.crystalBowlByChakra[chakra].url ?? ""
+    case "embodiment_single":
+      return emb.single ?? ""
+    case "embodiment_part1":
+      return emb.partOne ?? ""
+    case "embodiment_part2":
+      return emb.partTwo ?? ""
+    case "head_to_heart":
+      return ctx.ancestralByChakra[chakra].url ?? ""
+    default:
+      return ""
+  }
+}
 
 const CHAKRA_COLORS: Record<Chakra, string> = {
   [Chakra.ROOT]: "#DC2626",
@@ -149,6 +185,7 @@ const FREQUENCY_BANNER_CONTENT: Record<
 }
 
 const AudioLibrary = () => {
+  const insets = useSafeAreaInsets()
   const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
   const currentTrackKey = useCurrentAudioStore((s) => s.currentTrackKey)
   const pendingTrackKey = useCurrentAudioStore((s) => s.pendingTrackKey)
@@ -163,8 +200,6 @@ const AudioLibrary = () => {
     Array<{ audioId: string; url: string; isCrystalBowl: boolean }>
   >([])
   const [isDownloadingAll, setIsDownloadingAll] = useState(false)
-  /** When download-all hit an error or timeout, show "Stalled" and let user tap Continue */
-  const [downloadAllStalled, setDownloadAllStalled] = useState(false)
   const [downloadAllLastError, setDownloadAllLastError] = useState<string | null>(null)
   /** Progress for "Downloading X of Y" */
   const [downloadAllProgress, setDownloadAllProgress] = useState<{
@@ -725,100 +760,68 @@ const AudioLibrary = () => {
     [ancestralByChakra, chakraContent, router],
   )
 
-  /** All downloadable tracks for "download all" (same as per-chakra rows). Crystal bowls always included (29 total); URL resolved from Firebase when hook returned null. */
-  const downloadAllTasks = useMemo(() => {
-    const tasks: {
-      url: string
-      audioId: string
-      isCrystalBowl: boolean
-      storagePath?: string
-    }[] = []
-    CHAKRA_ORDER.forEach((chakra) => {
-      const content = chakraContent[chakra]
-      const crystalBowl = crystalBowlByChakra[chakra]
-      const tuningFork = tuningForkByChakra[chakra]
-      const embodiment = embodimentByChakra[chakra]
-      const isThirdEye = chakra === Chakra.THIRD_EYE
-      const embodimentRemoteUrl = embodiment.single || embodiment.partOne
+  /** Exactly 29 Sanctuary slots (manifest order); URLs from hooks with storagePath for Firebase fallback. */
+  const sanctuaryManifestRows = useMemo(
+    () => buildSanctuaryDownloadManifest(),
+    [],
+  )
 
-      const tuningForkId = `tuning_fork_${chakra}_${getTuningForkFileName(chakra)}`
-      if (tuningFork.url) {
-        tasks.push({ url: tuningFork.url, audioId: tuningForkId, isCrystalBowl: false })
-      }
-      const crystalBowlId = `crystal_bowl_${chakra}_${getCrystalBowlFileName(chakra)}`
-      const crystalBowlPath = `${FIREBASE_CRYSTAL_BOWL_FOLDER}/${getCrystalBowlFileName(chakra)}`
-      tasks.push({
-        url: crystalBowl.url ?? "",
-        audioId: crystalBowlId,
-        isCrystalBowl: true,
-        storagePath: crystalBowl.url ? undefined : crystalBowlPath,
-      })
-      if (isThirdEye && (embodiment.partOne || embodiment.partTwo)) {
-        const embodimentId = getEmbodimentAudioId(chakra)
-        const embodimentPartTwoId = getEmbodimentAudioId(chakra, "part2")
-        if (embodiment.partOne) {
-          tasks.push({ url: embodiment.partOne, audioId: embodimentId, isCrystalBowl: false })
-        }
-        if (embodiment.partTwo) {
-          tasks.push({ url: embodiment.partTwo, audioId: embodimentPartTwoId, isCrystalBowl: false })
-        }
-      } else if (embodimentRemoteUrl) {
-        tasks.push({
-          url: embodimentRemoteUrl,
-          audioId: getEmbodimentAudioId(chakra),
-          isCrystalBowl: false,
-        })
-      }
-      const ancestral = ancestralByChakra[chakra]
-      if (ancestral.url) {
-        tasks.push({
-          url: ancestral.url,
-          audioId: getHeadToHeartAudioId(chakra),
-          isCrystalBowl: false,
-        })
-      }
-    })
-    return tasks
+  const downloadAllTasks = useMemo(() => {
+    return sanctuaryManifestRows.map((row) => ({
+      ...row,
+      url: resolveSanctuaryRowUrl(row, {
+        tuningForkByChakra,
+        crystalBowlByChakra,
+        embodimentByChakra,
+        ancestralByChakra,
+      }),
+    }))
   }, [
-    crystalBowlByChakra,
+    sanctuaryManifestRows,
     tuningForkByChakra,
+    crystalBowlByChakra,
     embodimentByChakra,
     ancestralByChakra,
   ])
 
+  /** All 29 manifest tracks cached and not mid-batch — hide Download All block. Any missing file or failed run keeps this false so Repair stays available. */
+  const isSanctuaryFull = useMemo(() => {
+    if (isDownloadingAll) return false
+    if (downloadAllTasks.length !== SANCTUARY_TRACK_COUNT) return false
+    return downloadAllTasks.every((t) => downloadedIds.has(t.audioId))
+  }, [isDownloadingAll, downloadAllTasks, downloadedIds])
+
   const handleDownloadAll = useCallback(async () => {
-    if (isDownloadingAll || downloadingId) return
+    if (isDownloadingAll) return
+
     const withCacheStatus = await Promise.all(
       downloadAllTasks.map(async (t) => ({
         ...t,
         alreadyCached: !!(await getLocalAudioUri(t.audioId)),
       })),
     )
-    const toDownload = withCacheStatus
-      .filter((t) => !t.alreadyCached)
-      .map((t) => ({
-        url: t.url,
-        audioId: t.audioId,
-        isCrystalBowl: t.isCrystalBowl,
-        storagePath: t.storagePath,
-      }))
+
+    if (__DEV__ && withCacheStatus.length !== SANCTUARY_TRACK_COUNT) {
+      console.warn(
+        "[AudioLibrary] Download all expected",
+        SANCTUARY_TRACK_COUNT,
+        "tasks, got",
+        withCacheStatus.length,
+      )
+    }
+
     if (downloadAllMountedRef.current) {
       setDownloadedIds((prev) => {
         const next = new Set(prev)
-        withCacheStatus.filter((t) => t.alreadyCached).forEach((t) => next.add(t.audioId))
+        withCacheStatus
+          .filter((x) => x.alreadyCached)
+          .forEach((x) => next.add(x.audioId))
         return next
       })
     }
-    if (toDownload.length === 0) {
-      if (downloadAllMountedRef.current) {
-        setDownloadAllStalled(false)
-        setDownloadAllLastError(null)
-      }
-      return
-    }
+
     addHapticFeedback(HapticStrength.Light)
     if (downloadAllMountedRef.current) {
-      setDownloadAllStalled(false)
       setDownloadAllLastError(null)
       setIsDownloadingAll(true)
     }
@@ -828,34 +831,50 @@ const AudioLibrary = () => {
     } catch {
       // optional
     }
-    const total = toDownload.length
-    let hadError = false
+
+    const total = SANCTUARY_TRACK_COUNT
+
     try {
-      for (let i = 0; i < toDownload.length; i++) {
+      for (let i = 0; i < withCacheStatus.length; i++) {
         if (!downloadAllMountedRef.current) break
-        const t = toDownload[i]
+        const t = withCacheStatus[i]
+
+        if (downloadAllMountedRef.current) {
+          setDownloadAllProgress({ current: i + 1, total })
+        }
+
+        if (t.alreadyCached) {
+          await new Promise((r) => setTimeout(r, 16))
+          continue
+        }
+
         let url = t.url
-        if (!url && t.isCrystalBowl && t.storagePath && storage) {
+        if (!url && t.storagePath && storage) {
           for (let retry = 0; retry < 3 && !url; retry++) {
             try {
-              url = await getDownloadURL(ref(storage, t.storagePath!))
+              url = await getDownloadURL(ref(storage, t.storagePath))
             } catch (e) {
-              if (__DEV__) console.warn("[AudioLibrary] Download all: resolve URL failed for", t.audioId, e)
+              if (__DEV__) {
+                console.warn(
+                  "[AudioLibrary] Download all: resolve URL failed for",
+                  t.audioId,
+                  e,
+                )
+              }
               if (retry < 2) await new Promise((r) => setTimeout(r, 1000))
             }
           }
         }
         if (!url) {
-          hadError = true
+          const errMsg = `Could not get URL for ${t.audioId}`
+          if (__DEV__) console.warn("[AudioLibrary] Download all:", errMsg)
           if (downloadAllMountedRef.current) {
-            setDownloadAllLastError(`Could not get URL for ${t.audioId}`)
-            setDownloadAllStalled(true)
+            setDownloadAllLastError(errMsg)
           }
+          await new Promise((r) => setTimeout(r, 16))
           continue
         }
-        if (downloadAllMountedRef.current) {
-          setDownloadAllProgress({ current: i + 1, total })
-        }
+
         try {
           if (t.isCrystalBowl) {
             await downloadAndCacheAudioResumableWithTimeout(
@@ -879,23 +898,24 @@ const AudioLibrary = () => {
             setDownloadedIds((prev) => new Set(prev).add(t.audioId))
           }
         } catch (e) {
-          hadError = true
           const msg = e instanceof Error ? e.message : String(e)
-          if (downloadAllMountedRef.current) {
-            setDownloadAllLastError(msg)
-            setDownloadAllStalled(true)
+          if (__DEV__) {
+            console.warn("[AudioLibrary] Download all: failed for", t.audioId, e)
           }
-          if (__DEV__) console.warn("[AudioLibrary] Download all: failed for", t.audioId, e)
+          if (downloadAllMountedRef.current) {
+            setDownloadAllLastError(`${t.audioId}: ${msg}`)
+          }
         }
-        if (i < toDownload.length - 1) {
+        if (i < withCacheStatus.length - 1) {
           await new Promise((r) => setTimeout(r, 400))
         }
       }
     } catch (err) {
-      hadError = true
+      if (__DEV__) {
+        console.warn("[AudioLibrary] Download all: unexpected error", err)
+      }
       if (downloadAllMountedRef.current) {
         setDownloadAllLastError(err instanceof Error ? err.message : String(err))
-        setDownloadAllStalled(true)
       }
     } finally {
       try {
@@ -907,10 +927,9 @@ const AudioLibrary = () => {
       if (downloadAllMountedRef.current) {
         setIsDownloadingAll(false)
         setDownloadAllProgress(null)
-        if (hadError) setDownloadAllStalled(true)
       }
     }
-  }, [downloadAllTasks, isDownloadingAll, downloadingId])
+  }, [downloadAllTasks, isDownloadingAll])
 
   const handleDownload = useCallback(
     (url: string, audioId: string) => {
@@ -993,13 +1012,18 @@ const AudioLibrary = () => {
   // APP1 (trial) never sees Music Room; redirect above sends them to ChakraHome. Only APP2 can set audioOrigin "music-room".
   if (!hasLifetimeAccess) return null
 
-  const handleClose = () => {
+  const handleBack = () => {
     addHapticFeedback(HapticStrength.Light)
-    router.replace("/(chakras)/ChakraHub")
+    if (router.canGoBack()) {
+      router.back()
+    } else {
+      router.replace("/(chakras)/ChakraHub")
+    }
   }
 
   // Background behind content (zIndex 0); content on top (zIndex 1). Stops bg image covering hero/scroll on Android.
   const screenHeight = Dimensions.get("window").height
+  const screenWidth = Dimensions.get("window").width
   const backgroundLayerStyle = {
     position: "absolute" as const,
     top: 0,
@@ -1034,9 +1058,8 @@ const AudioLibrary = () => {
             bottomGradientHeight={0}
             backgroundOpacity={0.75}
           />
-          {/* Header + Download all: fixed outside ScrollView so always visible and tappable (not tied to fade/reveal).
-              Design consistency: same BackgroundOpacity behind header and scroll; header uses elevation 2 for stacking only.
-              DownloadIconCell (top and rows) uses full opacity for "downloaded" variant; cloud/queued/downloading dim when disabled. */}
+          {/* Header + optional Download all (hidden when isSanctuaryFull — all 29 cached). Fixed outside ScrollView.
+              DownloadIconCell (rows) uses full opacity for "downloaded" variant; cloud/queued/downloading dim when disabled. */}
           <View
             style={{
               paddingTop: 56,
@@ -1048,109 +1071,115 @@ const AudioLibrary = () => {
             pointerEvents="auto"
             collapsable={false}
           >
-            <AppText
-              font="cormorant-regular"
-              size="xl"
-              style={{
-                color: "#ffffff",
-                letterSpacing: 2,
-                textAlign: "center",
-                fontSize: 20,
-              }}
+            {/* Container A: main title block (physical padding, no reliance on margins) */}
+            <View
+              style={{ paddingVertical: 15, paddingHorizontal: 20 }}
             >
-              — FREQUENCY OF GNOSIS —
-            </AppText>
-            <AppText
-              font="cormorant-italic"
-              size="sm"
-              style={{
-                color: "rgba(255,255,255,0.75)",
-                textAlign: "center",
-                marginHorizontal: 24,
-                marginTop: 12,
-                fontSize: 15,
-              }}
-            >
-              Where sound meets soul.
-            </AppText>
-            {__DEV__ && (
               <AppText
-                font="instrument-regular"
-                size="xs"
+                font="cormorant-regular"
+                size="xl"
                 style={{
-                  color: "rgba(100,200,255,0.7)",
+                  color: "#ffffff",
+                  letterSpacing: 2,
                   textAlign: "center",
-                  marginTop: 4,
-                  fontSize: 11,
+                  fontSize: 20,
                 }}
               >
-                hero
+                — FREQUENCY OF GNOSIS —
               </AppText>
-            )}
-            {/* Download-all row: SAME icon block as AudioTrackRow (60×44, icon 26) – single system, no ghost layout. */}
-            <View
-              style={{
-                width: "100%",
-                marginTop: 32,
-                borderTopWidth: 1,
-                borderTopColor: "rgba(255,255,255,0.12)",
-                paddingTop: 12,
-                paddingBottom: 4,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "flex-end",
-              }}
-            >
-              <Pressable
-                onPress={handleDownloadAll}
-                disabled={(isDownloadingAll && !downloadAllStalled) || downloadingId !== null}
-                style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingVertical: 14,
-                  paddingHorizontal: 20,
-                  opacity: pressed ? 0.88 : 1,
-                  marginHorizontal: -4,
-                })}
-                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                collapsable={false}
+              <AppText
+                font="cormorant-italic"
+                size="sm"
+                style={{
+                  color: "rgba(255,255,255,0.75)",
+                  textAlign: "center",
+                  marginTop: 12,
+                  fontSize: 15,
+                }}
               >
-                <View style={{ marginRight: 10 }}>
-                  <DownloadIconCell
-                    variant="cloud"
-                    disabled={(isDownloadingAll && !downloadAllStalled) || downloadingId !== null}
-                  />
-                </View>
-                <AppText
-                  font="cormorant-italic"
-                  size="xs"
-                  numberOfLines={1}
+                Where sound meets soul.
+              </AppText>
+            </View>
+            {!isSanctuaryFull ? (
+              <>
+                {/* Container B: fixed void between title and download row */}
+                <View style={{ height: 20 }} />
+                {/* Container C: horizon line + centered download row */}
+                <View
                   style={{
-                    color: "rgba(255,255,255,0.9)",
-                    fontSize: 13,
+                    width: "100%",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderTopWidth: 1,
+                    borderTopColor: "rgba(255,255,255,0.1)",
                   }}
                 >
-                  {downloadAllStalled
-                    ? "Stalled — tap to continue"
-                    : isDownloadingAll && downloadAllProgress
-                      ? `Downloading ${downloadAllProgress.current} of ${downloadAllProgress.total}`
-                      : "Download for offline listening"}
-                </AppText>
-              </Pressable>
-            </View>
-            {downloadAllLastError && downloadAllStalled && (
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                style={{
-                  color: "rgba(255,200,150,0.9)",
-                  textAlign: "center",
-                  marginTop: 4,
-                }}
-              >
-                Last error: {downloadAllLastError}
-              </AppText>
-            )}
+                  {/* Download-all: strict row wrapper + side-by-side icon + label */}
+                  <Pressable
+                    onPress={handleDownloadAll}
+                    disabled={isDownloadingAll}
+                    style={({ pressed }) => ({
+                      width: "100%",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingVertical: 15,
+                      zIndex: 10,
+                      opacity: pressed ? 0.88 : 1,
+                      ...(Platform.OS === "android" && { elevation: 4 }),
+                    })}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    collapsable={false}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 1,
+                        maxWidth: screenWidth - 32,
+                        gap: 8,
+                      }}
+                    >
+                      <View style={{ flexShrink: 0 }}>
+                        <DownloadIconCell
+                          variant="cloud"
+                          disabled={isDownloadingAll}
+                          compact
+                        />
+                      </View>
+                      <AppText
+                        font="cormorant-italic"
+                        size="xs"
+                        numberOfLines={2}
+                        style={{
+                          color: "rgba(255,255,255,0.9)",
+                          fontSize: 13,
+                          flexShrink: 1,
+                        }}
+                      >
+                        {isDownloadingAll && downloadAllProgress
+                          ? `Downloading ${downloadAllProgress.current} of ${downloadAllProgress.total}`
+                          : "Download for offline listening"}
+                      </AppText>
+                    </View>
+                  </Pressable>
+                </View>
+                {downloadAllLastError && !isDownloadingAll ? (
+                  <AppText
+                    font="instrument-regular"
+                    size="xs"
+                    style={{
+                      color: "rgba(255,200,150,0.9)",
+                      textAlign: "center",
+                      marginTop: 6,
+                    }}
+                  >
+                    Last error: {downloadAllLastError}
+                  </AppText>
+                ) : null}
+              </>
+            ) : null}
           </View>
           {/* ScrollView: chakra list only; header and Download all are fixed above */}
         <ScrollView
@@ -1158,7 +1187,10 @@ const AudioLibrary = () => {
           showsVerticalScrollIndicator={false}
           {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
           contentContainerStyle={{
-            paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
+            paddingBottom:
+              FLOATING_NAV_SCROLL_BOTTOM_PADDING +
+              SCROLL_BREATHING_BOTTOM_PADDING +
+              (Platform.OS === "ios" ? insets.bottom : 0),
             paddingHorizontal: 16,
           }}
         >
@@ -1555,12 +1587,34 @@ const AudioLibrary = () => {
             )
           })}
         </ScrollView>
-          <ActionBar
-            useXButton={true}
-            xButtonPosition="left"
-            xButtonTop={0}
-            onXPress={handleClose}
-          />
+          {/* Back:last in layer so it stays tappable above scroll (spec: top 20, left 20, zIndex 50) */}
+          <View
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 20,
+              zIndex: 50,
+              ...(Platform.OS === "android" && { elevation: 50 }),
+            }}
+            pointerEvents="box-none"
+          >
+            <Pressable
+              onPress={handleBack}
+              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+              style={({ pressed }) => ({
+                padding: 8,
+                opacity: pressed ? 0.85 : 1,
+              })}
+              accessibilityLabel="Back"
+              accessibilityHint="Go back to the previous screen"
+            >
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color="rgba(255, 255, 255, 0.95)"
+              />
+            </Pressable>
+          </View>
         </View>
       </View>
     </SafeAreaView>

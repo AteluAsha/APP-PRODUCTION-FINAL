@@ -98,7 +98,7 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
     await openSystemShare({
       message: inviteMessage,
       url: referralLink,
-      title: "Join me on Soul School",
+      title: "Join me on SOUL SCHOOL",
     })
     await handlePendingInviteAndCallback()
   }
@@ -143,7 +143,7 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
                 source={HERO_ICON}
                 style={styles.heroIcon}
                 resizeMode="contain"
-                accessibilityLabel="Soul School chakra icon"
+                accessibilityLabel="SOUL SCHOOL chakra icon"
               />
               <AppText
                 font="instrument-semibold"
@@ -189,7 +189,7 @@ export const InviteFriendModal: React.FC<InviteFriendModalProps> = ({
               {INVITE_OPENING_COPY}
             </AppText>
 
-            {/* Your invite: Soul School ID (gold), Use this code, message + link */}
+            {/* Your invite: SOUL SCHOOL ID (gold), Use this code, message + link */}
             <View style={styles.invitePreview}>
               <AppText
                 font="instrument-regular"

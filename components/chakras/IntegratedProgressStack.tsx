@@ -40,9 +40,8 @@ import {
 import {
   TRIAL_HOME_ROOT_CHAKRA,
   SCROLL_BREATHING_BOTTOM_PADDING,
-  LIFETIME_HUB_STACK_RAISE_IOS,
-  ROOT_BOTTOM_OFFSET_LIFETIME_HUB_IOS,
   LIFETIME_HUB_CHAKRA_BALL_DIVISOR,
+  LIFETIME_HUB_DAY_TITLE_SIDE_GAP,
 } from "@/constants/layout"
 import { getTimeRemaining } from "@/utils/date"
 import { formatCountdown } from "@/utils/format"
@@ -141,15 +140,15 @@ export const IntegratedProgressStack = ({
   router,
 }: IntegratedProgressStackProps) => {
   const insets = useSafeAreaInsets()
-  const { height: windowHeight } = useWindowDimensions()
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions()
+  // Matches PulsingButton lifetime sizing: (screen height - top inset) / divisor
+  const lifetimeHubOrbPixelSize =
+    (windowHeight - insets.top) / LIFETIME_HUB_CHAKRA_BALL_DIVISOR
   // Find current chakra data
   const currentChakraData = chakraData.find(({ day }) => day === currentDay)
 
-  // LOCKED (Android): Trials home stack placement – constants/layout.ts TRIAL_HOME_ROOT_CHAKRA. iOS lifetime hub: pin root ball higher via ROOT_BOTTOM_OFFSET_LIFETIME_HUB_IOS (production-approved).
-  const bottomPadding =
-    showAllChakrasForLifetimeHub && Platform.OS === "ios"
-      ? ROOT_BOTTOM_OFFSET_LIFETIME_HUB_IOS
-      : TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING
+  // LOCKED: trials + lifetime hub use the same base pin (BOTTOM_PADDING). iOS lifetime stack height matches trial viewport.
+  const bottomPadding = TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING
   const dayLabelToBallGap = TRIAL_HOME_ROOT_CHAKRA.DAY_LABEL_TO_BALL_GAP
 
   // Trial home (ChakraHome): ScrollView has paddingTop + paddingBottom; stack must fit in visible area
@@ -169,16 +168,15 @@ export const IntegratedProgressStack = ({
     scrollPaddingTop -
     scrollPaddingBottom
 
-  // Viewport height for base-pinned stack (flex-end). Lifetime hub uses full safe area; trial home uses reduced so stack fits.
-  const viewportHeight = showAllChakrasForLifetimeHub
-    ? windowHeight - insets.top - insets.bottom
-    : viewportHeightForTrialHome
-
-  // iOS lifetime hub only: use a shorter container so the root ball is pinned higher (LOCKED production layout).
-  const stackContainerHeight =
+  // Viewport height for base-pinned stack (flex-end). iOS lifetime hub uses trial-home viewport; Android lifetime uses full safe height.
+  const viewportHeight =
     showAllChakrasForLifetimeHub && Platform.OS === "ios"
-      ? viewportHeight - LIFETIME_HUB_STACK_RAISE_IOS
-      : viewportHeight
+      ? viewportHeightForTrialHome
+      : showAllChakrasForLifetimeHub
+        ? windowHeight - insets.top - insets.bottom
+        : viewportHeightForTrialHome
+
+  const stackContainerHeight = viewportHeight
 
   // Next-day preview: midnight countdown when there is a tomorrow (currentDay < 6)
   const [midnightCountdown, setMidnightCountdown] = useState({
@@ -200,7 +198,7 @@ export const IntegratedProgressStack = ({
     return () => clearInterval(interval)
   }, [currentDay])
 
-  // LOCKED: viewport-sized container + stack pinned to base – do not center (trials home). iOS lifetime hub: shorter container so root ball sits higher (LIFETIME_HUB_STACK_RAISE_IOS). flexGrow (not flex) so min/max height are respected.
+  // LOCKED: viewport-sized container + stack pinned to base – do not center (trials home). iOS lifetime hub uses trial-home viewport height. flexGrow (not flex) so min/max height are respected.
   return (
     <View
       style={{
@@ -209,13 +207,22 @@ export const IntegratedProgressStack = ({
         maxHeight: stackContainerHeight,
       }}
     >
+      {/* Lifetime hub: vertical drop — pushes stack down so Heart sits more centered in frame */}
+      {showAllChakrasForLifetimeHub ? (
+        <View style={{ height: 120 }} />
+      ) : null}
       {/* Chakra stack – pinned to base (flex-end); same position Monday–Sunday; never center by day */}
       <View
         style={{
           flex: 1,
-          justifyContent: "flex-end",
+          justifyContent: showAllChakrasForLifetimeHub
+            ? "center"
+            : "flex-end",
           alignItems: "center",
-          paddingBottom: bottomPadding,
+          paddingBottom: showAllChakrasForLifetimeHub ? 0 : bottomPadding,
+          ...(showAllChakrasForLifetimeHub && {
+            paddingVertical: bottomPadding,
+          }),
         }}
       >
         {/* Reverse chakraData so Root (day 0) appears at bottom, Crown (day 6) at top */}
@@ -296,8 +303,9 @@ export const IntegratedProgressStack = ({
             // Current day title: show for current day (completed or not) so each day/chakra is labeled on APP1 and APP2
             const showCurrentDayTitle =
               !showAllChakrasForLifetimeHub && isCurrentDay
-            // Lifetime hub: day title next to every chakra ball (same row, aligned all the way up)
-            const showLifetimeLeftDayTitle = showAllChakrasForLifetimeHub
+            // Lifetime hub: single centered title above orb for current weekday only (plumb line for all 7 balls).
+            const showLifetimeHubDayTitle =
+              showAllChakrasForLifetimeHub && isCurrentDay
 
             return (
               <View
@@ -306,12 +314,18 @@ export const IntegratedProgressStack = ({
                   alignItems: "center",
                   justifyContent: "center",
                   width: "100%",
-                  marginBottom: 2,
+                  marginBottom: showAllChakrasForLifetimeHub ? 0 : 2,
                   position: "relative",
-                  paddingTop: showDayLabel || showCurrentDayTitle ? dayLabelToBallGap : 0,
-                  ...(Platform.OS === "android" && chakraDay === 0 && {
-                    paddingBottom: 24,
-                  }),
+                  paddingTop:
+                    !showAllChakrasForLifetimeHub &&
+                    (showDayLabel || showCurrentDayTitle)
+                      ? dayLabelToBallGap
+                      : 0,
+                  ...(Platform.OS === "android" &&
+                    chakraDay === 0 &&
+                    !showAllChakrasForLifetimeHub && {
+                      paddingBottom: 24,
+                    }),
                 }}
               >
                 {/* APP_1/APP_2: Day title above chakra ball – in-flow layout so it renders on Android (absolute + bottom 100% is unreliable) */}
@@ -448,224 +462,83 @@ export const IntegratedProgressStack = ({
                   </View>
                 )}
 
-                {/* Lifetime hub: day title next to chakra ball (left of ball); trial: ball only in this slot */}
-                {showLifetimeLeftDayTitle ? (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: "100%",
-                      gap: 12,
-                    }}
-                  >
+                <View
+                  style={{
+                    width: "100%",
+                    alignItems: "center",
+                    position: "relative",
+                  }}
+                >
+                  {showLifetimeHubDayTitle && (
                     <View
                       style={{
-                        flexDirection: "column",
+                        position: "absolute",
+                        right: "50%",
+                        marginRight:
+                          lifetimeHubOrbPixelSize / 2 +
+                          LIFETIME_HUB_DAY_TITLE_SIDE_GAP,
+                        top: "50%",
+                        transform: [{ translateY: -14 }],
+                        zIndex: 1,
+                        pointerEvents: "none",
                         alignItems: "flex-end",
-                        gap: 2,
-                        maxWidth: "40%",
+                        maxWidth: Math.max(
+                          96,
+                          windowWidth * 0.46 -
+                            lifetimeHubOrbPixelSize / 2 -
+                            LIFETIME_HUB_DAY_TITLE_SIDE_GAP -
+                            12,
+                        ),
                       }}
-                      pointerEvents="none"
                     >
-                      <AppText
-                        font="cormorant-regular"
-                        size="xs"
-                        numberOfLines={1}
+                      <View
                         style={{
-                          fontFamily: "CormorantGaramond",
-                          fontWeight: "600",
-                          color: "#ffffff",
-                          textShadowColor: "rgba(0, 0, 0, 0.8)",
-                          textShadowOffset: { width: 0, height: 1 },
-                          textShadowRadius: 4,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "flex-end",
+                          flexWrap: "wrap",
                         }}
                       >
-                        {dayName}
-                      </AppText>
-                      <AppText
-                        font="cormorant-regular"
-                        size="xs"
-                        numberOfLines={1}
-                        style={{
-                          fontFamily: "CormorantGaramond",
-                          color: "#ffffff",
-                          textShadowColor: "rgba(0, 0, 0, 0.8)",
-                          textShadowOffset: { width: 0, height: 1 },
-                          textShadowRadius: 4,
-                        }}
-                      >
-                        {chakraName} Day
-                      </AppText>
-                    </View>
-                    <View
-                      style={{
-                        alignItems: "center",
-                        justifyContent: "center",
-                        position: "relative",
-                        ...(isCurrentDay
-                          ? { transform: [{ scale: 1.15 }] }
-                          : { transform: [{ scale: 1 }] }),
-                        opacity: showAllChakrasForLifetimeHub
-                          ? 1.0
-                          : isTeaserPosition
-                            ? 0.15
-                            : isCompleted ||
-                                hasParticipatedDay(chakraDay) ||
-                                isCurrentDay
-                              ? 1.0
-                              : isMissedDay
-                                ? 0.3
-                                : 0.4,
-                      }}
-                      accessibilityLabel={
-                        isMissedDay
-                          ? `${getChakraName(chakraDay)} - Missed day`
-                          : isCompleted
-                            ? `${getChakraName(chakraDay)} - Completed`
-                            : `${getChakraName(chakraDay)} - ${isCurrentDay ? "Current day" : "Available"}`
-                      }
-                      accessibilityHint={
-                        isMissedDay
-                          ? "This day was missed and is no longer accessible"
-                          : isCompleted
-                            ? "Tap to revisit this completed chakra"
-                            : isCurrentDay
-                              ? "Tap to open today's chakra"
-                              : "Tap to open this chakra"
-                      }
-                      accessibilityRole="button"
-                    >
-                  {/* Chakra button - larger for current day, disabled for future/missed days */}
-                  {/* TEASER: Not clickable (visual shadow only) */}
-                  <PulsingButton
-                    source={source}
-                    small={showAllChakrasForLifetimeHub}
-                    smallDivisor={
-                      showAllChakrasForLifetimeHub
-                        ? LIFETIME_HUB_CHAKRA_BALL_DIVISOR
-                        : undefined
-                    }
-                    isAnimating={
-                      isCurrentDay &&
-                      !isMissedDay &&
-                      chakraDay <= currentDay &&
-                      !isTeaserPosition
-                    }
-                    isBottomChakra={chakraDay === 0}
-                    onPress={() => {
-                      // APP_1 (Trial): Accessibility rules
-                      // - Can always click current day (day of week)
-                      // - Can click completed days (they stay open)
-                      // - Can click participated days (they stay open)
-                      // - Cannot click future days (beyond current day)
-                      // - Cannot click missed days (not opened during the week)
-                      // - Cannot click teaser (visual only)
-                      // - Lifetime hub: all balls tappable
-                      if (
-                        !showAllChakrasForLifetimeHub &&
-                        (chakraDay > currentDay ||
-                          isMissedDay ||
-                          isTeaserPosition)
-                      ) {
-                        return
-                      }
-                      // Allow access to: current day, completed days, participated days
-                      onPress(router)
-                    }}
-                  />
-
-                  {/* Completion indicator badge - Half size, chakra-colored, subtle with depth */}
-                  {/* Show check ball for completed chakras (not missed days, not teaser) */}
-                  {/* TEASER: No check globe (visual shadow only) */}
-                  {isCompleted &&
-                    !isMissedDay &&
-                    !isTeaserPosition &&
-                    (() => {
-                      const chakraColor = getChakraColor(chakraDay)
-                      // Convert hex to rgba for subtle opacity
-                      const hexToRgba = (hex: string, alpha: number) => {
-                        const r = parseInt(hex.slice(1, 3), 16)
-                        const g = parseInt(hex.slice(3, 5), 16)
-                        const b = parseInt(hex.slice(5, 7), 16)
-                        return `rgba(${r}, ${g}, ${b}, ${alpha})`
-                      }
-                      // Create gradient colors from chakra color (darker to lighter)
-                      const gradientColors: [string, string, string] = [
-                        hexToRgba(chakraColor, 0.7),
-                        hexToRgba(chakraColor, 0.5),
-                        hexToRgba(chakraColor, 0.6),
-                      ]
-
-                      return (
-                        <View
+                        <AppText
+                          font="cormorant-regular"
+                          size="xs"
+                          numberOfLines={1}
                           style={{
-                            position: "absolute",
-                            top: "50%",
-                            right: -20, // Adjusted for smaller size
-                            transform: [{ translateY: -4 }], // Center vertically (half of 8px height)
-                            zIndex: 10,
-                            alignItems: "center",
-                            justifyContent: "center",
+                            fontFamily: "CormorantGaramond",
+                            fontWeight: "600",
+                            color: "#ffffff",
+                            textShadowColor: "rgba(0, 0, 0, 0.8)",
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 4,
                           }}
                         >
-                          {/* Subtle halo glow - Half size, chakra-colored */}
-                          <View
-                            style={{
-                              position: "absolute",
-                              width: 12,
-                              height: 12,
-                              borderRadius: 6,
-                              backgroundColor: hexToRgba(chakraColor, 0.12),
-                              shadowColor: chakraColor,
-                              shadowOffset: { width: 0, height: 0 },
-                              shadowOpacity: 0.3,
-                              shadowRadius: 4,
-                            }}
-                          />
-                          {/* Chakra-colored gradient circle - Half size with depth */}
-                          <LinearGradient
-                            colors={[
-                              gradientColors[0],
-                              gradientColors[1],
-                              gradientColors[2],
-                            ]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: 4,
-                              justifyContent: "center",
-                              alignItems: "center",
-                              borderWidth: 0.5,
-                              borderColor: hexToRgba(chakraColor, 0.3),
-                              shadowColor: chakraColor,
-                              shadowOffset: { width: 0, height: 1 },
-                              shadowOpacity: 0.4,
-                              shadowRadius: 2,
-                              elevation: 2,
-                            }}
-                          >
-                            <Feather
-                              name="check"
-                              size={4}
-                              color="rgba(255, 255, 255, 0.95)"
-                              style={{ fontWeight: "bold" }}
-                            />
-                          </LinearGradient>
-                        </View>
-                      )
-                    })()}
+                          {dayName}
+                        </AppText>
+                        <AppText
+                          font="cormorant-regular"
+                          size="xs"
+                          numberOfLines={1}
+                          style={{
+                            fontFamily: "CormorantGaramond",
+                            color: "#ffffff",
+                            textShadowColor: "rgba(0, 0, 0, 0.8)",
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 4,
+                          }}
+                        >
+                          {" "}
+                          – {chakraName} Day
+                        </AppText>
+                      </View>
                     </View>
-                  </View>
-                ) : (
+                  )}
+
                   <View
                     style={{
                       alignItems: "center",
                       justifyContent: "center",
                       position: "relative",
-                      ...(isCurrentDay
+                      ...(!showAllChakrasForLifetimeHub && isCurrentDay
                         ? { transform: [{ scale: 1.15 }] }
                         : { transform: [{ scale: 1 }] }),
                       opacity: showAllChakrasForLifetimeHub
@@ -725,78 +598,83 @@ export const IntegratedProgressStack = ({
                         onPress(router)
                       }}
                     />
-                    {isCompleted &&
-                      !isMissedDay &&
-                      !isTeaserPosition &&
-                      (() => {
-                        const chakraColor = getChakraColor(chakraDay)
-                        const hexToRgba = (hex: string, alpha: number) => {
-                          const r = parseInt(hex.slice(1, 3), 16)
-                          const g = parseInt(hex.slice(3, 5), 16)
-                          const b = parseInt(hex.slice(5, 7), 16)
-                          return `rgba(${r}, ${g}, ${b}, ${alpha})`
-                        }
-                        const gradientColors: [string, string, string] = [
-                          hexToRgba(chakraColor, 0.7),
-                          hexToRgba(chakraColor, 0.5),
-                          hexToRgba(chakraColor, 0.6),
-                        ]
-                        return (
+                  {isCompleted &&
+                    !isMissedDay &&
+                    !isTeaserPosition &&
+                    (() => {
+                      const chakraColor = getChakraColor(chakraDay)
+                      const hexToRgba = (hex: string, alpha: number) => {
+                        const r = parseInt(hex.slice(1, 3), 16)
+                        const g = parseInt(hex.slice(3, 5), 16)
+                        const b = parseInt(hex.slice(5, 7), 16)
+                        return `rgba(${r}, ${g}, ${b}, ${alpha})`
+                      }
+                      const gradientColors: [string, string, string] = [
+                        hexToRgba(chakraColor, 0.7),
+                        hexToRgba(chakraColor, 0.5),
+                        hexToRgba(chakraColor, 0.6),
+                      ]
+                      const badgeRight = showAllChakrasForLifetimeHub ? -12 : -20
+                      return (
+                        <View
+                          style={{
+                            position: "absolute",
+                            top: "50%",
+                            right: badgeRight,
+                            transform: [{ translateY: -4 }],
+                            zIndex: 10,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
                           <View
                             style={{
                               position: "absolute",
-                              top: "50%",
-                              right: -20,
-                              transform: [{ translateY: -4 }],
-                              zIndex: 10,
-                              alignItems: "center",
+                              width: 12,
+                              height: 12,
+                              borderRadius: 6,
+                              backgroundColor: hexToRgba(chakraColor, 0.12),
+                              shadowColor: chakraColor,
+                              shadowOffset: { width: 0, height: 0 },
+                              shadowOpacity: 0.3,
+                              shadowRadius: 4,
+                            }}
+                          />
+                          <LinearGradient
+                            colors={[
+                              gradientColors[0],
+                              gradientColors[1],
+                              gradientColors[2],
+                            ]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 4,
                               justifyContent: "center",
+                              alignItems: "center",
+                              borderWidth: 0.5,
+                              borderColor: hexToRgba(chakraColor, 0.3),
+                              shadowColor: chakraColor,
+                              shadowOffset: { width: 0, height: 1 },
+                              shadowOpacity: 0.4,
+                              shadowRadius: 2,
+                              elevation: 2,
                             }}
                           >
-                            <View
-                              style={{
-                                position: "absolute",
-                                width: 12,
-                                height: 12,
-                                borderRadius: 6,
-                                backgroundColor: hexToRgba(chakraColor, 0.12),
-                                shadowColor: chakraColor,
-                                shadowOffset: { width: 0, height: 0 },
-                                shadowOpacity: 0.3,
-                                shadowRadius: 4,
-                              }}
+                            <Feather
+                              name="check"
+                              size={4}
+                              color="rgba(255, 255, 255, 0.95)"
+                              style={{ fontWeight: "bold" }}
                             />
-                            <LinearGradient
-                              colors={[gradientColors[0], gradientColors[1], gradientColors[2]]}
-                              start={{ x: 0, y: 0 }}
-                              end={{ x: 1, y: 1 }}
-                              style={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: 4,
-                                justifyContent: "center",
-                                alignItems: "center",
-                                borderWidth: 0.5,
-                                borderColor: hexToRgba(chakraColor, 0.3),
-                                shadowColor: chakraColor,
-                                shadowOffset: { width: 0, height: 1 },
-                                shadowOpacity: 0.4,
-                                shadowRadius: 2,
-                                elevation: 2,
-                              }}
-                            >
-                              <Feather
-                                name="check"
-                                size={4}
-                                color="rgba(255, 255, 255, 0.95)"
-                                style={{ fontWeight: "bold" }}
-                              />
-                            </LinearGradient>
-                          </View>
-                        )
-                      })()}
+                          </LinearGradient>
+                        </View>
+                      )
+                    })()}
                   </View>
-                )}
+                </View>
               </View>
             )
           })}

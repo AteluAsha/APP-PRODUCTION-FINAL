@@ -4,7 +4,11 @@
  * Central list of all app audio for head (first ~3 min) and full-file preload.
  * Waiting room: heads preload first (fast), then full files in background so
  * once past waiting room all course audio can be fully cached for bulletproof playback.
- * Must stay in sync with useCrystalBowlAudio, useTuningForkAudio, useEmbodimentAudio, useAncestralWisdomAudio.
+ *
+ * Crystal/tuning paths: single source of truth via getCrystalBowlFileName /
+ * getTuningForkFileName and FIREBASE_* folders (same as useCrystalBowlAudio,
+ * useTuningForkAudio). Embodiment uses FIREBASE_EMBODIMENT_FOLDER; filenames
+ * must match useEmbodimentAudio.
  */
 
 import { ref, getDownloadURL } from "firebase/storage"
@@ -17,34 +21,65 @@ import {
   downloadAndCacheAudioResumable,
 } from "./audioDownload"
 import { checkRateLimit, waitForRateLimit } from "./rateLimiter"
-import { FIREBASE_ANCESTRAL_WISDOM_FOLDER } from "@/constants/firebaseStoragePaths"
+import { retryWithBackoff } from "./audioRetry"
+import {
+  FIREBASE_ANCESTRAL_WISDOM_FOLDER,
+  FIREBASE_CRYSTAL_BOWL_FOLDER,
+  FIREBASE_EMBODIMENT_FOLDER,
+  FIREBASE_TUNING_FORK_FOLDER,
+} from "@/constants/firebaseStoragePaths"
+import { getCrystalBowlFileName } from "@/hooks/useCrystalBowlAudio"
+import { getTuningForkFileName } from "@/hooks/useTuningForkAudio"
 
-const CRYSTAL_BOWL_FOLDER = "crystal_Bowl_Meditation_Audio"
-// Must match CHAKRA_TO_CRYSTAL_BOWL_FILE in hooks/useCrystalBowlAudio.ts (only these 7 hero files).
-const CRYSTAL_BOWL_FILES: Record<Chakra, string> = {
-  [Chakra.ROOT]: "Day1_396hz_CrystalBowlSoundBath_Hero2.mov",
-  [Chakra.SACRAL]: "Day2_417hz_1Hour_CrystalBowl_SoundBath.aac",
-  [Chakra.SOLAR_PLEXUS]: "Day3_528hz_CrystalBowlMeditation_FrequencyHealing.aac",
-  [Chakra.HEART]: "Day4_639hz_CrystalBowl_Meditation_FrequencyHealing.aac",
-  [Chakra.THROAT]: "Day5_741Hz_CrystalBowlMeditation.aac",
-  [Chakra.THIRD_EYE]: "Day6_852hz_ChakraBowl_Medittion_Audio.aac",
-  [Chakra.CROWN]: "Day7_963_Hertz_CrystalBowlMeditation.aac",
+/** Match useCrystalBowlAudio getDownloadURL retry */
+const PRELOAD_RETRY = {
+  maxRetries: 3,
+  initialDelayMs: 1000,
+  maxDelayMs: 5000,
+} as const
+
+function logPreloadFailure(
+  phase: string,
+  audioId: string,
+  storagePath: string,
+  err: unknown,
+) {
+  const msg = err instanceof Error ? err.message : String(err)
+  console.warn(`[audioPreload] ${phase} failed`, {
+    audioId,
+    storagePath,
+    error: msg,
+  })
 }
 
-const TUNING_FORK_FOLDER = "TuningForkAudio"
-// Must match CHAKRA_TO_TUNING_FORK_FILE in hooks/useTuningForkAudio.ts to avoid drift.
-const TUNING_FORK_FILES: Record<Chakra, string> = {
-  [Chakra.ROOT]: "Day1_396hz_plus256_TuningFork.aac",
-  [Chakra.SACRAL]: "Day2_417hz_tuningfork.aac",
-  [Chakra.SOLAR_PLEXUS]: "Day3_528hz_tuningfork.aac",
-  [Chakra.HEART]: "Day4_639Hz_tuningfork.aac",
-  [Chakra.THROAT]: "Day5_741hz_tuningfork.aac",
-  [Chakra.THIRD_EYE]: "Day6_852hz_tuningFork.aac",
-  [Chakra.CROWN]: "Day7_963hz_tuningfork.aac",
+async function getDownloadUrlWithRetry(
+  storage: FirebaseStorage,
+  storagePath: string,
+): Promise<string> {
+  return retryWithBackoff(
+    () => getDownloadURL(ref(storage, storagePath)),
+    PRELOAD_RETRY,
+  )
 }
 
-const EMBODIMENT_FOLDER =
-  "Course Audio - MASTER EMBODIMENT - 7 Chakras in 7 Days"
+async function downloadAudioHeadWithRetry(
+  url: string,
+  audioId: string,
+): Promise<void> {
+  await retryWithBackoff(
+    () => downloadAudioHead(url, audioId),
+    PRELOAD_RETRY,
+  )
+}
+
+async function downloadFullWithRetry(url: string, audioId: string): Promise<void> {
+  await retryWithBackoff(
+    () => downloadAndCacheAudioResumable(url, audioId),
+    PRELOAD_RETRY,
+  )
+}
+
+// Filenames must match hooks/useEmbodimentAudio CHAKRA_TO_AUDIO_FILE
 const EMBODIMENT_FILES: Record<Chakra, string | string[]> = {
   [Chakra.ROOT]: "Day1_ROOT_DAY_MASTER_EMBODIMENT_SoulSchool_MotherJJ.aac",
   [Chakra.SACRAL]: "Day2_SacralChakraEmbodiment_SoulSchool.aac",
@@ -84,13 +119,15 @@ function buildManifest(): AudioHeadEntry[] {
 
   const chakras = Object.values(Chakra) as Chakra[]
   for (const chakra of chakras) {
+    const crystalFile = getCrystalBowlFileName(chakra)
     entries.push({
-      audioId: `crystal_bowl_${chakra}_${CRYSTAL_BOWL_FILES[chakra]}`,
-      storagePath: `${CRYSTAL_BOWL_FOLDER}/${CRYSTAL_BOWL_FILES[chakra]}`,
+      audioId: `crystal_bowl_${chakra}_${crystalFile}`,
+      storagePath: `${FIREBASE_CRYSTAL_BOWL_FOLDER}/${crystalFile}`,
     })
+    const tuningFile = getTuningForkFileName(chakra)
     entries.push({
-      audioId: `tuning_fork_${chakra}_${TUNING_FORK_FILES[chakra]}`,
-      storagePath: `${TUNING_FORK_FOLDER}/${TUNING_FORK_FILES[chakra]}`,
+      audioId: `tuning_fork_${chakra}_${tuningFile}`,
+      storagePath: `${FIREBASE_TUNING_FORK_FOLDER}/${tuningFile}`,
     })
   }
 
@@ -100,17 +137,17 @@ function buildManifest(): AudioHeadEntry[] {
       entries.push(
         {
           audioId: `embodiment_${chakra}_part1`,
-          storagePath: `${EMBODIMENT_FOLDER}/${file[0]}`,
+          storagePath: `${FIREBASE_EMBODIMENT_FOLDER}/${file[0]}`,
         },
         {
           audioId: `embodiment_${chakra}_part2`,
-          storagePath: `${EMBODIMENT_FOLDER}/${file[1]}`,
+          storagePath: `${FIREBASE_EMBODIMENT_FOLDER}/${file[1]}`,
         },
       )
     } else {
       entries.push({
         audioId: `embodiment_${chakra}`,
-        storagePath: `${EMBODIMENT_FOLDER}/${file}`,
+        storagePath: `${FIREBASE_EMBODIMENT_FOLDER}/${file}`,
       })
     }
   }
@@ -170,13 +207,11 @@ export async function preloadFullFilesForChakra(
       if (!checkRateLimit("firebase")) {
         await waitForRateLimit("firebase")
       }
-      const url = await getDownloadURL(ref(storage, storagePath))
-      await downloadAndCacheAudioResumable(url, audioId)
+      const url = await getDownloadUrlWithRetry(storage, storagePath)
+      await downloadFullWithRetry(url, audioId)
       done += 1
     } catch (err) {
-      if (__DEV__) {
-        console.warn(`[audioPreload] Chakra ${chakra} full failed for ${audioId}:`, err)
-      }
+      logPreloadFailure(`Chakra ${chakra} full`, audioId, storagePath, err)
       failed += 1
     }
   }
@@ -214,13 +249,11 @@ export async function preloadAllAudioHeads(
         await waitForRateLimit("firebase")
       }
 
-      const url = await getDownloadURL(ref(storage, storagePath))
-      await downloadAudioHead(url, audioId)
+      const url = await getDownloadUrlWithRetry(storage, storagePath)
+      await downloadAudioHeadWithRetry(url, audioId)
       done += 1
     } catch (err) {
-      if (__DEV__) {
-        console.warn(`[audioPreload] Head failed for ${audioId}:`, err)
-      }
+      logPreloadFailure("Head", audioId, storagePath, err)
       failed += 1
     }
   }
@@ -265,13 +298,11 @@ export async function preloadAllAudioFullFiles(
         await waitForRateLimit("firebase")
       }
 
-      const url = await getDownloadURL(ref(storage, storagePath))
-      await downloadAndCacheAudioResumable(url, audioId)
+      const url = await getDownloadUrlWithRetry(storage, storagePath)
+      await downloadFullWithRetry(url, audioId)
       done += 1
     } catch (err) {
-      if (__DEV__) {
-        console.warn(`[audioPreload] Full failed for ${audioId}:`, err)
-      }
+      logPreloadFailure("Full", audioId, storagePath, err)
       failed += 1
     }
   }

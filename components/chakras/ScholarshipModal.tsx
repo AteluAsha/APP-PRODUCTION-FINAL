@@ -2,7 +2,7 @@
  * Scholarship Modal
  *
  * A healing, heart-minded space for users to request free access.
- * Soul School is operated by Project Starseed (501(c)(3)); scholarships are
+ * SOUL SCHOOL is operated by Project Starseed (501(c)(3)); scholarships are
  * gifts, not barter. Honest, transparent, inviting.
  *
  * Uses StyleSheet (not NativeWind) for reliable rendering in Modal context.
@@ -235,7 +235,7 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
                     size="xs"
                     style={styles.disclaimer}
                   >
-                    Soul School is offered by Project Starseed, an
+                    SOUL SCHOOL is offered by Project Starseed, an
                     IRS-recognized 501(c)(3) nonprofit. We believe healing
                     belongs to everyone—and that means access without barriers.
                   </AppText>

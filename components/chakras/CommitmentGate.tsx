@@ -668,7 +668,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
               size="xs"
               style={[styles.footerText, { marginTop: 8, opacity: 0.5 }]}
             >
-              Soul School is operated by Project Starseed, an IRS-recognized
+              SOUL SCHOOL is operated by Project Starseed, an IRS-recognized
               501(c)(3) tax-exempt organization. All donations are
               tax-deductible.
             </AppText>

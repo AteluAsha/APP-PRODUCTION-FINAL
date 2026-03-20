@@ -1,10 +1,10 @@
 /**
  * Scroll Date Picker
  *
- * Simple date picker for selecting Mondays
+ * Monday start dates only. Options are never strictly before "today" in local time (YYYY-MM-DD).
  */
 
-import React, { useState } from "react"
+import React from "react"
 import { View, ScrollView, Pressable } from "react-native"
 import { AppText } from "@/components/AppText"
 import { getLocalDateISO, getStartOfWeek } from "@/utils/date"
@@ -18,17 +18,19 @@ export const ScrollDatePicker: React.FC<ScrollDatePickerProps> = ({
   onDateSelect,
   selectedDateISO,
 }) => {
-  // First option is this week's Monday (so when today is Monday, user can select today and app opens). Then next 5 Mondays.
+  /** Upcoming Mondays only (today’s Monday is included). Past Mondays in the same calendar week are skipped. */
   const generateMondays = () => {
     const mondays: string[] = []
-    const thisWeekMonday = getStartOfWeek(new Date())
-
+    const todayISO = getLocalDateISO()
+    let monday = getStartOfWeek(new Date())
+    while (getLocalDateISO(monday) < todayISO) {
+      monday.setDate(monday.getDate() + 7)
+    }
     for (let i = 0; i < 6; i++) {
-      const date = new Date(thisWeekMonday)
-      date.setDate(date.getDate() + i * 7)
+      const date = new Date(monday)
+      date.setDate(monday.getDate() + i * 7)
       mondays.push(getLocalDateISO(date))
     }
-
     return mondays
   }
 

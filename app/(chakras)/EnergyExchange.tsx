@@ -258,7 +258,7 @@ export default function EnergyExchange() {
                   size="xs"
                   style={styles.disclosureText}
                 >
-                  Soul School is operated by Project Starseed, an IRS-recognized
+                  SOUL SCHOOL is operated by Project Starseed, an IRS-recognized
                   501(c)(3) tax-exempt organization committed to making
                   spiritual growth accessible to all.
                 </AppText>

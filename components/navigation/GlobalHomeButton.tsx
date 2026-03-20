@@ -4,8 +4,8 @@
  * Provides a backup home button on all screens (except Chakras101) to ensure users
  * can always return to their home screen even if there are navigation glitches.
  *
- * For trial users: navigates to ChakraHome
- * For lifetime users: navigates to ChakraHub
+ * For trial users: navigates to ChakraHome (or Chakras101 when already on home).
+ * For lifetime users: ChakraHub, or ChakraHome when in somatic/journey mode; hidden on ChakraHub (header has menu/profile).
  */
 
 import React from "react"
@@ -25,10 +25,22 @@ export const GlobalHomeButton: React.FC = () => {
   const segments = useSegments()
   const insets = useSafeAreaInsets()
 
-  // Get lifetime access to determine which home screen to navigate to
-  const hasLifetimeAccess = useChakraJourneyStore(
-    useShallow((state) => state.hasLifetimeAccess),
-  )
+  // Lifetime: target ChakraHub by default; somatic journey → ChakraHome (week course hub).
+  const { hasLifetimeAccess, lifetimeChosenTimegateJourney } =
+    useChakraJourneyStore(
+      useShallow((state) => ({
+        hasLifetimeAccess: state.hasLifetimeAccess,
+        lifetimeChosenTimegateJourney: state.lifetimeChosenTimegateJourney,
+      })),
+    )
+
+  const replaceLifetimePrimaryHome = () => {
+    if (lifetimeChosenTimegateJourney) {
+      router.replace("/(chakras)/ChakraHome")
+    } else {
+      router.replace("/(chakras)/ChakraHub")
+    }
+  }
   const { completedChakra, clearCompletedChakra } = useCompletedChakraStore(
     useShallow((state) => ({
       completedChakra: state.completedChakra,
@@ -36,9 +48,6 @@ export const GlobalHomeButton: React.FC = () => {
     })),
   )
   const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
-
-  // Lifetime: no floating chakra icon; navigation is via PermanentMenuBar only.
-  if (hasLifetimeAccess) return null
 
   // Hide on Chakras101, CommitmentGate, EnergyExchange, WelcomeScreen, DateSelection, and WaitingScreen
   // Use both pathname and segments for reliable detection
@@ -151,7 +160,7 @@ export const GlobalHomeButton: React.FC = () => {
     if (completedChakra) {
       clearCompletedChakra()
       if (hasLifetimeAccess) {
-        router.replace("/(chakras)/ChakraHub")
+        replaceLifetimePrimaryHome()
       } else {
         router.replace("/(chakras)/ChakraHome")
       }
@@ -170,7 +179,7 @@ export const GlobalHomeButton: React.FC = () => {
       // Trial screens → trial homepage (ChakraHome with progressive reveal)
       // Post-paywall screens → ChakraHub
       if (hasLifetimeAccess) {
-        router.replace("/(chakras)/ChakraHub")
+        replaceLifetimePrimaryHome()
       } else {
         // Trial users: Navigate to ChakraHome (trial landing page with progressive chakra reveal)
         router.replace("/(chakras)/ChakraHome")
@@ -208,7 +217,8 @@ export const GlobalHomeButton: React.FC = () => {
 const styles = StyleSheet.create({
   homeButtonWrap: {
     position: "absolute",
-    zIndex: 100,
+    // Above scroll/parallax content and aligned with ActionBar (1000); below ChakraHubHeader (9999).
+    zIndex: 1002,
     ...(Platform.OS === "android" && { elevation: 999 }),
   },
   homeButton: {
@@ -220,7 +230,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(135, 174, 115, 0.4)",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 100,
+    zIndex: 1002,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,

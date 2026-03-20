@@ -5,32 +5,10 @@ import { Chakra } from "@/types/chakras/Chakra"
 import { checkRateLimit, waitForRateLimit } from "@/src/utils/rateLimiter"
 import { getLocalAudioUri } from "@/src/utils/audioDownload"
 import { FIREBASE_EMBODIMENT_FOLDER } from "@/constants/firebaseStoragePaths"
+import { SANCTUARY_EMBODIMENT_FILES } from "@/constants/sanctuaryAudioManifest"
 
-/**
- * Map chakras to their embodiment audio filenames
- * CRITICAL: These must match exactly with Firebase Storage file names
- *
- * Day Mapping (EXACT file names from Firebase Storage):
- * - Monday (Day 0) - ROOT: Day1_ROOT_DAY_MASTER_EMBODIMENT_SoulSchool_MotherJJ.aac (44:44, Mother JJ)
- * - Tuesday (Day 1) - SACRAL: Day2_SacralChakraEmbodiment_SoulSchool.aac
- * - Wednesday (Day 2) - SOLAR_PLEXUS: Day3_SolarChakraEmbodiment_SoulSchool.aac
- * - Thursday (Day 3) - HEART: Day4_HeartChakraEmbodiment_SoulSchool.aac
- * - Friday (Day 4) - THROAT: Day5_ThroatChakraEmbodiment_SoulSchool.aac
- * - Saturday (Day 5) - THIRD_EYE: Day6_PARTONE_AjnaEmbodiment_SoulSchool.aac + Day6_PARTTWO_AjnaEmbodiment_SoulSchool.aac
- * - Sunday (Day 6) - CROWN: Day7_CrownChakra_MasterEmbodiment_Meditation_SoulSchool.aac
- */
-const CHAKRA_TO_AUDIO_FILE: Record<Chakra, string | string[]> = {
-  [Chakra.ROOT]: "Day1_ROOT_DAY_MASTER_EMBODIMENT_SoulSchool_MotherJJ.aac", // Monday - Day 0 (44:44, Mother JJ)
-  [Chakra.SACRAL]: "Day2_SacralChakraEmbodiment_SoulSchool.aac", // Tuesday - Day 1
-  [Chakra.SOLAR_PLEXUS]: "Day3_SolarChakraEmbodiment_SoulSchool.aac", // Wednesday - Day 2
-  [Chakra.HEART]: "Day4_HeartChakraEmbodiment_SoulSchool.aac", // Thursday - Day 3
-  [Chakra.THROAT]: "Day5_ThroatChakraEmbodiment_SoulSchool.aac", // Friday - Day 4
-  [Chakra.THIRD_EYE]: [
-    "Day6_PARTONE_AjnaEmbodiment_SoulSchool.aac",
-    "Day6_PARTTWO_AjnaEmbodiment_SoulSchool.aac",
-  ], // Saturday - Day 5
-  [Chakra.CROWN]: "Day7_CrownChakra_MasterEmbodiment_Meditation_SoulSchool.aac", // Sunday - Day 6
-}
+/** Filenames: SANCTUARY_EMBODIMENT_FILES (sanctuaryAudioManifest) */
+const CHAKRA_TO_AUDIO_FILE = SANCTUARY_EMBODIMENT_FILES
 
 const STORAGE_FOLDER = FIREBASE_EMBODIMENT_FOLDER
 
@@ -73,7 +51,6 @@ export const useEmbodimentAudio = (chakra: Chakra) => {
     let isMounted = true
     const fetchAudioUrls = async () => {
       const audioFile = CHAKRA_TO_AUDIO_FILE[chakra]
-      const audioId = getEmbodimentAudioId(chakra)
 
       if (__DEV__) {
         console.log(`[useEmbodimentAudio] Fetching audio for chakra: ${chakra}`)
@@ -83,28 +60,6 @@ export const useEmbodimentAudio = (chakra: Chakra) => {
       try {
         if (!isMounted) return
         setUrls((prev) => ({ ...prev, isLoading: true, error: null }))
-
-        // Check for downloaded local file first (skip for Third Eye – we need both parts)
-        if (chakra !== Chakra.THIRD_EYE) {
-          try {
-            const localUri = await getLocalAudioUri(audioId)
-            if (localUri && isMounted) {
-              if (__DEV__)
-                console.log(
-                  `[useEmbodimentAudio] Using local file for ${chakra}`,
-                )
-              setUrls({
-                localUri,
-                isLoading: false,
-                error: null,
-              })
-              return
-            }
-          } catch (localErr) {
-            if (__DEV__)
-              console.warn("[useEmbodimentAudio] Local check failed:", localErr)
-          }
-        }
 
         if (!isMounted) return
 
@@ -172,16 +127,7 @@ export const useEmbodimentAudio = (chakra: Chakra) => {
             }
             throw fetchError
           }
-        }
-        // Handle Crown (Day 7) - awaiting final export
-        else if (!audioFile || audioFile === "") {
-          setUrls({
-            isLoading: false,
-            error: new Error("Audio file not yet available for Crown chakra"),
-          })
-        }
-        // Handle single audio file (Days 1-5)
-        else {
+        } else {
           // Rate limit already checked above for Day 6, but check again for single files
           if (!checkRateLimit("firebase")) {
             await waitForRateLimit("firebase")

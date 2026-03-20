@@ -3,7 +3,7 @@
  *
  * For those who chose the Path of the Sovereign. A gentle resting place with
  * a summary of their 7-day journey. They can view their chakra cards, return
- * to Soul School, or choose to anchor deeper (paywall).
+ * to SOUL SCHOOL, or choose to anchor deeper (paywall).
  *
  * Aesthetic: Stillness background, Cormorant Garamond.
  */
@@ -195,7 +195,7 @@ export function JourneySummaryGift({
                   size="sm"
                   style={{ color: "rgba(255,255,255,0.98)" }}
                 >
-                  I'm ready to anchor deeper into the Soul School
+                  I'm ready to anchor deeper into SOUL SCHOOL
                 </AppText>
               </LinearGradient>
             </Pressable>
@@ -216,7 +216,7 @@ export function JourneySummaryGift({
                   textDecorationLine: "underline",
                 }}
               >
-                Return to Soul School
+                Return to SOUL SCHOOL
               </AppText>
             </Pressable>
           </View>

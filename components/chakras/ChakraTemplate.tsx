@@ -80,13 +80,13 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
     markChakraCompleted,
     hasLifetimeAccess,
     lifetimeChosenTimegateJourney,
-    hasCompletedChakra,
+    completedChakras,
   } = useChakraJourneyStore(
     useShallow((state) => ({
       markChakraCompleted: state.markChakraCompleted,
       hasLifetimeAccess: state.hasLifetimeAccess,
       lifetimeChosenTimegateJourney: state.lifetimeChosenTimegateJourney,
-      hasCompletedChakra: state.hasCompletedChakra,
+      completedChakras: state.completedChakras,
     })),
   )
 
@@ -678,7 +678,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               <Image
                 source={content.goodbye.chakraImage}
                 resizeMode="contain"
-                style={{ width: 128, height: 128 }}
+                style={{ width: 102, height: 102 }}
               />
               <View
                 style={{
@@ -697,7 +697,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                     borderRadius: 3,
                     borderWidth: 1.5,
                     borderColor: "rgba(255,255,255,0.75)",
-                    backgroundColor: hasCompletedChakra(chakraDay)
+                    backgroundColor: completedChakras.includes(chakraDay)
                       ? "#ffffff"
                       : "transparent",
                   }}

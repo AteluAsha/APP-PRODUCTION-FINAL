@@ -9,7 +9,19 @@ import { Audio } from "expo-av"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { View, ScrollView, ImageBackground, Platform, Dimensions } from "react-native"
+import {
+  View,
+  ScrollView,
+  ImageBackground,
+  Platform,
+  Dimensions,
+  StyleSheet,
+} from "react-native"
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
@@ -42,6 +54,20 @@ const SoundBath = () => {
   }, [chakraParam, router, hasLifetimeAccess])
 
   const soundBathContent = chakraContent[chakra].soundBath
+  const [soundBathBgLoaded, setSoundBathBgLoaded] = useState(false)
+  const soundBathBgOpacity = useSharedValue(0)
+  const soundBathBgFadeStyle = useAnimatedStyle(() => ({
+    opacity: soundBathBgOpacity.value,
+  }))
+
+  useEffect(() => {
+    if (soundBathBgLoaded) {
+      soundBathBgOpacity.value = withTiming(1, {
+        duration: SOMATIC_HERO_IMAGE_FADE_MS,
+      })
+    }
+  }, [soundBathBgLoaded, soundBathBgOpacity])
+
   const [crystalBowlPreparing, setCrystalBowlPreparing] = useState(false)
   const [tuningForkPreparing, setTuningForkPreparing] = useState(false)
 
@@ -241,11 +267,17 @@ const SoundBath = () => {
 
   return (
     <View style={{ flex: 1, minHeight: Platform.OS === "android" ? screenHeight : undefined }}>
-      <ImageBackground
-        source={require("@/assets/images/soundhealingbg.png")}
-        style={[{ flex: 1 }, backgroundLayerStyle]}
-        resizeMode="cover"
-      />
+      <Animated.View
+        style={[backgroundLayerStyle, soundBathBgFadeStyle]}
+        pointerEvents="none"
+      >
+        <ImageBackground
+          source={require("@/assets/images/soundhealingbg.png")}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          onLoadEnd={() => setSoundBathBgLoaded(true)}
+        />
+      </Animated.View>
       <SafeAreaView style={contentLayerStyle} edges={["top"]} pointerEvents="box-none">
         <View
           pointerEvents="none"

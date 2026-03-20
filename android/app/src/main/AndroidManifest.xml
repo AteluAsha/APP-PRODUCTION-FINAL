@@ -34,7 +34,6 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="soul-school"/>
-        <data android:scheme="com.sevenchakras.SevenChakras"/>
         <data android:scheme="exp+soul-school"/>
       </intent-filter>
     </activity>

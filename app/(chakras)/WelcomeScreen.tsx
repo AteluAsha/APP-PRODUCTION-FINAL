@@ -5,22 +5,20 @@
  * This screen layout and design are finalized. Do not change layout, overlay positions,
  * typography, or content unless specifically requested by product or when fixing bugs.
  *
- * OPENING SEQUENCE: Splash → Path Selection (this screen) → 7 Chakras in 7 Days course.
+ * OPENING SEQUENCE: Splash → Path Selection (this screen) → 7 Chakras: The Map from Self to Soul course.
  *
  * Flow after Enter Path:
  * - Trial: DateSelection → Waiting Room → Trial Home (or CommitmentGate if post-trial 2)
  * - Lifetime: ChakraHub (full access)
  *
- * ASSETS: Welcomeheader.png (778×456), WelcomeMain.png (750×1000).
+ * ASSETS: Welcomeheader.png (778×456); course title strip is SoulSchool_welcomeTitleLogo_7CHAKRAS_THE_MAP_FROM_SELF_TO_SOUL_v2.png (not baked into WelcomeMain).
  *
- * LAYERS (hard-baked over background; render synchronously so underlying image text never shows):
- * 1. Background: Welcomeheader + WelcomeMain.png (card with baked-in "SEVEN CHAKRAS" strip).
- * 2. Black overlay (section box): absolute box (left 5%, right 5%, top 35%, bottom 10%). No logo; Enter Path words only at bottom of overlay.
- * 3. Content: Master body copy (four short paragraphs, Instrument Sans 13px, lineHeight 17); bold: Monday, Sunday, map to your soul, Head to Heart. Enter Path label at bottom of overlay.
- * 4. Enter Path: Pressable with "Enter Path" text only; tap to DateSelection (trial) or ChakraHub (lifetime).
+ * LAYERS:
+ * 1. Top: Welcomeheader (hero intro strip).
+ * 2. "OPEN PATHWAYS" section title (aligned with card inset).
+ * 3. Bordered card: banner image flush to inner top/sides (parent clips corners); padded text + Enter Path below.
  *
- * Do not defer or conditionally render the overlay—it must be in the same frame as the Image
- * so the text behind it never flashes.
+ * Course copy and banner render in the same frame so nothing flashes before load (opacity gate on both images).
  */
 
 import React, { useMemo, useState, useEffect } from "react"
@@ -28,6 +26,7 @@ import {
   View,
   Text,
   Image,
+  ImageBackground,
   ScrollView,
   Pressable,
   useWindowDimensions,
@@ -41,8 +40,7 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated"
-import { SafeAreaView } from "react-native-safe-area-context"
-import { LinearGradient } from "expo-linear-gradient"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import {
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
@@ -60,11 +58,29 @@ const PINCH_MAX_SCALE = 3
 
 const HEADER_WIDTH = 778
 const HEADER_HEIGHT = 456
-const MAIN_WIDTH = 750
-const MAIN_HEIGHT = 1000
+
+/** Landscape course banner (~2.5:1); height derived from width. */
+const WELCOME_TITLE_BANNER_ASPECT = 2.5
+
+/** Lower block (OPEN PATHWAYS + white card) width vs (screenWidth - side gutters). */
+const WELCOME_LOWER_SECTION_WIDTH_RATIO = 0.95
+
+const WELCOME_CARD_BASE_RADIUS = 28
+
+/** Inset for body copy + button only (not the banner). */
+const WELCOME_CARD_BODY_PADDING = 20
+
+/** Nudge hero upward slightly for less dead space under status bar (px; stays below notch on most devices). */
+const WELCOME_HERO_TOP_NUDGE = 10
+
+/** Space between hero strip and OPEN PATHWAYS row */
+const WELCOME_AFTER_HERO_SPACING = 36
+/** Space between OPEN PATHWAYS title and white course card */
+const WELCOME_OPEN_PATHWAYS_TO_CARD = 14
 
 export default function WelcomeScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { width: screenWidth } = useWindowDimensions()
   const { hasLifetimeAccess, completedTrialCourses = 0 } = useChakraJourneyStore(
     useShallow((state) => ({
@@ -94,7 +110,17 @@ export default function WelcomeScreen() {
   }
 
   const headerAspectRatio = HEADER_HEIGHT / HEADER_WIDTH
-  const mainAspectRatio = MAIN_HEIGHT / MAIN_WIDTH
+
+  const lowerSectionWidth = useMemo(
+    () =>
+      Math.max(
+        260,
+        Math.round((screenWidth - 32) * WELCOME_LOWER_SECTION_WIDTH_RATIO),
+      ),
+    [screenWidth],
+  )
+  const scaledCardRadius = Math.round(WELCOME_CARD_BASE_RADIUS * WELCOME_LOWER_SECTION_WIDTH_RATIO)
+  const scaledEnterMinOuter = Math.round(160 * WELCOME_LOWER_SECTION_WIDTH_RATIO)
 
   const scale = useSharedValue(1)
   const savedScale = useSharedValue(1)
@@ -120,9 +146,9 @@ export default function WelcomeScreen() {
 
   // Somatic flow: wait for both images to load, then fade in the whole screen as one (fixes Android staggered load)
   const [headerLoaded, setHeaderLoaded] = useState(false)
-  const [mainLoaded, setMainLoaded] = useState(false)
+  const [bannerLoaded, setBannerLoaded] = useState(false)
   const contentOpacity = useSharedValue(0)
-  const bothLoaded = headerLoaded && mainLoaded
+  const bothLoaded = headerLoaded && bannerLoaded
 
   useEffect(() => {
     if (!bothLoaded) return
@@ -141,26 +167,38 @@ export default function WelcomeScreen() {
       style={{ flex: 1, backgroundColor: "#000" }}
       edges={["top", "bottom"]}
     >
-      <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
+      <Animated.View
+        style={[{ flex: 1, overflow: "visible" as const }, animatedContentStyle]}
+      >
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, overflow: "visible" }}
         showsVerticalScrollIndicator={false}
         {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
         contentContainerStyle={{
-          paddingBottom: 40 + SCROLL_BREATHING_BOTTOM_PADDING,
           alignItems: "center",
+          paddingTop: 0,
+          paddingBottom:
+            40 +
+            SCROLL_BREATHING_BOTTOM_PADDING +
+            insets.bottom +
+            32,
         }}
       >
         <GestureDetector gesture={pinchGesture}>
           <Animated.View
             style={[
               animatedZoomStyle,
-              { alignItems: "center", width: screenWidth },
+              {
+                alignItems: "center",
+                width: screenWidth,
+                overflow: "visible" as const,
+              },
             ]}
           >
             <View
               style={{
                 width: screenWidth,
+                marginTop: -WELCOME_HERO_TOP_NUDGE,
                 aspectRatio: 1 / headerAspectRatio,
                 borderTopLeftRadius: 24,
                 borderTopRightRadius: 24,
@@ -177,127 +215,156 @@ export default function WelcomeScreen() {
 
             <View
               style={{
-                width: screenWidth,
-                aspectRatio: 1 / mainAspectRatio,
-                marginTop: 0,
-                position: "relative",
+                width: lowerSectionWidth,
+                alignSelf: "center",
+                marginTop: WELCOME_AFTER_HERO_SPACING,
+                marginBottom: WELCOME_OPEN_PATHWAYS_TO_CARD,
               }}
             >
-              <Image
-                source={require("@/assets/images/WelcomeMain.png")}
-                resizeMode="contain"
-                style={{ width: "100%", height: "100%" }}
-                onLoad={() => setMainLoaded(true)}
-              />
-              {/* LOCKED: Overlay must render with Image (no conditional/delay) so text behind never shows */}
-              <View
+              <AppText
+                font="instrument-semibold"
+                size="xs"
+                accessibilityRole="header"
+                accessibilityLabel="Open pathways"
                 style={{
-                  position: "absolute",
-                  left: "5%",
-                  right: "5%",
-                  top: "35%",
-                  bottom: "10%",
-                  backgroundColor: "#000",
-                  borderRadius: 12,
+                  color: "rgba(255, 255, 255, 0.88)",
+                  textAlign: "center",
+                  letterSpacing: 5.5,
+                  textTransform: "uppercase",
                 }}
               >
-                <View style={{ flex: 1, paddingHorizontal: 18 }}>
-                  <View style={{ flex: 1, justifyContent: "center", marginTop: 16 }}>
-                    <Text
-                      style={{
-                        fontFamily: "InstrumentSansRegular",
-                        fontSize: 13,
-                        color: "#fff",
-                        textAlign: "center",
-                        lineHeight: 21,
-                        marginBottom: 20,
-                      }}
-                    >
-                      This journey begins on{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>Monday</Text>
-                      {" "}at your root and ends on{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>Sunday</Text>
-                      {" "}in pure bliss.
-                    </Text>
-                    <Text
-                      style={{
-                        fontFamily: "InstrumentSansRegular",
-                        fontSize: 13,
-                        color: "#fff",
-                        textAlign: "center",
-                        lineHeight: 21,
-                        marginBottom: 20,
-                      }}
-                    >
-                      The chakras are the supercomputers of your soul, translating
-                      ancestral wisdom into how you feel, act, and co-create your
-                      life.
-                    </Text>
-                    <Text
-                      style={{
-                        fontFamily: "InstrumentSansRegular",
-                        fontSize: 13,
-                        color: "#fff",
-                        textAlign: "center",
-                        lineHeight: 21,
-                        marginBottom: 20,
-                      }}
-                    >
-                      This is not just about the chakras, this is about how your
-                      chakras reveal the{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>map to your soul</Text>
-                      .
-                    </Text>
-                    <Text
-                      style={{
-                        fontFamily: "InstrumentSansRegular",
-                        fontSize: 13,
-                        color: "#fff",
-                        textAlign: "center",
-                        lineHeight: 21,
-                      }}
-                    >
-                      The Path from{" "}
-                      <Text style={{ fontFamily: "InstrumentSansBold" }}>Head to Heart</Text>
-                      {" "}begins...
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={handleEnterPath}
-                    style={{ alignItems: "center", marginTop: 16 }}
-                    accessibilityLabel="Enter Path"
-                    accessibilityRole="button"
-                    accessibilityHint="Opens the 7 Chakras in 7 Days course"
+                Open pathways
+              </AppText>
+            </View>
+
+            <View
+              style={{
+                width: lowerSectionWidth,
+                alignSelf: "center",
+                marginBottom: 8,
+                backgroundColor: "#000",
+                borderWidth: 1,
+                borderColor: "#FFFFFF",
+                borderRadius: scaledCardRadius,
+                overflow: "hidden",
+              }}
+            >
+              <View
+                style={{
+                  width: "100%",
+                  aspectRatio: WELCOME_TITLE_BANNER_ASPECT,
+                  backgroundColor: "#000",
+                }}
+              >
+                <Image
+                  source={require("@/assets/images/SoulSchool_welcomeTitleLogo_7CHAKRAS_THE_MAP_FROM_SELF_TO_SOUL_v2.png")}
+                  resizeMode="cover"
+                  style={{ width: "100%", height: "100%" }}
+                  onLoad={() => setBannerLoaded(true)}
+                />
+              </View>
+
+              <View
+                style={{
+                  padding: WELCOME_CARD_BODY_PADDING,
+                  backgroundColor: "#000",
+                }}
+              >
+                <View style={{ justifyContent: "center" }}>
+                  <Text
+                    style={{
+                      fontFamily: "InstrumentSansRegular",
+                      fontSize: 13,
+                      color: "#fff",
+                      textAlign: "center",
+                      lineHeight: 21,
+                      marginBottom: 20,
+                    }}
                   >
-                    <LinearGradient
-                      colors={[
-                        "rgba(30,30,30,0.95)",
-                        "rgba(18,18,18,0.98)",
-                        "rgba(8,8,8,0.95)",
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
+                    This journey begins on{" "}
+                    <Text style={{ fontFamily: "InstrumentSansBold" }}>Monday</Text>
+                    {" "}at your root and ends on{" "}
+                    <Text style={{ fontFamily: "InstrumentSansBold" }}>Sunday</Text>
+                    {" "}in pure bliss.
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: "InstrumentSansRegular",
+                      fontSize: 13,
+                      color: "#fff",
+                      textAlign: "center",
+                      lineHeight: 21,
+                      marginBottom: 20,
+                    }}
+                  >
+                    The chakras are the supercomputers of your soul, translating
+                    ancestral wisdom into how you feel, act, and co-create your
+                    life.
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: "InstrumentSansRegular",
+                      fontSize: 13,
+                      color: "#fff",
+                      textAlign: "center",
+                      lineHeight: 21,
+                      marginBottom: 20,
+                    }}
+                  >
+                    This is not just about the chakras, this is about how your
+                    chakras reveal the{" "}
+                    <Text style={{ fontFamily: "InstrumentSansBold" }}>map to your soul</Text>
+                    .
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: "InstrumentSansRegular",
+                      fontSize: 13,
+                      color: "#fff",
+                      textAlign: "center",
+                      lineHeight: 21,
+                    }}
+                  >
+                    The Path from{" "}
+                    <Text style={{ fontFamily: "InstrumentSansBold" }}>Head to Heart</Text>
+                    {" "}begins...
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={handleEnterPath}
+                  style={{ alignItems: "center", marginTop: 16 }}
+                  accessibilityLabel="Enter Path"
+                  accessibilityRole="button"
+                  accessibilityHint="Opens 7 Chakras: The Map from Self to Soul"
+                >
+                  <ImageBackground
+                    source={require("@/assets/images/EnterPath_BgButtonImage.png")}
+                    resizeMode="cover"
+                    imageStyle={{ borderRadius: 14 }}
+                    style={{
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      paddingVertical: 14,
+                      paddingHorizontal: 32,
+                      minWidth: scaledEnterMinOuter,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <AppText
+                      font="instrument-semibold"
+                      size="sm"
                       style={{
-                        paddingVertical: 14,
-                        paddingHorizontal: 32,
-                        borderRadius: 14,
-                        borderWidth: 1,
-                        borderColor: "rgba(255,255,255,0.12)",
-                        minWidth: 160,
-                        alignItems: "center",
-                        justifyContent: "center",
+                        color: "#ffffff",
+                        textShadowColor: "rgba(0, 0, 0, 0.92)",
+                        textShadowOffset: { width: 0, height: 2 },
+                        textShadowRadius: 8,
                       }}
                     >
-                      <AppText
-                        font="instrument-regular"
-                        size="sm"
-                        style={{ color: "#fff" }}
-                      >
-                        Enter Path
-                      </AppText>
-                    </LinearGradient>
-                  </Pressable>
-                </View>
+                      Enter Path
+                    </AppText>
+                  </ImageBackground>
+                </Pressable>
               </View>
             </View>
           </Animated.View>

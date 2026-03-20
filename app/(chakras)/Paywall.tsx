@@ -2,7 +2,7 @@
  * Paywall Screen (Upgrade to Lifetime)
  *
  * Standalone route so trial users (APP1) can open the paywall from the hamburger
- * (Soul School → Upgrade to Lifetime). They can pay and go to ChakraHub or revert with back.
+ * (SOUL SCHOOL → Upgrade to Lifetime). They can pay and go to ChakraHub or revert with back.
  * Only linked from trial mode; not shown in lifetime hamburger.
  */
 

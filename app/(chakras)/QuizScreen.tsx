@@ -29,7 +29,11 @@ import {
   getChakraName,
   getChakraImage,
 } from "@/constants/chakras/chakraConstants"
-import { SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
+import {
+  SCROLL_BREATHING_BOTTOM_PADDING,
+  SCROLL_ANDROID_SMOOTH_PROPS,
+  SOMATIC_SPINNER_FADE_OUT_MS,
+} from "@/constants/layout"
 import { getLocalDateISO } from "@/utils/date"
 
 // Import quiz data
@@ -229,7 +233,8 @@ export default function QuizScreen() {
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
 
-        <View
+        <Animated.View
+          exiting={FadeOut.duration(SOMATIC_SPINNER_FADE_OUT_MS)}
           style={{
             flex: 1,
             justifyContent: "center",
@@ -265,7 +270,7 @@ export default function QuizScreen() {
               Return to Home
             </AppText>
           </Pressable>
-        </View>
+        </Animated.View>
       </SafeAreaView>
     )
   }
@@ -293,7 +298,7 @@ export default function QuizScreen() {
   }
 
   // Completion Screen
-  if (isComplete) {
+  if (quiz && isComplete) {
     const tier = getEmbodimentTier(score, quiz.questions.length)
     const resonanceRating = getResonanceLabel(tier)
     const mirrorMessage =

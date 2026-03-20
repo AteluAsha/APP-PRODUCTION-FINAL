@@ -25,18 +25,18 @@ const APP_ICON_BLACK = "./assets/images/ChakraWheel_ONBLACK_300DPI.png"
 
 module.exports = {
   expo: {
-    // Home screen label under icon; store listing may use longer name (e.g. Soul School | ProjectStarseed)
-    name: "Soul School",
+    // Home screen label under icon; store listing may use longer name (e.g. SOUL SCHOOL | ProjectStarseed)
+    name: "SOUL SCHOOL",
     slug: "soul-school",
     version: "1.0.0",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
-    // Opening splash: gentle logo size. After changing, run: npx expo prebuild --clean then build.
+    // Native shield: golden "7" load art (small, centered). JS splash uses SoulSchool_HERO_Logo. Run prebuild --clean after change.
     splash: {
-      image: "./assets/images/SoulSchool_HERO_Logo.png",
+      image: "./assets/images/SoulSchool_APP_HeroLoadImage.png",
       backgroundColor: "#000000",
       resizeMode: "contain",
-      imageWidth: 160,
+      imageWidth: 130,
     },
     scheme: "soul-school",
     userInterfaceStyle: "dark",
@@ -47,8 +47,8 @@ module.exports = {
       supportsTablet: true,
       icon: APP_ICON_BLACK,
       infoPlist: {
-        // iOS home screen label; keep "Soul School" regardless of App Store listing name
-        CFBundleDisplayName: "Soul School",
+        // iOS home screen label; production uses SOUL SCHOOL (App Store listing may differ)
+        CFBundleDisplayName: "SOUL SCHOOL",
         LSApplicationQueriesSchemes: ["whatsapp", "sms", "mailto"],
         UIBackgroundModes: ["audio"],
         // Allow Metro bundler at localhost/127.0.0.1 in simulator and dev (required for "Could not connect to development server")
@@ -62,15 +62,17 @@ module.exports = {
         },
         // Required for iOS to access your local network (e.g. Metro on 192.168.x.x).
         NSLocalNetworkUsageDescription:
-          "Allow Soul School to connect to your local Metro dev server during development.",
+          "Allow SOUL SCHOOL to connect to your local Metro dev server during development.",
         NSCameraUsageDescription:
           "We need access to your camera to record a video for sharing your journey.",
         NSMicrophoneUsageDescription:
           "We need access to your microphone to record audio with your video.",
         NSPhotoLibraryUsageDescription:
-          "Soul School uses your photo library so you can choose a profile picture and share images in the community.",
+          "SOUL SCHOOL uses your photo library so you can choose a profile picture and share images in the community.",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
+      // Bump for each TestFlight / store upload. EAS production profile may autoIncrement over this; align with dashboard if needed.
+      buildNumber: "2",
     },
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android
@@ -99,10 +101,10 @@ module.exports = {
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/SoulSchool_HERO_Logo.png",
+          image: "./assets/images/SoulSchool_APP_HeroLoadImage.png",
           backgroundColor: "#000000",
           resizeMode: "contain",
-          imageWidth: 88, // Match in-app OPENING_LOGO; prebuild --clean after change
+          imageWidth: 130,
         },
       ],
       [
@@ -117,9 +119,9 @@ module.exports = {
         "expo-camera",
         {
           cameraPermission:
-            "Allow Soul School to access your camera to record videos for sharing your journey.",
+            "Allow SOUL SCHOOL to access your camera to record videos for sharing your journey.",
           microphonePermission:
-            "Allow Soul School to access your microphone to record audio with your videos.",
+            "Allow SOUL SCHOOL to access your microphone to record audio with your videos.",
         },
       ],
       [
@@ -133,7 +135,7 @@ module.exports = {
         "expo-contacts",
         {
           contactsPermission:
-            "Allow Soul School to find friends who are also on the journey.",
+            "Allow SOUL SCHOOL to find friends who are also on the journey.",
         },
       ],
     ],

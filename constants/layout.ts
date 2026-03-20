@@ -2,12 +2,16 @@
  * Layout constants for consistent spacing across scroll screens.
  * Use when content must clear the menu bar / bottom nav area.
  */
+
+/** JS splash (AnimatedSplashScreen) must stay visible at least this long after mount. */
+export const SPLASH_MIN_DISPLAY_MS = 2500
+
 export const FLOATING_NAV_SCROLL_BOTTOM_PADDING = 140
 
 /**
- * OPENING SPLASH – Soul School hero logo size (single source of truth)
- * Used by OpeningSplash (entry) and ChakraHome !contentReady placeholder.
- * Kept modest so splash never feels oversized. Native splash (app.config.js) can match or be smaller.
+ * OPENING SPLASH – SOUL SCHOOL hero logo size (single source of truth)
+ * Used by AnimatedSplashScreen (JS entry), ChakraHome !contentReady placeholder.
+ * Kept modest so splash never feels oversized. Native shield uses SoulSchool_APP_HeroLoadImage (app.config.js).
  */
 export const OPENING_LOGO = {
   width: { ios: 260, android: 218 },
@@ -45,8 +49,14 @@ export const LIFETIME_HUB_STACK_RAISE_IOS = 320
 export const ROOT_BOTTOM_OFFSET_LIFETIME_HUB_IOS =
   20 + CHAKRA_BALL_HEIGHT_APPROX + LIFETIME_HUB_STACK_RAISE_IOS
 
-/** Lifetime hub (ChakraHub): PulsingButton smallDivisor so balls are smaller than trial (match trial proportions). */
-export const LIFETIME_HUB_CHAKRA_BALL_DIVISOR = 9.5
+/**
+ * Lifetime hub (ChakraHub): PulsingButton smallDivisor (smaller divisor = larger orbs).
+ * Base was 9.5; +10% orb size → 9.5 / 1.1. Keeps IntegratedProgressStack title math in sync.
+ */
+export const LIFETIME_HUB_CHAKRA_BALL_DIVISOR = 9.5 / 1.1
+
+/** Lifetime hub: horizontal gap between the day title (left of orb) and the orb edge (absolute label). */
+export const LIFETIME_HUB_DAY_TITLE_SIDE_GAP = 12
 
 export const TRIAL_HOME_ROOT_CHAKRA = {
   /** Vertical padding under the stack (root ball pinned this far from bottom); lower = stack sits lower (trial home). */
@@ -80,6 +90,12 @@ export const SOMATIC_SCREEN_TRANSITION_MS_IOS = 680
 export const SOMATIC_FADE_IN_MS = 1400
 /** Shorter fade for in-screen content (sections, cards) – still gentle */
 export const SOMATIC_CONTENT_FADE_MS = 640
+
+/** Large hero / background `Image` materialization (Reanimated opacity on load) */
+export const SOMATIC_HERO_IMAGE_FADE_MS = 1000
+
+/** Full-screen or centered `ActivityIndicator` panels: soft fade-out before unmount */
+export const SOMATIC_SPINNER_FADE_OUT_MS = 380
 
 /**
  * Card-style modals: max width so popups are wide and easy to read on Android (and iOS).

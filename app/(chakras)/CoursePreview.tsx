@@ -5,14 +5,8 @@
  */
 
 import React from "react"
-import {
-  View,
-  Image,
-  Pressable,
-  ScrollView,
-  Dimensions,
-  Platform,
-} from "react-native"
+import { View, Pressable, ScrollView, Dimensions, Platform } from "react-native"
+import { SomaticHeroImage } from "@/components/ui/SomaticHeroImage"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -23,7 +17,7 @@ import {
   SCROLL_ANDROID_SMOOTH_PROPS,
 } from "@/constants/layout"
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window")
+const { width: SCREEN_WIDTH } = Dimensions.get("window")
 
 export default function CoursePreview() {
   const router = useRouter()
@@ -71,7 +65,7 @@ export default function CoursePreview() {
           bounces={true}
           {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
         >
-          <Image
+          <SomaticHeroImage
             source={require("@/assets/images/7Chakras_CoursePreview.png")}
             style={{
               width: SCREEN_WIDTH,

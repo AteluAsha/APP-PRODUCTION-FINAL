@@ -7,14 +7,8 @@
  */
 
 import React from "react"
-import {
-  View,
-  ScrollView,
-  Image,
-  Pressable,
-  Dimensions,
-  StyleSheet,
-} from "react-native"
+import { View, ScrollView, Pressable, Dimensions, StyleSheet } from "react-native"
+import { SomaticHeroImage } from "@/components/ui/SomaticHeroImage"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
@@ -47,7 +41,7 @@ export const PreviewJourney: React.FC<PreviewJourneyProps> = ({
         {/* Edge-to-edge black header: top of screen down through chakra ball + padding */}
         <View style={styles.blackHeader}>
           <View style={styles.chakraImageWrap}>
-            <Image
+            <SomaticHeroImage
               source={root.goodbye.chakraImage}
               style={styles.chakraImage}
               resizeMode="contain"
@@ -133,7 +127,7 @@ export const PreviewJourney: React.FC<PreviewJourneyProps> = ({
 
         {/* Full course preview image in its own space */}
         <View style={styles.imageSection}>
-          <Image
+          <SomaticHeroImage
             source={require("@/assets/images/7Chakras_CoursePreview.png")}
             style={styles.coursePreviewImage}
             resizeMode="contain"

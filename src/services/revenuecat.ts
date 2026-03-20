@@ -1,7 +1,7 @@
 /**
  * RevenueCat Service Configuration
  *
- * Manages in-app purchases and subscriptions for the Soul School app.
+ * Manages in-app purchases and subscriptions for the SOUL SCHOOL app.
  * Handles product purchases, entitlement checking, and customer info management.
  *
  * Key implementation details:
@@ -34,7 +34,7 @@ import {
   REVENUECAT_APP_NAME,
 } from "@/src/core/config/revenueCatConfig"
 
-// Get RevenueCat API Key: env first, then Soul School config (by platform)
+// Get RevenueCat API Key: env first, then SOUL SCHOOL config (by platform)
 const getRevenueCatApiKey = (): string | null => {
   try {
     const fromEnv = Constants.expoConfig?.extra?.revenuecat?.apiKey
@@ -298,7 +298,7 @@ export async function logOut(): Promise<void> {
 }
 
 /**
- * Link a new user ID to RevenueCat (e.g. after "Request new Soul School ID").
+ * Link a new user ID to RevenueCat (e.g. after "Request new SOUL SCHOOL ID").
  * No-op if RevenueCat is not configured or not initialized.
  */
 export async function linkUserId(userId: string): Promise<void> {

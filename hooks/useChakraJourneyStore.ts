@@ -626,7 +626,19 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         clearInvitedFriends: () => set({ invitedFriends: [] }),
 
         setLifetimeChosenTimegateJourney: (value: boolean) =>
-          set({ lifetimeChosenTimegateJourney: value }),
+          set((state) => {
+            if (!value) {
+              return { lifetimeChosenTimegateJourney: false }
+            }
+            // Entering lifetime course mode: same visual reset as a fresh week for day checkboxes
+            // (completed state for the current run only; cumulative totals / trialHistory unchanged).
+            return {
+              lifetimeChosenTimegateJourney: true,
+              completedChakras: [],
+              participatedDays: [],
+              allChakrasCompleted: false,
+            }
+          }),
         clearLifetimeCourseForNewStart: () =>
           set({
             courseStartDate: null,

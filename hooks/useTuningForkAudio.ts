@@ -24,23 +24,11 @@ import { getCachedAudioUrl, setCachedAudioUrl } from "@/src/utils/audioCache"
 import { retryWithBackoff, isRetryableError } from "@/src/utils/audioRetry"
 import { getLocalAudioUri } from "@/src/utils/audioDownload"
 import { FIREBASE_TUNING_FORK_FOLDER } from "@/constants/firebaseStoragePaths"
+import { SANCTUARY_TUNING_FORK_FILE } from "@/constants/sanctuaryAudioManifest"
 // Audio import removed - duration extraction disabled to prevent crashes
 // Duration will be determined by the audio player when it loads
 
-/**
- * Map chakras to their tuning fork audio filenames
- * Firebase: gs://soul-school-367ee.firebasestorage.app/TuningForkAudio
- */
-
-const CHAKRA_TO_TUNING_FORK_FILE: Record<Chakra, string> = {
-  [Chakra.ROOT]: "Day1_396hz_plus256_TuningFork.aac",
-  [Chakra.SACRAL]: "Day2_417hz_tuningfork.aac",
-  [Chakra.SOLAR_PLEXUS]: "Day3_528hz_tuningfork.aac",
-  [Chakra.HEART]: "Day4_639Hz_tuningfork.aac",
-  [Chakra.THROAT]: "Day5_741hz_tuningfork.aac",
-  [Chakra.THIRD_EYE]: "Day6_852hz_tuningFork.aac",
-  [Chakra.CROWN]: "Day7_963hz_tuningfork.aac",
-}
+const CHAKRA_TO_TUNING_FORK_FILE = SANCTUARY_TUNING_FORK_FILE
 
 const STORAGE_FOLDER = FIREBASE_TUNING_FORK_FOLDER
 
@@ -108,36 +96,7 @@ export const useTuningForkAudio = (chakra: Chakra) => {
           return
         }
 
-        // Check for downloaded local file first
-        try {
-          const audioId = `tuning_fork_${chakra}_${audioFile}`
-          const localUri = await getLocalAudioUri(audioId)
-          if (localUri) {
-            if (__DEV__) {
-              console.log(`[useTuningForkAudio] Using local file for ${chakra}`)
-            }
-            // Try to get cached duration
-            const cachedDuration = await getCachedAudioUrl(durationCacheKey)
-            const durationMs = cachedDuration
-              ? parseInt(cachedDuration, 10)
-              : null
-            setState({
-              url: null,
-              localUri,
-              durationMs,
-              isLoading: false,
-              error: null,
-            })
-            return
-          }
-        } catch (localFileError) {
-          if (__DEV__) {
-            console.warn(
-              `[useTuningForkAudio] Local file check failed, continuing to Firebase:`,
-              localFileError,
-            )
-          }
-        }
+        const audioId = `tuning_fork_${chakra}_${audioFile}`
 
         // Check cache for Firebase URL
         const cachedUrl = await getCachedAudioUrl(cacheKey)
@@ -146,13 +105,21 @@ export const useTuningForkAudio = (chakra: Chakra) => {
           if (__DEV__) {
             console.log(`[useTuningForkAudio] Using cached URL for ${chakra}`)
           }
-          setState({
-            url: cachedUrl,
-            localUri: null,
-            durationMs: cachedDuration ? parseInt(cachedDuration, 10) : null,
-            isLoading: false,
-            error: null,
-          })
+          let localUri: string | null = null
+          try {
+            localUri = await getLocalAudioUri(audioId)
+          } catch {
+            // ignore
+          }
+          if (isMounted) {
+            setState({
+              url: cachedUrl,
+              localUri,
+              durationMs: cachedDuration ? parseInt(cachedDuration, 10) : null,
+              isLoading: false,
+              error: null,
+            })
+          }
           return
         }
 
@@ -201,14 +168,19 @@ export const useTuningForkAudio = (chakra: Chakra) => {
         // Cache the URL
         await setCachedAudioUrl(cacheKey, audioUrl)
 
-        // Set initial state with URL
+        let localUri: string | null = null
+        try {
+          localUri = await getLocalAudioUri(audioId)
+        } catch {
+          // ignore
+        }
+
         // NOTE: Duration extraction is disabled for now to prevent crashes
-        // Duration will be determined by the audio player when it loads
         if (!isMounted) return
         setState({
           url: audioUrl,
-          localUri: null,
-          durationMs: null, // Duration will be determined by audio player
+          localUri,
+          durationMs: null,
           isLoading: false,
           error: null,
         })

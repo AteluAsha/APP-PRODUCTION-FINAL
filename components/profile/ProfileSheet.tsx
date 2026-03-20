@@ -1,10 +1,10 @@
 /**
- * Profile Sheet - Hamburger menu with three sections: Profile, Account, Soul School.
+ * Profile Sheet - Hamburger menu with three sections: Profile, Account, SOUL SCHOOL.
  *
  * Profile: name, photo, location, edit, disclaimer.
- * Account: status, Soul School ID, tribe link, delete account.
- * Soul School: course selection (path to WelcomeScreen), Project Starseed, scholarships link.
- * "Return to Soul School Course Selection" (Soul School section) is the only way to path selection after date is set.
+ * Account: status, SOUL SCHOOL ID, tribe link, delete account.
+ * SOUL SCHOOL: course selection (path to WelcomeScreen), Project Starseed, scholarships link.
+ * "Return to SOUL SCHOOL Course Selection" (SOUL SCHOOL section) is the only way to path selection after date is set.
  */
 
 import React, { useEffect, useState, useMemo } from "react"
@@ -70,7 +70,7 @@ export interface ProfileSheetProps {
   asScreen?: boolean
   /** Called when user closes the menu in asScreen mode (e.g. router.back() + close()). */
   onClose?: () => void
-  /** When true with asScreen, show only profile view: Soul School ID, name, photo (editable). */
+  /** When true with asScreen, show only profile view: SOUL SCHOOL ID, name, photo (editable). */
   profileOnly?: boolean
 }
 
@@ -243,8 +243,8 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
   const handleRequestNewId = () => {
     addHapticFeedback(HapticStrength.Light)
     Alert.alert(
-      "Request New Soul School ID",
-      "This will give you a new Soul School ID. Your old ID will no longer work. Continue?",
+      "Request New SOUL SCHOOL ID",
+      "This will give you a new SOUL SCHOOL ID. Your old ID will no longer work. Continue?",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -405,7 +405,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
         : section === "help"
           ? "Help"
           : section === "soulschool"
-            ? "Soul School"
+            ? "SOUL SCHOOL"
             : null
 
   const innerContent = (
@@ -466,7 +466,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
               >
                 <View style={styles.profileOnlyIdBlock}>
                   <AppText font="instrument-regular" size="xs" style={styles.idLabel}>
-                    Soul School ID
+                    SOUL SCHOOL ID
                   </AppText>
                   <View style={styles.idKeyBox}>
                     <AppText
@@ -782,7 +782,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                     color="rgba(168, 201, 154, 0.95)"
                   />
                   <AppText font="instrument-medium" size="base" style={styles.menuRowText}>
-                    Soul School
+                    SOUL SCHOOL
                   </AppText>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
                 </Pressable>
@@ -828,7 +828,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   size="sm"
                   style={styles.soulSchoolBlurb}
                 >
-                  Choose or change your current path. Right now, 7 Chakras is the only path
+                  Choose or change your current path. Right now, 7 Chakras: The Map from Self to Soul is the only path
                   available; more paths are coming.
                 </AppText>
                 {!hasLifetimeAccess ? (
@@ -873,7 +873,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                     size="sm"
                     style={styles.courseSelectionText}
                   >
-                    Return to Soul School Course Selection
+                    Return to SOUL SCHOOL Course Selection
                   </AppText>
                 </Pressable>
                 <Pressable
@@ -940,7 +940,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                 ) : null}
                 <View style={styles.idBlock}>
                   <AppText font="instrument-regular" size="xs" style={styles.idLabel}>
-                    Soul School ID
+                    SOUL SCHOOL ID
                   </AppText>
                   <View style={styles.idKeyBox}>
                     <AppText
@@ -979,7 +979,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   size="xs"
                   style={[styles.idLabel, { marginTop: 24 }]}
                 >
-                  Soul School updates and new offerings
+                  SOUL SCHOOL updates and new offerings
                 </AppText>
                 <View style={styles.communityEmailRow}>
                   <TextInput
@@ -1012,7 +1012,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                 </View>
                 {communityEmailSuccess && (
                   <AppText font="instrument-regular" size="xs" style={styles.communityEmailSuccess}>
-                    You’re on the list for 7 Chakras Community updates.
+                    You’re on the list for SOUL SCHOOL Community updates.
                   </AppText>
                 )}
                 {communityEmailError && (

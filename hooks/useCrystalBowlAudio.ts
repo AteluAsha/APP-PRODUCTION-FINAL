@@ -4,8 +4,7 @@
  * Fetches 1-hour crystal bowl meditation audio from Firebase Storage.
  * Paths are case-sensitive. In Firebase Console → Storage, ensure folder and
  * filenames match exactly:
- *   Folder: crystal_Bowl_Meditation_Audio
- *   Files:  Day1_396hz_CrystalBowlSoundBath_Hero2.mov, Day2_417hz_1Hour_CrystalBowl_SoundBath.aac, Day3_528hz_CrystalBowlMeditation_FrequencyHealing.aac, etc.
+ *   Folder: crystal_Bowl_Meditation_Audio — filenames: sanctuaryAudioManifest SANCTUARY_CRYSTAL_BOWL_FILE
  */
 
 import { useState, useEffect } from "react"
@@ -17,20 +16,12 @@ import { getCachedAudioUrl, setCachedAudioUrl } from "@/src/utils/audioCache"
 import { retryWithBackoff, isRetryableError } from "@/src/utils/audioRetry"
 import { getLocalAudioUri } from "@/src/utils/audioDownload"
 import { FIREBASE_CRYSTAL_BOWL_FOLDER } from "@/constants/firebaseStoragePaths"
+import { SANCTUARY_CRYSTAL_BOWL_FILE } from "@/constants/sanctuaryAudioManifest"
 
 /** Firebase Storage folder (case-sensitive). Must match Storage bucket exactly. */
 export const CRYSTAL_BOWL_STORAGE_FOLDER = FIREBASE_CRYSTAL_BOWL_FOLDER
 
-/** Chakra → crystal bowl filename (1hr). Only these 7 hero files; must match Storage exactly. */
-const CHAKRA_TO_CRYSTAL_BOWL_FILE: Record<Chakra, string> = {
-  [Chakra.ROOT]: "Day1_396hz_CrystalBowlSoundBath_Hero2.mov",
-  [Chakra.SACRAL]: "Day2_417hz_1Hour_CrystalBowl_SoundBath.aac",
-  [Chakra.SOLAR_PLEXUS]: "Day3_528hz_CrystalBowlMeditation_FrequencyHealing.aac",
-  [Chakra.HEART]: "Day4_639hz_CrystalBowl_Meditation_FrequencyHealing.aac",
-  [Chakra.THROAT]: "Day5_741Hz_CrystalBowlMeditation.aac",
-  [Chakra.THIRD_EYE]: "Day6_852hz_ChakraBowl_Medittion_Audio.aac",
-  [Chakra.CROWN]: "Day7_963_Hertz_CrystalBowlMeditation.aac",
-}
+const CHAKRA_TO_CRYSTAL_BOWL_FILE = SANCTUARY_CRYSTAL_BOWL_FILE
 
 export interface CrystalBowlAudioState {
   url: string | null
@@ -85,35 +76,7 @@ export const useCrystalBowlAudio = (chakra: Chakra) => {
           return
         }
 
-        // Check for downloaded local file first
-        try {
-          const audioId = `crystal_bowl_${chakra}_${audioFile}`
-          const localUri = await getLocalAudioUri(audioId)
-          if (localUri) {
-            if (__DEV__) {
-              console.log(
-                `[useCrystalBowlAudio] Using local file for ${chakra}`,
-              )
-            }
-            if (isMounted) {
-              setState({
-                url: null,
-                localUri,
-                durationMs: null,
-                isLoading: false,
-                error: null,
-              })
-            }
-            return
-          }
-        } catch (localFileError) {
-          if (__DEV__) {
-            console.warn(
-              `[useCrystalBowlAudio] Local file check failed, continuing to Firebase:`,
-              localFileError,
-            )
-          }
-        }
+        const audioId = `crystal_bowl_${chakra}_${audioFile}`
 
         // Check cache for Firebase URL
         const cachedUrl = await getCachedAudioUrl(cacheKey)
@@ -121,10 +84,16 @@ export const useCrystalBowlAudio = (chakra: Chakra) => {
           if (__DEV__) {
             console.log(`[useCrystalBowlAudio] Using cached URL for ${chakra}`)
           }
+          let localUri: string | null = null
+          try {
+            localUri = await getLocalAudioUri(audioId)
+          } catch {
+            // ignore
+          }
           if (isMounted) {
             setState({
               url: cachedUrl,
-              localUri: null,
+              localUri,
               durationMs: null,
               isLoading: false,
               error: null,
@@ -177,10 +146,17 @@ export const useCrystalBowlAudio = (chakra: Chakra) => {
         // Cache the URL
         await setCachedAudioUrl(cacheKey, audioUrl)
 
+        let localUri: string | null = null
+        try {
+          localUri = await getLocalAudioUri(audioId)
+        } catch {
+          // ignore
+        }
+
         if (isMounted) {
           setState({
             url: audioUrl,
-            localUri: null,
+            localUri,
             durationMs: null,
             isLoading: false,
             error: null,

@@ -4,8 +4,8 @@ Single reference for the path from first launch through trials and lifetime. Aud
 
 ## First open
 
-1. **Native splash** (expo-splash-screen) is kept until `(chakras)/index` mounts, then hidden so in-app splash paints.
-2. **OpeningSplash** (single source: `components/OpeningSplash.tsx`): black screen, Soul School hero logo. Logo fades in, then gentle somatic pulse. Splash keeps pulsing until store rehydration and nav are ready; then soft fade out and **replace** to first screen.
+1. **Native splash** (`SoulSchool_APP_HeroLoadImage.png`): small centered shield until JS mounts.
+2. **AnimatedSplashScreen** (`app/_layout.tsx`): hides native splash immediately on mount, black + pulsing `SoulSchool_HERO_Logo.png` while fonts/preloads finish, then fades out. **`(chakras)/index`** stays black and **replaces** to the first screen when store rehydration + nav are ready.
 3. **First screen** is one of: WelcomeScreen (trial first time), DateSelection (trial after trial 1), ChakraHome (trial in journey / waiting room), ChakraHub (lifetime).
 
 No error screen on success; ErrorBoundary fallback shows hero logo only.
@@ -46,7 +46,7 @@ No error screen on success; ErrorBoundary fallback shows hero logo only.
 
 ## Key files
 
-- **Entry / splash:** `app/_layout.tsx` (preventAutoHideAsync), `app/(chakras)/index.tsx`, `components/OpeningSplash.tsx` (only opening splash; no legacy StillnessScreen or SplashScreenReveal)
+- **Entry / splash:** `app/_layout.tsx` (preventAutoHideAsync + `AnimatedSplashScreen`), `app/(chakras)/index.tsx` (routing after overlay); `app.config.js` native shield; no legacy StillnessScreen or SplashScreenReveal
 - **Preload:** `components/chakras/WaitingScreen.tsx` (effect), `src/utils/audioPreloadManifest.ts`, `src/utils/audioPreloadGuard.ts`
 - **Preview (waiting room):** `app/(chakras)/Preview.tsx`, `components/chakras/PreviewJourney.tsx`
 - **Menu bar:** `components/navigation/PermanentMenuBar.tsx` (visibility and items by route + trial/lifetime + waiting room)

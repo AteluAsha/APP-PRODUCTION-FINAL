@@ -2,6 +2,8 @@
  * Audio track row for Frequency of Gnosis (Audio Library).
  * Full-width transparent bar with play icon, title, hertz badge, and download.
  * Extracted from AudioLibrary to fix Fast Refresh (nested component anti-pattern).
+ *
+ * Layout: strict 3-column row (play | text flex | download) — no absolute play/text.
  */
 
 import React from "react"
@@ -10,6 +12,11 @@ import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { DownloadIconCell, type DownloadIconVariant } from "@/components/chakras/DownloadIconCell"
+
+/** Fixed column for download / cloud control */
+const COL_DOWNLOAD_WIDTH = 60
+/** Fixed column for play control */
+const COL_PLAY_WIDTH = 50
 
 export interface AudioTrackRowProps {
   title: string
@@ -33,7 +40,7 @@ export interface AudioTrackRowProps {
   isQueued?: boolean
   /** When true, download button is enabled even without url (parent will resolve URL on tap, e.g. crystal bowl from Firebase) */
   canResolveDownload?: boolean
-  /** Optional content to render on the right, before download (e.g. Drop In button) */
+  /** Optional content below subtitle (e.g. Drop In) — lives in middle column only */
   rightContent?: React.ReactNode
 }
 
@@ -91,50 +98,70 @@ export const AudioTrackRow = ({
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingVertical: 16,
-          paddingHorizontal: 20,
-          borderTopWidth: 1,
-          borderBottomWidth: 1,
-          borderColor: "rgba(255,255,255,0.08)",
-        }}
       >
-        {/* Play area: only this triggers playback. Download has its own touch target below. */}
-        <Pressable
-          onPress={onPlay}
-          disabled={playDisabled}
-          style={({ pressed }) => [
-            { flex: 1, flexDirection: "row", alignItems: "center", minWidth: 0 },
-            pressed && { opacity: 0.85 },
-          ]}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            width: "100%",
+            paddingVertical: 16,
+            paddingHorizontal: 20,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: "rgba(255,255,255,0.08)",
+          }}
         >
+          {/* Column 1: play */}
           <View
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: "rgba(255,255,255,0.08)",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.2)",
+              width: COL_PLAY_WIDTH,
+              marginRight: 12,
               alignItems: "center",
               justifyContent: "center",
-              marginRight: 18,
             }}
           >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons
-                name={showPause ? "pause" : "play"}
-                size={22}
-                color="#fff"
-              />
-            )}
+            <Pressable
+              onPress={onPlay}
+              disabled={playDisabled}
+              style={({ pressed }) => [
+                pressed && { opacity: 0.85 },
+              ]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.2)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons
+                    name={showPause ? "pause" : "play"}
+                    size={22}
+                    color="#fff"
+                  />
+                )}
+              </View>
+            </Pressable>
           </View>
-          <View style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
+
+          {/* Column 2: text (+ optional rightContent below) */}
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              minWidth: 0,
+              marginRight: 8,
+            }}
+          >
             <View
               style={{
                 flexDirection: "row",
@@ -147,17 +174,18 @@ export const AudioTrackRow = ({
                 font="cormorant-regular"
                 size="sm"
                 numberOfLines={1}
-                style={{ color: "#ffffff", fontSize: 15 }}
+                style={{ color: "#ffffff", fontSize: 15, flexShrink: 1 }}
               >
                 {title}
               </AppText>
-              {hertz && (
+              {hertz ? (
                 <View
                   style={{
                     backgroundColor: "rgba(255,255,255,0.1)",
                     paddingHorizontal: 6,
                     paddingVertical: 2,
                     borderRadius: 6,
+                    flexShrink: 0,
                   }}
                 >
                   <AppText
@@ -168,7 +196,7 @@ export const AudioTrackRow = ({
                     {hertz} Hz
                   </AppText>
                 </View>
-              )}
+              ) : null}
             </View>
             <AppText
               font="cormorant-italic"
@@ -178,25 +206,33 @@ export const AudioTrackRow = ({
             >
               {durationLabel}
             </AppText>
+            {rightContent != null ? (
+              <View style={{ marginTop: 10, alignSelf: "flex-start" }}>
+                {rightContent}
+              </View>
+            ) : null}
           </View>
-        </Pressable>
-        {/* Right content (e.g. Drop In) - before download */}
-        {rightContent != null ? (
-          <View style={{ marginRight: 8 }}>{rightContent}</View>
-        ) : null}
-        {/* Download: separate touch target – never triggers play. Manual download fail-safe. */}
-        <View pointerEvents="box-none">
-          <DownloadIconCell
-            variant={showDownloadAsDisabled ? "cloud" : downloadVariant}
-            onPress={
-              showDownloadAsDisabled
-                ? undefined
-                : () => {
-                    onDownload?.()
-                  }
-            }
-            disabled={downloadDisabled}
-          />
+
+          {/* Column 3: download */}
+          <View
+            style={{
+              width: COL_DOWNLOAD_WIDTH,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <DownloadIconCell
+              variant={showDownloadAsDisabled ? "cloud" : downloadVariant}
+              onPress={
+                showDownloadAsDisabled
+                  ? undefined
+                  : () => {
+                      onDownload?.()
+                    }
+              }
+              disabled={downloadDisabled}
+            />
+          </View>
         </View>
       </LinearGradient>
     </View>

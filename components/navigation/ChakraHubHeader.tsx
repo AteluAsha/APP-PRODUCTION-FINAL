@@ -1,6 +1,6 @@
 /**
  * ChakraHub header: two separate icons. Hamburger (top-left) opens full menu.
- * Profile (top-right) opens profile-only screen (Soul School ID, name, photo).
+ * Profile (top-right) opens profile-only screen (SOUL SCHOOL ID, name, photo).
  * Each icon is in its own absolutely positioned View for correct placement and
  * touch targets. Inset from screen edge on both sides.
  */
@@ -72,7 +72,7 @@ export function ChakraHubHeader() {
           style={({ pressed }) => [buttonBase, pressed && styles.pressed]}
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
           accessibilityLabel="Menu"
-          accessibilityHint="Open menu: Account, Soul School, and more"
+          accessibilityHint="Open menu: Account, SOUL SCHOOL, and more"
         >
           <Ionicons name="menu" size={ICON_SIZE} color="rgba(255, 255, 255, 0.9)" />
         </Pressable>
@@ -89,7 +89,7 @@ export function ChakraHubHeader() {
           style={({ pressed }) => [buttonBase, pressed && styles.pressed]}
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
           accessibilityLabel="Profile"
-          accessibilityHint="View Soul School ID, name, and profile photo"
+          accessibilityHint="View SOUL SCHOOL ID, name, and profile photo"
         >
           <Ionicons name="person-outline" size={PROFILE_ICON_SIZE} color="rgba(255, 255, 255, 0.95)" />
         </Pressable>

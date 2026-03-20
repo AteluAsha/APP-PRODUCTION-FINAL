@@ -18,22 +18,11 @@ import { getCachedAudioUrl, setCachedAudioUrl } from "@/src/utils/audioCache"
 import { retryWithBackoff, isRetryableError } from "@/src/utils/audioRetry"
 import { getLocalAudioUri } from "@/src/utils/audioDownload"
 import { FIREBASE_ANCESTRAL_WISDOM_FOLDER } from "@/constants/firebaseStoragePaths"
+import { SANCTUARY_ANCESTRAL_FILE } from "@/constants/sanctuaryAudioManifest"
 
 const STORAGE_FOLDER = FIREBASE_ANCESTRAL_WISDOM_FOLDER
 
-const CHAKRA_TO_ANCESTRAL_FILE: Partial<Record<Chakra, string>> = {
-  [Chakra.ROOT]: "Day1_7th_DivineLaw_With_Asha.aac",
-  [Chakra.SACRAL]: "day2_theauthenticself_6th_DivineLaw_POLARITY_With_Asha.aac",
-  [Chakra.SOLAR_PLEXUS]:
-    "day3_egoheartrailroad_5thdivinelaw_causeandeffect_With_Asha_Length_12minutes.aac",
-  [Chakra.HEART]: "Day4_AWAKENINGTHEHEART_4thDivinelaw_Rhythm_With_Asha.aac",
-  [Chakra.THROAT]:
-    "Day5_ThePOWEROfVibration_Vishuddha_3rd_DivineLaw_With_Asha.aac",
-  [Chakra.THIRD_EYE]:
-    "Day6_LISTENINGTOTHECOSMOS_2nd_DivineLaw_Correspodence_With_Asha.aac",
-  [Chakra.CROWN]:
-    "Day7_THEMEADOWOFTHESOUL_1stDivineLaw_Mentalism_With_Asha.aac",
-}
+const CHAKRA_TO_ANCESTRAL_FILE = SANCTUARY_ANCESTRAL_FILE
 
 export interface AncestralWisdomAudioState {
   source: AVPlaybackSource | null
@@ -45,10 +34,8 @@ export interface AncestralWisdomAudioState {
 
 /** Audio ID for download/cache – used by Music Room for offline listening */
 export function getHeadToHeartAudioId(chakra: Chakra): string {
-  const audioFile = CHAKRA_TO_ANCESTRAL_FILE[chakra]
-  return audioFile
-    ? `head_to_heart_${chakra}_${audioFile}`
-    : `head_to_heart_${chakra}`
+  const audioFile = SANCTUARY_ANCESTRAL_FILE[chakra]
+  return `head_to_heart_${chakra}_${audioFile}`
 }
 
 export const useAncestralWisdomAudio = (chakra: Chakra) => {
@@ -107,35 +94,6 @@ export const useAncestralWisdomAudio = (chakra: Chakra) => {
           return
         }
 
-        // Check for downloaded local file first
-        try {
-          const localUri = await getLocalAudioUri(audioId)
-          if (localUri) {
-            if (__DEV__) {
-              console.log(
-                `[useAncestralWisdomAudio] Using local file for ${chakra}`,
-              )
-            }
-            if (isMounted) {
-              setState({
-                source: { uri: localUri },
-                url: null,
-                localUri,
-                isLoading: false,
-                error: null,
-              })
-            }
-            return
-          }
-        } catch (localFileError) {
-          if (__DEV__) {
-            console.warn(
-              `[useAncestralWisdomAudio] Local file check failed, continuing to Firebase:`,
-              localFileError,
-            )
-          }
-        }
-
         // Check cache for Firebase URL
         const cachedUrl = await getCachedAudioUrl(cacheKey)
         if (cachedUrl) {
@@ -144,11 +102,17 @@ export const useAncestralWisdomAudio = (chakra: Chakra) => {
               `[useAncestralWisdomAudio] Using cached URL for ${chakra}`,
             )
           }
+          let localUri: string | null = null
+          try {
+            localUri = await getLocalAudioUri(audioId)
+          } catch {
+            // ignore
+          }
           if (isMounted) {
             setState({
-              source: { uri: cachedUrl },
+              source: localUri ? { uri: localUri } : { uri: cachedUrl },
               url: cachedUrl,
-              localUri: null,
+              localUri,
               isLoading: false,
               error: null,
             })

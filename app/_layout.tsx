@@ -1,7 +1,7 @@
 /**
  * Root Layout - App Entry
  *
- * OPENING SEQUENCE (always first): Splash → Path Selection (WelcomeScreen) → 7 Chakras in 7 Days.
+ * OPENING SEQUENCE (always first): Splash → Path Selection (WelcomeScreen) → 7 Chakras: The Map from Self to Soul.
  * After Enter Path: DateSelection | Waiting Room | Trial Home | Lifetime Home (ChakraHub).
  */
 import "react-native-reanimated"
@@ -27,9 +27,11 @@ import { useChakraWeekTransition } from "@/hooks/useChakraWeekTransition"
 import {
   SOMATIC_SCREEN_TRANSITION_MS,
   SOMATIC_SCREEN_TRANSITION_MS_IOS,
+  SPLASH_MIN_DISPLAY_MS,
 } from "@/constants/layout"
 import { useState } from "react"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { AnimatedSplashScreen } from "@/components/AnimatedSplashScreen"
 import { PermanentMenuBar } from "@/components/navigation/PermanentMenuBar"
 import { MusicRoomAudioManager } from "@/components/audio/MusicRoomAudioManager"
 import { OtherOriginAudioManager } from "@/components/audio/OtherOriginAudioManager"
@@ -60,6 +62,8 @@ LogBox.ignoreLogs([
 export default function RootLayout() {
   const colorScheme = useColorScheme()
   const [nativeReady, setNativeReady] = useState(false)
+  const [showSplashOverlay, setShowSplashOverlay] = useState(true)
+  const [minSplashElapsed, setMinSplashElapsed] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -89,9 +93,14 @@ export default function RootLayout() {
     }
   }, [])
 
-  // Keep native splash visible until (chakras) index hides it so opening splash is the first painted screen.
+  // Native shield stays up until AnimatedSplashScreen mounts and calls hideAsync().
   useEffect(() => {
     SplashScreen.preventAutoHideAsync().catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => setMinSplashElapsed(true), SPLASH_MIN_DISPLAY_MS)
+    return () => clearTimeout(t)
   }, [])
 
   useEffect(() => {
@@ -218,6 +227,12 @@ export default function RootLayout() {
     require("../assets/audio/day1tuningfork.mp3"),
   ])
 
+  const splashLoadingComplete =
+    (fontsLoaded || Boolean(fontsError)) &&
+    imagesLoaded &&
+    audiosLoaded &&
+    minSplashElapsed
+
   useChakraWeekTransition()
 
   // RevenueCat: load after first paint so react-native-purchases native module is not required at bundle load (prevents simulator crash).
@@ -343,7 +358,7 @@ export default function RootLayout() {
     )
   }
 
-  // iOS crash fix: never mount GestureHandler/BottomSheet until native is ready. Splash runs in (chakras) index.
+  // iOS crash fix: never mount GestureHandler/BottomSheet until native is ready. JS splash mounts after this.
   if (!nativeReady) {
     return (
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
@@ -392,6 +407,12 @@ export default function RootLayout() {
                 <ProfileSheet />
                 <ChakraHubHeader />
               </View>
+              {showSplashOverlay && (
+                <AnimatedSplashScreen
+                  loadingComplete={splashLoadingComplete}
+                  onFadeOutComplete={() => setShowSplashOverlay(false)}
+                />
+              )}
               {/* TribeChatModal not in codebase; add when component exists: import from "@/components/tribe/TribeChatModal" and render <TribeChatModal /> */}
             </View>
           </BottomSheetModalProvider>

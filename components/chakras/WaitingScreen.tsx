@@ -222,7 +222,7 @@ export const WaitingScreen = ({
   }
 
   // Waiting room ALWAYS begins full downloads of all course audio: heads first (fast), then full files in background.
-  // One-time guard so it runs only once per device. Any bypass (e.g. lifetime direct to day) has backup triggers on day open and on any audio press.
+  // One-time guard: persist only after heads complete so a killed app / first-run error can retry next visit.
   useEffect(() => {
     let cancelled = false
     getAudioPreloadStarted().then((alreadyStarted) => {
@@ -230,14 +230,17 @@ export const WaitingScreen = ({
       import("@/src/utils/audioPreloadManifest").then(
         ({ preloadAllAudioHeads, preloadAllAudioFullFiles }) => {
           if (cancelled) return
-          setAudioPreloadStarted().then(() => {
-            if (cancelled) return
-            preloadAllAudioHeads(storage)
-              .then(() => {
-                if (!cancelled) return preloadAllAudioFullFiles(storage)
+          preloadAllAudioHeads(storage)
+            .then(() => {
+              if (cancelled) return
+              return setAudioPreloadStarted().then(() => {
+                if (cancelled) return
+                return preloadAllAudioFullFiles(storage)
               })
-              .catch(() => {})
-          })
+            })
+            .catch((err) => {
+              console.warn("[WaitingScreen] audio preload chain failed", err)
+            })
         },
       )
     })

@@ -1,7 +1,7 @@
 /**
  * Share Destination Picker – Single source of truth for "where to share"
  *
- * One modal, Soul School design (chakra icon, gradient card), linear list of
+ * One modal, SOUL SCHOOL design (chakra icon, gradient card), linear list of
  * destinations: Messages, WhatsApp, Mail, Copy link, More…. Used by
  * ShareAppModal, InviteFriendModal, TribeRoomInviteModal, FindFriendsModal.
  * High traffic safe: no heavy deps, try/catch in utils, canOpenURL for WhatsApp.
@@ -202,7 +202,7 @@ export function ShareDestinationPicker({
   url,
   title = SHARE_TITLE,
   onSuccess,
-  modalTitle = "Share Soul School",
+  modalTitle = "Share SOUL SCHOOL",
   modalSubtitle = "Choose where to share",
 }: ShareDestinationPickerProps) {
   const handleClose = () => {
@@ -242,7 +242,7 @@ export function ShareDestinationPicker({
                 source={HERO_ICON}
                 style={styles.heroIcon}
                 resizeMode="contain"
-                accessibilityLabel="Soul School chakra icon"
+                accessibilityLabel="SOUL SCHOOL chakra icon"
               />
               <View style={styles.headerTextWrap}>
                 <AppText

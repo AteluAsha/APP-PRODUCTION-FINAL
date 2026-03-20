@@ -42,6 +42,16 @@ import { getCosmicContextForAnua } from "@/utils/cosmicTime"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { speakAsAnua, isElevenLabsAvailable, stopAnuaAudio } from "@/src/services/elevenlabs"
 import { performIntroRitual } from "@/src/services/anuaRitualService"
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated"
+import {
+  SOMATIC_SPINNER_FADE_OUT_MS,
+  TOUCH,
+} from "@/constants/layout"
 import {
   generateDailyTransmission,
   isWisdomEngineAvailable,
@@ -49,7 +59,6 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { LinearGradient } from "expo-linear-gradient"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
-import { TOUCH } from "@/constants/layout"
 import { useAnuaMemoryStore } from "@/hooks/useAnuaMemoryStore"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
 
@@ -732,8 +741,20 @@ export const AnuaChatModal: React.FC<AnuaChatModalProps> = ({
   const [androidModalHeight, setAndroidModalHeight] = useState<number | null>(null)
   const fallbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [anuaBootSpinnerDismissed, setAnuaBootSpinnerDismissed] = useState(
+    Platform.OS === "ios",
+  )
+  const anuaBootSpinnerOpacity = useSharedValue(Platform.OS === "ios" ? 0 : 1)
+  const anuaBootSpinnerStyle = useAnimatedStyle(() => ({
+    opacity: anuaBootSpinnerOpacity.value,
+  }))
+
   useEffect(() => {
     if (!visible) {
+      if (Platform.OS === "android") {
+        anuaBootSpinnerOpacity.value = 1
+        setAnuaBootSpinnerDismissed(false)
+      }
       setContentReady(false)
       setAndroidModalHeight(null)
       if (fallbackTimeoutRef.current != null) {
@@ -756,7 +777,20 @@ export const AnuaChatModal: React.FC<AnuaChatModalProps> = ({
         fallbackTimeoutRef.current = null
       }
     }
-  }, [visible])
+  }, [visible, anuaBootSpinnerOpacity])
+
+  useEffect(() => {
+    if (!visible || Platform.OS === "ios") return
+    if (contentReady) {
+      anuaBootSpinnerOpacity.value = withTiming(
+        0,
+        { duration: SOMATIC_SPINNER_FADE_OUT_MS },
+        (finished) => {
+          if (finished) runOnJS(setAnuaBootSpinnerDismissed)(true)
+        },
+      )
+    }
+  }, [visible, contentReady, anuaBootSpinnerOpacity])
 
   const errorFallback = (
     <View
@@ -836,27 +870,40 @@ export const AnuaChatModal: React.FC<AnuaChatModalProps> = ({
         >
           <SafeAreaProvider style={{ flex: 1 }} pointerEvents="box-none">
             <ErrorBoundary fallback={errorFallback}>
-              {showContent ? (
-                <AnuaChatPage
-                  onClose={onClose}
-                  chakraDay={chakraDay}
-                  chakraName={chakraName}
-                  isWaitingRoom={isWaitingRoom}
-                  initialMessage={initialMessage}
-                  androidModalHeight={androidModalHeight}
-                />
-              ) : (
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#000",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <ActivityIndicator size="large" color="rgba(135, 174, 115, 0.8)" />
-                </View>
-              )}
+              <View style={{ flex: 1 }} collapsable={false}>
+                {showContent ? (
+                  <AnuaChatPage
+                    onClose={onClose}
+                    chakraDay={chakraDay}
+                    chakraName={chakraName}
+                    isWaitingRoom={isWaitingRoom}
+                    initialMessage={initialMessage}
+                    androidModalHeight={androidModalHeight}
+                  />
+                ) : null}
+                {Platform.OS === "android" &&
+                  (!showContent || !anuaBootSpinnerDismissed) && (
+                    <Animated.View
+                      pointerEvents={showContent ? "none" : "auto"}
+                      style={[
+                        StyleSheet.absoluteFillObject,
+                        {
+                          backgroundColor: "#000",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        },
+                        anuaBootSpinnerStyle,
+                      ]}
+                    >
+                      {!showContent ? (
+                        <ActivityIndicator
+                          size="large"
+                          color="rgba(135, 174, 115, 0.8)"
+                        />
+                      ) : null}
+                    </Animated.View>
+                  )}
+              </View>
             </ErrorBoundary>
           </SafeAreaProvider>
         </View>

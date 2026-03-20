@@ -456,7 +456,7 @@ export default function DateSelectionScreen() {
               color: "rgba(255,255,255,0.35)",
             }}
           >
-            Soul School is operated by Project Starseed, an IRS-recognized
+            SOUL SCHOOL is operated by Project Starseed, an IRS-recognized
             501(c)(3) tax-exempt organization.
           </AppText>
         </View>

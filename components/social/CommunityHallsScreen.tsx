@@ -41,7 +41,7 @@ import Animated, {
   withTiming,
   cancelAnimation,
 } from "react-native-reanimated"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
@@ -77,6 +77,7 @@ import {
 } from "@/constants/chakras/chakraConstants"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { ICON } from "@/constants/layout"
 import { getUserProfile, type UserProfile } from "@/src/services/profileService"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { LinearGradient } from "expo-linear-gradient"
@@ -195,7 +196,10 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
   initialDay,
 }) => {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { width: screenWidth } = useWindowDimensions()
+  /** Same vertical band as GlobalHomeButton / ActionBar: max(insets.top, 8) + 8 from screen top; safe area already applied by SafeAreaView. */
+  const chromeRowPadTop = Math.max(insets.top, 8) + 8 - insets.top
   const pagerRef = useRef<FlatList>(null)
   const dayScrollRefs = useRef<Record<number, ScrollView | null>>({})
   const [selectedDay, setSelectedDay] = useState<number>(
@@ -1566,31 +1570,61 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1, zIndex: 1 }}
       >
-        {/* Compact Header */}
-        <View
-          style={{
-            paddingHorizontal: 16,
-            paddingTop: 8,
-            paddingBottom: 4,
-            backgroundColor: EARTH_COLORS.background,
-          }}
-        >
+        {/* Header: back row lines up with GlobalHomeButton (chakra home); title row below so copy stays clear */}
+        <View style={{ backgroundColor: EARTH_COLORS.background }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 4,
+              paddingHorizontal: 16,
+              paddingTop: chromeRowPadTop,
+              paddingBottom: 6,
             }}
           >
-            <Pressable onPress={() => router.back()} style={{ padding: 6 }}>
-              <Ionicons name="arrow-back" size={22} color={EARTH_COLORS.text} />
+            <Pressable
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Light)
+                router.back()
+              }}
+              style={{
+                width: ICON.homeButton,
+                height: ICON.homeButton,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Back"
+              accessibilityHint="Go back to the previous screen"
+            >
+              <Ionicons
+                name="arrow-back"
+                size={ICON.actionBar}
+                color={EARTH_COLORS.text}
+              />
             </Pressable>
+            {/* Reserves the same horizontal band as GlobalHomeButton (right: 16, 40×40) so back and home align across */}
+            <View
+              style={{ width: ICON.homeButton, height: ICON.homeButton }}
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            />
+          </View>
+
+          <View
+            style={{
+              position: "relative",
+              paddingHorizontal: 16,
+              paddingBottom: 8,
+              minHeight: 52,
+              justifyContent: "center",
+            }}
+          >
             <View
               style={{
-                alignItems: "center",
-                flex: 1,
                 flexDirection: "row",
+                alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
               }}
@@ -1627,50 +1661,58 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 </AppText>
               </View>
             </View>
-            {/* Refresh feed - earth icon spins while refreshing */}
-            <Pressable
-              onPress={() => {
-                addHapticFeedback(HapticStrength.Light)
-                onRefresh()
+            <View
+              style={{
+                position: "absolute",
+                right: 8,
+                top: 0,
+                bottom: 0,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 2,
               }}
-              style={{ padding: 6, marginRight: 4 }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel="Refresh feed"
-              accessibilityHint="Pull down or tap to refresh sanctuary feed"
             >
-              <Animated.View style={refreshIconAnimatedStyle}>
-                <Ionicons
-                  name="earth"
-                  size={22}
-                  color={refreshing ? "#06B6D4" : EARTH_COLORS.textSecondary}
-                />
-              </Animated.View>
-            </Pressable>
-            {ENABLE_QR_CODE_SHARING && (
               <Pressable
                 onPress={() => {
-                  setShowShareModal(true)
                   addHapticFeedback(HapticStrength.Light)
+                  onRefresh()
                 }}
-                style={{
-                  padding: 6,
-                  marginRight: 8,
-                }}
+                style={{ padding: 6 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Refresh feed"
+                accessibilityHint="Pull down or tap to refresh sanctuary feed"
               >
-                <Ionicons name="share-social" size={22} color="#87AE73" />
+                <Animated.View style={refreshIconAnimatedStyle}>
+                  <Ionicons
+                    name="earth"
+                    size={22}
+                    color={refreshing ? "#06B6D4" : EARTH_COLORS.textSecondary}
+                  />
+                </Animated.View>
               </Pressable>
-            )}
-            <Pressable
-              onPress={() => router.push("/Profile")}
-              style={{ padding: 6 }}
-            >
-              <Ionicons
-                name="person-circle-outline"
-                size={22}
-                color={EARTH_COLORS.text}
-              />
-            </Pressable>
+              {ENABLE_QR_CODE_SHARING && (
+                <Pressable
+                  onPress={() => {
+                    setShowShareModal(true)
+                    addHapticFeedback(HapticStrength.Light)
+                  }}
+                  style={{ padding: 6 }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="share-social" size={22} color="#87AE73" />
+                </Pressable>
+              )}
+              <Pressable
+                onPress={() => router.push("/Profile")}
+                style={{ padding: 6 }}
+              >
+                <Ionicons
+                  name="person-circle-outline"
+                  size={22}
+                  color={EARTH_COLORS.text}
+                />
+              </Pressable>
+            </View>
           </View>
         </View>
 

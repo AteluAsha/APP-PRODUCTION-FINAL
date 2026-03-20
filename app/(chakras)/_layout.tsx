@@ -8,6 +8,14 @@ import {
   SOMATIC_SCREEN_TRANSITION_MS_IOS,
 } from "@/constants/layout"
 
+const somaticFadeOptions = {
+  animation: "fade" as const,
+  animationDuration:
+    Platform.OS === "ios"
+      ? SOMATIC_SCREEN_TRANSITION_MS_IOS
+      : SOMATIC_SCREEN_TRANSITION_MS,
+}
+
 const ChakrasLayout = () => {
   const pathname = usePathname()
   const router = useRouter()
@@ -44,7 +52,7 @@ const ChakrasLayout = () => {
               name="TribeChat"
               options={{
                 presentation: "card",
-                animation: "slide_from_right",
+                animation: "fade",
                 animationDuration:
                   Platform.OS === "ios"
                     ? SOMATIC_SCREEN_TRANSITION_MS_IOS
@@ -56,7 +64,7 @@ const ChakrasLayout = () => {
               name="AnuaChat"
               options={{
                 presentation: "card",
-                animation: "slide_from_right",
+                animation: "fade",
                 animationDuration:
                   Platform.OS === "ios"
                     ? SOMATIC_SCREEN_TRANSITION_MS_IOS
@@ -68,7 +76,7 @@ const ChakrasLayout = () => {
               name="ProfileMenu"
               options={{
                 presentation: "card",
-                animation: "slide_from_right",
+                animation: "fade",
                 animationDuration:
                   Platform.OS === "ios"
                     ? SOMATIC_SCREEN_TRANSITION_MS_IOS
@@ -80,7 +88,7 @@ const ChakrasLayout = () => {
               name="Profile"
               options={{
                 presentation: "card",
-                animation: "slide_from_right",
+                animation: "fade",
                 animationDuration:
                   Platform.OS === "ios"
                     ? SOMATIC_SCREEN_TRANSITION_MS_IOS
@@ -91,6 +99,11 @@ const ChakrasLayout = () => {
             <Stack.Screen name="DevPaywall" />
             <Stack.Screen name="Paywall" />
             <Stack.Screen name="DateSelection" />
+            <Stack.Screen
+              name="SimpleGraceTransition"
+              options={somaticFadeOptions}
+            />
+            <Stack.Screen name="QuizScreen" options={somaticFadeOptions} />
             <Stack.Screen name="ChakraHub" />
             <Stack.Screen name="CoursePreview" />
             <Stack.Screen name="Preview" />

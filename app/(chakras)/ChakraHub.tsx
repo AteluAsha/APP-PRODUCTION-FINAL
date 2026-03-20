@@ -21,7 +21,12 @@
 
 import React, { useMemo, useEffect, useState } from "react"
 import { View, Pressable, Image, Platform, Linking, useWindowDimensions } from "react-native"
-import Animated, { FadeIn, Easing } from "react-native-reanimated"
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated"
 import { ScrollView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
@@ -41,7 +46,6 @@ import GoodbyeModal from "@/components/chakras/GoodbyeModal"
 import { useFocusEffect } from "@react-navigation/native"
 import {
   FLOATING_NAV_SCROLL_BOTTOM_PADDING,
-  LIFETIME_HUB_STACK_RAISE_IOS,
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
   TRIAL_HOME_ROOT_CHAKRA,
@@ -127,10 +131,15 @@ export default function ChakraHub() {
 
   const { height: windowHeight } = useWindowDimensions()
   const viewportHeight = windowHeight - insets.top - insets.bottom
-  /** iOS: shorter block so stack (pinned to bottom of block) sits higher – LOCKED production layout. */
+  /** iOS lifetime: same stack viewport as trial home (SCROLL_PADDING_TOP_IOS + breathing). */
   const stackBlockHeight =
     Platform.OS === "ios"
-      ? viewportHeight - LIFETIME_HUB_STACK_RAISE_IOS
+      ? windowHeight -
+        insets.top -
+        insets.bottom -
+        TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP_IOS -
+        TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_BOTTOM -
+        SCROLL_BREATHING_BOTTOM_PADDING
       : viewportHeight
 
   // Same shape as ChakraHome: day, affirmation, description, source, onPress for IntegratedProgressStack
@@ -146,13 +155,40 @@ export default function ChakraHub() {
   }, [chakrasData])
   const contentReady = !isLoadingChakras && stackChakraData.length === 7
 
-  /** Dev-only: confirm iOS lifetime stack block is on the correct code path (contentReady and stack rendered). */
+  const hubContentOpacity = useSharedValue(0)
+  const hubReadyContentStyle = useAnimatedStyle(() => ({
+    opacity: hubContentOpacity.value,
+  }))
+
   useEffect(() => {
-    if (__DEV__ && Platform.OS === "ios" && contentReady) {
-      // eslint-disable-next-line no-console
-      console.log("[ChakraHub] iOS lifetime stack block rendering (contentReady=true, stackChakraData.length=7)")
+    if (contentReady) {
+      hubContentOpacity.value = withTiming(1, {
+        duration: SOMATIC_FADE_IN_MS,
+        easing: Easing.out(Easing.ease),
+      })
+    } else {
+      hubContentOpacity.value = 0
     }
-  }, [contentReady])
+  }, [contentReady, hubContentOpacity])
+
+  /** Spacer under stack so Sanctuary starts lower; user scrolls to Gallery. */
+  const sanctuaryTopSpacerHeight = useMemo(() => {
+    const safeH = windowHeight - insets.top - insets.bottom
+    const sanctuaryHeaderApprox = 38 + 28 + 36
+    if (Platform.OS === "ios") {
+      const scrollViewportH = safeH - stackBlockHeight
+      return Math.max(
+        0,
+        Math.round(scrollViewportH - sanctuaryHeaderApprox),
+      )
+    }
+    const scrollPadTop = Math.max(TRIAL_HOME_ROOT_CHAKRA.SCROLL_PADDING_TOP, 56)
+    const belowStack = safeH - scrollPadTop - stackBlockHeight
+    return Math.max(
+      0,
+      Math.round(belowStack - sanctuaryHeaderApprox),
+    )
+  }, [windowHeight, insets.top, insets.bottom, stackBlockHeight])
 
   useFocusEffect(
     React.useCallback(() => {
@@ -234,44 +270,13 @@ export default function ChakraHub() {
       {__DEV__ && (
         <TrialTestFlow onUnlockNextDay={() => {}} currentDay={currentDay} />
       )}
-      {/* DEV: Visible proof this screen is the one being updated. If you don't see this banner, the app is not loading the new bundle. */}
-      {__DEV__ && Platform.OS === "ios" && (
-        <View
-          style={{
-            backgroundColor: "#00FF00",
-            paddingVertical: 6,
-            paddingHorizontal: 12,
-            alignItems: "center",
-            zIndex: 9999,
-          }}
-          pointerEvents="none"
-        >
-          <AppText font="instrument-medium" size="xs" style={{ color: "#000" }}>
-            CHAKRAHUB UPDATED — bundle loaded
-          </AppText>
-        </View>
-      )}
       <ActionBar onBackPress={handleBack} showBackButton={false} />
-      {/* iOS lifetime: chakra stack in its own block; no extra top padding. Alpha/omega are a separate overlay (below) and do not affect this stack. */}
-      {Platform.OS === "ios" && contentReady && (
-        <View style={{ height: stackBlockHeight, paddingTop: 0 }}>
-          <IntegratedProgressStack
-            currentDay={currentDay}
-            hasCompletedChakra={hasCompletedChakra}
-            hasParticipatedDay={hasParticipatedDay}
-            allChakrasCompleted={allChakrasCompleted}
-            hasLifetimeAccess={true}
-            inCourseMode={inCourseMode}
-            showAllChakrasForLifetimeHub={true}
-            chakraData={stackChakraData}
-            router={router}
-          />
-        </View>
-      )}
-      {/* ScrollView first so overlay rendered after it receives touches on Android */}
+      <View style={{ flex: 1 }}>
+      {/* ScrollView owns all hub content; α/Ω row is a fixed footer below it (not an overlay) so glyphs never cover Sanctuary. */}
       <ScrollView
         style={{ flex: 1, backgroundColor: "#000000" }}
         showsVerticalScrollIndicator={false}
+        bounces
         {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
         contentContainerStyle={{
           flexGrow: 1,
@@ -287,16 +292,20 @@ export default function ChakraHub() {
         {!contentReady ? (
           <View style={{ minHeight: viewportHeight, flexGrow: 1 }} />
         ) : (
-          <Animated.View
-            entering={FadeIn.duration(SOMATIC_FADE_IN_MS).easing(Easing.out(Easing.ease))}
-            style={{ flexGrow: 1 }}
-          >
-            {/* Android: stack inside ScrollView. iOS: stack is rendered above ScrollView. */}
-            {Platform.OS !== "ios" && (
+          <Animated.View style={[{ flexGrow: 1 }, hubReadyContentStyle]}>
+            {/* Vertically center the stack block in the safe viewport (iOS: stackBlockHeight < safeH). */}
+            <View
+              style={{
+                minHeight: viewportHeight,
+                justifyContent: "center",
+                width: "100%",
+              }}
+            >
               <View
                 style={{
                   minHeight: stackBlockHeight,
                   maxHeight: stackBlockHeight,
+                  width: "100%",
                 }}
               >
                 <IntegratedProgressStack
@@ -311,8 +320,11 @@ export default function ChakraHub() {
                   router={router}
                 />
               </View>
+            </View>
+            {/* Sanctuary: spacer aligns title to bottom of first screen; cards padded below fold */}
+            {sanctuaryTopSpacerHeight > 0 && (
+              <View style={{ height: sanctuaryTopSpacerHeight }} />
             )}
-            {/* Sanctuary and actions – scroll to reveal; title up, first button pushed down for cleaner look */}
             <View style={{ paddingTop: 38, paddingHorizontal: 20, marginBottom: 24 }}>
           <AppText
             font="instrument-bold"
@@ -332,7 +344,7 @@ export default function ChakraHub() {
           <View
             style={{
               gap: 12,
-              paddingTop: Platform.OS === "android" ? 56 : 0,
+              paddingTop: Platform.OS === "android" ? 56 : 24,
             }}
           >
             {/* Gallery of Gnosis */}
@@ -1004,18 +1016,16 @@ export default function ChakraHub() {
         )}
       </ScrollView>
 
-        {/* Alpha and omega – separate overlay pinned to bottom of phone; NOT part of chakra stack. Stack layout is independent; do not wrap stack with this. */}
+        {/* Alpha / omega / center jewel: baseline footer strip (layout sibling under ScrollView)—always at physical bottom of hub, never stacked over scroll text. */}
         <View
           style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            paddingBottom: Math.max(insets.bottom, 12),
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
             gap: 10,
+            backgroundColor: "#000000",
+            paddingTop: 10,
+            paddingBottom: Math.max(insets.bottom, 12),
           }}
           pointerEvents="none"
         >
@@ -1047,6 +1057,7 @@ export default function ChakraHub() {
             Ω
           </AppText>
         </View>
+      </View>
 
       <GoodbyeModal
         isVisible={isGoodbyeVisible}

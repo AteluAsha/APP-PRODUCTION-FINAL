@@ -11,7 +11,7 @@ import { Platform, Linking, Share } from "react-native"
 import * as Clipboard from "expo-clipboard"
 import { APP_STORE_URLS } from "@/constants/sharing"
 
-export const SHARE_TITLE = "Join me on Soul School"
+export const SHARE_TITLE = "Join me on SOUL SCHOOL"
 
 /** App store link for current platform (for invite messages). */
 export function getAppStoreLink(): string {
@@ -44,7 +44,7 @@ export const INVITE_PREVIEW_LABEL = "Your invite"
 export const INVITE_PREVIEW_HINT =
   "Tap Share to send, or copy the link below."
 
-/** Generate invite message (heart-minded, Soul School voice). */
+/** Generate invite message (heart-minded, SOUL SCHOOL voice). */
 export function generateInviteMessage(options: {
   startDate?: string
   referralLink?: string
@@ -55,17 +55,17 @@ export function generateInviteMessage(options: {
     options
   const appLink = referralLink ?? getAppStoreLink()
   const defaultOpening =
-    "I'm walking a 7-day chakra journey with Soul School and would love you to join me — your presence would make the path richer."
+    "I'm walking a 7-day chakra journey with SOUL SCHOOL and would love you to join me — your presence would make the path richer."
   let message = personalMessage ?? defaultOpening
   if (startDate) {
     message += `\n\nI'm beginning on ${startDate}.`
   } else {
     message += `\n\nWhenever you're ready, you can begin your own journey from self to soul.`
   }
-  message += `\n\nSoul School — healing through connection:\n${appLink}`
+  message += `\n\nSOUL SCHOOL — healing through connection:\n${appLink}`
   message += `\n\nWith you in spirit. ✨`
   if (senderSoulSchoolId) {
-    message += `\n\nSoul School ID: ${senderSoulSchoolId}`
+    message += `\n\nSOUL SCHOOL ID: ${senderSoulSchoolId}`
     message += `\n\nAfter you download the app, enter this ID in Tribe Chat to sync journeys.`
   }
   message += `\n\nGet the app: soulschool.app`

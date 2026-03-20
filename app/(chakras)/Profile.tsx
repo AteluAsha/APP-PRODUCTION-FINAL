@@ -1,5 +1,5 @@
 /**
- * Profile-only route: Soul School ID, name, and profile photo (editable).
+ * Profile-only route: SOUL SCHOOL ID, name, and profile photo (editable).
  * Opened from ChakraHub profile icon. Same card UI as ProfileSheet in profile-only mode.
  */
 

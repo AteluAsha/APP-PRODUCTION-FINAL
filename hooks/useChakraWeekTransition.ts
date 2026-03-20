@@ -1,4 +1,5 @@
-import { useEffect } from "react"
+import { useCallback, useEffect } from "react"
+import { AppState, type AppStateStatus } from "react-native"
 import { useShallow } from "zustand/react/shallow"
 import { useChakraJourneyStore } from "./useChakraJourneyStore"
 import { getCurrentWeekStartDateISO } from "@/utils/date"
@@ -28,6 +29,24 @@ export const useChakraWeekTransition = () => {
       setJourneyWeekStartDate: state.setJourneyWeekStartDate,
     })),
   )
+
+  const runWeekTransitionCheck = useCallback(() => {
+    const currentWeekStartDate = getCurrentWeekStartDateISO()
+    const {
+      journeyStarted: started,
+      journeyWeekStartDate: storedWeek,
+      resetJourney: doReset,
+      setJourneyWeekStartDate: setWeekStart,
+    } = useChakraJourneyStore.getState()
+
+    if (!started) return
+
+    if (storedWeek && storedWeek !== currentWeekStartDate) {
+      doReset()
+    } else if (!storedWeek) {
+      setWeekStart(currentWeekStartDate)
+    }
+  }, [])
 
   useEffect(() => {
     const currentWeekStartDate = getCurrentWeekStartDateISO()
@@ -63,4 +82,24 @@ export const useChakraWeekTransition = () => {
     resetJourney,
     setJourneyWeekStartDate,
   ])
+
+  // Week boundary is local Monday; without these, rollover is missed if the app stays
+  // mounted across midnight (no store update) or returns from background after the new week.
+  useEffect(() => {
+    const onAppState = (next: AppStateStatus) => {
+      if (next === "active") {
+        runWeekTransitionCheck()
+      }
+    }
+    const sub = AppState.addEventListener("change", onAppState)
+    return () => sub.remove()
+  }, [runWeekTransitionCheck])
+
+  useEffect(() => {
+    if (!journeyStarted) return
+    const id = setInterval(() => {
+      runWeekTransitionCheck()
+    }, 60_000)
+    return () => clearInterval(id)
+  }, [journeyStarted, runWeekTransitionCheck])
 }

@@ -41,7 +41,7 @@ export async function getUserId(): Promise<string> {
 }
 
 /**
- * Request a new Soul School ID. Clears stored ID (including legacy user_*)
+ * Request a new SOUL SCHOOL ID. Clears stored ID (including legacy user_*)
  * and generates a fresh Soul Signature. Call RevenueCat linkUserId after.
  */
 export async function requestNewUserId(): Promise<string> {
