@@ -97,6 +97,14 @@ module.exports = {
       ],
     },
     plugins: [
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            deploymentTarget: "15.1",
+          },
+        },
+      ],
       "expo-router",
       [
         "expo-splash-screen",
