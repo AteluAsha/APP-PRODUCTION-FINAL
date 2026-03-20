@@ -10,9 +10,6 @@ module.exports = function (api) {
       "nativewind/babel",
     ],
     plugins: [
-      // NativeWind / css-interop metro chain expects this module (Expo SDK 53+).
-      // Must run before react-native-reanimated/plugin.
-      "react-native-worklets/plugin",
       // note: react-native-reanimated/plugin must be last in this list
       ["react-native-reanimated/plugin", { relativeSourceLocation: true }],
     ],
