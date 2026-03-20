@@ -36,7 +36,7 @@ module.exports = {
       image: "./assets/images/SoulSchool_HERO_Logo.png",
       backgroundColor: "#000000",
       resizeMode: "contain",
-      imageWidth: 88,
+      imageWidth: 160,
     },
     scheme: "soul-school",
     userInterfaceStyle: "dark",
@@ -51,6 +51,18 @@ module.exports = {
         CFBundleDisplayName: "Soul School",
         LSApplicationQueriesSchemes: ["whatsapp", "sms", "mailto"],
         UIBackgroundModes: ["audio"],
+        // Allow Metro bundler at localhost/127.0.0.1 in simulator and dev (required for "Could not connect to development server")
+        NSAppTransportSecurity: {
+          NSAllowsArbitraryLoads: false,
+          NSAllowsLocalNetworking: true,
+          NSExceptionDomains: {
+            localhost: { NSExceptionAllowsInsecureHTTPLoads: true },
+            "127.0.0.1": { NSExceptionAllowsInsecureHTTPLoads: true },
+          },
+        },
+        // Required for iOS to access your local network (e.g. Metro on 192.168.x.x).
+        NSLocalNetworkUsageDescription:
+          "Allow Soul School to connect to your local Metro dev server during development.",
         NSCameraUsageDescription:
           "We need access to your camera to record a video for sharing your journey.",
         NSMicrophoneUsageDescription:

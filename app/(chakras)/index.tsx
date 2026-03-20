@@ -8,8 +8,11 @@
  * - Trial, after trial 1 → DateSelection
  * - Trial, has courseStartDate → ChakraHome
  * - Trial, first time → WelcomeScreen
+ *
+ * Fallback: if appReady never becomes true (e.g. nav state or rehydration slow in simulator),
+ * we force ready after FORCE_READY_MS so the app never stays stuck on the splash.
  */
-import React, { useRef, useEffect, useCallback } from "react"
+import React, { useRef, useEffect, useCallback, useState } from "react"
 import { View, Platform } from "react-native"
 import { useRouter, useRootNavigationState } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
@@ -18,11 +21,13 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { OpeningSplash } from "@/components/OpeningSplash"
 
 const HIDE_NATIVE_SPLASH_MS = Platform.OS === "ios" ? 80 : 50
+const FORCE_READY_MS = 5000
 
 export default function HomeScreen() {
   const router = useRouter()
   const rootNavigationState = useRootNavigationState()
   const navigatedRef = useRef(false)
+  const [forceReady, setForceReady] = useState(false)
 
   const storeRehydrationReady = useStoreRehydration((s) =>
     s.safetyPassed ? true : s.journeyRehydrated && s.firstLaunchRehydrated,
@@ -33,7 +38,14 @@ export default function HomeScreen() {
   )
   const courseStartDate = useChakraJourneyStore((s) => s.courseStartDate)
 
-  const appReady = Boolean(storeRehydrationReady && rootNavigationState?.key)
+  const appReady = Boolean(
+    (storeRehydrationReady && rootNavigationState?.key) || forceReady,
+  )
+
+  useEffect(() => {
+    const t = setTimeout(() => setForceReady(true), FORCE_READY_MS)
+    return () => clearTimeout(t)
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => {

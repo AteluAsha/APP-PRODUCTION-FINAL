@@ -43,7 +43,6 @@ import { InviteRefApplier } from "@/components/invite/InviteRefApplier"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import * as Linking from "expo-linking"
 import "@/src/services/firebase"
-import { initializeRevenueCat } from "@/src/services/revenuecat"
 import { initializeSentry } from "@/src/services/sentry"
 import "@/src/services/journeyNotifications"
 
@@ -66,6 +65,7 @@ export default function RootLayout() {
 
   // Defer Reanimated/BottomSheet until native module is initialized (fixes iOS crash).
   // One frame + short delay on both platforms so Reanimated worklets are ready before main app (Android .aab was throwing without delay).
+  // Safety: if nativeReady never fires (e.g. simulator), force after 3s so we never block forever.
   useEffect(() => {
     const delay = Platform.OS === "ios" ? 80 : 80
     let cancelled = false
@@ -79,9 +79,13 @@ export default function RootLayout() {
         setNativeReady(true)
       }
     })
+    const safety = setTimeout(() => {
+      if (!cancelled) setNativeReady(true)
+    }, 3000)
     return () => {
       cancelled = true
       cancelAnimationFrame(id)
+      clearTimeout(safety)
     }
   }, [])
 
@@ -216,10 +220,13 @@ export default function RootLayout() {
 
   useChakraWeekTransition()
 
-  // RevenueCat: initialized at startup from src/core/config/revenueCatConfig.ts when env keys are not set
+  // RevenueCat: load after first paint so react-native-purchases native module is not required at bundle load (prevents simulator crash).
   useEffect(() => {
     const initRevenueCat = async () => {
       try {
+        const { initializeRevenueCat } = await import(
+          "@/src/services/revenuecat"
+        )
         const { getUserId } = await import("@/src/services/userId")
         const userId = await getUserId()
         await initializeRevenueCat(userId)
