@@ -179,6 +179,7 @@ const HeadToHeart = () => {
                 authorColor={content.audio.authorColor}
                 isIntroAudio={false}
                 chakraColor={getChakraColor(getDayFromChakra(chakra))}
+                fullPlayerTrackId={getHeadToHeartAudioId(chakra)}
               />
             ) : null}
           </View>

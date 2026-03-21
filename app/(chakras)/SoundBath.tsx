@@ -31,7 +31,12 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useCrystalBowlAudio, getCrystalBowlFileName } from "@/hooks/useCrystalBowlAudio"
 import { useTuningForkAudio, getTuningForkHertz } from "@/hooks/useTuningForkAudio"
 import { prepareCrystalBowlForPlay } from "@/src/utils/crystalBowlPlayback"
-import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
+import {
+  FLOATING_NAV_SCROLL_BOTTOM_PADDING,
+  SCROLL_BREATHING_BOTTOM_PADDING,
+  SCROLL_ANDROID_SMOOTH_PROPS,
+  SOMATIC_HERO_IMAGE_FADE_MS,
+} from "@/constants/layout"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { getDayFromChakra } from "@/utils/chakraMapping"
 
@@ -97,6 +102,9 @@ const SoundBath = () => {
   const crystalBowlAudio = useCrystalBowlAudio(chakra)
   const tuningForkAudio = useTuningForkAudio(chakra)
   const tuningForkHertz = getTuningForkHertz(chakra)
+
+  const chakraDayIndex = getDayFromChakra(chakra)
+  const chakraAccentColor = getChakraColor(chakraDayIndex)
 
   // On leave: unload tuning fork (local). Do NOT reset store so crystal bowl mini player can show for both trial and lifetime.
   useFocusEffect(
@@ -302,7 +310,10 @@ const SoundBath = () => {
             showsVerticalScrollIndicator={false}
             {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
             contentContainerStyle={{
-              paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
+              paddingBottom:
+                FLOATING_NAV_SCROLL_BOTTOM_PADDING +
+                SCROLL_BREATHING_BOTTOM_PADDING +
+                (Platform.OS === "android" ? 72 : 0),
             }}
           >
           <AppText
@@ -319,35 +330,40 @@ const SoundBath = () => {
           </AppText>
           <View
             style={{
-              marginTop: 16,
+              marginTop: 20,
               marginHorizontal: 24,
-              marginBottom: 16,
-              paddingVertical: 14,
-              paddingHorizontal: 20,
-              borderRadius: 12,
+              marginBottom: 18,
+              paddingVertical: Platform.OS === "android" ? 24 : 22,
+              paddingHorizontal: 26,
+              borderRadius: 16,
               backgroundColor: "rgba(255,255,255,0.06)",
               borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.08)",
+              borderColor: "rgba(255,255,255,0.1)",
               alignItems: "center",
             }}
           >
             <AppText
               font="instrument-semibold"
-              size="lg"
               style={{
                 textAlign: "center",
-                color: "rgba(255,255,255,0.95)",
+                color: chakraAccentColor,
+                fontSize: Platform.OS === "android" ? 20 : 19,
+                lineHeight: Platform.OS === "android" ? 28 : 26,
+                letterSpacing: 0.35,
               }}
             >
               {soundBathContent.title}
             </AppText>
             <AppText
               font="instrument-italic"
-              size="xs"
               style={{
                 textAlign: "center",
-                marginTop: 4,
-                color: "rgba(255,255,255,0.8)",
+                marginTop: Platform.OS === "android" ? 14 : 12,
+                color: "rgba(255,255,255,0.84)",
+                fontSize: Platform.OS === "android" ? 15 : 14,
+                lineHeight: Platform.OS === "android" ? 22 : 20,
+                letterSpacing: 0.6,
+                textTransform: "lowercase",
               }}
             >
               {soundBathContent.subtitle}
@@ -445,7 +461,13 @@ const SoundBath = () => {
               paddingHorizontal: 20,
             }}
           >
-            <View style={{ marginBottom: 14 }}>
+            <View
+              style={{
+                marginBottom: 14,
+                width: "100%",
+                alignSelf: "stretch",
+              }}
+            >
               <SoundBathButton
                 isLoading={tuningForkAudio.isLoading || tuningForkPreparing}
                 error={tuningForkAudio.error}

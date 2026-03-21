@@ -11,6 +11,10 @@
  * - Full feature access
  * - Central hub for navigation
  *
+ * Chakra Home Reveal Breath: long dashboard fade (see CHAKRA_HUB_REVEAL_BREATH_MS /
+ * useHomeSomaticEntrance) when entering from paywall, scholarship, Access Granted,
+ * or Energy Exchange — prefaced by requestChakraHubRevealBreath() on those navigations.
+ *
  * ARCHITECTURE: Part of "Two Apps in One" - this is App 2 (Lifetime)
  *
  * GLOBAL (iOS + Android): Course-mode logic, "Start a new 7 day alignment" section
@@ -21,12 +25,7 @@
 
 import React, { useMemo, useEffect, useState } from "react"
 import { View, Pressable, Image, Platform, Linking, useWindowDimensions } from "react-native"
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated"
+import Animated from "react-native-reanimated"
 import { ScrollView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
@@ -49,8 +48,8 @@ import {
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
   TRIAL_HOME_ROOT_CHAKRA,
-  SOMATIC_FADE_IN_MS,
 } from "@/constants/layout"
+import { useHomeSomaticEntrance } from "@/hooks/useHomeSomaticEntrance"
 import { ARCHETYPE_QUIZ_URL } from "@/constants/sharing"
 import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
 import { IntegratedProgressStack } from "@/components/chakras/IntegratedProgressStack"
@@ -155,21 +154,11 @@ export default function ChakraHub() {
   }, [chakrasData])
   const contentReady = !isLoadingChakras && stackChakraData.length === 7
 
-  const hubContentOpacity = useSharedValue(0)
-  const hubReadyContentStyle = useAnimatedStyle(() => ({
-    opacity: hubContentOpacity.value,
-  }))
+  /** Somatic entrance only when hub dashboard is actually shown (not loading placeholder). */
+  const hubDashboardReady = contentReady && hasLifetimeAccess
 
-  useEffect(() => {
-    if (contentReady) {
-      hubContentOpacity.value = withTiming(1, {
-        duration: SOMATIC_FADE_IN_MS,
-        easing: Easing.out(Easing.ease),
-      })
-    } else {
-      hubContentOpacity.value = 0
-    }
-  }, [contentReady, hubContentOpacity])
+  const { contentOpacityStyle: hubContentEntranceStyle } =
+    useHomeSomaticEntrance(hubDashboardReady)
 
   /** Spacer under stack so Sanctuary starts lower; user scrolls to Gallery. */
   const sanctuaryTopSpacerHeight = useMemo(() => {
@@ -266,7 +255,10 @@ export default function ChakraHub() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#000000" }}
+      edges={["left", "right"]}
+    >
       {__DEV__ && (
         <TrialTestFlow onUnlockNextDay={() => {}} currentDay={currentDay} />
       )}
@@ -292,7 +284,9 @@ export default function ChakraHub() {
         {!contentReady ? (
           <View style={{ minHeight: viewportHeight, flexGrow: 1 }} />
         ) : (
-          <Animated.View style={[{ flexGrow: 1 }, hubReadyContentStyle]}>
+          <Animated.View
+            style={[{ flexGrow: 1, width: "100%" }, hubContentEntranceStyle]}
+          >
             {/* Vertically center the stack block in the safe viewport (iOS: stackBlockHeight < safeH). */}
             <View
               style={{

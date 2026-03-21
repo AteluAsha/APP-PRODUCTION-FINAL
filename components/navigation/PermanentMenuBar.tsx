@@ -39,6 +39,7 @@ import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { DAY_NAMES, getDayName } from "@/constants/chakras/chakraConstants"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
+import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
 import { MenuBarMiniPlayer } from "@/components/navigation/MenuBarMiniPlayer"
 import { getChakraName } from "@/constants/chakras/chakraConstants"
 import { Image } from "react-native"
@@ -134,6 +135,7 @@ export const PermanentMenuBar: React.FC = () => {
   const source = useCurrentAudioStore((s) => s.source)
   const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
   const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
+  const splashOverlayActive = useSplashOverlayStore((s) => s.splashOverlayActive)
   // Lifetime menu bar is permanently visible. Trial uses same menu bar (4 or 5 items).
 
   // Determine if we're on a home/landing screen where menu should be hidden by default
@@ -361,8 +363,33 @@ export const PermanentMenuBar: React.FC = () => {
     }
   }
 
+  const isTrialChakraHomeRoute =
+    Boolean(pathname?.includes("ChakraHome")) ||
+    (segments as string[]).includes("ChakraHome")
+
+  /** Trial: chevron on waiting room or ChakraHome dashboard only (gated). */
+  const showTrialMenuToggleArrow =
+    !hasLifetimeAccess &&
+    (isWaitingScreenVisible ||
+      (isTrialChakraHomeRoute && !useVerticalLayout && !isWaitingScreenVisible))
+
+  /** Lifetime: standard expand/collapse chevron on ChakraHub and ChakraHome (horizontal bar). */
+  const showLifetimeMenuToggleArrow =
+    hasLifetimeAccess &&
+    !useVerticalLayout &&
+    (Boolean(pathname?.includes("ChakraHub")) ||
+      Boolean(pathname?.includes("ChakraHome")))
+
+  const showMenuToggleArrow =
+    showTrialMenuToggleArrow || showLifetimeMenuToggleArrow
+
   // Goodbye modal open: hide so menu bar doesn't block modal touches
   if (isGoodbyeVisible) {
+    return null
+  }
+
+  // Sacred void: no menu layer during JS splash / somatic fade-in (Android arrival polish)
+  if (splashOverlayActive) {
     return null
   }
 
@@ -382,7 +409,6 @@ export const PermanentMenuBar: React.FC = () => {
     pathname?.includes("/DateSelection") ||
     pathname?.includes("DateSelection") ||
     isWelcomeScreen ||
-    !pathname || // Safety: hide if pathname is undefined
     pathname === "/"
   ) {
     return null
@@ -424,6 +450,12 @@ export const PermanentMenuBar: React.FC = () => {
       ? { elevation: 24, zIndex: 9999 }
       : undefined
 
+  /** Trial 4-icon bottom bar (ChakraHome, etc.) — not waiting room, not vertical healing layout. */
+  const isTrialMainHorizontalBar =
+    !hasLifetimeAccess &&
+    !isWaitingScreenVisible &&
+    !useVerticalLayout
+
   return (
     <View
       style={[{ opacity: 1 }, waitingRoomBarStyle]}
@@ -457,12 +489,13 @@ export const PermanentMenuBar: React.FC = () => {
               styles.container,
               { paddingBottom: Math.max(insets.bottom, 4) },
               animatedMenuStyle,
-              isWaitingScreenVisible &&
-                !hasLifetimeAccess && { paddingRight: 16 }, // Space for arrow on trial waiting room
-              // Trial waiting room only: center icons and use inner wrapper so they sit closer together. Lifetime: spread across full width (space-between).
+              showMenuToggleArrow && { paddingRight: 16 }, // Space for chevron (trial waiting / trial dashboard / lifetime hub)
+              // Trial waiting room: center. Trial main bar: space-around. Lifetime horizontal: space-between.
               isWaitingScreenVisible && !hasLifetimeAccess
                 ? { justifyContent: "center" as const }
-                : { justifyContent: "space-between" as const },
+                : isTrialMainHorizontalBar
+                  ? { justifyContent: "space-around" as const }
+                  : { justifyContent: "space-between" as const },
             ]}
           >
             {isWaitingScreenVisible && !hasLifetimeAccess ? (
@@ -484,6 +517,9 @@ export const PermanentMenuBar: React.FC = () => {
                     item={item}
                     onPress={() => handleItemPress(item)}
                     isVertical={false}
+                    widenTrialSlot={
+                      isTrialMainHorizontalBar && Platform.OS === "android"
+                    }
                   />
                 ))}
               </>
@@ -495,37 +531,39 @@ export const PermanentMenuBar: React.FC = () => {
       {/* Mini player - above Music icon, stays when menu toggles closed */}
       <MenuBarMiniPlayer />
 
-      {/* Arrow Button - toggle menu (shown on trial waiting room and elsewhere) */}
-      <Animated.View
-        style={[
-          styles.arrowContainer,
-          {
-            right: 16,
-            bottom: Math.max(insets.bottom, 4) + 20,
-          },
-          animatedArrowStyle,
-        ]}
-      >
-        <Pressable
-          onPress={handleToggleMenu}
-          style={styles.arrowButton}
-          accessibilityLabel={localMenuOpen ? "Close Menu" : "Open Menu"}
-          accessibilityHint="Tap to toggle the navigation menu"
+      {/* Trial: gated chevron. Lifetime: chevron on ChakraHub / ChakraHome horizontal bar. */}
+      {showMenuToggleArrow ? (
+        <Animated.View
+          style={[
+            styles.arrowContainer,
+            {
+              right: 16,
+              bottom: Math.max(insets.bottom, 4) + 20,
+            },
+            animatedArrowStyle,
+          ]}
         >
-          <LinearGradient
-            colors={["rgba(135, 174, 115, 0.3)", "rgba(107, 142, 90, 0.2)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.arrowGradient}
+          <Pressable
+            onPress={handleToggleMenu}
+            style={styles.arrowButton}
+            accessibilityLabel={localMenuOpen ? "Close Menu" : "Open Menu"}
+            accessibilityHint="Tap to toggle the navigation menu"
           >
-            <Ionicons
-              name="chevron-up"
-              size={16}
-              color="rgba(255, 255, 255, 0.9)"
-            />
-          </LinearGradient>
-        </Pressable>
-      </Animated.View>
+            <LinearGradient
+              colors={["rgba(135, 174, 115, 0.3)", "rgba(107, 142, 90, 0.2)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.arrowGradient}
+            >
+              <Ionicons
+                name="chevron-up"
+                size={16}
+                color="rgba(255, 255, 255, 0.9)"
+              />
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+      ) : null}
 
     </View>
   )
@@ -536,12 +574,15 @@ interface MenuBarItemProps {
   item: MenuItem
   onPress: () => void
   isVertical?: boolean
+  /** Trial bottom bar (Android): extra horizontal padding so labels do not crowd. */
+  widenTrialSlot?: boolean
 }
 
 const MenuBarItem: React.FC<MenuBarItemProps> = ({
   item,
   onPress,
   isVertical = false,
+  widenTrialSlot = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false)
   const geometryOpacity = useSharedValue(0)
@@ -614,7 +655,12 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
         setTimeout(() => setIsHovered(false), 100)
       }}
       style={
-        isVertical ? styles.verticalMenuItemContainer : styles.menuItemContainer
+        isVertical
+          ? styles.verticalMenuItemContainer
+          : [
+              styles.menuItemContainer,
+              widenTrialSlot && styles.menuItemContainerTrialAndroid,
+            ]
       }
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
@@ -893,6 +939,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 4,
     position: "relative",
+  },
+  /** Trial 4-icon bar on Android only — wider touch/label slot; lifetime bar unchanged. */
+  menuItemContainerTrialAndroid: {
+    paddingHorizontal: 8,
+    minWidth: 56,
+    flexShrink: 0,
   },
   verticalMenuItemContainer: {
     alignItems: "center",

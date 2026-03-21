@@ -9,7 +9,10 @@ import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCa
 import { AVPlaybackSource } from "expo-av"
 import { getMinutesString } from "@/utils/format"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import AsyncStorage from "@react-native-async-storage/async-storage"
+import {
+  getAudioBookmarkStorageKey,
+  loadBookmarkPositionMs,
+} from "@/utils/audioBookmark"
 
 export const AudioRow = ({
   title,
@@ -59,20 +62,33 @@ export const AudioRow = ({
     addHapticFeedback(HapticStrength.Light)
     setLoadError(null)
     setIsPreparing(true)
-    const store = useCurrentAudioStore.getState()
-    store.setPendingTrackKey("full-player-row")
-    store.setPlaying(true)
-    store.setMetadata({ durationMs, title, author })
-    store.setPrefs({ shouldLoop: false, isIntroAudio })
-    if (chakraColor != null) store.setChakraColor(chakraColor)
-    if (embodimentCacheKey) {
-      useEmbodimentDurationCacheStore.getState().setEmbodimentDurationCacheKey(embodimentCacheKey)
-    }
 
-    if (getAudioSource) {
-      // Prepare on course page (spinner on button); only open player when source is ready
-      getAudioSource()
-        .then(async (src) => {
+    ;(async () => {
+      try {
+        // Persistence-first: bookmark before prepare so resume survives long downloads
+        const bookmarkMs = await loadBookmarkPositionMs(embodimentCacheKey)
+        if (__DEV__ && embodimentCacheKey) {
+          console.log("[DEBUG] Using Bookmark Key:", embodimentCacheKey)
+          console.log(
+            "[DEBUG] Full storage key:",
+            getAudioBookmarkStorageKey(embodimentCacheKey),
+          )
+        }
+
+        const store = useCurrentAudioStore.getState()
+        store.setPendingTrackKey("full-player-row")
+        store.setPlaying(true)
+        store.setMetadata({ durationMs, title, author })
+        store.setPrefs({ shouldLoop: false, isIntroAudio })
+        if (chakraColor != null) store.setChakraColor(chakraColor)
+        if (embodimentCacheKey) {
+          useEmbodimentDurationCacheStore
+            .getState()
+            .setEmbodimentDurationCacheKey(embodimentCacheKey)
+        }
+
+        if (getAudioSource) {
+          const src = await getAudioSource()
           const uri =
             typeof src === "object" && src !== null && "uri" in src
               ? (src as { uri?: string }).uri
@@ -83,51 +99,30 @@ export const AudioRow = ({
             setLoadError("No audio URL available.")
             return
           }
-          let resumePositionMs: number | undefined
-          if (embodimentCacheKey) {
-            const saved = await AsyncStorage.getItem(
-              `audio_position_${embodimentCacheKey}`,
-            )
-            const ms =
-              saved != null && Number.isFinite(Number(saved)) ? Number(saved) : 0
-            resumePositionMs = ms > 0 ? ms : undefined
-          }
           useCurrentAudioStore.getState().setSource(src, "full-player", {
-            resumePositionMs,
+            resumePositionMs: bookmarkMs,
             fullPlayerTrackId: embodimentCacheKey ?? undefined,
           })
           applyMetadataAndPrefs()
           addHapticFeedback(HapticStrength.Light)
           router.push("/AudioPlayer")
-        })
-        .catch(() => {
-          useCurrentAudioStore.getState().setPendingTrackKey(null)
-          useCurrentAudioStore.getState().setPlaying(false)
-          setLoadError("Load failed – tap to try again.")
-        })
-        .finally(() => setIsPreparing(false))
-    } else {
-      const runWithSource = async () => {
-        let resumePositionMs: number | undefined
-        if (embodimentCacheKey) {
-          const saved = await AsyncStorage.getItem(
-            `audio_position_${embodimentCacheKey}`,
-          )
-          const ms =
-            saved != null && Number.isFinite(Number(saved)) ? Number(saved) : 0
-          resumePositionMs = ms > 0 ? ms : undefined
+        } else {
+          useCurrentAudioStore.getState().setSource(audioSource, "full-player", {
+            resumePositionMs: bookmarkMs,
+            fullPlayerTrackId: embodimentCacheKey ?? undefined,
+          })
+          applyMetadataAndPrefs()
+          addHapticFeedback(HapticStrength.Light)
+          router.push("/AudioPlayer")
         }
-        useCurrentAudioStore.getState().setSource(audioSource, "full-player", {
-          resumePositionMs,
-          fullPlayerTrackId: embodimentCacheKey ?? undefined,
-        })
-        applyMetadataAndPrefs()
-        addHapticFeedback(HapticStrength.Light)
-        router.push("/AudioPlayer")
+      } catch {
+        useCurrentAudioStore.getState().setPendingTrackKey(null)
+        useCurrentAudioStore.getState().setPlaying(false)
+        setLoadError("Load failed – tap to try again.")
+      } finally {
+        setIsPreparing(false)
       }
-      runWithSource()
-      setIsPreparing(false)
-    }
+    })()
   }
 
   return (

@@ -49,8 +49,56 @@ import {
   getSourceSignature,
 } from "@/src/services/otherOriginTrackRef"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { getAudioBookmarkStorageKey } from "@/utils/audioBookmark"
 
 const FALLBACK_DAY_INDEX = 5 // Third Eye
+
+/** Nuclear diagnostic: periodic AsyncStorage writes while playing (__DEV__ only). */
+const AUDIO_BOOKMARK_PERIODIC_SAVE_MS = 5000
+
+async function logAllAsyncStorageKeys(tag: string): Promise<void> {
+  try {
+    const keys = await AsyncStorage.getAllKeys()
+    console.log(`[DEBUG] ALL STORAGE KEYS (${tag}):`, keys)
+  } catch (e) {
+    console.warn("[DEBUG] getAllKeys failed:", e)
+  }
+}
+
+/**
+ * Android: setPositionAsync often fails if native player is not status-ready.
+ * Poll getStatusAsync until loaded (and duration known when available) before seek.
+ */
+async function waitForSoundReadyForSeek(sound: Audio.Sound): Promise<boolean> {
+  const maxAttempts = Platform.OS === "android" ? 50 : 20
+  const delayMs = Platform.OS === "android" ? 40 : 20
+  for (let i = 0; i < maxAttempts; i++) {
+    const st = await sound.getStatusAsync()
+    if (st.isLoaded) {
+      if (Platform.OS === "android") {
+        const dur = st.durationMillis
+        const durationKnown = dur == null || dur > 0
+        // Proceed if duration is known, or after ~600ms still loaded (some builds report 0 until first frame)
+        if (durationKnown || i >= 15) {
+          if (__DEV__) {
+            console.log(
+              `[DEBUG] Seek-ready poll: attempt ${i + 1}/${maxAttempts} isLoaded=true durationMillis=${dur ?? "null"}`,
+            )
+          }
+          return true
+        }
+      } else {
+        return true
+      }
+    }
+    await new Promise((r) => setTimeout(r, delayMs))
+  }
+  if (__DEV__) {
+    const last = await sound.getStatusAsync()
+    console.warn("[DEBUG] Seek-ready poll exhausted; last status:", last)
+  }
+  return false
+}
 
 /** Hz → day index (0–6) for chakra ball image */
 const HERTZ_TO_DAY_INDEX: Record<number, number> = {
@@ -146,6 +194,10 @@ const AudioPlayer = () => {
   const justReturnedFromNotesRef = useRef(false)
   /** Reset when source/track changes so first loaded status always updates progress bar (no throttle). */
   const hasAppliedFirstStatusRef = useRef(false)
+  /** Latest playback position from native status (capture-proof for bookmark save if React/store lags). */
+  const lastPlaybackPositionMsRef = useRef(0)
+  /** __DEV__ only: last wall-clock time we wrote periodic bookmark (nuclear diagnostic). */
+  const lastPeriodicBookmarkSaveAtRef = useRef(0)
 
   useEffect(() => {
     trackRef.current = track
@@ -205,6 +257,7 @@ const AudioPlayer = () => {
     async (newPositionMs: number, wasPlaying?: boolean) => {
       if (track) {
         await track.setPositionAsync(newPositionMs)
+        lastPlaybackPositionMsRef.current = newPositionMs
         setPosition(newPositionMs)
         setPositionMs(newPositionMs)
         if (Platform.OS === "android" && wasPlaying) {
@@ -226,6 +279,7 @@ const AudioPlayer = () => {
       if (status.isLoaded) {
         isLoadedRef.current = true
         setIsLoading(false)
+        lastPlaybackPositionMsRef.current = status.positionMillis
 
         // Use file duration when available (actual loaded length); prefer metadata only when file reports much shorter (e.g. truncated).
         const metaMs = metadata?.durationMs ?? 0
@@ -238,6 +292,10 @@ const AudioPlayer = () => {
               ? fileMs
               : metaMs || 0
         const playing = !!status.isPlaying
+
+        if (!playing) {
+          lastPeriodicBookmarkSaveAtRef.current = 0
+        }
 
         // First loaded status always updates progress bar (no throttle); then throttle to reduce UI flicker (every 500ms)
         const now = Date.now()
@@ -285,6 +343,37 @@ const AudioPlayer = () => {
 
         setPlaying(playing)
         lastAppliedStorePlayingRef.current = playing
+
+        // Nuclear diagnostic (__DEV__): prove AsyncStorage writes work during playback (not only on close).
+        if (__DEV__ && playing && status.positionMillis > 0) {
+          const stStore = useCurrentAudioStore.getState()
+          if (
+            stStore.audioOrigin === "full-player" &&
+            stStore.fullPlayerTrackId != null &&
+            stStore.fullPlayerTrackId.length > 0
+          ) {
+            const now = Date.now()
+            if (lastPeriodicBookmarkSaveAtRef.current === 0) {
+              lastPeriodicBookmarkSaveAtRef.current = now
+            } else if (
+              now - lastPeriodicBookmarkSaveAtRef.current >=
+              AUDIO_BOOKMARK_PERIODIC_SAVE_MS
+            ) {
+              lastPeriodicBookmarkSaveAtRef.current = now
+              const currentID = stStore.fullPlayerTrackId
+              const key = getAudioBookmarkStorageKey(currentID)
+              const pos = Math.max(
+                lastPlaybackPositionMsRef.current,
+                status.positionMillis,
+              )
+              console.log("[DEBUG] Using Bookmark Key:", currentID)
+              console.log("[DEBUG] Periodic bookmark save →", key, pos)
+              AsyncStorage.setItem(key, String(pos)).catch((e) => {
+                console.warn("[DEBUG] Periodic bookmark save failed:", e)
+              })
+            }
+          }
+        }
       } else {
         if (status.error) {
           if (__DEV__) {
@@ -328,6 +417,10 @@ const AudioPlayer = () => {
     }
 
     try {
+      if (__DEV__) {
+        await logAllAsyncStorageKeys("initializeTrack")
+      }
+
       stopAnuaAudio().catch(() => {})
 
       isLoadedRef.current = false
@@ -380,13 +473,61 @@ const AudioPlayer = () => {
         isLoadedRef.current = true
         setIsLoading(false)
         setLoadError(null)
-        const resumePositionMs = useCurrentAudioStore.getState().positionMs
+        const state = useCurrentAudioStore.getState()
+        let resumePositionMs = state.positionMs
+        if (
+          resumePositionMs <= 0 &&
+          state.audioOrigin === "full-player" &&
+          state.fullPlayerTrackId != null &&
+          state.fullPlayerTrackId.length > 0
+        ) {
+          try {
+            const currentID = state.fullPlayerTrackId
+            if (__DEV__) {
+              console.log("[DEBUG] Using Bookmark Key:", currentID)
+            }
+            const storageKey = getAudioBookmarkStorageKey(currentID)
+            const saved = await AsyncStorage.getItem(storageKey)
+            if (__DEV__) {
+              console.log(
+                `[AudioPlayer] AsyncStorage get ${storageKey} -> ${saved ?? "null"}`,
+              )
+            }
+            const parsed =
+              saved != null && Number.isFinite(Number(saved))
+                ? Number(saved)
+                : 0
+            if (parsed > 0) {
+              resumePositionMs = parsed
+              useCurrentAudioStore.getState().setPositionMs(parsed)
+            }
+          } catch (_) {
+            // Bookmark read must not block playback
+          }
+        }
         if (resumePositionMs > 0) {
+          if (__DEV__) {
+            console.log(
+              `[AudioPlayer] Found saved position: ${resumePositionMs} for ID: ${state.fullPlayerTrackId ?? "none"}`,
+            )
+          }
           const clamped =
             status.durationMillis != null
               ? Math.min(resumePositionMs, status.durationMillis)
               : resumePositionMs
+          if (__DEV__) {
+            console.log(`[AudioPlayer] Attempting seek to: ${clamped}`)
+          }
+          if (Platform.OS === "android") {
+            const seekReady = await waitForSoundReadyForSeek(sound)
+            if (!seekReady && __DEV__) {
+              console.warn(
+                "[DEBUG] Seek-ready poll did not confirm; attempting setPositionAsync anyway",
+              )
+            }
+          }
           await sound.setPositionAsync(clamped)
+          lastPlaybackPositionMsRef.current = clamped
           setPosition(clamped)
           if (status.durationMillis) setDuration(status.durationMillis)
           setPlaying(false)
@@ -508,16 +649,30 @@ const AudioPlayer = () => {
       }
       const state = useCurrentAudioStore.getState()
       const fullPlayerTrackId = state.fullPlayerTrackId
-      const positionMs = state.positionMs
+      const positionMs = Math.max(
+        lastPlaybackPositionMsRef.current,
+        state.positionMs,
+      )
       if (fullPlayerTrackId != null && positionMs > 0) {
         try {
-          await AsyncStorage.setItem(
-            `audio_position_${fullPlayerTrackId}`,
-            String(positionMs),
-          )
+          const currentID = fullPlayerTrackId
+          if (__DEV__) {
+            console.log("[DEBUG] Using Bookmark Key:", currentID)
+          }
+          const key = getAudioBookmarkStorageKey(currentID)
+          await AsyncStorage.setItem(key, String(positionMs))
+          if (__DEV__) {
+            console.log(
+              `[AudioPlayer] Saving position: ${positionMs} for ID: ${fullPlayerTrackId} (key: ${key})`,
+            )
+          }
         } catch (_) {
           // Persistence failure must not block closing the player
         }
+      } else if (__DEV__) {
+        console.log(
+          `[AudioPlayer] Skip bookmark save: positionMs=${positionMs} fullPlayerTrackId=${fullPlayerTrackId ?? "null"}`,
+        )
       }
       reset()
       if (options?.replaceToChakraHome) {
@@ -591,6 +746,8 @@ const AudioPlayer = () => {
       lastAppliedStorePlayingRef.current = null
       embodimentEightyPercentRef.current = false
       hasAppliedFirstStatusRef.current = false
+      lastPlaybackPositionMsRef.current = 0
+      lastPeriodicBookmarkSaveAtRef.current = 0
       setLoadError(null)
     }
 
@@ -624,6 +781,7 @@ const AudioPlayer = () => {
               isLoadedRef.current = true
               setIsLoading(false)
               setIsPlaying(status.isPlaying)
+              lastPlaybackPositionMsRef.current = status.positionMillis
               setPosition(status.positionMillis)
               if (status.durationMillis) setDuration(status.durationMillis)
             }
@@ -637,7 +795,10 @@ const AudioPlayer = () => {
 
       if (initializingTrackRef.current) return
       const resumePos = useCurrentAudioStore.getState().positionMs
-      if (resumePos > 0) setPosition(resumePos)
+      if (resumePos > 0) {
+        lastPlaybackPositionMsRef.current = resumePos
+        setPosition(resumePos)
+      }
       setIsLoading(true)
       await initializeTrack()
     }
@@ -907,6 +1068,7 @@ const AudioPlayer = () => {
       const wasPlaying = isPlaying
       const newPosition = Math.max(positionMs - 10000, 0)
       await track.setPositionAsync(newPosition)
+      lastPlaybackPositionMsRef.current = newPosition
       setPosition(newPosition)
       if (Platform.OS === "android" && wasPlaying) {
         await track.playAsync()
@@ -921,6 +1083,7 @@ const AudioPlayer = () => {
       const wasPlaying = isPlaying
       const newPosition = Math.min(positionMs + 10000, durationMs)
       await track.setPositionAsync(newPosition)
+      lastPlaybackPositionMsRef.current = newPosition
       setPosition(newPosition)
       if (Platform.OS === "android" && wasPlaying) {
         await track.playAsync()

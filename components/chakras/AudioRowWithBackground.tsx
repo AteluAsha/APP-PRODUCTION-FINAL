@@ -8,7 +8,10 @@ import { AVPlaybackSource } from "expo-av"
 import { getMinutesString } from "@/utils/format"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import BackgroundOpacity from "../BackgroundOpacity"
-import AsyncStorage from "@react-native-async-storage/async-storage"
+import {
+  getAudioBookmarkStorageKey,
+  loadBookmarkPositionMs,
+} from "@/utils/audioBookmark"
 
 export const AudioRowWithBackground = ({
   title,
@@ -47,16 +50,27 @@ export const AudioRowWithBackground = ({
     if (isPreparing) return
     addHapticFeedback(HapticStrength.Light)
     setIsPreparing(true)
-    const store = useCurrentAudioStore.getState()
-    store.setPendingTrackKey("full-player-row")
-    store.setPlaying(true)
-    store.setMetadata({ durationMs, title, author })
-    store.setPrefs({ shouldLoop: false, isIntroAudio })
-    if (chakraColor) store.setChakraColor(chakraColor)
 
-    if (getAudioSource) {
-      getAudioSource()
-        .then(async (src) => {
+    ;(async () => {
+      try {
+        const bookmarkMs = await loadBookmarkPositionMs(fullPlayerTrackId)
+        if (__DEV__ && fullPlayerTrackId) {
+          console.log("[DEBUG] Using Bookmark Key:", fullPlayerTrackId)
+          console.log(
+            "[DEBUG] Full storage key:",
+            getAudioBookmarkStorageKey(fullPlayerTrackId),
+          )
+        }
+
+        const store = useCurrentAudioStore.getState()
+        store.setPendingTrackKey("full-player-row")
+        store.setPlaying(true)
+        store.setMetadata({ durationMs, title, author })
+        store.setPrefs({ shouldLoop: false, isIntroAudio })
+        if (chakraColor) store.setChakraColor(chakraColor)
+
+        if (getAudioSource) {
+          const src = await getAudioSource()
           const uri =
             src &&
             typeof src === "object" &&
@@ -68,54 +82,32 @@ export const AudioRowWithBackground = ({
             useCurrentAudioStore.getState().setPlaying(false)
             return
           }
-          let resumePositionMs: number | undefined
-          if (fullPlayerTrackId) {
-            const saved = await AsyncStorage.getItem(
-              `audio_position_${fullPlayerTrackId}`,
-            )
-            const ms =
-              saved != null && Number.isFinite(Number(saved)) ? Number(saved) : 0
-            resumePositionMs = ms > 0 ? ms : undefined
-          }
           useCurrentAudioStore.getState().setSource(src, "full-player", {
-            resumePositionMs,
+            resumePositionMs: bookmarkMs,
             fullPlayerTrackId: fullPlayerTrackId ?? undefined,
           })
           applyMetadataAndPrefs()
           setTimeout(() => {
             router.push("/AudioPlayer")
           }, AUDIO_READY_DELAY_MS)
-        })
-        .catch(() => {
+        } else if (audioSource) {
+          useCurrentAudioStore.getState().setSource(audioSource, "full-player", {
+            resumePositionMs: bookmarkMs,
+            fullPlayerTrackId: fullPlayerTrackId ?? undefined,
+          })
+          applyMetadataAndPrefs()
+          setTimeout(() => router.push("/AudioPlayer"), AUDIO_READY_DELAY_MS)
+        } else {
           useCurrentAudioStore.getState().setPendingTrackKey(null)
           useCurrentAudioStore.getState().setPlaying(false)
-        })
-        .finally(() => setIsPreparing(false))
-    } else if (audioSource) {
-      const runWithSource = async () => {
-        let resumePositionMs: number | undefined
-        if (fullPlayerTrackId) {
-          const saved = await AsyncStorage.getItem(
-            `audio_position_${fullPlayerTrackId}`,
-          )
-          const ms =
-            saved != null && Number.isFinite(Number(saved)) ? Number(saved) : 0
-          resumePositionMs = ms > 0 ? ms : undefined
         }
-        useCurrentAudioStore.getState().setSource(audioSource, "full-player", {
-          resumePositionMs,
-          fullPlayerTrackId: fullPlayerTrackId ?? undefined,
-        })
-        applyMetadataAndPrefs()
-        setTimeout(() => router.push("/AudioPlayer"), AUDIO_READY_DELAY_MS)
+      } catch {
+        useCurrentAudioStore.getState().setPendingTrackKey(null)
+        useCurrentAudioStore.getState().setPlaying(false)
+      } finally {
+        setIsPreparing(false)
       }
-      runWithSource()
-      setIsPreparing(false)
-    } else {
-      useCurrentAudioStore.getState().setPendingTrackKey(null)
-      useCurrentAudioStore.getState().setPlaying(false)
-      setIsPreparing(false)
-    }
+    })()
   }
 
   return (

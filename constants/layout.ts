@@ -10,18 +10,18 @@ export const FLOATING_NAV_SCROLL_BOTTOM_PADDING = 140
 
 /**
  * OPENING SPLASH – SOUL SCHOOL hero logo size (single source of truth)
- * Used by AnimatedSplashScreen (JS entry), ChakraHome !contentReady placeholder.
- * Kept modest so splash never feels oversized. Native shield uses SoulSchool_APP_HeroLoadImage (app.config.js).
+ * ChakraHome !contentReady placeholder uses OPENING_LOGO below.
+ * Native shield uses SoulSchool_APP_HeroLoadImage (app.config.js).
  */
 export const OPENING_LOGO = {
   width: { ios: 260, android: 218 },
   height: { ios: 130, android: 109 },
 } as const
 
-/** Opening splash only: logo size for the new fade-in/out splash (modest, not too large). */
+/** Opening JS splash only (AnimatedSplashScreen). +15% vs prior 200×100 / 180×90. */
 export const OPENING_SPLASH_LOGO = {
-  width: { ios: 200, android: 180 },
-  height: { ios: 100, android: 90 },
+  width: { ios: 230, android: 207 },
+  height: { ios: 115, android: 104 },
 } as const
 
 /**
@@ -61,6 +61,11 @@ export const LIFETIME_HUB_DAY_TITLE_SIDE_GAP = 12
 export const TRIAL_HOME_ROOT_CHAKRA = {
   /** Vertical padding under the stack (root ball pinned this far from bottom); lower = stack sits lower (trial home). */
   BOTTOM_PADDING: 20,
+  /**
+   * Android trial only: slightly less than BOTTOM_PADDING so the root orb sits a bit lower on screen,
+   * balancing the pillar when many orbs are visible (reduces top crowding vs empty band below).
+   */
+  BOTTOM_PADDING_ANDROID_TRIAL: 12,
   /** iOS lifetime hub only: root ball sits higher by ~one ball height so entire stack is raised. */
   BOTTOM_PADDING_LIFETIME_HUB_IOS: 20 + CHAKRA_BALL_HEIGHT_APPROX,
   /** Space between day title (e.g. "Monday – Root Day") and the chakra ball icon; gentle black spacing above ball */
@@ -88,6 +93,19 @@ export const SOMATIC_SCREEN_TRANSITION_MS = 520
 /** iOS: slightly longer transition for softer screen openings (all stacks). */
 export const SOMATIC_SCREEN_TRANSITION_MS_IOS = 680
 export const SOMATIC_FADE_IN_MS = 1400
+/** First paint of home dashboard after cold start (ChakraHome / ChakraHub); session-scoped in useHomeSomaticEntrance */
+export const SOMATIC_HOME_COLD_START_FADE_MS = 3000
+/**
+ * Chakra Home Reveal Breath: lifetime ChakraHub dashboard fade after paywall, scholarship,
+ * Access Granted → hub, or Energy Exchange (Enter Path). Same duration as cold-start home fade.
+ */
+export const CHAKRA_HUB_REVEAL_BREATH_MS = SOMATIC_HOME_COLD_START_FADE_MS
+/** (chakras) Stack fade for index / Welcome / ChakraHome / ChakraHub — calm handoff before screen body entrance */
+export const SOMATIC_HOME_STACK_FADE_MS = 600
+/** Reanimated fade when returning to home in-session (not cold start ritual) */
+export const SOMATIC_HOME_WARM_RETURN_MS = 400
+/** Welcome path-selection screen: content reveal after hero images load */
+export const SOMATIC_WELCOME_ENTRANCE_MS = 2000
 /** Shorter fade for in-screen content (sections, cards) – still gentle */
 export const SOMATIC_CONTENT_FADE_MS = 640
 

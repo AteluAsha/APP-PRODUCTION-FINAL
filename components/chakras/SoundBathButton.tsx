@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from "react"
-import { Pressable, View } from "react-native"
+import { Pressable, View, Platform } from "react-native"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { formatTime } from "@/utils/format"
@@ -61,14 +61,19 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
     [onSeek, durationMs],
   )
 
+  const isAndroid = Platform.OS === "android"
+
   return (
     <View
       style={{
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.38)",
-        borderRadius: 16,
-        paddingVertical: 16,
-        width: 288,
+        borderRadius: isAndroid ? 28 : 16,
+        paddingVertical: isAndroid ? 18 : 16,
+        paddingHorizontal: isAndroid ? 16 : 0,
+        width: isAndroid ? ("100%" as const) : 288,
+        maxWidth: isAndroid ? ("100%" as const) : undefined,
+        alignSelf: isAndroid ? ("stretch" as const) : undefined,
         backgroundColor: "rgba(0,0,0,0.125)",
       }}
     >
@@ -78,8 +83,10 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
         style={{
           flexDirection: "row",
           alignItems: "center",
-          marginLeft: 32,
-          paddingVertical: 8,
+          width: "100%",
+          paddingLeft: isAndroid ? 8 : 32,
+          paddingRight: isAndroid ? 16 : 0,
+          paddingVertical: isAndroid ? 10 : 8,
         }}
       >
         <View
@@ -91,6 +98,7 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
             height: 40,
             alignItems: "center",
             justifyContent: "center",
+            flexShrink: 0,
           }}
         >
           <Ionicons
@@ -106,7 +114,9 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
             flexDirection: "column",
             marginLeft: 16,
             flex: 1,
-            maxWidth: "70%",
+            flexGrow: 1,
+            minWidth: 0,
+            maxWidth: isAndroid ? undefined : "70%",
           }}
         >
           <AppText
@@ -114,10 +124,11 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
             size="sm"
             numberOfLines={1}
             style={{
-              marginBottom: 4,
+              marginBottom: isAndroid ? 6 : 4,
               letterSpacing: 1,
               fontSize: 13,
               color: "#ffffff",
+              ...(isAndroid ? { lineHeight: 20 } : {}),
             }}
           >
             {title}
@@ -130,6 +141,7 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
               opacity: disabled ? 0.7 : 1,
               fontSize: 11,
               color: hasError ? "rgba(251,191,36,0.95)" : "#ffffff",
+              ...(isAndroid ? { lineHeight: 16 } : {}),
             }}
           >
             {subtitleText}
@@ -138,7 +150,12 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
       </Pressable>
 
       {showProgress && (
-        <View style={{ marginTop: 8, marginHorizontal: 24 }}>
+        <View
+          style={{
+            marginTop: 8,
+            marginHorizontal: isAndroid ? 20 : 24,
+          }}
+        >
           <AppText
             font="instrument-regular"
             size="xs"

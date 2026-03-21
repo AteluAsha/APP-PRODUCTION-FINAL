@@ -44,7 +44,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import {
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
-  SOMATIC_FADE_IN_MS,
+  SOMATIC_WELCOME_ENTRANCE_MS,
 } from "@/constants/layout"
 import { useRouter } from "expo-router"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
@@ -77,6 +77,12 @@ const WELCOME_HERO_TOP_NUDGE = 10
 const WELCOME_AFTER_HERO_SPACING = 36
 /** Space between OPEN PATHWAYS title and white course card */
 const WELCOME_OPEN_PATHWAYS_TO_CARD = 14
+
+/**
+ * Android: extra space before the bordered course card only (hero + OPEN PATHWAYS row unchanged).
+ * Pushes the content card lower in the frame without shifting the hero strip.
+ */
+const WELCOME_ANDROID_CONTENT_CARD_TOP_OFFSET = 40
 
 export default function WelcomeScreen() {
   const router = useRouter()
@@ -153,7 +159,7 @@ export default function WelcomeScreen() {
   useEffect(() => {
     if (!bothLoaded) return
     contentOpacity.value = withTiming(1, {
-      duration: SOMATIC_FADE_IN_MS,
+      duration: SOMATIC_WELCOME_ENTRANCE_MS,
       easing: Easing.out(Easing.ease),
     })
   }, [bothLoaded, contentOpacity])
@@ -241,6 +247,10 @@ export default function WelcomeScreen() {
               style={{
                 width: lowerSectionWidth,
                 alignSelf: "center",
+                marginTop:
+                  Platform.OS === "android"
+                    ? WELCOME_ANDROID_CONTENT_CARD_TOP_OFFSET
+                    : 0,
                 marginBottom: 8,
                 backgroundColor: "#000",
                 borderWidth: 1,

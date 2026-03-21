@@ -1,18 +1,16 @@
 /**
- * JS splash (Stage 2) – shown after native splash is dismissed.
+ * JS splash (Stage 2) – after native shield (golden 7), Soul School hero + breath pulse.
  *
- * On mount: calls SplashScreen.hideAsync() so the native shield (golden 7) hands off
- * to this black screen + pulsing hero logo. Loops a gentle scale pulse while fonts/assets
- * load; when loadingComplete, fades out and calls onFadeOutComplete.
+ * Native splash stays until the hero image has loaded and we have painted a frame (onLoad +
+ * double rAF), then SplashScreen.hideAsync(). Pulse: 5s sine in/out cycle. Solid black throughout.
  */
-import React, { useEffect, useRef } from "react"
+import React, { useCallback, useEffect, useRef } from "react"
 import { View, Image, StyleSheet, Platform } from "react-native"
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withRepeat,
-  withSequence,
   runOnJS,
   Easing,
   cancelAnimation,
@@ -20,9 +18,11 @@ import Animated, {
 import * as SplashScreen from "expo-splash-screen"
 import { OPENING_SPLASH_LOGO } from "@/constants/layout"
 
-const FADE_IN_MS = 400
-const PULSE_CYCLE_MS = 2800
+const PULSE_MAX_SCALE = 1.04
+const PULSE_HALF_MS = 2500
 const FADE_OUT_MS = 520
+/** If Image onLoad never fires, still dismiss native splash so the app cannot hang. */
+const NATIVE_HIDE_FALLBACK_MS = 3500
 
 export interface AnimatedSplashScreenProps {
   /** True when fonts + critical image/audio preloads are done (root layout). */
@@ -40,19 +40,47 @@ export function AnimatedSplashScreen({
   const completedRef = useRef(false)
   const fadeOutStartedRef = useRef(false)
   const nativeHiddenRef = useRef(false)
+  const pulseStartedRef = useRef(false)
 
-  useEffect(() => {
+  const startBreathPulse = useCallback(() => {
+    if (pulseStartedRef.current) return
+    pulseStartedRef.current = true
+    cancelAnimation(scale)
+    scale.value = 1
+    scale.value = withRepeat(
+      withTiming(PULSE_MAX_SCALE, {
+        duration: PULSE_HALF_MS,
+        easing: Easing.inOut(Easing.sine),
+      }),
+      -1,
+      true,
+    )
+  }, [scale])
+
+  const hideNativeAndStartPulse = useCallback(() => {
     if (nativeHiddenRef.current) return
     nativeHiddenRef.current = true
-    SplashScreen.hideAsync().catch(() => {})
-  }, [])
+    opacity.value = 1
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        SplashScreen.hideAsync().catch(() => {})
+        startBreathPulse()
+      })
+    })
+  }, [opacity, startBreathPulse])
+
+  const onHeroLoad = useCallback(() => {
+    hideNativeAndStartPulse()
+  }, [hideNativeAndStartPulse])
 
   useEffect(() => {
-    opacity.value = withTiming(1, {
-      duration: FADE_IN_MS,
-      easing: Easing.out(Easing.ease),
-    })
-  }, [opacity])
+    const t = setTimeout(() => {
+      if (!nativeHiddenRef.current) {
+        hideNativeAndStartPulse()
+      }
+    }, NATIVE_HIDE_FALLBACK_MS)
+    return () => clearTimeout(t)
+  }, [hideNativeAndStartPulse])
 
   useEffect(() => {
     if (!loadingComplete || fadeOutStartedRef.current) return
@@ -79,25 +107,7 @@ export function AnimatedSplashScreen({
   }, [loadingComplete, opacity, scale, onFadeOutComplete])
 
   useEffect(() => {
-    const startPulse = () => {
-      scale.value = withRepeat(
-        withSequence(
-          withTiming(1.04, {
-            duration: PULSE_CYCLE_MS / 2,
-            easing: Easing.inOut(Easing.ease),
-          }),
-          withTiming(1, {
-            duration: PULSE_CYCLE_MS / 2,
-            easing: Easing.inOut(Easing.ease),
-          }),
-        ),
-        -1,
-        false,
-      )
-    }
-    const t = setTimeout(startPulse, FADE_IN_MS)
     return () => {
-      clearTimeout(t)
       cancelAnimation(scale)
     }
   }, [scale])
@@ -118,6 +128,7 @@ export function AnimatedSplashScreen({
           source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
           style={{ width: w, height: h }}
           resizeMode="contain"
+          onLoad={onHeroLoad}
         />
       </Animated.View>
     </View>

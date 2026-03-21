@@ -5,9 +5,18 @@
  */
 
 import React from "react"
-import { View, ScrollView, Pressable } from "react-native"
+import { ScrollView, Pressable, Platform } from "react-native"
 import { AppText } from "@/components/AppText"
 import { getLocalDateISO, getStartOfWeek } from "@/utils/date"
+
+/** Android: vibrant cyan date label (unselected / selected pair with rim + fill). */
+const ANDROID_DATE_TEXT_UNSELECTED = "#38bdf8"
+const ANDROID_DATE_TEXT_SELECTED = "#ecfeff"
+
+/** Android: brighter square rims around each date cell */
+const ANDROID_CELL_BORDER_UNSELECTED = "rgba(56, 189, 248, 0.55)"
+const ANDROID_CELL_BORDER_SELECTED = "rgba(34, 211, 238, 0.95)"
+const ANDROID_CELL_SHADOW_SELECTED = "rgba(34, 211, 238, 0.55)"
 
 interface ScrollDatePickerProps {
   onDateSelect: (dateISO: string) => void
@@ -55,6 +64,8 @@ export const ScrollDatePicker: React.FC<ScrollDatePickerProps> = ({
           day: "numeric",
         })
 
+        const isAndroid = Platform.OS === "android"
+
         return (
           <Pressable
             key={mondayISO}
@@ -66,14 +77,22 @@ export const ScrollDatePicker: React.FC<ScrollDatePickerProps> = ({
               marginRight: 12,
               minWidth: 100,
               backgroundColor: isSelected
-                ? "rgba(135, 174, 115, 0.3)"
+                ? isAndroid
+                  ? "rgba(56, 189, 248, 0.18)"
+                  : "rgba(135, 174, 115, 0.3)"
                 : "rgba(0, 0, 0, 0.4)",
               borderWidth: 1,
               borderColor: isSelected
-                ? "rgba(6, 182, 212, 0.5)"
-                : "rgba(135, 174, 115, 0.2)",
+                ? isAndroid
+                  ? ANDROID_CELL_BORDER_SELECTED
+                  : "rgba(6, 182, 212, 0.5)"
+                : isAndroid
+                  ? ANDROID_CELL_BORDER_UNSELECTED
+                  : "rgba(135, 174, 115, 0.2)",
               shadowColor: isSelected
-                ? "rgba(6, 182, 212, 0.4)"
+                ? isAndroid
+                  ? ANDROID_CELL_SHADOW_SELECTED
+                  : "rgba(6, 182, 212, 0.4)"
                 : "transparent",
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: isSelected ? 0.6 : 0,
@@ -84,7 +103,13 @@ export const ScrollDatePicker: React.FC<ScrollDatePickerProps> = ({
               font={isSelected ? "instrument-bold" : "instrument-regular"}
               size="base"
               style={{
-                color: isSelected ? "#FFFFFF" : "rgba(255, 255, 255, 0.8)",
+                color: isAndroid
+                  ? isSelected
+                    ? ANDROID_DATE_TEXT_SELECTED
+                    : ANDROID_DATE_TEXT_UNSELECTED
+                  : isSelected
+                    ? "#FFFFFF"
+                    : "rgba(255, 255, 255, 0.8)",
               }}
             >
               {dateStr}

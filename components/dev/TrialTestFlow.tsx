@@ -20,6 +20,7 @@ import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { getCurrentWeekStartDateISO, getLocalDateISO } from "@/utils/date"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
+import { requestChakraHubRevealBreath } from "@/utils/homeSessionEntrance"
 
 interface TrialTestFlowProps {
   onStartDay1?: () => void
@@ -94,6 +95,7 @@ export const TrialTestFlow: React.FC<TrialTestFlowProps> = ({
   const handleGoToLifetimeHome = () => {
     addHapticFeedback(HapticStrength.Medium)
     grantLifetimeAccess("scholarship")
+    requestChakraHubRevealBreath()
     router.replace("/(chakras)/ChakraHub")
   }
 

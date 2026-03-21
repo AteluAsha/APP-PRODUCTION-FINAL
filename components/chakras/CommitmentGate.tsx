@@ -31,6 +31,7 @@ import { useRouter } from "expo-router"
 import { AccessGrantedModal } from "./AccessGrantedModal"
 import * as Linking from "expo-linking"
 import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { requestChakraHubRevealBreath } from "@/utils/homeSessionEntrance"
 import { getUserId } from "@/src/services/userId"
 import { logScholarshipRequest } from "@/src/services/scholarshipAudit"
 
@@ -825,6 +826,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
           setShowAccessGranted(false)
         }}
         onGoToHub={() => {
+          requestChakraHubRevealBreath()
           onComplete()
           router.replace("/(chakras)/ChakraHub")
         }}

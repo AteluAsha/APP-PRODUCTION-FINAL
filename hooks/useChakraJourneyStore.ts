@@ -100,6 +100,14 @@ interface ChakraJourneyState {
   hasCompletedHeroOnboarding: boolean
   setHasCompletedHeroOnboarding: (value: boolean) => void
 
+  /**
+   * True after user taps Present on Clarity Moment (embodiment) on DateSelection and is
+   * ready for ChakraHome. Used so cold start does not skip DateSelection when courseStartDate
+   * was persisted from confirm modal before embodiment.
+   */
+  dateSelectionEmbodimentHandoffComplete: boolean
+  setDateSelectionEmbodimentHandoffComplete: (value: boolean) => void
+
   // Actions
   startJourney: (startDate: string) => void
   setInitialOpenDate: (date: string) => void
@@ -231,6 +239,9 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         hasCompletedHeroOnboarding: false,
         setHasCompletedHeroOnboarding: (value: boolean) =>
           set({ hasCompletedHeroOnboarding: value }),
+        dateSelectionEmbodimentHandoffComplete: false,
+        setDateSelectionEmbodimentHandoffComplete: (value: boolean) =>
+          set({ dateSelectionEmbodimentHandoffComplete: value }),
 
         // Actions
         setInitialOpenDate: (date: string) => {
@@ -498,7 +509,11 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
           const currentCount = get().completedTrialCourses
           // Only increment if we haven't reached 2 courses yet
           if (currentCount < 2) {
-            set({ completedTrialCourses: currentCount + 1 })
+            set({
+              completedTrialCourses: currentCount + 1,
+              // Trial 2 date flow must show embodiment on DateSelection again
+              dateSelectionEmbodimentHandoffComplete: false,
+            })
 
             // Update current trial in history to mark as completed
             const trialHistory = [...get().trialHistory]
@@ -648,6 +663,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
             completedChakras: [],
             participatedDays: [],
             allChakrasCompleted: false,
+            dateSelectionEmbodimentHandoffComplete: false,
           }),
         setDevOpenPaywall: (value: boolean) => set({ devOpenPaywall: value }),
 
@@ -659,6 +675,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         resetOnboarding: () =>
           set({
             hasCompletedHeroOnboarding: false,
+            dateSelectionEmbodimentHandoffComplete: false,
             courseStartDate: null,
             initialOpenDate: null,
             journeyStarted: false,
@@ -706,6 +723,17 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
           // That caused users with persisted courseStartDate (e.g. from dev testing) to skip
           // WelcomeScreen and DateSelection entirely. Flow is now: Splash → WelcomeScreen →
           // DateSelection → Begin → ChakraHome. Use "Reset onboarding" in dev to clear state.
+
+          // Migration: existing installs already in-journey — mark embodiment handoff complete
+          // (field may be missing from old persisted JSON). Legacy AsyncStorage key is read in
+          // app/(chakras)/index.tsx before first route to avoid a race with navigation.
+          const handoff =
+            state.dateSelectionEmbodimentHandoffComplete === true
+          if (!handoff && state.journeyStarted) {
+            useChakraJourneyStore.setState({
+              dateSelectionEmbodimentHandoffComplete: true,
+            })
+          }
         }
       },
     },

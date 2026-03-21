@@ -26,13 +26,13 @@ import { ScrollView } from "react-native-gesture-handler"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
-import { useIsFocused } from "@react-navigation/native"
+import { useFocusEffect, useIsFocused } from "@react-navigation/native"
 import {
   getFormattedNextMondayDate,
   getNextMondayDate,
   getTimeRemaining,
 } from "@/utils/date"
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { formatCountdown } from "@/utils/format"
 import {
   SCROLL_BREATHING_BOTTOM_PADDING,
@@ -72,8 +72,7 @@ import {
 import { CommunicationReminderModal } from "@/components/chakras/CommunicationReminderModal"
 import { ClarityMomentModal } from "@/components/chakras/ClarityMomentModal"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-
-const CLARITY_MOMENT_SEEN_KEY = "waiting_room_clarity_moment_seen_v2"
+import { WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY } from "@/constants/onboardingKeys"
 
 // Countdown clock dimensions - larger for presence, softer feminine design
 // Android: 10% larger for better visibility on device
@@ -161,7 +160,7 @@ export const WaitingScreen = ({
   // Clarity Moment: show once per user; persist so we don't show again on later visits
   useEffect(() => {
     let cancelled = false
-    AsyncStorage.getItem(CLARITY_MOMENT_SEEN_KEY).then((value) => {
+    AsyncStorage.getItem(WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY).then((value) => {
       if (!cancelled && value === "true") setShowClarityMomentModal(false)
     })
     return () => { cancelled = true }
@@ -176,13 +175,16 @@ export const WaitingScreen = ({
   }, [])
 
   // Gentle reminders: show 60s after entering waiting room if permission not yet granted (somatic, non-demanding).
-  // Only run the timer when this screen is focused AND app is in foreground. If the user opens Anua, or taps
-  // "While You Wait" (opens quiz in browser → app goes to background), we clear the timer and modal so when
-  // they return the overlay never blocks the waiting room.
+  // Only run the timer when this screen is focused AND app is in foreground.
+  // Do NOT clear the modal when isFocused flips during stack transitions (600ms fade) — that was dismissing
+  // the pre-prompt before the user could act. Clear on app background only; useFocusEffect clears on real blur.
   useEffect(() => {
     const inForeground = appState === "active"
-    if (!isFocused || !inForeground) {
+    if (!inForeground) {
       setShowCommunicationModal(false)
+      return
+    }
+    if (!isFocused) {
       return
     }
     let t: ReturnType<typeof setTimeout> | undefined
@@ -195,6 +197,14 @@ export const WaitingScreen = ({
       if (t) clearTimeout(t)
     }
   }, [isFocused, appState])
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setShowCommunicationModal(false)
+      }
+    }, []),
+  )
 
   // Safety: auto-dismiss communication modal after 2 min so Android never gets stuck with an invisible/touch-blocking overlay (RN Modal can leave overlay when buttons fail)
   useEffect(() => {
@@ -1189,7 +1199,9 @@ export const WaitingScreen = ({
         visible={showClarityMomentModal}
         onPresent={() => {
           setShowClarityMomentModal(false)
-          AsyncStorage.setItem(CLARITY_MOMENT_SEEN_KEY, "true").catch(() => {})
+          AsyncStorage.setItem(WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY, "true").catch(
+            () => {},
+          )
         }}
       />
 

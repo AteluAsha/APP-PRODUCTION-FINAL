@@ -147,8 +147,11 @@ export const IntegratedProgressStack = ({
   // Find current chakra data
   const currentChakraData = chakraData.find(({ day }) => day === currentDay)
 
-  // LOCKED: trials + lifetime hub use the same base pin (BOTTOM_PADDING). iOS lifetime stack height matches trial viewport.
-  const bottomPadding = TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING
+  // Trials: base pin. Android trial uses slightly lower root alignment (see BOTTOM_PADDING_ANDROID_TRIAL).
+  const bottomPadding =
+    Platform.OS === "android" && !showAllChakrasForLifetimeHub
+      ? TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING_ANDROID_TRIAL
+      : TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING
   const dayLabelToBallGap = TRIAL_HOME_ROOT_CHAKRA.DAY_LABEL_TO_BALL_GAP
 
   // Trial home (ChakraHome): ScrollView has paddingTop + paddingBottom; stack must fit in visible area

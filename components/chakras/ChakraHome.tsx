@@ -2,12 +2,7 @@ import { View, Pressable, Platform } from "react-native"
 import { ScrollView } from "react-native-gesture-handler"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import PulsingButton from "@/components/chakras/PulsingButton"
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated"
+import Animated from "react-native-reanimated"
 import React, { useRef } from "react"
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { AppText } from "@/components/AppText"
@@ -55,8 +50,8 @@ import {
   OPENING_LOGO,
   TRIAL_HOME_ROOT_CHAKRA,
   SCROLL_BREATHING_BOTTOM_PADDING,
-  SOMATIC_FADE_IN_MS,
 } from "@/constants/layout"
+import { useHomeSomaticEntrance } from "@/hooks/useHomeSomaticEntrance"
 import { storage } from "@/src/services/firebase"
 import {
   getAudioPreloadStarted,
@@ -531,21 +526,30 @@ export const ChakraHome = () => {
 
   const contentReady = !isLoadingChakras && chakraData.length === 7
 
-  const homeContentOpacity = useSharedValue(0)
-  const homeMainContentStyle = useAnimatedStyle(() => ({
-    opacity: homeContentOpacity.value,
-  }))
+  /** Only the main dashboard (not gates, waiting, or error) should trigger the session entrance. */
+  const mainHomeDashboardVisible = useMemo(
+    () =>
+      contentReady &&
+      !chakrasError &&
+      storeRehydrationReady &&
+      !showWaitingScreen &&
+      !showPaymentGate &&
+      !(shouldShowCommitmentGate && showGraceOfPresence) &&
+      !(shouldShowCommitmentGate && showSealOfInitiate),
+    [
+      contentReady,
+      chakrasError,
+      storeRehydrationReady,
+      showWaitingScreen,
+      showPaymentGate,
+      shouldShowCommitmentGate,
+      showGraceOfPresence,
+      showSealOfInitiate,
+    ],
+  )
 
-  useEffect(() => {
-    if (contentReady) {
-      homeContentOpacity.value = withTiming(1, {
-        duration: SOMATIC_FADE_IN_MS,
-        easing: Easing.out(Easing.ease),
-      })
-    } else {
-      homeContentOpacity.value = 0
-    }
-  }, [contentReady, homeContentOpacity])
+  const { contentOpacityStyle: homeContentEntranceStyle } =
+    useHomeSomaticEntrance(mainHomeDashboardVisible)
 
   const closeModal = () => {
     clearCompletedChakra()
@@ -783,7 +787,7 @@ export const ChakraHome = () => {
   }
 
   return (
-    <Animated.View style={[{ flex: 1 }, homeMainContentStyle]}>
+    <View style={{ flex: 1, backgroundColor: "#000000" }}>
       <SafeAreaView
         style={{ flex: 1, backgroundColor: "#000000" }}
         edges={["top", "bottom"]}
@@ -810,6 +814,10 @@ export const ChakraHome = () => {
           nestedScrollEnabled={true}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Somatic entrance: only the dashboard pillar / scroll content fades — not SafeArea or loading logo */}
+          <Animated.View
+            style={[{ flexGrow: 1, width: "100%" }, homeContentEntranceStyle]}
+          >
           {/* UX Improvement: Trial Progress Indication */}
           {!hasLifetimeAccess &&
             completedTrialCourses > 0 &&
@@ -950,6 +958,7 @@ export const ChakraHome = () => {
           {/* Render chakra display (only if not in post-trial state) */}
           {!(completedTrialCourses === 2 && !hasLifetimeAccess) &&
             renderChakraDisplay()}
+          </Animated.View>
         </ScrollView>
 
         {/* Overlays after ScrollView so they receive touches on Android. Lifetime course-mode exit (global: iOS + Android). */}
@@ -1098,6 +1107,6 @@ export const ChakraHome = () => {
           <TrialTestFlow onUnlockNextDay={() => {}} currentDay={currentDay} />
         )}
       </SafeAreaView>
-    </Animated.View>
+    </View>
   )
 }

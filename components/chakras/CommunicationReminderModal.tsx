@@ -28,8 +28,6 @@ export function CommunicationReminderModal({
   onAllow,
   onNotNow,
 }: CommunicationReminderModalProps) {
-  if (!visible) return null
-
   const handleAllow = () => {
     addHapticFeedback(HapticStrength.Medium)
     onAllow()
@@ -48,7 +46,14 @@ export function CommunicationReminderModal({
       onRequestClose={handleNotNow}
       statusBarTranslucent={Platform.OS === "android"}
     >
-      <View style={styles.overlay} pointerEvents="box-none">
+      {visible ? (
+      <View
+        style={[
+          styles.overlay,
+          Platform.OS === "android" && { elevation: 9999, zIndex: 9999 },
+        ]}
+        pointerEvents="box-none"
+      >
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={handleNotNow}
@@ -129,6 +134,7 @@ export function CommunicationReminderModal({
           </LinearGradient>
         </View>
       </View>
+      ) : null}
     </Modal>
   )
 }

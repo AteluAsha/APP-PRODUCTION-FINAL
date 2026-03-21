@@ -7,7 +7,7 @@
  * scroll → Begin Your Journey → waiting room (preload starts there).
  */
 
-import React, { useMemo, useState, useCallback } from "react"
+import React, { useMemo, useState, useCallback, useEffect } from "react"
 import {
   View,
   Image,
@@ -37,11 +37,20 @@ import {
   SCROLL_ANDROID_SMOOTH_PROPS,
 } from "@/constants/layout"
 import { DAY_NAMES, CHAKRA_NAMES } from "@/constants/chakras/chakraConstants"
-import {
-  scheduleJourneyReminders,
-  hasNotificationPermission,
-} from "@/src/services/journeyNotifications"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { ClarityMomentModal } from "@/components/chakras/ClarityMomentModal"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY } from "@/constants/onboardingKeys"
+import { LinearGradient } from "expo-linear-gradient"
+
+/** Footer CTA: violet gradient (light top-left → deep bottom-right), aligned with app sacred / jewel tones */
+const DATE_SELECTION_BEGIN_GRADIENT_COLORS = [
+  "#e9d5ff",
+  "#c084fc",
+  "#9333ea",
+  "#6b21a8",
+] as const
+const DATE_SELECTION_BEGIN_GRADIENT_LOCATIONS = [0, 0.22, 0.55, 1] as const
 
 const getChakraImage = (index: number) => {
   const chakraName = getChakraName(index).toLowerCase().replace(" ", "")
@@ -72,6 +81,7 @@ export default function DateSelectionScreen() {
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showPickDateReminder, setShowPickDateReminder] = useState(false)
+  const [showOnboardingClarity, setShowOnboardingClarity] = useState(false)
 
   const { setFirstLaunchComplete } = useFirstLaunchStore()
   const {
@@ -80,6 +90,7 @@ export default function DateSelectionScreen() {
     courseStartDate,
     completedTrialCourses = 0,
     hasLifetimeAccess = false,
+    setDateSelectionEmbodimentHandoffComplete,
   } = useChakraJourneyStore()
 
   const handleBack = useCallback(() => {
@@ -97,31 +108,31 @@ export default function DateSelectionScreen() {
     setTimeout(() => setShowConfirmation(true), 150)
   }, [])
 
-  // Confirm locks the date; schedule reminders if already permitted. Reminder modal now shows 60s after entering waiting room.
-  const handleConfirmDate = useCallback(async () => {
+  // Confirm locks the date in the store (Begin CTA turns purple). Reminders: Waiting Room only.
+  const handleConfirmDate = useCallback(() => {
     if (!selectedDateISO) return
     const todayISO = getLocalDateISO()
     setInitialOpenDate(todayISO)
     setCourseStartDate(selectedDateISO)
     addHapticFeedback(HapticStrength.Medium)
     setShowConfirmation(false)
-
-    const alreadyGranted = await hasNotificationPermission()
-    if (alreadyGranted) {
-      scheduleJourneyReminders(selectedDateISO).catch((err) => {
-        if (__DEV__)
-          console.warn("[DateSelection] Failed to schedule reminders:", err)
-      })
-    }
   }, [selectedDateISO, setInitialOpenDate, setCourseStartDate])
 
   const handleCancelConfirmation = useCallback(() => {
     setShowConfirmation(false)
   }, [])
 
+  const handleOnboardingClarityPresent = useCallback(() => {
+    setShowOnboardingClarity(false)
+    setDateSelectionEmbodimentHandoffComplete(true)
+    void AsyncStorage.setItem(WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY, "true")
+    router.replace("/(chakras)/ChakraHome")
+  }, [router, setDateSelectionEmbodimentHandoffComplete])
+
   // Begin Your Journey: three doors for trial users (Lifetime does not use these—they go WelcomeScreen → ChakraHub).
   // If no start date has been confirmed, show reminder to choose a Monday (Android & iOS).
   // When today is Monday and start date is missing or in the future, set start to today so user goes direct to trials home (not waiting room).
+  // Trial: Begin → Clarity Moment (embodiment) → Present → ChakraHome (WaitingScreen when applicable). Notifications: Waiting Room only.
   const handleBeginJourney = useCallback(() => {
     addHapticFeedback(HapticStrength.Medium)
     const state = useChakraJourneyStore.getState()
@@ -159,10 +170,24 @@ export default function DateSelectionScreen() {
 
     if (bothTrialsActuallyCompleted) {
       router.replace("/(chakras)/SimpleGraceTransition")
-    } else {
-      router.replace("/(chakras)/ChakraHome")
+      return
     }
+
+    const latest = useChakraJourneyStore.getState()
+    if (!latest.dateSelectionEmbodimentHandoffComplete) {
+      setShowOnboardingClarity(true)
+      return
+    }
+
+    router.replace("/(chakras)/ChakraHome")
   }, [setFirstLaunchComplete, router])
+
+  /** Persisted course date: reflect in picker so selection state matches store (Android UX). */
+  useEffect(() => {
+    if (courseStartDate && !selectedDateISO) {
+      setSelectedDateISO(courseStartDate)
+    }
+  }, [courseStartDate, selectedDateISO])
 
   const displayStartDate = useMemo(() => {
     if (selectedDateISO) {
@@ -175,6 +200,9 @@ export default function DateSelectionScreen() {
   }, [selectedDateISO, courseStartDate])
 
   const remainingTrials = 2 - completedTrialCourses
+
+  /** Confirmed start date in store — drives purple vs outline Begin CTA. */
+  const hasConfirmedStartDate = Boolean(courseStartDate)
 
   return (
     <SafeAreaView
@@ -425,27 +453,102 @@ export default function DateSelectionScreen() {
             borderTopColor: "rgba(255, 255, 255, 0.05)",
           }}
         >
-          <Pressable
-            onPress={handleBeginJourney}
+          {/*
+            Begin: outline (no confirmed date) vs purple gradient (date confirmed in store).
+          */}
+          <View
             style={{
-              paddingVertical: 16,
+              width: "100%",
+              alignSelf: "stretch",
               borderRadius: 16,
-              backgroundColor: "#9333ea",
-              shadowColor: "#9333ea",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
-              elevation: 8,
+              overflow: "hidden",
+              ...(hasConfirmedStartDate
+                ? {
+                    shadowColor: "#7c3aed",
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.42,
+                    shadowRadius: 16,
+                    elevation: 12,
+                  }
+                : {
+                    borderWidth: 2,
+                    borderColor: "rgba(255, 255, 255, 0.92)",
+                    backgroundColor: "transparent",
+                  }),
             }}
           >
-            <AppText
-              font="instrument-bold"
-              size="base"
-              style={{ textAlign: "center", color: "#ffffff" }}
+            <Pressable
+              disabled={false}
+              onPress={handleBeginJourney}
+              style={({ pressed }) => ({
+                width: "100%",
+                opacity: pressed ? 0.94 : 1,
+              })}
+              android_ripple={
+                Platform.OS === "android"
+                  ? {
+                      color: hasConfirmedStartDate
+                        ? "rgba(255,255,255,0.22)"
+                        : "rgba(255,255,255,0.15)",
+                    }
+                  : undefined
+              }
             >
-              Begin Your Journey
-            </AppText>
-          </Pressable>
+              {hasConfirmedStartDate ? (
+                <LinearGradient
+                  colors={[...DATE_SELECTION_BEGIN_GRADIENT_COLORS]}
+                  locations={[...DATE_SELECTION_BEGIN_GRADIENT_LOCATIONS]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: "100%",
+                    minHeight: 56,
+                    paddingVertical: 18,
+                    paddingHorizontal: 24,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <AppText
+                    font="instrument-bold"
+                    size="base"
+                    style={{
+                      textAlign: "center",
+                      color: "#ffffff",
+                      textShadowColor: "rgba(0, 0, 0, 0.35)",
+                      textShadowOffset: { width: 0, height: 1 },
+                      textShadowRadius: 4,
+                    }}
+                  >
+                    Begin Your Journey
+                  </AppText>
+                </LinearGradient>
+              ) : (
+                <View
+                  style={{
+                    width: "100%",
+                    minHeight: 56,
+                    paddingVertical: 18,
+                    paddingHorizontal: 24,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(0, 0, 0, 0.35)",
+                  }}
+                >
+                  <AppText
+                    font="instrument-bold"
+                    size="base"
+                    style={{
+                      textAlign: "center",
+                      color: "#ffffff",
+                    }}
+                  >
+                    Begin Your Journey
+                  </AppText>
+                </View>
+              )}
+            </Pressable>
+          </View>
           <AppText
             font="instrument-regular"
             size="xs"
@@ -557,6 +660,11 @@ export default function DateSelectionScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <ClarityMomentModal
+        visible={showOnboardingClarity}
+        onPresent={handleOnboardingClarityPresent}
+      />
     </SafeAreaView>
   )
 }

@@ -22,8 +22,6 @@ export function ClarityMomentModal({
   visible,
   onPresent,
 }: ClarityMomentModalProps) {
-  if (!visible) return null
-
   const handlePresent = () => {
     addHapticFeedback(HapticStrength.Medium)
     onPresent()
@@ -37,7 +35,14 @@ export function ClarityMomentModal({
       onRequestClose={handlePresent}
       statusBarTranslucent={Platform.OS === "android"}
     >
-      <View style={styles.overlay} pointerEvents="box-none">
+      {visible ? (
+      <View
+        style={[
+          styles.overlay,
+          Platform.OS === "android" && { elevation: 9999, zIndex: 9999 },
+        ]}
+        pointerEvents="box-none"
+      >
         <View
           style={[styles.card, Platform.OS === "android" && { elevation: 24, zIndex: 1 }]}
           pointerEvents="box-none"
@@ -111,6 +116,7 @@ export function ClarityMomentModal({
           </LinearGradient>
         </View>
       </View>
+      ) : null}
     </Modal>
   )
 }

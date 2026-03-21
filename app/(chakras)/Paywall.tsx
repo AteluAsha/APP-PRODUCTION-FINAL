@@ -11,6 +11,7 @@ import { useRouter } from "expo-router"
 import { CommitmentGate } from "@/components/chakras/CommitmentGate"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { getCurrentDayOfWeek } from "@/utils/date"
+import { requestChakraHubRevealBreath } from "@/utils/homeSessionEntrance"
 
 export default function PaywallScreen() {
   const router = useRouter()
@@ -29,6 +30,7 @@ export default function PaywallScreen() {
     currentTrialNumber === 1 && allChakrasCompleted && currentDay === 6
 
   const handleComplete = () => {
+    requestChakraHubRevealBreath()
     router.replace("/(chakras)/ChakraHub")
   }
 

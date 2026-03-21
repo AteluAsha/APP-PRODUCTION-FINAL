@@ -34,11 +34,12 @@ export const GlobalHomeButton: React.FC = () => {
       })),
     )
 
-  const replaceLifetimePrimaryHome = () => {
+  /** Pops stack until dashboard; avoids landing on (chakras)/index gate (black screen → redirect). */
+  const dismissToLifetimePrimaryHome = () => {
     if (lifetimeChosenTimegateJourney) {
-      router.replace("/(chakras)/ChakraHome")
+      router.dismissTo("/(chakras)/ChakraHome")
     } else {
-      router.replace("/(chakras)/ChakraHub")
+      router.dismissTo("/(chakras)/ChakraHub")
     }
   }
   const { completedChakra, clearCompletedChakra } = useCompletedChakraStore(
@@ -160,9 +161,9 @@ export const GlobalHomeButton: React.FC = () => {
     if (completedChakra) {
       clearCompletedChakra()
       if (hasLifetimeAccess) {
-        replaceLifetimePrimaryHome()
+        dismissToLifetimePrimaryHome()
       } else {
-        router.replace("/(chakras)/ChakraHome")
+        router.dismissTo("/(chakras)/ChakraHome")
       }
       return
     }
@@ -170,19 +171,18 @@ export const GlobalHomeButton: React.FC = () => {
       // Lifetime on ChakraHome (course mode): chakra icon → ChakraHub
       // Trial/ChakraHub: chakra icon → Chakras 101
       if (hasLifetimeAccess && isChakraHome) {
-        router.replace("/(chakras)/ChakraHub")
+        router.dismissTo("/(chakras)/ChakraHub")
       } else {
         router.push("/(chakras)/Chakras101")
       }
     } else {
       // On other screens, navigate to respective home screen
-      // Trial screens → trial homepage (ChakraHome with progressive reveal)
-      // Post-paywall screens → ChakraHub
+      // Trial screens → trial homepage (ChakraHome with progressive chakra reveal)
+      // Post-paywall screens → ChakraHub or ChakraHome (somatic journey)
       if (hasLifetimeAccess) {
-        replaceLifetimePrimaryHome()
+        dismissToLifetimePrimaryHome()
       } else {
-        // Trial users: Navigate to ChakraHome (trial landing page with progressive chakra reveal)
-        router.replace("/(chakras)/ChakraHome")
+        router.dismissTo("/(chakras)/ChakraHome")
       }
     }
   }

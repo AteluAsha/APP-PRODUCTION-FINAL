@@ -29,6 +29,10 @@ const SLIDER_THUMB_SIZE = 14
 const SLIDER_THUMB_DRAGGING = 18
 const SLIDER_TOUCH_MIN_HEIGHT = 36
 
+/** Android Sound Bath: flatter container than full pill; iOS keeps soft capsule */
+const LAYERED_RADIUS_ANDROID = 28
+const LAYERED_RADIUS_IOS = 9999
+
 interface CrystalBowlButtonProps {
   className?: string
   onPress: () => void | Promise<void>
@@ -146,6 +150,12 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
       runOnJS(clearDragState)()
     })
 
+  const layeredRadius =
+    Platform.OS === "android" ? LAYERED_RADIUS_ANDROID : LAYERED_RADIUS_IOS
+  const contentRowPadH = Platform.OS === "android" ? 20 : 24
+  const titleLineHeight =
+    Platform.OS === "android" ? 22 : undefined
+
   const thumbSize = isDragging ? SLIDER_THUMB_DRAGGING : SLIDER_THUMB_SIZE
   const thumbLeft =
     trackWidth > 0
@@ -203,14 +213,106 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
     </View>
   )
 
+  const labelBlock =
+    showHeart && subtitle && !isLoading ? (
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginLeft: 16,
+          flex: 1,
+          minWidth: 0,
+        }}
+      >
+        <AppText
+          font="koh-santepheap"
+          size="sm"
+          numberOfLines={1}
+          style={{
+            letterSpacing: 1,
+            fontSize: 14,
+            color: "#ffffff",
+            flexShrink: 1,
+            ...(titleLineHeight != null ? { lineHeight: titleLineHeight } : {}),
+          }}
+        >
+          {label}
+        </AppText>
+        <Ionicons
+          name="heart"
+          size={14}
+          color="rgba(255,255,255,0.9)"
+          style={{ marginLeft: 8, marginRight: 6, flexShrink: 0 }}
+        />
+        <AppText
+          font="instrument-regular"
+          size="xs"
+          numberOfLines={1}
+          style={{
+            color: "rgba(255,255,255,0.85)",
+            flexShrink: 0,
+            ...(Platform.OS === "android" ? { lineHeight: 18 } : {}),
+          }}
+        >
+          {subtitle}
+        </AppText>
+      </View>
+    ) : (
+      <View style={{ flexDirection: "column", marginLeft: 16, flex: 1, minWidth: 0 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            flexWrap: Platform.OS === "android" ? "nowrap" : "wrap",
+          }}
+        >
+          <AppText
+            font="koh-santepheap"
+            size="sm"
+            numberOfLines={1}
+            style={{
+              letterSpacing: 1,
+              fontSize: 14,
+              color: "#ffffff",
+              flexShrink: 1,
+              ...(titleLineHeight != null ? { lineHeight: titleLineHeight } : {}),
+            }}
+          >
+            {isLoading ? "Preparing..." : label}
+          </AppText>
+          {showHeart && !isLoading && (
+            <Ionicons
+              name="heart"
+              size={14}
+              color="rgba(255,255,255,0.9)"
+              style={{ marginLeft: 6, flexShrink: 0 }}
+            />
+          )}
+        </View>
+        {subtitle && !isLoading && !(showHeart && subtitle) && (
+          <AppText
+            font="instrument-regular"
+            size="xs"
+            style={{
+              color: "rgba(255,255,255,0.8)",
+              marginTop: Platform.OS === "android" ? 4 : 2,
+              ...(Platform.OS === "android" ? { lineHeight: 18 } : {}),
+            }}
+          >
+            {subtitle}
+          </AppText>
+        )}
+      </View>
+    )
+
   const content = (
     <View
       style={{
         flexDirection: "row",
         alignItems: "center",
-        marginLeft: 24,
-        paddingVertical: 8,
-        paddingRight: rightContent ? 8 : 24,
+        marginLeft: contentRowPadH,
+        paddingVertical: Platform.OS === "android" ? 10 : 8,
+        paddingRight: rightContent ? 8 : contentRowPadH,
         flex: 1,
       }}
     >
@@ -239,51 +341,19 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
           />
         )}
       </View>
-      <View style={{ flexDirection: "column", marginLeft: 16, flex: 1 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <AppText
-            font="koh-santepheap"
-            size="sm"
-            numberOfLines={1}
-            style={{ letterSpacing: 1, fontSize: 14, color: "#ffffff" }}
-          >
-            {isLoading ? "Preparing..." : label}
-          </AppText>
-          {showHeart && !isLoading && (
-            <Ionicons
-              name="heart"
-              size={14}
-              color="rgba(255,255,255,0.9)"
-              style={{ marginLeft: 6 }}
-            />
-          )}
-        </View>
-        {subtitle && !isLoading && (
-          <AppText
-            font="instrument-regular"
-            size="xs"
-            style={{ color: "rgba(255,255,255,0.8)", marginTop: 2 }}
-          >
-            {subtitle}
-          </AppText>
-        )}
-      </View>
+      {labelBlock}
       {rightContent != null ? <View>{rightContent}</View> : null}
     </View>
   )
 
   const layeredStyle = {
-    paddingVertical: 16,
-    width: 360,
-    maxWidth: "95%",
-    borderRadius: 9999,
+    paddingVertical: Platform.OS === "android" ? 14 : 16,
+    width: Platform.OS === "android" ? ("100%" as const) : 360,
+    maxWidth: Platform.OS === "android" ? ("100%" as const) : ("95%" as const),
+    alignSelf: Platform.OS === "android" ? ("stretch" as const) : undefined,
+    borderRadius: layeredRadius,
     overflow: "hidden" as const,
+    ...(Platform.OS === "android" && isLayered ? { paddingHorizontal: 8 } : {}),
     ...(Platform.OS === "ios"
       ? {
           shadowColor: "#000",
@@ -324,10 +394,10 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
           end={{ x: 0.5, y: 1 }}
           style={{
             flex: 1,
-            borderRadius: 9999,
+            borderRadius: layeredRadius,
             borderWidth: 1,
             borderColor: "rgba(255,255,255,0.15)",
-            paddingVertical: 16,
+            paddingVertical: Platform.OS === "android" ? 14 : 16,
           }}
         >
           <LinearGradient
@@ -340,8 +410,8 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
               left: 0,
               right: 0,
               height: "35%",
-              borderTopLeftRadius: 9999,
-              borderTopRightRadius: 9999,
+              borderTopLeftRadius: layeredRadius,
+              borderTopRightRadius: layeredRadius,
             }}
             pointerEvents="none"
           />
@@ -354,10 +424,11 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
   const defaultStyle = {
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.38)",
-    borderRadius: 16,
+    borderRadius: Platform.OS === "android" ? 28 : 16,
     paddingVertical: 16,
-    width: 360,
-    maxWidth: "95%",
+    width: Platform.OS === "android" ? ("100%" as const) : 360,
+    maxWidth: Platform.OS === "android" ? ("100%" as const) : ("95%" as const),
+    alignSelf: Platform.OS === "android" ? ("stretch" as const) : undefined,
     backgroundColor: "rgba(0,0,0,0.125)",
   }
 
@@ -386,7 +457,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
 const styles = StyleSheet.create({
   progressBlock: {
     marginTop: 10,
-    marginHorizontal: 28,
+    marginHorizontal: Platform.OS === "android" ? 22 : 28,
   },
   progressTime: {
     color: "rgba(255,255,255,0.85)",

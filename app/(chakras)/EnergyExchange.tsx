@@ -20,6 +20,7 @@ import { VideoRecorderModal } from "@/components/chakras/VideoRecorderModal"
 import { WriteToUsModal } from "@/components/chakras/WriteToUsModal"
 import { LeaveReviewModal } from "@/components/chakras/LeaveReviewModal"
 import { SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
+import { requestChakraHubRevealBreath } from "@/utils/homeSessionEntrance"
 
 /**
  * Energy Exchange Screen
@@ -49,6 +50,7 @@ export default function EnergyExchange() {
   const handleBack = () => {
     addHapticFeedback(HapticStrength.Light)
     if (hasLifetimeAccess) {
+      requestChakraHubRevealBreath()
       router.replace("/(chakras)/ChakraHub")
     } else {
       router.replace("/(chakras)/ChakraHome")

@@ -32,6 +32,9 @@ import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { ChakraDaySelector } from "@/components/chakras/ChakraDaySelector"
 
+/** Android: KeyboardAvoidingView offset for status bar + ActionBar (both sit above KAV). */
+const ACTION_BAR_KEYBOARD_OFFSET = 56
+
 const formatDate = (dateString: string): string => {
   try {
     const date = new Date(dateString)
@@ -241,10 +244,14 @@ export default function NotesAlongTheWay() {
           </View>
 
           <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.keyboardView}
-          keyboardVerticalOffset={0}
-        >
+            behavior="padding"
+            style={styles.keyboardView}
+            keyboardVerticalOffset={
+              Platform.OS === "android"
+                ? insets.top + ACTION_BAR_KEYBOARD_OFFSET
+                : 0
+            }
+          >
           <View style={styles.contentColumn}>
             <Animated.View
               key={selectedChakraDay}
@@ -290,6 +297,7 @@ export default function NotesAlongTheWay() {
                 ref={scrollRef}
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 {...(Platform.OS === "android" && SCROLL_ANDROID_SMOOTH_PROPS)}
                 contentContainerStyle={styles.scrollContent}
               >

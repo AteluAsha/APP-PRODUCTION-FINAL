@@ -5,7 +5,7 @@ Single reference for the path from first launch through trials and lifetime. Aud
 ## First open
 
 1. **Native splash** (`SoulSchool_APP_HeroLoadImage.png`): small centered shield until JS mounts.
-2. **AnimatedSplashScreen** (`app/_layout.tsx`): hides native splash immediately on mount, black + pulsing `SoulSchool_HERO_Logo.png` while fonts/preloads finish, then fades out. **`(chakras)/index`** stays black and **replaces** to the first screen when store rehydration + nav are ready.
+2. **AnimatedSplashScreen** (`app/_layout.tsx`): native shield stays until the Soul School hero image has loaded and painted (`onLoad` + frame), then `SplashScreen.hideAsync()`; solid black + 5s sine breath pulse on `SoulSchool_HERO_Logo.png` while fonts/preloads finish, then fades out. **`(chakras)/index`** stays black and **replaces** to the first screen when store rehydration + nav are ready.
 3. **First screen** is one of: WelcomeScreen (trial first time), DateSelection (trial after trial 1), ChakraHome (trial in journey / waiting room), ChakraHub (lifetime).
 
 No error screen on success; ErrorBoundary fallback shows hero logo only.

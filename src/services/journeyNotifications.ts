@@ -8,34 +8,58 @@
  * Notifications: 3 days out, 2 days out, 1 day before (eve of start).
  * All at 9:00 AM local time. Kept light - no more than 3 reminders.
  *
- * Safe fallback: If expo-notifications native module is unavailable (Expo Go,
- * stale build), all functions no-op. Requires development build with native
- * rebuild after adding expo-notifications.
+ * Safe fallback: In Expo Go (SDK 53+), we never load the module — remote APIs were
+ * removed and require() can crash. In dev/standalone builds, if the native module
+ * is missing, all functions no-op. Full journey reminders need a development build.
  */
 
 import { Platform } from "react-native"
+import Constants, { ExecutionEnvironment } from "expo-constants"
 import { formatDate } from "@/utils/date"
 
+/**
+ * SDK 53+: remote push / full expo-notifications surface is not available in Expo Go.
+ * Never `require("expo-notifications")` there — it throws and can red-screen the app.
+ * Development / standalone builds still load the native module below.
+ */
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient
+
 let Notifications: typeof import("expo-notifications") | null = null
-try {
-  Notifications = require("expo-notifications")
-  if (Notifications) {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    })
-  }
-} catch (e) {
-  if (__DEV__) {
-    console.warn(
-      "[JourneyNotifications] expo-notifications not available (rebuild native app):",
-      (e as Error)?.message,
-    )
+if (!isExpoGo) {
+  try {
+    Notifications = require("expo-notifications")
+    if (Notifications) {
+      try {
+        // Foreground: no banner/alert — avoids Android "green chip" style heads-up during
+        // cold start / arrival; journey reminders still fire when app is backgrounded.
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: false,
+            shouldShowBanner: false,
+            // Silence Android "green success" style foreground surfacing during boot / cold start
+            shouldShowList: false,
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+          }),
+        })
+      } catch (handlerErr) {
+        if (__DEV__) {
+          console.warn(
+            "[JourneyNotifications] setNotificationHandler failed:",
+            (handlerErr as Error)?.message,
+          )
+        }
+      }
+    }
+  } catch (e) {
+    Notifications = null
+    if (__DEV__) {
+      console.warn(
+        "[JourneyNotifications] expo-notifications not available:",
+        (e as Error)?.message,
+      )
+    }
   }
 }
 

@@ -62,6 +62,9 @@ const formatDate = (dateString: string): string => {
   }
 }
 
+/** Android: KeyboardAvoidingView offset for safe area + sheet header chrome. */
+const ANDROID_KEYBOARD_VERTICAL_EXTRA = 56
+
 export type JourneyNotesTheme = "default" | "player"
 
 interface JourneyNotesViewProps {
@@ -467,6 +470,7 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
           <BottomSheetScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.scrollContent}
           >
             {Object.entries(notesByDay)

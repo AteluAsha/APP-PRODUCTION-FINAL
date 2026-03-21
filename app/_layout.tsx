@@ -47,6 +47,7 @@ import * as Linking from "expo-linking"
 import "@/src/services/firebase"
 import { initializeSentry } from "@/src/services/sentry"
 import "@/src/services/journeyNotifications"
+import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
 
 LogBox.ignoreLogs([
   "Error fetching tuning fork audio",
@@ -93,7 +94,7 @@ export default function RootLayout() {
     }
   }, [])
 
-  // Native shield stays up until AnimatedSplashScreen mounts and calls hideAsync().
+  // Native shield stays up until AnimatedSplashScreen hides it after hero image load + paint (see component).
   useEffect(() => {
     SplashScreen.preventAutoHideAsync().catch(() => {})
   }, [])
@@ -102,6 +103,18 @@ export default function RootLayout() {
     const t = setTimeout(() => setMinSplashElapsed(true), SPLASH_MIN_DISPLAY_MS)
     return () => clearTimeout(t)
   }, [])
+
+  // Safety: never leave splashOverlayActive true after hub/home is active (avoids menu lockout).
+  useEffect(() => {
+    const p = pathname ?? ""
+    if (
+      (p.includes("ChakraHub") || p.includes("ChakraHome")) &&
+      !p.includes("WelcomeScreen") &&
+      !p.includes("DateSelection")
+    ) {
+      useSplashOverlayStore.getState().setSplashOverlayActive(false)
+    }
+  }, [pathname])
 
   useEffect(() => {
     const setupAudio = async () => {
@@ -359,10 +372,11 @@ export default function RootLayout() {
   }
 
   // iOS crash fix: never mount GestureHandler/BottomSheet until native is ready. JS splash mounts after this.
+  // Black void — avoids gray/white flash behind native splash before Reanimated is ready.
   if (!nativeReady) {
     return (
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <View style={{ flex: 1, backgroundColor: "transparent" }} />
+        <View style={{ flex: 1, backgroundColor: "#000000" }} />
       </ThemeProvider>
     )
   }
@@ -410,7 +424,11 @@ export default function RootLayout() {
               {showSplashOverlay && (
                 <AnimatedSplashScreen
                   loadingComplete={splashLoadingComplete}
-                  onFadeOutComplete={() => setShowSplashOverlay(false)}
+                  onFadeOutComplete={() => {
+                    setShowSplashOverlay(false)
+                    // Explicit clear so PermanentMenuBar is not stuck behind splashOverlayActive
+                    useSplashOverlayStore.getState().setSplashOverlayActive(false)
+                  }}
                 />
               )}
               {/* TribeChatModal not in codebase; add when component exists: import from "@/components/tribe/TribeChatModal" and render <TribeChatModal /> */}
