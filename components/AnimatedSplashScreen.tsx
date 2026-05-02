@@ -2,7 +2,7 @@
  * JS splash (Stage 2) – after native shield (golden 7), Soul School hero + breath pulse.
  *
  * Native splash stays until the hero image has loaded and we have painted a frame (onLoad +
- * double rAF), then SplashScreen.hideAsync(). Pulse: 5s sine in/out cycle. Solid black throughout.
+ * double rAF), then SplashScreen.hideAsync(). Pulse: ~7.6s full sine in/out (half 3.8s). Solid black throughout.
  */
 import React, { useCallback, useEffect, useRef } from "react"
 import { View, Image, StyleSheet, Platform } from "react-native"
@@ -16,13 +16,20 @@ import Animated, {
   cancelAnimation,
 } from "react-native-reanimated"
 import * as SplashScreen from "expo-splash-screen"
-import { OPENING_SPLASH_LOGO } from "@/constants/layout"
+import {
+  OPENING_SPLASH_LOGO,
+  SPLASH_BREATH_HOLD_BEFORE_FADE_MS,
+} from "@/constants/layout"
+import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
 
-const PULSE_MAX_SCALE = 1.04
-const PULSE_HALF_MS = 2500
-const FADE_OUT_MS = 520
+const PULSE_MAX_SCALE = 1.06
+const PULSE_HALF_MS = 3800
+const FADE_OUT_MS = 780
 /** If Image onLoad never fires, still dismiss native splash so the app cannot hang. */
 const NATIVE_HIDE_FALLBACK_MS = 3500
+
+/** Survives React Strict Mode remounts so we do not call hideAsync twice or replay the hero. */
+let splashNativeHandoffCompleted = false
 
 export interface AnimatedSplashScreenProps {
   /** True when fonts + critical image/audio preloads are done (root layout). */
@@ -50,7 +57,7 @@ export function AnimatedSplashScreen({
     scale.value = withRepeat(
       withTiming(PULSE_MAX_SCALE, {
         duration: PULSE_HALF_MS,
-        easing: Easing.inOut(Easing.sine),
+        easing: Easing.inOut(Easing.sin),
       }),
       -1,
       true,
@@ -61,6 +68,11 @@ export function AnimatedSplashScreen({
     if (nativeHiddenRef.current) return
     nativeHiddenRef.current = true
     opacity.value = 1
+    if (splashNativeHandoffCompleted) {
+      startBreathPulse()
+      return
+    }
+    splashNativeHandoffCompleted = true
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         SplashScreen.hideAsync().catch(() => {})
@@ -82,28 +94,37 @@ export function AnimatedSplashScreen({
     return () => clearTimeout(t)
   }, [hideNativeAndStartPulse])
 
+  // After assets ready: brief hold on the pulsing logo (rest breath), then gentle fade out.
   useEffect(() => {
     if (!loadingComplete || fadeOutStartedRef.current) return
-    fadeOutStartedRef.current = true
 
-    const finish = () => {
-      if (completedRef.current) return
-      completedRef.current = true
-      onFadeOutComplete()
+    const startFade = () => {
+      if (fadeOutStartedRef.current) return
+      fadeOutStartedRef.current = true
+
+      const finish = () => {
+        if (completedRef.current) return
+        completedRef.current = true
+        useSplashOverlayStore.getState().setJsSplashFadeComplete(true)
+        onFadeOutComplete()
+      }
+
+      cancelAnimation(scale)
+      scale.value = withTiming(1, { duration: 280 })
+      opacity.value = withTiming(
+        0,
+        {
+          duration: FADE_OUT_MS,
+          easing: Easing.in(Easing.ease),
+        },
+        (finished) => {
+          if (finished) runOnJS(finish)()
+        },
+      )
     }
 
-    cancelAnimation(scale)
-    scale.value = withTiming(1, { duration: 200 })
-    opacity.value = withTiming(
-      0,
-      {
-        duration: FADE_OUT_MS,
-        easing: Easing.in(Easing.ease),
-      },
-      (finished) => {
-        if (finished) runOnJS(finish)()
-      },
-    )
+    const hold = setTimeout(startFade, SPLASH_BREATH_HOLD_BEFORE_FADE_MS)
+    return () => clearTimeout(hold)
   }, [loadingComplete, opacity, scale, onFadeOutComplete])
 
   useEffect(() => {

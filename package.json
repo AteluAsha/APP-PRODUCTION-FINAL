@@ -1,7 +1,7 @@
 {
   "name": "sevenchakras",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.1.4",
   "scripts": {
     "postinstall": "node scripts/ensure-worklets-stub.js && patch-package",
     "start": "env -u CI expo start",
@@ -23,6 +23,7 @@
     "web": "expo start --web",
     "capture:screens": "EXPO_PUBLIC_CAPTURE_SCREENS=1 expo start --web",
     "test": "jest --watchAll",
+    "test:ci": "jest --ci --watchAll=false",
     "lint": "expo lint",
     "lint:fix": "npx eslint . --fix",
     "preview-android": "eas build -p android --profile preview",
@@ -113,6 +114,7 @@
     "@types/jest": "^29.5.12",
     "@types/node": "^22.14.1",
     "@types/react": "~19.0.10",
+    "babel-plugin-module-resolver": "^5.0.3",
     "babel-preset-expo": "~13.0.0",
     "dotenv": "^16.4.5",
     "eslint": "^8.57.0",

@@ -105,7 +105,6 @@ export const GlobalHomeButton: React.FC = () => {
   if (
     segments.includes("Chakras101") ||
     segments.includes("CommitmentGate") ||
-    segments.includes("DevPaywall") ||
     segments.includes("Paywall") ||
     segments.includes("EnergyExchange") ||
     segments.includes("DateSelection") ||
@@ -115,7 +114,6 @@ export const GlobalHomeButton: React.FC = () => {
     segments.includes("AnuaChat") ||
     pathname?.includes("/Chakras101") ||
     pathname?.includes("/CommitmentGate") ||
-    pathname?.includes("/DevPaywall") ||
     pathname?.includes("/Paywall") ||
     pathname?.includes("/EnergyExchange") ||
     pathname?.includes("/DateSelection") ||

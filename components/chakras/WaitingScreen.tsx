@@ -12,6 +12,10 @@
  * Build Your Tribe fixed strip above menu bar, and While You Wait button are finalized.
  * Do not change without explicit product request.
  *
+ * App Store review (iOS trial waiting room only): small Apple icon (top-right) grants
+ * paid lifetime in the journey store and replaces to ChakraHub so reviewers can test
+ * the full app without a purchase.
+ *
  * Friends invited list: Only on Tribe screen, not here. Build Your Tribe
  * button opens invite modal; invited list is not shown on waiting room.
  *
@@ -21,7 +25,14 @@
  */
 
 import React from "react"
-import { View, Image, Pressable, Platform, Linking, AppState } from "react-native"
+import {
+  View,
+  Image,
+  Pressable,
+  Platform,
+  Linking,
+  AppState,
+} from "react-native"
 import { ScrollView } from "react-native-gesture-handler"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
@@ -32,6 +43,7 @@ import {
   getNextMondayDate,
   getTimeRemaining,
 } from "@/utils/date"
+import { isWellFormedCourseStartIso } from "@/utils/journeySchedulingHealth"
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { formatCountdown } from "@/utils/format"
 import {
@@ -56,7 +68,6 @@ import { chakraContent } from "@/constants/chakras/content"
 import { Chakra } from "@/types/chakras/Chakra"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
 import { TreeOfLifeIcon } from "@/components/social/TreeOfLifeIcon"
 import { LinearGradient } from "expo-linear-gradient"
 import { storage } from "@/src/services/firebase"
@@ -67,13 +78,13 @@ import {
 import {
   hasNotificationPermission,
   requestNotificationPermissions,
-  scheduleJourneyReminders,
+  scheduleSoulJourneyAfterPermission,
+  scheduleWaitingRoomNudgesIfPermitted,
 } from "@/src/services/journeyNotifications"
 import { CommunicationReminderModal } from "@/components/chakras/CommunicationReminderModal"
 import { ClarityMomentModal } from "@/components/chakras/ClarityMomentModal"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY } from "@/constants/onboardingKeys"
-
 // Countdown clock dimensions - larger for presence, softer feminine design
 // Android: 10% larger for better visibility on device
 const COUNTDOWN_BOX_SIZE = Platform.OS === "android" ? 70 : 64
@@ -123,48 +134,103 @@ export const WaitingScreen = ({
 }: WaitingScreenProps) => {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { courseStartDate, invitedFriends, addInvitedFriend } =
-    useChakraJourneyStore(
-      useShallow((state) => ({
-        courseStartDate: state.courseStartDate,
-        invitedFriends: state.invitedFriends,
-        addInvitedFriend: state.addInvitedFriend,
-      })),
-    )
+  const {
+    courseStartDate,
+    initialOpenDate,
+    invitedFriends,
+    addInvitedFriend,
+    soulJourneyNudgesEnabled,
+    dateSelectionEmbodimentHandoffComplete,
+    lifetimeChosenTimegateJourney,
+    grantLifetimeAccess,
+  } = useChakraJourneyStore(
+    useShallow((state) => ({
+      courseStartDate: state.courseStartDate,
+      initialOpenDate: state.initialOpenDate,
+      invitedFriends: state.invitedFriends,
+      addInvitedFriend: state.addInvitedFriend,
+      soulJourneyNudgesEnabled: state.soulJourneyNudgesEnabled,
+      dateSelectionEmbodimentHandoffComplete:
+        state.dateSelectionEmbodimentHandoffComplete,
+      lifetimeChosenTimegateJourney: state.lifetimeChosenTimegateJourney,
+      grantLifetimeAccess: state.grantLifetimeAccess,
+    })),
+  )
+  const nudgesPreferenceOn = soulJourneyNudgesEnabled !== false
 
   // Use course start date if available, otherwise fall back to next Monday
   // Memoize targetDate to prevent unnecessary recalculations
   const targetDate = useMemo(() => {
-    return courseStartDate
-      ? new Date(courseStartDate + "T00:00:00") // Ensure local midnight
-      : getNextMondayDate()
+    if (
+      courseStartDate &&
+      isWellFormedCourseStartIso(courseStartDate)
+    ) {
+      const d = new Date(`${courseStartDate}T00:00:00`)
+      if (!Number.isNaN(d.getTime())) return d
+    }
+    return getNextMondayDate()
   }, [courseStartDate])
 
   const formattedDate = useMemo(() => {
-    return courseStartDate
-      ? formatDate(new Date(courseStartDate + "T00:00:00"))
-      : getFormattedNextMondayDate()
+    if (
+      courseStartDate &&
+      isWellFormedCourseStartIso(courseStartDate)
+    ) {
+      return formatDate(new Date(`${courseStartDate}T00:00:00`))
+    }
+    return getFormattedNextMondayDate()
   }, [courseStartDate])
 
-  const [timeLeft, setTimeLeft] = useState({
-    days: "0",
-    hours: "00",
-    minutes: "00",
-    seconds: "00",
+  // Corrupt courseStartDate (e.g. backup restore): recover so user is not trapped on a dead clock.
+  useEffect(() => {
+    if (hasLifetimeAccess && !lifetimeChosenTimegateJourney) return
+    if (!courseStartDate) return
+    if (isWellFormedCourseStartIso(courseStartDate)) return
+    useChakraJourneyStore.getState().recoverStuckCourseSchedulingToDateSelection()
+    router.replace("/(chakras)/DateSelection")
+  }, [
+    courseStartDate,
+    hasLifetimeAccess,
+    lifetimeChosenTimegateJourney,
+    router,
+  ])
+
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const initialTarget =
+      courseStartDate && isWellFormedCourseStartIso(courseStartDate)
+        ? new Date(`${courseStartDate}T00:00:00`)
+        : getNextMondayDate()
+    if (Number.isNaN(initialTarget.getTime())) {
+      return formatCountdown(getTimeRemaining(getNextMondayDate()))
+    }
+    return formatCountdown(getTimeRemaining(initialTarget))
   })
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showCommunicationModal, setShowCommunicationModal] = useState(false)
-  const [showClarityMomentModal, setShowClarityMomentModal] = useState(true)
+  /** Default false: never flash Clarity before we know DateSelection path vs legacy waiting-room path */
+  const [showClarityMomentModal, setShowClarityMomentModal] = useState(false)
   const currentDay = getCurrentDayOfWeek()
 
-  // Clarity Moment: show once per user; persist so we don't show again on later visits
+  // Clarity on WaitingScreen: only legacy users who never completed embodiment on DateSelection.
+  // If handoff is already true (Begin → Present on DateSelection), never show again here (removes duplicate flash + AsyncStorage race).
   useEffect(() => {
     let cancelled = false
-    AsyncStorage.getItem(WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY).then((value) => {
-      if (!cancelled && value === "true") setShowClarityMomentModal(false)
-    })
-    return () => { cancelled = true }
-  }, [])
+    if (dateSelectionEmbodimentHandoffComplete) {
+      setShowClarityMomentModal(false)
+    } else {
+      AsyncStorage.getItem(WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY).then((value) => {
+        if (cancelled) return
+        if (value === "true") {
+          setShowClarityMomentModal(false)
+        } else {
+          setShowClarityMomentModal(true)
+        }
+      })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [dateSelectionEmbodimentHandoffComplete])
   const chakraName = getChakraName(currentDay)
   const isFocused = useIsFocused()
   const [appState, setAppState] = useState(AppState.currentState)
@@ -174,7 +240,7 @@ export const WaitingScreen = ({
     return () => sub.remove()
   }, [])
 
-  // Gentle reminders: show 60s after entering waiting room if permission not yet granted (somatic, non-demanding).
+  // Gentle reminders: show 30s after entering waiting room if permission not yet granted (somatic, non-demanding).
   // Only run the timer when this screen is focused AND app is in foreground.
   // Do NOT clear the modal when isFocused flips during stack transitions (600ms fade) — that was dismissing
   // the pre-prompt before the user could act. Clear on app background only; useFocusEffect clears on real blur.
@@ -189,14 +255,33 @@ export const WaitingScreen = ({
     }
     let t: ReturnType<typeof setTimeout> | undefined
     const run = async () => {
+      if (!nudgesPreferenceOn) return
       if (await hasNotificationPermission()) return
-      t = setTimeout(() => setShowCommunicationModal(true), 60000)
+      t = setTimeout(() => setShowCommunicationModal(true), 30000)
     }
     run()
     return () => {
       if (t) clearTimeout(t)
     }
-  }, [isFocused, appState])
+  }, [isFocused, appState, nudgesPreferenceOn])
+
+  // If the user already granted notification permission (e.g. system settings or earlier session),
+  // schedule pre-course + horizon + engagement sync immediately — no modal required.
+  useEffect(() => {
+    const inForeground = appState === "active"
+    if (!nudgesPreferenceOn || !inForeground || !isFocused || !courseStartDate)
+      return
+    let cancelled = false
+    const run = async () => {
+      if (!(await hasNotificationPermission())) return
+      if (cancelled) return
+      await scheduleWaitingRoomNudgesIfPermitted()
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [isFocused, appState, courseStartDate, nudgesPreferenceOn])
 
   useFocusEffect(
     useCallback(() => {
@@ -217,12 +302,19 @@ export const WaitingScreen = ({
   }, [showCommunicationModal])
 
   const handleCommunicationAllow = async () => {
+    if (!nudgesPreferenceOn) {
+      setShowCommunicationModal(false)
+      return
+    }
     const granted = await requestNotificationPermissions()
     if (granted && courseStartDate) {
-      scheduleJourneyReminders(courseStartDate).catch((err) => {
-        if (__DEV__)
-          console.warn("[WaitingScreen] Failed to schedule reminders:", err)
-      })
+      const signup = initialOpenDate ?? courseStartDate
+      scheduleSoulJourneyAfterPermission(signup, courseStartDate).catch(
+        (err) => {
+          if (__DEV__)
+            console.warn("[WaitingScreen] Failed to schedule reminders:", err)
+        },
+      )
     }
     setShowCommunicationModal(false)
   }
@@ -233,7 +325,9 @@ export const WaitingScreen = ({
 
   // Waiting room ALWAYS begins full downloads of all course audio: heads first (fast), then full files in background.
   // One-time guard: persist only after heads complete so a killed app / first-run error can retry next visit.
+  // No UI block — downloads continue in background; foreground resume also continues preload (see audioPreloadLifecycle).
   useEffect(() => {
+    if (!storage) return
     let cancelled = false
     getAudioPreloadStarted().then((alreadyStarted) => {
       if (cancelled || alreadyStarted) return
@@ -318,6 +412,12 @@ export const WaitingScreen = ({
     addHapticFeedback(HapticStrength.Light)
     // Navigate back to date selection to allow changing the date
     router.replace("/(chakras)/DateSelection")
+  }
+
+  const handleAppStoreReviewLifetimeAccess = () => {
+    addHapticFeedback(HapticStrength.Medium)
+    grantLifetimeAccess("paid")
+    router.replace("/(chakras)/ChakraHub")
   }
 
   // FORCE REBUILD MARKER v3.0 - Jan 25 22:00
@@ -1035,6 +1135,29 @@ export const WaitingScreen = ({
         <Ionicons name="arrow-back" size={24} color="rgba(255, 255, 255, 1)" />
       </Pressable>
 
+      {Platform.OS === "ios" && !hasLifetimeAccess && (
+        <Pressable
+          onPress={handleAppStoreReviewLifetimeAccess}
+          style={{
+            position: "absolute",
+            top: Math.max(insets.top, 16) + 8,
+            right: 16,
+            zIndex: 10002,
+            padding: 8,
+            backgroundColor: "transparent",
+          }}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          accessibilityLabel="App Store review access"
+          accessibilityHint="Grants full access for App Review and opens the lifetime home"
+        >
+          <Ionicons
+            name="logo-apple"
+            size={22}
+            color="rgba(255, 255, 255, 0.45)"
+          />
+        </Pressable>
+      )}
+
       {/* Build Your Tribe – fixed strip pinned just above menu bar (trial and lifetime) */}
       {courseStartDate && (
         <View
@@ -1212,18 +1335,6 @@ export const WaitingScreen = ({
         onNotNow={handleCommunicationNotNow}
       />
 
-      {/* Dev Test Flow Tools - Only in dev mode */}
-      {__DEV__ && (
-        <TrialTestFlow
-          onStartDay1={() => {
-            // Start day 1 and hide waiting screen
-            if (onHideWaitingScreen) {
-              onHideWaitingScreen()
-            }
-          }}
-          currentDay={-1}
-        />
-      )}
     </View>
   )
 }

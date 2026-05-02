@@ -22,6 +22,7 @@ import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import * as Linking from "expo-linking"
+import { purchaseErrorForPaywallBanner } from "@/utils/purchaseUserFacingError"
 
 interface RevenueCatPaywallProps {
   onDismiss?: () => void
@@ -70,6 +71,16 @@ export const RevenueCatPaywall = ({
       },
     )
   }, [isLoading, paywallLoaderOpacity])
+
+  useEffect(() => {
+    if (error && !__DEV__) {
+      console.error("[RevenueCatPaywall]", error.message)
+    }
+  }, [error])
+
+  const purchaseErrorBannerText = error
+    ? purchaseErrorForPaywallBanner(error.message)
+    : null
 
   const paywallLoaderStyle = useAnimatedStyle(() => ({
     opacity: paywallLoaderOpacity.value,
@@ -170,18 +181,18 @@ export const RevenueCatPaywall = ({
           </AppText>
         </View>
 
-        {/* Error Message */}
-        {error && (
+        {/* Error Message — release builds never show raw RevenueCat / store strings */}
+        {purchaseErrorBannerText ? (
           <View className="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-6">
             <AppText
               font="instrument-regular"
               size="sm"
               className="text-red-400 text-center"
             >
-              {error.message}
+              {purchaseErrorBannerText}
             </AppText>
           </View>
-        )}
+        ) : null}
 
         {/* Product Options: 1. Monthly, 2. Full Sanctuary, 3. Lifetime */}
         <View className="gap-3 mb-6">
@@ -213,7 +224,7 @@ export const RevenueCatPaywall = ({
                     >
                       Unlimited access to all teachings
                     </AppText>
-                    <View className="flex-row items-baseline gap-1">
+                    <View className="flex-row flex-wrap items-baseline justify-center gap-1">
                       <AppText
                         font="instrument-bold"
                         size="lg"
@@ -227,6 +238,13 @@ export const RevenueCatPaywall = ({
                         className="text-gray-400"
                       >
                         /month
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        className="text-[rgba(168,201,154,0.82)]"
+                      >
+                        (donation)
                       </AppText>
                     </View>
                     <AppText
@@ -270,7 +288,7 @@ export const RevenueCatPaywall = ({
                     >
                       Annual Pass + new healing features
                     </AppText>
-                    <View className="flex-row items-baseline gap-1">
+                    <View className="flex-row flex-wrap items-baseline justify-center gap-1">
                       <AppText
                         font="instrument-bold"
                         size="lg"
@@ -284,6 +302,13 @@ export const RevenueCatPaywall = ({
                         className="text-gray-400"
                       >
                         / Year
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        className="text-[rgba(168,201,154,0.82)]"
+                      >
+                        (donation)
                       </AppText>
                     </View>
                     <AppText

@@ -58,10 +58,14 @@ function audioIdBaseWithoutExtension(audioId: string): string {
 }
 
 /** Full-file cache path: preserve .mov/.aac/etc so Day 1 Hero2.mov and others work. */
-function getFullPath(audioId: string): string {
+export function getFullAudioCachePath(audioId: string): string {
   return audioIdHasExtension(audioId)
     ? `${CACHE_DIR}${audioId}`
     : `${CACHE_DIR}${audioId}.aac`
+}
+
+function getFullPath(audioId: string): string {
+  return getFullAudioCachePath(audioId)
 }
 
 /** Head cache: first ~3 min stored as .aac for consistent playback. */
@@ -73,6 +77,82 @@ function getHeadPath(audioId: string): string {
 /**
  * Get local URI for a cached audio file (full file only)
  */
+/**
+ * Remote byte length for a Firebase/GCS signed URL (HEAD, then Content-Range fallback).
+ */
+export async function getRemoteAssetByteLength(
+  audioUrl: string,
+): Promise<number | null> {
+  try {
+    const headRes = await fetch(audioUrl, { method: "HEAD" })
+    const cl = headRes.headers.get("Content-Length")
+    if (cl && /^\d+$/.test(cl.trim())) {
+      const n = parseInt(cl, 10)
+      if (n > 0) return n
+    }
+    const rangeRes = await fetch(audioUrl, {
+      method: "GET",
+      headers: { Range: "bytes=0-0" },
+    })
+    const cr = rangeRes.headers.get("Content-Range")
+    const m = cr?.match(/\/(\d+)\s*$/)
+    if (m) {
+      const n = parseInt(m[1], 10)
+      if (n > 0) return n
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * True if a full-file cache exists and matches remote size (when known).
+ * Prevents playing a partial write that was mistaken for a complete download.
+ * When remote length cannot be determined, trust existing cache (avoid deleting short legit tracks).
+ */
+export async function isCachedFullFileComplete(
+  audioId: string,
+  remoteUrl: string,
+): Promise<boolean> {
+  const localUri = await getLocalAudioUri(audioId)
+  if (!localUri) return false
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(localUri, { size: true })
+    const localSize = (fileInfo as { size?: number }).size ?? 0
+    const remoteSize = await getRemoteAssetByteLength(remoteUrl)
+    if (remoteSize != null && remoteSize > 0) {
+      return localSize >= remoteSize * 0.97
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Remove only the full-file cache (keeps head slice if present).
+ */
+export async function clearCachedFullAudioOnly(audioId: string): Promise<void> {
+  try {
+    const path = getFullPath(audioId)
+    const fileInfo = await FileSystem.getInfoAsync(path)
+    if (fileInfo.exists) {
+      await FileSystem.deleteAsync(path)
+      if (__DEV__) {
+        console.log(`[audioDownload] Cleared partial/incomplete full file: ${audioId}`)
+      }
+    }
+  } catch (error) {
+    if (__DEV__) {
+      console.warn(
+        `[audioDownload] Error clearing full cache for ${audioId}:`,
+        error,
+      )
+    }
+  }
+}
+
 export async function getLocalAudioUri(
   audioId: string,
 ): Promise<string | null> {
@@ -259,7 +339,8 @@ export const MEDITATION_DOWNLOAD_TIMEOUT_MS = 180 * 1000
 
 /**
  * Resumable download with timeout. Rejects with Error('Download timeout') after timeoutMs.
- * Use from prepareLongAudioForPlay so embodiment/crystal bowl never hang indefinitely.
+ * On timeout, deletes the destination full file to avoid playing a partial cache on retry.
+ * Prefer bare `downloadAndCacheAudioResumable` for hero meditations (no truncation risk from race).
  */
 export async function downloadAndCacheAudioResumableWithTimeout(
   audioUrl: string,
@@ -272,10 +353,18 @@ export async function downloadAndCacheAudioResumableWithTimeout(
       timeoutMs,
     )
   })
-  return Promise.race([
-    downloadAndCacheAudioResumable(audioUrl, audioId),
-    timeoutPromise,
-  ])
+  try {
+    return await Promise.race([
+      downloadAndCacheAudioResumable(audioUrl, audioId),
+      timeoutPromise,
+    ])
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (msg === "Download timeout") {
+      await clearCachedFullAudioOnly(audioId)
+    }
+    throw e
+  }
 }
 
 /**

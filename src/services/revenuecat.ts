@@ -6,6 +6,7 @@
  *
  * Key implementation details:
  * - Uses RevenueCat React Native SDK for cross-platform purchases
+ * - API keys: EAS REVENUECAT_API_KEY (iOS) + REVENUECAT_ANDROID_API_KEY → extra.revenuecat (see app.config.js)
  * - Manages "premium" entitlement for full sanctuary access
  * - Fetches the Current offering from the dashboard (no fixed offering id)
  * - Purchase logic uses Package identifiers ($rc_monthly, $rc_annual); RevenueCat maps to store products per platform
@@ -34,20 +35,25 @@ import {
   REVENUECAT_APP_NAME,
 } from "@/src/core/config/revenueCatConfig"
 
-// Get RevenueCat API Key: env first, then SOUL SCHOOL config (by platform)
+// EAS: REVENUECAT_API_KEY (iOS) + REVENUECAT_ANDROID_API_KEY (Android) → extra.revenuecat via app.config.js
 const getRevenueCatApiKey = (): string | null => {
   try {
-    const fromEnv = Constants.expoConfig?.extra?.revenuecat?.apiKey
-    if (fromEnv && fromEnv !== "") {
-      return fromEnv
+    const rc = Constants.expoConfig?.extra?.revenuecat as
+      | { apiKeyIos?: string; apiKeyAndroid?: string; apiKey?: string }
+      | undefined
+    const fromExtra = Platform.select({
+      ios: rc?.apiKeyIos || rc?.apiKey,
+      android: rc?.apiKeyAndroid,
+      default: rc?.apiKeyIos || rc?.apiKeyAndroid || rc?.apiKey,
+    })
+    if (fromExtra && fromExtra !== "") {
+      return fromExtra
     }
-    if (Platform.OS === "android") {
-      return REVENUECAT_PUBLIC_SDK_KEY_ANDROID || null
-    }
-    if (Platform.OS === "ios" && REVENUECAT_PUBLIC_SDK_KEY_IOS) {
-      return REVENUECAT_PUBLIC_SDK_KEY_IOS
-    }
-    return null
+    return Platform.select({
+      ios: REVENUECAT_PUBLIC_SDK_KEY_IOS || null,
+      android: REVENUECAT_PUBLIC_SDK_KEY_ANDROID || null,
+      default: null,
+    })
   } catch {
     return null
   }
@@ -151,42 +157,50 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
     // At this point, apiKey is guaranteed to be string (after type guard check)
     const validApiKey: string = apiKey as string
 
-    // Custom log handler: downgrade expected/transient errors to warn so they don't
-    // show the red console error overlay. Network errors are expected when device is offline
-    // or api.revenuecat.com is unreachable (DNS/connectivity).
+    // Log handler: in __DEV__, downgrade expected ERRORs (offerings/network) to warn (no red overlay).
+    // In production, those paths are silent; DEBUG/INFO/WARN only in dev; ERROR always console.error for logcat.
     Purchases.setLogHandler((level, message) => {
       const isOfferingsConfigError =
         level === LOG_LEVEL.ERROR &&
         (message.includes("no products") ||
           message.includes("offerings") ||
           message.includes("safely ignore") ||
-          message.includes("configuration"))
+          message.toLowerCase().includes("configur"))
       const isNetworkError =
         level === LOG_LEVEL.ERROR &&
         (message.includes("NetworkError") ||
           message.includes("Unable to resolve host") ||
           message.includes("No address associated with hostname") ||
           message.includes("Error performing request"))
-      // Downgrade to warn always (not just __DEV__) so device/emulator doesn't show red Console Error when offline or DNS unreachable
       if (isOfferingsConfigError || isNetworkError) {
-        console.warn("[RevenueCat]", message)
+        if (__DEV__) {
+          console.warn("[RevenueCat]", message)
+        }
         return
       }
       switch (level) {
         case LOG_LEVEL.DEBUG:
-          console.debug("[RevenueCat]", message)
+          if (__DEV__) {
+            console.debug("[RevenueCat]", message)
+          }
           break
         case LOG_LEVEL.INFO:
-          console.info("[RevenueCat]", message)
+          if (__DEV__) {
+            console.info("[RevenueCat]", message)
+          }
           break
         case LOG_LEVEL.WARN:
-          console.warn("[RevenueCat]", message)
+          if (__DEV__) {
+            console.warn("[RevenueCat]", message)
+          }
           break
         case LOG_LEVEL.ERROR:
           console.error("[RevenueCat]", message)
           break
         default:
-          console.log("[RevenueCat]", message)
+          if (__DEV__) {
+            console.log("[RevenueCat]", message)
+          }
       }
     })
 

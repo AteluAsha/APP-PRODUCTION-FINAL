@@ -302,10 +302,6 @@ export const CaptureAll: React.FC<CaptureAllProps> = ({ onComplete }) => {
             require("@/app/(chakras)/NotesAlongTheWay").default
           return wrap(NotesAlongTheWay)
         }
-        if (currentScreen.id === "lifetime-dev-paywall") {
-          const DevPaywall = require("@/app/(chakras)/DevPaywall").default
-          return wrap(DevPaywall)
-        }
       }
     } catch (error) {
       const errorMessage =

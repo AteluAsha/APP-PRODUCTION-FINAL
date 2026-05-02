@@ -55,6 +55,16 @@ interface MenuItem {
   geometryIcon?: "circle" | "triangle" | "hexagon" | "star" | "flower"
 }
 
+/** Right padding when menu bar is empty of chevron; keeps balance with mini player / edge. */
+const MENU_BAR_PADDING_RIGHT_DEFAULT = 56
+/**
+ * When chevron is visible: inset (16) + button (32) + gap before last icon so taps don’t fight.
+ * Do not use a small value here — it replaces the default and was previously 16px (too tight).
+ */
+const MENU_BAR_PADDING_RIGHT_WITH_TOGGLE = 76
+/** Trial ChakraHome horizontal cluster only — space between the four icons (waiting room uses its own row gap). */
+const TRIAL_CHAKRA_HOME_ICON_GAP = 12
+
 // Sacred geometry and chakra energy colors for each menu item
 const MENU_ITEM_CONFIG = {
   home: {
@@ -418,7 +428,6 @@ export const PermanentMenuBar: React.FC = () => {
   if (
     pathname?.includes("CommitmentGate") ||
     pathname?.includes("Paywall") ||
-    pathname?.includes("DevPaywall") ||
     pathname?.includes("EnergyExchange") ||
     pathname?.includes("TribeChat") ||
     pathname?.includes("AudioPlayer") ||
@@ -489,23 +498,29 @@ export const PermanentMenuBar: React.FC = () => {
               styles.container,
               { paddingBottom: Math.max(insets.bottom, 4) },
               animatedMenuStyle,
-              showMenuToggleArrow && { paddingRight: 16 }, // Space for chevron (trial waiting / trial dashboard / lifetime hub)
-              // Trial waiting room: center. Trial main bar: space-around. Lifetime horizontal: space-between.
+              // Trial waiting room: center row (full width inside waitingRoomMenuRow). Trial ChakraHome: centered cluster (not edge-to-edge). Lifetime: space-between.
               isWaitingScreenVisible && !hasLifetimeAccess
                 ? { justifyContent: "center" as const }
                 : isTrialMainHorizontalBar
-                  ? { justifyContent: "space-around" as const }
+                  ? {
+                      justifyContent: "center" as const,
+                      gap: TRIAL_CHAKRA_HOME_ICON_GAP,
+                    }
                   : { justifyContent: "space-between" as const },
+              showMenuToggleArrow
+                ? { paddingRight: MENU_BAR_PADDING_RIGHT_WITH_TOGGLE }
+                : { paddingRight: MENU_BAR_PADDING_RIGHT_DEFAULT },
             ]}
           >
             {isWaitingScreenVisible && !hasLifetimeAccess ? (
-              <View style={styles.horizontalMenuInner}>
+              <View style={styles.waitingRoomMenuRow}>
                 {menuItems.map((item) => (
                   <MenuBarItem
                     key={item.id}
                     item={item}
                     onPress={() => handleItemPress(item)}
                     isVertical={false}
+                    waitingRoomSlot
                   />
                 ))}
               </View>
@@ -517,9 +532,7 @@ export const PermanentMenuBar: React.FC = () => {
                     item={item}
                     onPress={() => handleItemPress(item)}
                     isVertical={false}
-                    widenTrialSlot={
-                      isTrialMainHorizontalBar && Platform.OS === "android"
-                    }
+                    trialChakraHomeCluster={isTrialMainHorizontalBar}
                   />
                 ))}
               </>
@@ -546,6 +559,7 @@ export const PermanentMenuBar: React.FC = () => {
           <Pressable
             onPress={handleToggleMenu}
             style={styles.arrowButton}
+            hitSlop={{ top: 10, bottom: 10, left: 18, right: 10 }}
             accessibilityLabel={localMenuOpen ? "Close Menu" : "Open Menu"}
             accessibilityHint="Tap to toggle the navigation menu"
           >
@@ -574,15 +588,18 @@ interface MenuBarItemProps {
   item: MenuItem
   onPress: () => void
   isVertical?: boolean
-  /** Trial bottom bar (Android): extra horizontal padding so labels do not crowd. */
-  widenTrialSlot?: boolean
+  /** Trial ChakraHome (not waiting room): cluster icons — no flex:1 stretch across full width. */
+  trialChakraHomeCluster?: boolean
+  /** Trial waiting room only: equal flex slots on full-width row for readable labels. */
+  waitingRoomSlot?: boolean
 }
 
 const MenuBarItem: React.FC<MenuBarItemProps> = ({
   item,
   onPress,
   isVertical = false,
-  widenTrialSlot = false,
+  trialChakraHomeCluster = false,
+  waitingRoomSlot = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false)
   const geometryOpacity = useSharedValue(0)
@@ -659,7 +676,8 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
           ? styles.verticalMenuItemContainer
           : [
               styles.menuItemContainer,
-              widenTrialSlot && styles.menuItemContainerTrialAndroid,
+              trialChakraHomeCluster && styles.menuItemContainerTrialCluster,
+              waitingRoomSlot && styles.menuItemContainerWaitingRoom,
             ]
       }
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -898,7 +916,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 4,
     paddingHorizontal: 16,
-    paddingRight: 56, // Reserve space for arrow button on right
+    paddingRight: MENU_BAR_PADDING_RIGHT_DEFAULT,
     zIndex: 50,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: -2 },
@@ -906,12 +924,15 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  horizontalMenuInner: {
+  /** Trial waiting room only — full bar width so four labels are not ellipsized (replaces old maxWidth 280). */
+  waitingRoomMenuRow: {
+    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    maxWidth: 280,
-    alignSelf: "center",
+    alignSelf: "stretch",
+    paddingHorizontal: 4,
+    gap: 4,
   },
   verticalContainer: {
     position: "absolute",
@@ -940,11 +961,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     position: "relative",
   },
-  /** Trial 4-icon bar on Android only — wider touch/label slot; lifetime bar unchanged. */
-  menuItemContainerTrialAndroid: {
-    paddingHorizontal: 8,
-    minWidth: 56,
+  /** Trial ChakraHome only — do not stretch items across full width; cluster with parent gap. */
+  menuItemContainerTrialCluster: {
+    flex: 0,
+    flexGrow: 0,
     flexShrink: 0,
+    minWidth: 0,
+    paddingHorizontal: 6,
+  },
+  /** Trial waiting room only — equal share of full-width row for readable labels. */
+  menuItemContainerWaitingRoom: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    paddingHorizontal: 2,
   },
   verticalMenuItemContainer: {
     alignItems: "center",

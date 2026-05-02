@@ -5,6 +5,7 @@
  * After Enter Path: DateSelection | Waiting Room | Trial Home | Lifetime Home (ChakraHub).
  */
 import "react-native-reanimated"
+import "./splash-prevent"
 import "../globals.css"
 import {
   DarkTheme,
@@ -19,10 +20,16 @@ import { useColorScheme } from "@/hooks/useColorScheme"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
 import { usePreloadAssets } from "@/hooks/usePreloadAssets"
-import { View, Platform, LogBox, BackHandler } from "react-native"
+import {
+  View,
+  Platform,
+  LogBox,
+  BackHandler,
+  AppState,
+  type AppStateStatus,
+} from "react-native"
 import { useRouter, usePathname } from "expo-router"
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av"
-import * as SplashScreen from "expo-splash-screen"
 import { useChakraWeekTransition } from "@/hooks/useChakraWeekTransition"
 import {
   SOMATIC_SCREEN_TRANSITION_MS,
@@ -46,8 +53,13 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import * as Linking from "expo-linking"
 import "@/src/services/firebase"
 import { initializeSentry } from "@/src/services/sentry"
-import "@/src/services/journeyNotifications"
+import {
+  syncEngagementNotifications,
+  syncLifetimeSustenanceNotifications,
+  syncSporadicWisdomNotifications,
+} from "@/src/services/journeyNotifications"
 import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
+import { subscribeResumeCourseFullPreload } from "@/src/utils/audioPreloadLifecycle"
 
 LogBox.ignoreLogs([
   "Error fetching tuning fork audio",
@@ -69,17 +81,18 @@ export default function RootLayout() {
   const pathname = usePathname()
 
   // Defer Reanimated/BottomSheet until native module is initialized (fixes iOS crash).
-  // One frame + short delay on both platforms so Reanimated worklets are ready before main app (Android .aab was throwing without delay).
-  // Safety: if nativeReady never fires (e.g. simulator), force after 3s so we never block forever.
+  // Android: one frame only so JS splash mounts quickly while native "7" still holds (see ./splash-prevent).
+  // iOS: one frame + short delay so Reanimated worklets are ready before main app.
+  // Safety: if nativeReady never fires, force after 3s so we never block forever.
   useEffect(() => {
-    const delay = Platform.OS === "ios" ? 80 : 80
+    const delayMs = Platform.OS === "ios" ? 80 : 0
     let cancelled = false
     const id = requestAnimationFrame(() => {
       if (cancelled) return
-      if (delay > 0) {
+      if (delayMs > 0) {
         setTimeout(() => {
           if (!cancelled) setNativeReady(true)
-        }, delay)
+        }, delayMs)
       } else {
         setNativeReady(true)
       }
@@ -92,11 +105,6 @@ export default function RootLayout() {
       cancelAnimationFrame(id)
       clearTimeout(safety)
     }
-  }, [])
-
-  // Native shield stays up until AnimatedSplashScreen hides it after hero image load + paint (see component).
-  useEffect(() => {
-    SplashScreen.preventAutoHideAsync().catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -141,6 +149,8 @@ export default function RootLayout() {
     // constants/emulator.ts and AudioPlayer / *AudioManager). Production builds are unchanged.
   }, [])
 
+  useEffect(() => subscribeResumeCourseFullPreload(), [])
+
   useEffect(() => {
     const checkExpiry = () => {
       try {
@@ -165,6 +175,24 @@ export default function RootLayout() {
     checkExpiry()
     const interval = setInterval(checkExpiry, 5 * 60 * 1000)
     return () => clearInterval(interval)
+  }, [])
+
+  // Soul Journey Nudges: heartbeat + rolling re-engagement / horizon refresh (iOS + Android).
+  useEffect(() => {
+    const onChange = (next: AppStateStatus) => {
+      if (next === "active") {
+        useChakraJourneyStore.getState().touchLastAppActive()
+        void syncEngagementNotifications()
+        void syncLifetimeSustenanceNotifications()
+        void syncSporadicWisdomNotifications()
+      }
+    }
+    const sub = AppState.addEventListener("change", onChange)
+    useChakraJourneyStore.getState().touchLastAppActive()
+    void syncEngagementNotifications()
+    void syncLifetimeSustenanceNotifications()
+    void syncSporadicWisdomNotifications()
+    return () => sub.remove()
   }, [])
 
   const [fontsLoaded, fontsError] = useFonts({
@@ -363,6 +391,9 @@ export default function RootLayout() {
     __DEV__ &&
     process.env.EXPO_PUBLIC_CAPTURE_SCREENS === "1"
   ) {
+    queueMicrotask(() => {
+      useSplashOverlayStore.getState().setJsSplashFadeComplete(true)
+    })
     const { CaptureAll } = require("@/components/dev/CaptureAll")
     return (
       <View style={{ flex: 1, backgroundColor: "#000" }}>

@@ -34,6 +34,9 @@ yarn-error.*
 .env
 .env*.local
 
+# Firebase Android (gitignored; still included in EAS uploads — not listed in .easignore)
+google-services.json
+
 # typescript
 *.tsbuildinfo
 
@@ -47,3 +50,7 @@ app-example
 
 # dev gallery snapshots - temporary static visual gallery
 assets/dev-gallery/snapshots/
+
+# expo export build artifacts (regenerated; never committed or shipped)
+.tmp-export-android/
+.tmp-export-ios/

@@ -26,18 +26,22 @@ export interface JourneyNote {
 
 interface JourneyNotesState {
   notes: JourneyNote[]
+  /** ISO time after last successful journey-notes file export (incremental window). */
+  lastJourneyNotesExportAt: string | null
   addNote: (note: Omit<JourneyNote, "id" | "createdAt">) => void
   getAllNotes: (type?: "journey" | "meditation") => JourneyNote[]
   getNotesForDay: (chakraDay: number) => JourneyNote[]
   getNotesCount: (type?: "journey" | "meditation") => number
   deleteNote: (id: string) => void
   clearAllNotes: () => void
+  markJourneyNotesExportedNow: () => void
 }
 
 export const useJourneyNotesStore = create<JourneyNotesState>()(
   persist(
     (set, get) => ({
       notes: [],
+      lastJourneyNotesExportAt: null,
 
       addNote: (noteData) => {
         const newNote: JourneyNote = {
@@ -78,6 +82,10 @@ export const useJourneyNotesStore = create<JourneyNotesState>()(
 
       clearAllNotes: () => {
         set({ notes: [] })
+      },
+
+      markJourneyNotesExportedNow: () => {
+        set({ lastJourneyNotesExportAt: new Date().toISOString() })
       },
     }),
     {

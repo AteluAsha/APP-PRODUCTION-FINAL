@@ -30,7 +30,9 @@ export const readAsAnua = async (
 ): Promise<void> => {
   try {
     if (!isElevenLabsAvailable()) {
-      console.warn("ElevenLabs is not configured. Cannot read text aloud.")
+      if (__DEV__) {
+        console.warn("ElevenLabs is not configured. Cannot read text aloud.")
+      }
       return
     }
 

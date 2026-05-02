@@ -8,6 +8,9 @@
  * Long audio (Crystal Bowl ~1 hr, Embodiment) causes choppy playback when streamed.
  * We always play from a local file: full file preferred, then "head" (first ~3 min)
  * so the start is never stuttery. Critical for somatic/UX.
+ *
+ * requireFullDownload: must verify local size vs remote before trusting cache — partial
+ * writes must never play (~1min cutoff bug).
  */
 
 import { AVPlaybackSource } from "expo-av"
@@ -17,9 +20,9 @@ import {
   getLocalAudioHeadUriWithMinSize,
   downloadAndCacheAudio,
   downloadAndCacheAudioResumable,
-  downloadAndCacheAudioResumableWithTimeout,
   downloadAudioHead,
-  MEDITATION_DOWNLOAD_TIMEOUT_MS,
+  isCachedFullFileComplete,
+  clearCachedFullAudioOnly,
 } from "./audioDownload"
 
 export interface CrystalBowlSourceInput {
@@ -34,8 +37,6 @@ interface LongAudioOptions {
   allowStreamingFallback?: boolean
   /** When playing from head, start full download in background using resumable (for 1hr files) */
   useResumableForBackgroundFull?: boolean
-  /** Timeout for full-file download when requireFullDownload (meditation-length content). */
-  downloadTimeoutMs?: number
 }
 
 /**
@@ -52,13 +53,7 @@ export async function prepareLongAudioForPlay(
     requireFullDownload = false,
     allowStreamingFallback = true,
     useResumableForBackgroundFull = false,
-    downloadTimeoutMs = MEDITATION_DOWNLOAD_TIMEOUT_MS,
   } = options
-
-  // Local-first: once downloaded, always use local — no stream, no cutoff
-  if (localUri) return { uri: localUri }
-  const full = await getLocalAudioUri(audioId)
-  if (full) return { uri: full }
 
   const startBackgroundFullDownload = (): void => {
     if (!url) return
@@ -71,17 +66,21 @@ export async function prepareLongAudioForPlay(
 
   if (requireFullDownload) {
     if (url) {
+      const existingPath = localUri || (await getLocalAudioUri(audioId))
+      if (existingPath) {
+        const complete = await isCachedFullFileComplete(audioId, url)
+        if (complete) {
+          return { uri: existingPath }
+        }
+        await clearCachedFullAudioOnly(audioId)
+      }
       try {
-        const localPath = await downloadAndCacheAudioResumableWithTimeout(
-          url,
-          audioId,
-          downloadTimeoutMs,
-        )
+        const localPath = await downloadAndCacheAudioResumable(url, audioId)
         return { uri: localPath }
       } catch (error) {
         if (__DEV__) {
           console.warn(
-            "[prepareLongAudioForPlay] Resumable download failed or timed out:",
+            "[prepareLongAudioForPlay] Resumable download failed:",
             error,
           )
         }
@@ -92,7 +91,6 @@ export async function prepareLongAudioForPlay(
         return { uri: url }
       }
     }
-    // Never return empty fallback — store would reject and user sees "No audio selected". Throw so caller can handle (retry/close).
     const fallbackUri =
       typeof fallback === "object" && fallback !== null && "uri" in fallback
         ? (fallback as { uri?: string }).uri
@@ -103,8 +101,11 @@ export async function prepareLongAudioForPlay(
     return fallback
   }
 
-  // Master Embodiment and Head to Heart must call with requireFullDownload: true so this head path is never used for them (avoids 1:05 truncated playback).
-  // Use min size so we never return a truncated head (~30s cutoff); matches prepareCrystalBowlForPlay.
+  if (localUri) return { uri: localUri }
+  const full = await getLocalAudioUri(audioId)
+  if (full) return { uri: full }
+
+  // Master Embodiment and Head to Heart use requireFullDownload above (never this head path for them).
   let head = await getLocalAudioHeadUriWithMinSize(audioId)
   if (head) {
     startBackgroundFullDownload()
@@ -158,12 +159,10 @@ export async function prepareCrystalBowlForPlay(
 ): Promise<AVPlaybackSource> {
   const { url, localUri, audioId, fallback } = input
 
-  // Local-first: once downloaded, never stream (no cutoff)
   if (localUri) return { uri: localUri }
   const full = await getLocalAudioUri(audioId)
   if (full) return { uri: full }
 
-  // Prefer head (first ~3 min) so start is local – no stream stutter. Use min size so we never return a truncated head (~30s cutoff).
   let head = await getLocalAudioHeadUriWithMinSize(audioId)
   if (head) {
     if (url) downloadAndCacheAudioResumable(url, audioId).catch(() => {})

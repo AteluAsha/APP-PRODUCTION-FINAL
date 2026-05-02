@@ -14,6 +14,7 @@ import {
 } from "@/src/services/inviteRefStorage"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import { onJourneyWeekStarted } from "@/src/services/journeyNotifications"
 
 export function InviteRefApplier() {
   const applied = useRef(false)
@@ -45,6 +46,7 @@ export function InviteRefApplier() {
         useChakraJourneyStore.getState()
       setCourseStartDate(startDateISO)
       startJourney(startDateISO)
+      void onJourneyWeekStarted()
       await clearPendingInviteStartDate()
     })()
     return () => {

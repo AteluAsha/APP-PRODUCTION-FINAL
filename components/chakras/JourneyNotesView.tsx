@@ -24,6 +24,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native"
+import { JOURNEY_NOTES_EXPORT_COPY } from "@/constants/journeyNotesExportCopy"
+import { promptJourneyNotesExport } from "@/utils/journeyNotesExport"
 import { useRouter } from "expo-router"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import Animated, { runOnJS, FadeIn, Easing } from "react-native-reanimated"
@@ -272,12 +274,12 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
     })
   }, [])
 
+  // Horizontal swipe anywhere on sheet: strict offsets so vertical scroll on the list wins first.
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetX(12)
-        .failOffsetY([-18, 18])
-        .minDistance(8)
+        .activeOffsetX(28)
+        .failOffsetY([-10, 10])
         .onEnd((e) => {
           "worklet"
           const dx = e.translationX
@@ -304,29 +306,51 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
         style={StyleSheet.absoluteFill}
       />
 
-      <GestureDetector gesture={panGesture} style={styles.swipeArea}>
+      <View style={styles.swipeArea}>
         <View style={styles.swipeAreaInner}>
+          <GestureDetector gesture={panGesture}>
+            <View collapsable={false} style={styles.gestureColumn}>
           <View style={styles.header}>
-            <AppText
-              font="instrument-bold"
-              size="2xl"
-              style={[
-                styles.headerText,
-                { color: "#ffffff", marginBottom: 8 },
-                t.headerTextShadow,
-              ]}
-            >
-              Notes Along the Way
-            </AppText>
-            <AppText
-              font="instrument-regular"
-              size="sm"
-              style={{ color: "rgba(255,255,255,0.7)" }}
-            >
-              {notesCount === 0
-                ? "Your reflections will appear here"
-                : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
-            </AppText>
+            <View style={styles.headerTitleCol}>
+              <AppText
+                font="instrument-bold"
+                size="2xl"
+                style={[
+                  styles.headerText,
+                  { color: "#ffffff", marginBottom: 8 },
+                  t.headerTextShadow,
+                ]}
+              >
+                Notes Along the Way
+              </AppText>
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+              >
+                {notesCount === 0
+                  ? "Your reflections will appear here"
+                  : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
+              </AppText>
+            </View>
+            {notesCount > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={JOURNEY_NOTES_EXPORT_COPY.exportHint}
+                hitSlop={12}
+                onPress={() => {
+                  addHapticFeedback(HapticStrength.Light)
+                  promptJourneyNotesExport()
+                }}
+                style={styles.exportIconWrap}
+              >
+                <Ionicons
+                  name="download-outline"
+                  size={22}
+                  color={t.hintColor}
+                />
+              </Pressable>
+            ) : null}
           </View>
 
           <ChakraDaySelector
@@ -582,8 +606,10 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
           </Pressable>
         )}
           </KeyboardAvoidingView>
+            </View>
+          </GestureDetector>
         </View>
-      </GestureDetector>
+      </View>
     </BottomSheetView>
   )
 }
@@ -602,9 +628,24 @@ const styles = StyleSheet.create({
   swipeAreaInner: {
     flex: 1,
   },
+  gestureColumn: {
+    flex: 1,
+  },
   header: {
     marginBottom: 12,
     minHeight: 52,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  headerTitleCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  exportIconWrap: {
+    paddingTop: 4,
+    paddingLeft: 4,
   },
   headerText: {
     textShadowColor: "rgba(135, 174, 115, 0.4)",

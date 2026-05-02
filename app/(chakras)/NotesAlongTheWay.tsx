@@ -7,7 +7,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import {
   View,
-  ScrollView,
   StyleSheet,
   TextInput,
   KeyboardAvoidingView,
@@ -15,6 +14,7 @@ import {
   Pressable,
   BackHandler,
 } from "react-native"
+import { ScrollView } from "react-native-gesture-handler"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
@@ -31,6 +31,8 @@ import { ActionBar } from "@/components/ActionBar"
 import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { ChakraDaySelector } from "@/components/chakras/ChakraDaySelector"
+import { JOURNEY_NOTES_EXPORT_COPY } from "@/constants/journeyNotesExportCopy"
+import { promptJourneyNotesExport } from "@/utils/journeyNotesExport"
 
 /** Android: KeyboardAvoidingView offset for status bar + ActionBar (both sit above KAV). */
 const ACTION_BAR_KEYBOARD_OFFSET = 56
@@ -161,13 +163,12 @@ export default function NotesAlongTheWay() {
     })
   }, [])
 
-  // Horizontal swipe to change chakra day: works over entire screen (header, selector, notes list).
+  // Horizontal swipe on full diary: strict offsets so vertical scroll wins first (RNGH ScrollView).
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetX(12)
-        .failOffsetY([-18, 18])
-        .minDistance(8)
+        .activeOffsetX(28)
+        .failOffsetY([-10, 10])
         .onEnd((e) => {
           "worklet"
           const dx = e.translationX
@@ -216,26 +217,50 @@ export default function NotesAlongTheWay() {
         style={StyleSheet.absoluteFill}
       />
 
-      <GestureDetector gesture={panGesture}>
-        <View style={[styles.swipeArea, styles.swipeAreaInner]}>
+      <View style={[styles.swipeArea, styles.swipeAreaInner]}>
+        <GestureDetector gesture={panGesture}>
+          <View style={styles.gestureColumn}>
           <View style={styles.swipeZone}>
             <View style={styles.header} collapsable={false}>
-              <AppText
-                font="instrument-bold"
-                size="2xl"
-                style={[styles.headerText, { color: "#ffffff", marginBottom: 4 }]}
-              >
-                Notes Along the Way
-              </AppText>
-              <AppText
-                font="instrument-regular"
-                size="sm"
-                style={{ color: "rgba(255,255,255,0.7)" }}
-              >
-                {notesCount === 0
-                  ? "Your reflections will appear here"
-                  : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
-              </AppText>
+              <View style={styles.headerTitleCol}>
+                <AppText
+                  font="instrument-bold"
+                  size="2xl"
+                  style={[
+                    styles.headerText,
+                    { color: "#ffffff", marginBottom: 4 },
+                  ]}
+                >
+                  Notes Along the Way
+                </AppText>
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={{ color: "rgba(255,255,255,0.7)" }}
+                >
+                  {notesCount === 0
+                    ? "Your reflections will appear here"
+                    : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
+                </AppText>
+              </View>
+              {notesCount > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={JOURNEY_NOTES_EXPORT_COPY.exportHint}
+                  hitSlop={12}
+                  onPress={() => {
+                    addHapticFeedback(HapticStrength.Light)
+                    promptJourneyNotesExport()
+                  }}
+                  style={styles.exportIconWrap}
+                >
+                  <Ionicons
+                    name="download-outline"
+                    size={22}
+                    color="rgba(135, 174, 115, 0.85)"
+                  />
+                </Pressable>
+              ) : null}
             </View>
             <ChakraDaySelector
               selectedDay={selectedChakraDay}
@@ -463,8 +488,9 @@ export default function NotesAlongTheWay() {
             </View>
           </View>
         </KeyboardAvoidingView>
-        </View>
-      </GestureDetector>
+          </View>
+        </GestureDetector>
+      </View>
     </SafeAreaView>
   )
 }
@@ -480,6 +506,9 @@ const styles = StyleSheet.create({
   swipeAreaInner: {
     flex: 1,
   },
+  gestureColumn: {
+    flex: 1,
+  },
   swipeZone: {
     paddingHorizontal: 24,
     paddingTop: 16,
@@ -488,9 +517,21 @@ const styles = StyleSheet.create({
   header: {
     paddingBottom: 8,
     minHeight: 56,
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 8,
     // Clear ActionBar back button (left 16 + width 40 = 56px); add gap so title never overlaps on iOS and globally
     paddingLeft: 48,
+    paddingRight: 4,
+  },
+  headerTitleCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  exportIconWrap: {
+    paddingTop: 4,
+    paddingLeft: 4,
   },
   headerText: {
     textShadowColor: "rgba(135, 174, 115, 0.4)",

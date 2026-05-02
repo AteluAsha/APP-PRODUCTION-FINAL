@@ -594,7 +594,11 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
     if (diffMins < 60) return `${diffMins}m ago`
     if (diffHours < 24) return `${diffHours}h ago`
     if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString()
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
   }
 
   const borderChakraColor = CHAKRA_COLORS[selectedDay]
@@ -810,11 +814,13 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
           {comment.message.length > 0 && (
             <AppText
               font="instrument-regular"
+              selectable={false}
               style={{
                 color: "rgba(255, 255, 255, 0.82)",
                 fontSize: 14,
                 lineHeight: 22,
                 marginBottom: 10,
+                maxWidth: "100%",
               }}
             >
               {comment.message}
@@ -837,16 +843,16 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
             </View>
           ) : null}
 
-          {/* Commenter: avatar + name & location (or "Soul" when anonymous) */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 8,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 10 }}>
+          {/* Commenter: avatar + name (full width row); Reply/Follow on own row so text never shares a row with controls (iOS flex squeeze → one-char-per-line wrap). */}
+          <View style={{ marginBottom: 8 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                gap: 10,
+                marginBottom: 8,
+              }}
+            >
               {/* Profile image - tappable to open preview (invite to tribe) */}
               {comment.isAnonymous ? (
                 <View
@@ -905,173 +911,185 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                   )}
                 </Pressable>
               )}
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <AppText
                   font="instrument-regular"
                   style={{
                     color: "rgba(255, 255, 255, 0.65)",
                     fontSize: 13,
                   }}
+                  numberOfLines={2}
                 >
                   {comment.isAnonymous
                     ? "Soul"
                     : displayProfile.displayName}
                 </AppText>
-                {!comment.isAnonymous ? (
+                {!comment.isAnonymous &&
+                displayProfile.location &&
+                displayProfile.location.trim().length > 0 ? (
                   <AppText
                     font="instrument-regular"
                     style={{
                       color: "rgba(255, 255, 255, 0.45)",
                       fontSize: 11,
-                      marginTop: 1,
+                      marginTop: 2,
                     }}
+                    numberOfLines={2}
                   >
-                    {displayProfile.location}
+                    {displayProfile.location.trim()}
                   </AppText>
                 ) : null}
               </View>
-              {/* Reply (left) and Follow / plus (right); plus lights up cyan when following */}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Pressable
-                  onPress={() => {
-                    if (replyingTo === comment.id) {
-                      setReplyingTo(null)
-                      setReplyMessage("")
-                    } else {
-                      setReplyingTo(comment.id || null)
-                    }
-                    addHapticFeedback(HapticStrength.Light)
-                  }}
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: 6,
+                flexWrap: "wrap",
+              }}
+            >
+              <Pressable
+                onPress={() => {
+                  if (replyingTo === comment.id) {
+                    setReplyingTo(null)
+                    setReplyMessage("")
+                  } else {
+                    setReplyingTo(comment.id || null)
+                  }
+                  addHapticFeedback(HapticStrength.Light)
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingVertical: 4,
+                  paddingHorizontal: 8,
+                  borderRadius: 6,
+                  backgroundColor:
+                    replyingTo === comment.id
+                      ? `${themeChakraColor.text}20`
+                      : "rgba(255, 255, 255, 0.05)",
+                }}
+              >
+                <Ionicons
+                  name={
+                    replyingTo === comment.id ? "close" : "chatbubble-outline"
+                  }
+                  size={12}
+                  color={
+                    replyingTo === comment.id
+                      ? themeChakraColor.text
+                      : "rgba(255, 255, 255, 0.6)"
+                  }
+                />
+                <AppText
+                  font="instrument-regular"
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 4,
-                    paddingVertical: 4,
-                    paddingHorizontal: 8,
-                    borderRadius: 6,
-                    backgroundColor:
-                      replyingTo === comment.id
-                        ? `${themeChakraColor.text}20`
-                        : "rgba(255, 255, 255, 0.05)",
-                  }}
-                >
-                  <Ionicons
-                    name={
-                      replyingTo === comment.id ? "close" : "chatbubble-outline"
-                    }
-                    size={12}
-                    color={
+                    color:
                       replyingTo === comment.id
                         ? themeChakraColor.text
-                        : "rgba(255, 255, 255, 0.6)"
-                    }
-                  />
-                  <AppText
-                    font="instrument-regular"
-                    style={{
-                      color:
-                        replyingTo === comment.id
-                          ? themeChakraColor.text
-                          : "rgba(255, 255, 255, 0.6)",
-                      fontSize: 11,
-                    }}
-                  >
-                    {replyingTo === comment.id ? "Cancel" : "Reply"}
-                  </AppText>
-                </Pressable>
-                {!comment.isAnonymous &&
-                  comment.userId &&
-                  currentUserId &&
-                  comment.userId !== currentUserId && (
-                    <Pressable
-                      onPress={async () => {
-                        addHapticFeedback(HapticStrength.Light)
-                        const targetId = comment.userId!
-                        const followed = sanctuaryUserData?.followedUserIds?.includes(targetId)
-                        try {
-                          if (followed) {
-                            await unfollowUserInSanctuary(currentUserId, targetId)
-                            setSanctuaryUserData((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    followedUserIds: (prev.followedUserIds ?? []).filter(
-                                      (id) => id !== targetId,
-                                    ),
-                                  }
-                                : prev,
-                            )
-                          } else {
-                            await followUserInSanctuary(currentUserId, targetId)
-                            setSanctuaryUserData((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    followedUserIds: [...(prev.followedUserIds ?? []), targetId],
-                                  }
-                                : prev,
-                            )
-                          }
-                          setCommentsForDay(comment.chakraDay, (prev) => {
-                            const followedSet = new Set(
-                              followed
-                                ? (sanctuaryUserData?.followedUserIds ?? []).filter((id) => id !== targetId)
-                                : [...(sanctuaryUserData?.followedUserIds ?? []), targetId],
-                            )
-                            const heartedSet = new Set(
-                              prev.filter((c) => commentReactions[c.id!] === "more").map((c) => c.userId),
-                            )
-                            return [...prev].sort((a, b) => {
-                              const aF = followedSet.has(a.userId)
-                              const bF = followedSet.has(b.userId)
-                              if (aF && !bF) return -1
-                              if (!aF && bF) return 1
-                              const aH = heartedSet.has(a.userId)
-                              const bH = heartedSet.has(b.userId)
-                              if (aH && !bH) return -1
-                              if (!aH && bH) return 1
-                              return a.timestamp.getTime() - b.timestamp.getTime()
-                            })
+                        : "rgba(255, 255, 255, 0.6)",
+                    fontSize: 11,
+                  }}
+                >
+                  {replyingTo === comment.id ? "Cancel" : "Reply"}
+                </AppText>
+              </Pressable>
+              {!comment.isAnonymous &&
+                comment.userId &&
+                currentUserId &&
+                comment.userId !== currentUserId && (
+                  <Pressable
+                    onPress={async () => {
+                      addHapticFeedback(HapticStrength.Light)
+                      const targetId = comment.userId!
+                      const followed = sanctuaryUserData?.followedUserIds?.includes(targetId)
+                      try {
+                        if (followed) {
+                          await unfollowUserInSanctuary(currentUserId, targetId)
+                          setSanctuaryUserData((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  followedUserIds: (prev.followedUserIds ?? []).filter(
+                                    (id) => id !== targetId,
+                                  ),
+                                }
+                              : prev,
+                          )
+                        } else {
+                          await followUserInSanctuary(currentUserId, targetId)
+                          setSanctuaryUserData((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  followedUserIds: [...(prev.followedUserIds ?? []), targetId],
+                                }
+                              : prev,
+                          )
+                        }
+                        setCommentsForDay(comment.chakraDay, (prev) => {
+                          const followedSet = new Set(
+                            followed
+                              ? (sanctuaryUserData?.followedUserIds ?? []).filter((id) => id !== targetId)
+                              : [...(sanctuaryUserData?.followedUserIds ?? []), targetId],
+                          )
+                          const heartedSet = new Set(
+                            prev.filter((c) => commentReactions[c.id!] === "more").map((c) => c.userId),
+                          )
+                          return [...prev].sort((a, b) => {
+                            const aF = followedSet.has(a.userId)
+                            const bF = followedSet.has(b.userId)
+                            if (aF && !bF) return -1
+                            if (!aF && bF) return 1
+                            const aH = heartedSet.has(a.userId)
+                            const bH = heartedSet.has(b.userId)
+                            if (aH && !bH) return -1
+                            if (!aH && bH) return 1
+                            return a.timestamp.getTime() - b.timestamp.getTime()
                           })
-                        } catch (e) {
-                          if (__DEV__) console.warn("Follow toggle error:", e)
-                        }
-                      }}
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 14,
-                        backgroundColor: sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
-                          ? "rgba(6, 182, 212, 0.25)"
-                          : "rgba(255, 255, 255, 0.08)",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderWidth: 1,
-                        borderColor: sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
-                          ? "rgba(6, 182, 212, 0.6)"
-                          : "rgba(255, 255, 255, 0.15)",
-                      }}
-                      accessibilityLabel={
-                        sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
-                          ? "Unfollow"
-                          : "Follow to see more from this person"
+                        })
+                      } catch (e) {
+                        if (__DEV__) console.warn("Follow toggle error:", e)
                       }
-                    >
-                      <Ionicons
-                        name="add"
-                        size={16}
-                        color={
-                          sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
-                            ? "#06B6D4"
-                            : "rgba(255, 255, 255, 0.6)"
-                        }
-                      />
-                    </Pressable>
-                  )}
-              </View>
+                    }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
+                        ? "rgba(6, 182, 212, 0.25)"
+                        : "rgba(255, 255, 255, 0.08)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 1,
+                      borderColor: sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
+                        ? "rgba(6, 182, 212, 0.6)"
+                        : "rgba(255, 255, 255, 0.15)",
+                    }}
+                    accessibilityLabel={
+                      sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
+                        ? "Unfollow"
+                        : "Follow to see more from this person"
+                    }
+                  >
+                    <Ionicons
+                      name="add"
+                      size={16}
+                      color={
+                        sanctuaryUserData?.followedUserIds?.includes(comment.userId!)
+                          ? "#06B6D4"
+                          : "rgba(255, 255, 255, 0.6)"
+                      }
+                    />
+                  </Pressable>
+                )}
             </View>
+          </View>
 
-          {/* Reaction Buttons - Heart (More), Equals (Neutral), Minus (Less) */}
+          {/* Reaction Buttons - Heart (More), circle (Neutral), Minus (hide from feed) */}
           <View
             style={{
               flexDirection: "row",
@@ -1126,10 +1144,12 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
               )}
             </Pressable>
 
-            {/* Equals - Neutral */}
+            {/* Neutral — icon + count (literal "=" read as a broken equation on iOS) */}
             <Pressable
               onPress={() => handleReaction("neutral")}
               disabled={isSubmitting || isReacting[comment.id || ""]}
+              accessibilityLabel="Neutral reaction"
+              accessibilityHint="Witness without leaning toward or away"
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -1146,19 +1166,16 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 opacity: isReacting[comment.id || ""] ? 0.6 : 1,
               }}
             >
-              <AppText
-                font="instrument-bold"
-                style={{
-                  color:
-                    currentUserReaction === "neutral"
-                      ? "#FFFFFF"
-                      : "rgba(255, 255, 255, 0.5)",
-                  fontSize: 14,
-                }}
-              >
-                =
-              </AppText>
-              {reactions.neutral > 0 && (
+              <Ionicons
+                name="ellipse-outline"
+                size={15}
+                color={
+                  currentUserReaction === "neutral"
+                    ? "#FFFFFF"
+                    : "rgba(255, 255, 255, 0.5)"
+                }
+              />
+              {reactions.neutral > 0 ? (
                 <AppText
                   font="instrument-regular"
                   style={{
@@ -1167,11 +1184,12 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                         ? "#FFFFFF"
                         : "rgba(255, 255, 255, 0.5)",
                     fontSize: 11,
+                    marginLeft: 2,
                   }}
                 >
                   {reactions.neutral}
                 </AppText>
-              )}
+              ) : null}
             </Pressable>
 
             {/* Minus - Remove this comment from your feed (no counter, just icon) */}
@@ -1252,7 +1270,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                   {showReactionTooltip?.reactionType === "more" &&
                     "Heart means you want more of this energy"}
                   {showReactionTooltip?.reactionType === "neutral" &&
-                    "Equals means you are neutral"}
+                    "Neutral means you are present without leaning in or away"}
                   {showReactionTooltip?.reactionType === "less" &&
                     "Remove this from your feed"}
                 </AppText>
@@ -1438,7 +1456,6 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 ))}
               </View>
             )}
-          </View>
         </View>
       </View>
     )

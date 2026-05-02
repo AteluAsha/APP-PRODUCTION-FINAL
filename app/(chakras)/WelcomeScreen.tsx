@@ -84,6 +84,9 @@ const WELCOME_OPEN_PATHWAYS_TO_CARD = 14
  */
 const WELCOME_ANDROID_CONTENT_CARD_TOP_OFFSET = 40
 
+/** Android: scale the bordered course card block only (3% smaller); hero strip stays full scale. */
+const WELCOME_ANDROID_LOWER_CARD_SCALE = 0.97
+
 export default function WelcomeScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -244,20 +247,25 @@ export default function WelcomeScreen() {
             </View>
 
             <View
-              style={{
-                width: lowerSectionWidth,
-                alignSelf: "center",
-                marginTop:
-                  Platform.OS === "android"
-                    ? WELCOME_ANDROID_CONTENT_CARD_TOP_OFFSET
-                    : 0,
-                marginBottom: 8,
-                backgroundColor: "#000",
-                borderWidth: 1,
-                borderColor: "#FFFFFF",
-                borderRadius: scaledCardRadius,
-                overflow: "hidden",
-              }}
+              style={[
+                {
+                  width: lowerSectionWidth,
+                  alignSelf: "center",
+                  marginTop:
+                    Platform.OS === "android"
+                      ? WELCOME_ANDROID_CONTENT_CARD_TOP_OFFSET
+                      : 0,
+                  marginBottom: 8,
+                  backgroundColor: "#000",
+                  borderWidth: 1,
+                  borderColor: "#FFFFFF",
+                  borderRadius: scaledCardRadius,
+                  overflow: "hidden",
+                },
+                Platform.OS === "android" && {
+                  transform: [{ scale: WELCOME_ANDROID_LOWER_CARD_SCALE }],
+                },
+              ]}
             >
               <View
                 style={{

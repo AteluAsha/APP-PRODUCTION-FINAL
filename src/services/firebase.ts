@@ -7,6 +7,7 @@
  *
  * Key implementation details:
  * - Uses Firebase JS SDK v9+ modular API
+ * - App ID: FIREBASE_APP_ID (iOS) + FIREBASE_ANDROID_APP_ID (Android) via extra.firebase
  * - Enables Firestore offline persistence for cached data access (100MB cache)
  * - Configures Cloud Storage for asset retrieval
  * - Analytics is web-only and excluded for React Native compatibility
@@ -25,10 +26,22 @@ import {
 } from "firebase/firestore"
 import { getStorage, type FirebaseStorage } from "firebase/storage"
 import Constants from "expo-constants"
+import { Platform } from "react-native"
 
 // Get Firebase configuration from environment variables via expo-constants
 const getFirebaseConfig = () => {
-  const firebaseConfig = Constants.expoConfig?.extra?.firebase
+  const firebaseConfig = Constants.expoConfig?.extra?.firebase as
+    | {
+        apiKey?: string
+        authDomain?: string
+        projectId?: string
+        storageBucket?: string
+        messagingSenderId?: string
+        appId?: string
+        appIdAndroid?: string
+        measurementId?: string
+      }
+    | undefined
 
   if (!firebaseConfig || !firebaseConfig.apiKey) {
     if (__DEV__) {
@@ -41,13 +54,32 @@ const getFirebaseConfig = () => {
     return null
   }
 
+  const appId = Platform.select({
+    ios: firebaseConfig.appId,
+    android:
+      firebaseConfig.appIdAndroid && firebaseConfig.appIdAndroid !== ""
+        ? firebaseConfig.appIdAndroid
+        : firebaseConfig.appId,
+    default: firebaseConfig.appId,
+  })
+
+  if (
+    __DEV__ &&
+    Platform.OS === "android" &&
+    (!firebaseConfig.appIdAndroid || firebaseConfig.appIdAndroid === "")
+  ) {
+    console.warn(
+      "FIREBASE_ANDROID_APP_ID is empty; falling back to FIREBASE_APP_ID on Android",
+    )
+  }
+
   return {
     apiKey: firebaseConfig.apiKey,
     authDomain: firebaseConfig.authDomain,
     projectId: firebaseConfig.projectId,
     storageBucket: firebaseConfig.storageBucket,
     messagingSenderId: firebaseConfig.messagingSenderId,
-    appId: firebaseConfig.appId,
+    appId: appId ?? firebaseConfig.appId,
     measurementId: firebaseConfig.measurementId,
   }
 }

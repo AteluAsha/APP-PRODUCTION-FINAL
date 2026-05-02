@@ -122,10 +122,14 @@ export default function DateSelectionScreen() {
     setShowConfirmation(false)
   }, [])
 
-  const handleOnboardingClarityPresent = useCallback(() => {
+  const handleOnboardingClarityPresent = useCallback(async () => {
     setShowOnboardingClarity(false)
     setDateSelectionEmbodimentHandoffComplete(true)
-    void AsyncStorage.setItem(WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY, "true")
+    try {
+      await AsyncStorage.setItem(WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY, "true")
+    } catch {
+      /* ignore */
+    }
     router.replace("/(chakras)/ChakraHome")
   }, [router, setDateSelectionEmbodimentHandoffComplete])
 

@@ -26,9 +26,14 @@ app-example
 *.apk
 7-chakras-master-path/
 assets/dev-gallery/snapshots/
+.tmp-export-android/
+.tmp-export-ios/
 
 # Pre-compression asset backup – now under android/_backups; never ship in builds
 android/_backups/
+
+# Firebase Android: must stay in archive (app.config.js android.googleServicesFile).
+# Optional: EAS env GOOGLE_SERVICES_JSON (type File) if the file is absent locally.
 
 # Native projects – builder generates its own iOS/Android; exclude to reduce upload size
 ios/

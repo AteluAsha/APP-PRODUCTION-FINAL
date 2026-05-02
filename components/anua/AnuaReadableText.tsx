@@ -43,7 +43,9 @@ export const AnuaReadableText: React.FC<AnuaReadableTextProps> = ({
         sectionType,
       })
     } catch (error) {
-      console.error("Error reading text:", error)
+      if (__DEV__) {
+        console.error("Error reading text:", error)
+      }
     }
   }
 

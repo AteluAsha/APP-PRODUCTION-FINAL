@@ -14,9 +14,11 @@ import { SomaticHeroImage } from "@/components/ui/SomaticHeroImage"
 import { getChakraIndex, getChakraFromDay } from "@/utils/chakraMapping"
 import { chakraContent } from "@/constants/chakras/content"
 import {
+  daysSince,
   getCurrentDayOfWeek,
   getCurrentWeekStartDateISO,
   getLocalDateISO,
+  getTimeRemaining,
   hasReachedCourseStartDate,
 } from "@/utils/date"
 import { WaitingScreen } from "@/components/chakras/WaitingScreen"
@@ -42,12 +44,10 @@ import {
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
-import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
 import { FirstMondayPresenceModal } from "@/components/presence/FirstMondayPresenceModal"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { useStoreRehydration } from "@/hooks/useStoreRehydration"
 import {
-  OPENING_LOGO,
   TRIAL_HOME_ROOT_CHAKRA,
   SCROLL_BREATHING_BOTTOM_PADDING,
 } from "@/constants/layout"
@@ -57,6 +57,7 @@ import {
   getAudioPreloadStarted,
   setAudioPreloadStarted,
 } from "@/src/utils/audioPreloadGuard"
+import { onJourneyWeekStarted } from "@/src/services/journeyNotifications"
 
 /**
  * APP_1 (Trial): Trial Home Screen
@@ -224,9 +225,34 @@ export const ChakraHome = () => {
     return hasReachedCourseStartDate(courseStartDate)
   }, [courseStartDate])
 
+  // GUARDRAIL: Trial 2's 7-day window has actually elapsed.
+  //
+  // Without this, "Trial 2 ended" was true the instant trialHistory.length === 2,
+  // which meant any user who tapped "Continue to Trial 2" and picked a future Monday
+  // would hit Grace / paywall the moment that Monday arrived – before doing a single
+  // Trial 2 chakra. It also meant that if stale or backup-restored state ever landed
+  // a fresh user with trialHistory.length === 2, they would hit Grace on their first
+  // open instead of the trial home. This guard requires the 2nd trial's startDate to
+  // be at least 7 days in the past.
+  //
+  // IMPORTANT: This flag is specifically for the Grace path (did-not-complete). The
+  // Seal / paywall path ALSO accepts `allChakrasCompleted` so a user who finishes
+  // all 7 on Sunday of Trial 2 week still sees Seal immediately – we are not
+  // delaying the happy-ending screen.
+  const hasTrial2WindowElapsed = useMemo(() => {
+    if (trialHistory.length < 2) return false
+    const secondTrial = trialHistory[1]
+    if (!secondTrial?.startDate) return false
+    const elapsed = daysSince(secondTrial.startDate)
+    if (elapsed === null) return false
+    return elapsed >= 7
+  }, [trialHistory])
+
   // APP_1 (Trial): Payment gate logic
   // 1. After trial 1 (Sunday night): If all 7 days completed → paywall opens
-  // 2. After trial 2: Paywall opens regardless of day – no waiting room without paying
+  // 2. After trial 2: Paywall opens either (a) when all 7 are completed (early Seal →
+  //    Alchemist → paywall) or (b) when the 7-day Trial 2 window has fully elapsed
+  //    without completion (Grace → paywall). Never fires on Trial 2 Monday itself.
   // CRITICAL: Never show paywall before user has reached their course start date.
   // User who just picked a future Monday (DateSelection → Begin) must see WaitingScreen.
   // Old persisted trialHistory can otherwise trigger paywall incorrectly.
@@ -247,8 +273,12 @@ export const ChakraHome = () => {
     const isFirstTrialComplete =
       currentTrialNumber === 1 && allChakrasCompleted && isSunday
 
-    // Trial 2: Always show paywall – app only opens to DateSelection until they pay
-    const isSecondTrialEnded = currentTrialNumber === 2
+    // Trial 2 ended: either user finished all 7 chakras (Seal path, can happen any
+    // day of Trial 2 week) OR 7 days have fully elapsed since Trial 2 started
+    // (Grace path). Merely being in Trial 2 is not enough – that was the bug.
+    const isSecondTrialEnded =
+      currentTrialNumber === 2 &&
+      (allChakrasCompleted || hasTrial2WindowElapsed)
 
     return isFirstTrialComplete || isSecondTrialEnded
   }, [
@@ -258,6 +288,7 @@ export const ChakraHome = () => {
     hasLifetimeAccess,
     journeyStarted,
     hasReachedStartDate,
+    hasTrial2WindowElapsed,
     userChoseTrial2,
   ])
 
@@ -273,14 +304,25 @@ export const ChakraHome = () => {
     [currentTrialNumber, allChakrasCompleted, currentDay],
   )
 
+  // Trial 2 is "ended" for routing purposes when either the user completed all 7
+  // chakras (triggers Seal) OR the 7-day window has elapsed (triggers Grace if
+  // incomplete). Being inside Trial 2 week is NOT enough – that was today's bug.
   const isSecondTrialEnded = useMemo(
-    () => currentTrialNumber === 2,
-    [currentTrialNumber],
+    () =>
+      currentTrialNumber === 2 &&
+      (allChakrasCompleted || hasTrial2WindowElapsed),
+    [currentTrialNumber, allChakrasCompleted, hasTrial2WindowElapsed],
   )
 
+  // Grace is specifically the "did not complete in time" path, so it must gate on
+  // the 7-day window having elapsed – not merely on being in Trial 2. This is the
+  // exact guard that prevents today's bug: Monday of Trial 2 cannot show Grace.
   const showGraceOfPresence = useMemo(
-    () => isSecondTrialEnded && !allChakrasCompleted,
-    [isSecondTrialEnded, allChakrasCompleted],
+    () =>
+      currentTrialNumber === 2 &&
+      hasTrial2WindowElapsed &&
+      !allChakrasCompleted,
+    [currentTrialNumber, hasTrial2WindowElapsed, allChakrasCompleted],
   )
 
   const showSealOfInitiate = useMemo(
@@ -361,6 +403,29 @@ export const ChakraHome = () => {
       lifetimeChosenTimegateJourney,
     )
 
+    const canAutoStart =
+      completedTrialCourses === 0 ||
+      (hasLifetimeAccess && lifetimeChosenTimegateJourney)
+
+    // Past course Monday, first open is Tue–Sun: waiting UI would show a zero countdown.
+    // Start the week from the current Monday so home + countdown path stay coherent.
+    const midweekPastStartCatchup =
+      showWaiting &&
+      hasReachedStartDate &&
+      !journeyStarted &&
+      canAutoStart &&
+      !isMonday
+
+    if (midweekPastStartCatchup) {
+      startJourney(currentWeekStartDate)
+      void onJourneyWeekStarted()
+      setShowWaitingScreen(false)
+      if (isFirstLaunch) {
+        setFirstLaunchComplete()
+      }
+      return
+    }
+
     // Mark first launch as complete AFTER we've determined to show waiting screen
     // This ensures the waiting screen logic works correctly on first-time onboarding
     if (isFirstLaunch && showWaiting) {
@@ -375,19 +440,32 @@ export const ChakraHome = () => {
     // - Lifetime somatic journey: Auto-start on Monday (fresh course, ignore completedTrialCourses)
     // - After Trial 1: DON'T auto-start - user must press "Begin Again"
     // - After Trial 2: Show paywall (handled above)
-    // IMPORTANT: Don't auto-start if we're showing the waiting screen (first-time onboarding)
-    const canAutoStart =
-      completedTrialCourses === 0 ||
-      (hasLifetimeAccess && lifetimeChosenTimegateJourney)
+    // Allow auto-start on Monday when waiting UI would show a dead countdown (past start, never began).
+    let countdownExhausted = false
+    if (courseStartDate) {
+      const startD = new Date(`${courseStartDate}T00:00:00`)
+      if (!Number.isNaN(startD.getTime())) {
+        const r = getTimeRemaining(startD)
+        countdownExhausted =
+          r.days === 0 &&
+          r.hours === 0 &&
+          r.minutes === 0 &&
+          r.seconds === 0
+      }
+    }
+
+    // IMPORTANT: Don't auto-start if we're showing the waiting screen (first-time onboarding),
+    // unless the countdown is exhausted (stuck state after restore / missed Monday).
     const shouldAutoStart =
       hasReachedStartDate &&
       isMonday &&
       !journeyStarted &&
       canAutoStart &&
-      !showWaiting
+      (!showWaiting || countdownExhausted)
 
     if (shouldAutoStart) {
       startJourney(currentWeekStartDate)
+      void onJourneyWeekStarted()
     }
   }, [
     currentDay,
@@ -428,7 +506,8 @@ export const ChakraHome = () => {
   // Ensures dev-bypass path also gets preload so embodiment/meditation etc. load faster on real device.
   // Guard: persist only after heads complete (same as WaitingScreen).
   useEffect(() => {
-    if (hasLifetimeAccess || !journeyStarted || showWaitingScreen) return
+    if (hasLifetimeAccess || !journeyStarted || showWaitingScreen || !storage)
+      return
     let cancelled = false
     getAudioPreloadStarted().then((alreadyStarted) => {
       if (cancelled || alreadyStarted) return
@@ -696,6 +775,7 @@ export const ChakraHome = () => {
               completedTrialCourses === 1
                 ? () => {
                     startJourney(currentWeekStartDate)
+                    void onJourneyWeekStarted()
                     setShowWaitingScreen(false)
                   }
                 : undefined
@@ -765,23 +845,14 @@ export const ChakraHome = () => {
     )
   }
 
-  // Soft transition: when content is not ready, show same black + logo as opening (OPENING_LOGO)
-  // so the handoff from root AnimatedSplashScreen / index has no size pop or glitch
+  // Black void only while content loads — do not repeat Soul School hero (root splash already showed it).
   if (!contentReady) {
-    const logoW = OPENING_LOGO.width[Platform.OS === "ios" ? "ios" : "android"]
-    const logoH = OPENING_LOGO.height[Platform.OS === "ios" ? "ios" : "android"]
     return (
       <SafeAreaView
         style={{ flex: 1, backgroundColor: "#000000" }}
         edges={["top", "bottom"]}
       >
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <SomaticHeroImage
-            source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
-            style={{ width: logoW, height: logoH }}
-            resizeMode="contain"
-          />
-        </View>
+        <View style={{ flex: 1, backgroundColor: "#000000" }} />
       </SafeAreaView>
     )
   }
@@ -1102,10 +1173,6 @@ export const ChakraHome = () => {
 
         {/* Permanent Menu Bar - Now rendered globally in app/_layout.tsx */}
 
-        {/* Dev Test Flow - includes Reset onboarding to test full flow */}
-        {__DEV__ && !completedChakra && (
-          <TrialTestFlow onUnlockNextDay={() => {}} currentDay={currentDay} />
-        )}
       </SafeAreaView>
     </View>
   )

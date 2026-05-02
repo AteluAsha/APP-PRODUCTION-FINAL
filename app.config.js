@@ -23,12 +23,17 @@ try {
 // Single source: ChakraWheel_ONBLACK_300DPI.png (production app icon for iOS and Android).
 const APP_ICON_BLACK = "./assets/images/ChakraWheel_ONBLACK_300DPI.png"
 
+// Firebase Android native config: repo root, or EAS file env path on the worker.
+// .easignore must not exclude this path — see .easignore comment block.
+const GOOGLE_SERVICES_FILE =
+  process.env.GOOGLE_SERVICES_JSON || "./google-services.json"
+
 module.exports = {
   expo: {
     // Home screen label under icon; store listing may use longer name (e.g. SOUL SCHOOL | ProjectStarseed)
     name: "SOUL SCHOOL",
     slug: "soul-school",
-    version: "1.0.0",
+    version: "1.1.4",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
     // Native shield: golden "7" load art (small, centered). JS splash uses SoulSchool_HERO_Logo. Run prebuild --clean after change.
@@ -47,6 +52,8 @@ module.exports = {
       supportsTablet: true,
       icon: APP_ICON_BLACK,
       infoPlist: {
+        // App Store export compliance: app only uses exempt encryption (e.g. HTTPS)
+        ITSAppUsesNonExemptEncryption: false,
         // iOS home screen label; production uses SOUL SCHOOL (App Store listing may differ)
         CFBundleDisplayName: "SOUL SCHOOL",
         LSApplicationQueriesSchemes: ["whatsapp", "sms", "mailto"],
@@ -71,11 +78,18 @@ module.exports = {
           "SOUL SCHOOL uses your photo library so you can choose a profile picture and share images in the community.",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // Bump for each TestFlight / store upload. EAS production profile may autoIncrement over this; align with dashboard if needed.
-      buildNumber: "2",
+      // Bump for each TestFlight / store upload; each new iOS binary must exceed the last build on ASC (e.g. after 1.1.3 (13) use 14+).
+      buildNumber: "14",
     },
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android
+      // Disable Google Auto Backup. Per-install state (AsyncStorage: trial progress,
+      // course start date, completed chakras) must not be restored on reinstall or
+      // device transfer. RevenueCat / Firebase restore from their own servers.
+      // Matches android:allowBackup="false" + xml/data_extraction_rules in the native
+      // manifest; this line keeps the setting if anyone runs `expo prebuild --clean`.
+      allowBackup: false,
+      googleServicesFile: GOOGLE_SERVICES_FILE,
       adaptiveIcon: {
         foregroundImage: APP_ICON_BLACK,
         backgroundColor: "#000000",
@@ -86,6 +100,7 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
+      versionCode: 6,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
         "CAMERA",
@@ -135,7 +150,7 @@ module.exports = {
       [
         "expo-notifications",
         {
-          defaultChannel: "journey-reminders",
+          defaultChannel: "soul-journey-nudges",
           color: "#9D4EDD",
         },
       ],
@@ -165,11 +180,15 @@ module.exports = {
         projectId: process.env.FIREBASE_PROJECT_ID || "",
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "",
         messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "",
+        // iOS: FIREBASE_APP_ID | Android: FIREBASE_ANDROID_APP_ID (see firebase.ts)
         appId: process.env.FIREBASE_APP_ID || "",
+        appIdAndroid: process.env.FIREBASE_ANDROID_APP_ID || "",
         measurementId: process.env.FIREBASE_MEASUREMENT_ID || "",
       },
+      // RevenueCat: iOS REVENUECAT_API_KEY | Android REVENUECAT_ANDROID_API_KEY (see revenuecat.ts)
       revenuecat: {
-        apiKey: process.env.REVENUECAT_API_KEY || "",
+        apiKeyIos: process.env.REVENUECAT_API_KEY || "",
+        apiKeyAndroid: process.env.REVENUECAT_ANDROID_API_KEY || "",
       },
       gemini: {
         apiKey: process.env.GEMINI_API_KEY || "",

@@ -19,6 +19,8 @@ import {
   downloadAudioHead,
   getLocalAudioUri,
   downloadAndCacheAudioResumable,
+  isCachedFullFileComplete,
+  clearCachedFullAudioOnly,
 } from "./audioDownload"
 import { checkRateLimit, waitForRateLimit } from "./rateLimiter"
 import { retryWithBackoff } from "./audioRetry"
@@ -44,6 +46,7 @@ function logPreloadFailure(
   storagePath: string,
   err: unknown,
 ) {
+  if (!__DEV__) return
   const msg = err instanceof Error ? err.message : String(err)
   console.warn(`[audioPreload] ${phase} failed`, {
     audioId,
@@ -167,13 +170,24 @@ function buildManifest(): AudioHeadEntry[] {
 
 const MANIFEST = buildManifest()
 
+/** Day 1 → day 7 course order (matches enum / journey). */
+const COURSE_CHAKRA_ORDER: Chakra[] = [
+  Chakra.ROOT,
+  Chakra.SACRAL,
+  Chakra.SOLAR_PLEXUS,
+  Chakra.HEART,
+  Chakra.THROAT,
+  Chakra.THIRD_EYE,
+  Chakra.CROWN,
+]
+
 /**
  * Returns manifest entries for a single chakra (one day's audio).
- * Used for backup cache: when a day opens or user presses any audio, trigger full-file download of all that day's audio one at a time.
+ * Order: Master Embodiment (hero) first, then crystal bowl, tuning fork, head-to-heart.
  */
 export function getManifestEntriesForChakra(chakra: Chakra): AudioHeadEntry[] {
   const c = chakra as string
-  return MANIFEST.filter(
+  const all = MANIFEST.filter(
     (e) =>
       e.audioId.startsWith(`crystal_bowl_${c}_`) ||
       e.audioId.startsWith(`tuning_fork_${c}_`) ||
@@ -181,7 +195,33 @@ export function getManifestEntriesForChakra(chakra: Chakra): AudioHeadEntry[] {
       e.audioId.startsWith(`embodiment_${c}_`) ||
       e.audioId.startsWith(`head_to_heart_${c}_`),
   )
+  const embodiment = all.filter(
+    (e) =>
+      e.audioId === `embodiment_${c}` ||
+      e.audioId.startsWith(`embodiment_${c}_`),
+  )
+  const crystal = all.filter((e) =>
+    e.audioId.startsWith(`crystal_bowl_${c}_`),
+  )
+  const tuning = all.filter((e) =>
+    e.audioId.startsWith(`tuning_fork_${c}_`),
+  )
+  const h2h = all.filter((e) =>
+    e.audioId.startsWith(`head_to_heart_${c}_`),
+  )
+  return [...embodiment, ...crystal, ...tuning, ...h2h]
 }
+
+/** Full course: day 1–7 in order, hero-first within each day (background preload). */
+function buildOrderedCourseManifest(): AudioHeadEntry[] {
+  const out: AudioHeadEntry[] = []
+  for (const chakra of COURSE_CHAKRA_ORDER) {
+    out.push(...getManifestEntriesForChakra(chakra))
+  }
+  return out
+}
+
+const ORDERED_COURSE_MANIFEST = buildOrderedCourseManifest()
 
 /**
  * Preload full files for a single day (chakra) in the background, one at a time.
@@ -199,15 +239,18 @@ export async function preloadFullFilesForChakra(
   let failed = 0
   for (const { audioId, storagePath } of entries) {
     try {
-      const existing = await getLocalAudioUri(audioId)
-      if (existing) {
-        skipped += 1
-        continue
-      }
       if (!checkRateLimit("firebase")) {
         await waitForRateLimit("firebase")
       }
       const url = await getDownloadUrlWithRetry(storage, storagePath)
+      const existing = await getLocalAudioUri(audioId)
+      if (existing && (await isCachedFullFileComplete(audioId, url))) {
+        skipped += 1
+        continue
+      }
+      if (existing) {
+        await clearCachedFullAudioOnly(audioId)
+      }
       await downloadFullWithRetry(url, audioId)
       done += 1
     } catch (err) {
@@ -231,13 +274,13 @@ export async function preloadFullFilesForChakra(
 export async function preloadAllAudioHeads(
   storage: FirebaseStorage | null,
 ): Promise<{ done: number; skipped: number; failed: number }> {
-  if (!storage) return { done: 0, skipped: 0, failed: MANIFEST.length }
+  if (!storage) return { done: 0, skipped: 0, failed: ORDERED_COURSE_MANIFEST.length }
 
   let done = 0
   let skipped = 0
   let failed = 0
 
-  for (const { audioId, storagePath } of MANIFEST) {
+  for (const { audioId, storagePath } of ORDERED_COURSE_MANIFEST) {
     try {
       const existing = await getLocalAudioHeadUri(audioId)
       if (existing) {
@@ -280,25 +323,28 @@ export async function preloadAllAudioHeads(
 export async function preloadAllAudioFullFiles(
   storage: FirebaseStorage | null,
 ): Promise<{ done: number; skipped: number; failed: number }> {
-  if (!storage) return { done: 0, skipped: 0, failed: MANIFEST.length }
+  if (!storage) return { done: 0, skipped: 0, failed: ORDERED_COURSE_MANIFEST.length }
 
   let done = 0
   let skipped = 0
   let failed = 0
 
-  for (const { audioId, storagePath } of MANIFEST) {
+  for (const { audioId, storagePath } of ORDERED_COURSE_MANIFEST) {
     try {
-      const existing = await getLocalAudioUri(audioId)
-      if (existing) {
-        skipped += 1
-        continue
-      }
-
       if (!checkRateLimit("firebase")) {
         await waitForRateLimit("firebase")
       }
 
       const url = await getDownloadUrlWithRetry(storage, storagePath)
+      const existing = await getLocalAudioUri(audioId)
+      if (existing && (await isCachedFullFileComplete(audioId, url))) {
+        skipped += 1
+        continue
+      }
+      if (existing) {
+        await clearCachedFullAudioOnly(audioId)
+      }
+
       await downloadFullWithRetry(url, audioId)
       done += 1
     } catch (err) {
@@ -309,7 +355,7 @@ export async function preloadAllAudioFullFiles(
 
   if (__DEV__ && (done > 0 || failed > 0)) {
     console.log(
-      `[audioPreload] Full: ${done} downloaded, ${skipped} skipped, ${failed} failed`,
+      `[audioPreload] Full (ordered): ${done} downloaded, ${skipped} skipped, ${failed} failed`,
     )
   }
 

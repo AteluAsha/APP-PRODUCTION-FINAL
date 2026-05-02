@@ -275,7 +275,11 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
     if (diffMins < 60) return `${diffMins}m ago`
     if (diffHours < 24) return `${diffHours}h ago`
     if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString()
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
   }
 
   // Escape hatch: user must always be able to close (onRequestClose + visible header close).
@@ -667,12 +671,20 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                           <View
                             style={{
                               flexDirection: "row",
-                              alignItems: "center",
-                              justifyContent: "space-between",
+                              alignItems: "flex-start",
                               marginBottom: 12,
+                              gap: 8,
                             }}
                           >
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <View
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                flexDirection: "row",
+                                alignItems: "flex-start",
+                                gap: 8,
+                              }}
+                            >
                               {reflection.isAnonymous ? (
                                 <View
                                   style={{
@@ -727,23 +739,27 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                                   )}
                                 </Pressable>
                               )}
-                              <View>
+                              <View style={{ flex: 1, minWidth: 0 }}>
                                 <AppText
                                   font="instrument-medium"
                                   size="base"
+                                  numberOfLines={2}
                                   style={{ color: "#D4C5A9" }}
                                 >
                                   {reflection.isAnonymous
                                     ? "Anonymous Soul"
                                     : (profileMap[reflection.userId]?.displayName || "Soul")}
                                 </AppText>
-                                {!reflection.isAnonymous && profileMap[reflection.userId]?.location ? (
+                                {!reflection.isAnonymous &&
+                                profileMap[reflection.userId]?.location &&
+                                String(profileMap[reflection.userId].location).trim().length > 0 ? (
                                   <AppText
                                     font="instrument-regular"
                                     size="xs"
-                                    style={{ color: "rgba(255,255,255,0.5)", marginTop: 1 }}
+                                    numberOfLines={2}
+                                    style={{ color: "rgba(255,255,255,0.5)", marginTop: 2 }}
                                   >
-                                    {profileMap[reflection.userId].location}
+                                    {String(profileMap[reflection.userId].location).trim()}
                                   </AppText>
                                 ) : null}
                               </View>
@@ -751,7 +767,11 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                             <AppText
                               font="instrument-regular"
                               size="xs"
-                              style={{ color: "rgba(255,255,255,0.5)" }}
+                              style={{
+                                color: "rgba(255,255,255,0.5)",
+                                flexShrink: 0,
+                                marginTop: 2,
+                              }}
                             >
                               {formatTimestamp(reflection.timestamp)}
                             </AppText>
@@ -759,9 +779,11 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                           <AppText
                             font="cormorant-italic"
                             size="base"
+                            selectable={false}
                             style={{
                               color: "rgba(255,255,255,0.95)",
                               lineHeight: 26,
+                              maxWidth: "100%",
                             }}
                           >
                             {reflection.message}
@@ -973,12 +995,20 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                         <View
                           style={{
                             flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "space-between",
+                            alignItems: "flex-start",
                             marginBottom: 8,
+                            gap: 8,
                           }}
                         >
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <View
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              flexDirection: "row",
+                              alignItems: "flex-start",
+                              gap: 8,
+                            }}
+                          >
                             {reflection.isAnonymous ? (
                               <View
                                 style={{
@@ -1033,21 +1063,25 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                                 )}
                               </Pressable>
                             )}
-                            <View>
+                            <View style={{ flex: 1, minWidth: 0 }}>
                               <AppText
                                 font="cormorant-italic"
                                 size="base"
+                                numberOfLines={2}
                                 style={{ color: "rgba(255, 255, 255, 0.7)" }}
                               >
                                 {reflection.isAnonymous ? "Anonymous Soul" : (profileMap[reflection.userId]?.displayName || "Soul")}
                               </AppText>
-                              {!reflection.isAnonymous && profileMap[reflection.userId]?.location ? (
+                              {!reflection.isAnonymous &&
+                              profileMap[reflection.userId]?.location &&
+                              String(profileMap[reflection.userId].location).trim().length > 0 ? (
                                 <AppText
                                   font="instrument-regular"
                                   size="xs"
-                                  style={{ color: "#6b7280", marginTop: 1 }}
+                                  numberOfLines={2}
+                                  style={{ color: "#6b7280", marginTop: 2 }}
                                 >
-                                  {profileMap[reflection.userId].location}
+                                  {String(profileMap[reflection.userId].location).trim()}
                                 </AppText>
                               ) : null}
                             </View>
@@ -1055,7 +1089,7 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                           <AppText
                             font="instrument-regular"
                             size="xs"
-                            style={{ color: "#6b7280" }}
+                            style={{ color: "#6b7280", flexShrink: 0, marginTop: 2 }}
                           >
                             {formatTimestamp(reflection.timestamp)}
                           </AppText>
@@ -1064,7 +1098,8 @@ export const SocialSanctuaryModal: React.FC<SocialSanctuaryModalProps> = ({
                           <AppText
                             font="cormorant-italic"
                             size="base"
-                            style={{ color: "#ffffff", lineHeight: 26 }}
+                            selectable={false}
+                            style={{ color: "#ffffff", lineHeight: 26, maxWidth: "100%" }}
                           >
                             {reflection.message}
                           </AppText>

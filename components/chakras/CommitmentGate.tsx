@@ -34,6 +34,7 @@ import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { requestChakraHubRevealBreath } from "@/utils/homeSessionEntrance"
 import { getUserId } from "@/src/services/userId"
 import { logScholarshipRequest } from "@/src/services/scholarshipAudit"
+import { purchaseErrorForPaywallBanner } from "@/utils/purchaseUserFacingError"
 
 interface CommitmentGateProps {
   onComplete: () => void
@@ -107,18 +108,13 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
         await purchase(PACKAGE_IDENTIFIERS.MONTHLY)
         setShowAccessGranted(true)
       } catch (error: any) {
+        const msg = typeof error?.message === "string" ? error.message : ""
         if (__DEV__) {
           console.error("Error processing purchase:", error)
+        } else if (msg) {
+          console.error("[CommitmentGate] Purchase error:", msg)
         }
-        const msg = error?.message || ""
-        if (msg.toLowerCase().includes("cancelled")) {
-          setPurchaseError(null)
-        } else {
-          setPurchaseError(
-            msg ||
-              "Purchase failed. Please try again or use Restore Purchases.",
-          )
-        }
+        setPurchaseError(purchaseErrorForPaywallBanner(msg))
       } finally {
         setIsProcessing(false)
       }
@@ -130,18 +126,13 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
         await purchase(PACKAGE_IDENTIFIERS.ANNUAL)
         setShowAccessGranted(true)
       } catch (error: any) {
+        const msg = typeof error?.message === "string" ? error.message : ""
         if (__DEV__) {
           console.error("Error processing purchase:", error)
+        } else if (msg) {
+          console.error("[CommitmentGate] Purchase error:", msg)
         }
-        const msg = error?.message || ""
-        if (msg.toLowerCase().includes("cancelled")) {
-          setPurchaseError(null)
-        } else {
-          setPurchaseError(
-            msg ||
-              "Purchase failed. Please try again or use Restore Purchases.",
-          )
-        }
+        setPurchaseError(purchaseErrorForPaywallBanner(msg))
       } finally {
         setIsProcessing(false)
       }
@@ -379,6 +370,13 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                         >
                           /month
                         </AppText>
+                        <AppText
+                          font="instrument-regular"
+                          size="xs"
+                          style={styles.priceDonation}
+                        >
+                          (donation)
+                        </AppText>
                       </View>
                       <AppText
                         font="instrument-regular"
@@ -467,6 +465,13 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                           style={styles.pricePeriod}
                         >
                           / Year
+                        </AppText>
+                        <AppText
+                          font="instrument-regular"
+                          size="xs"
+                          style={styles.priceDonation}
+                        >
+                          (donation)
                         </AppText>
                       </View>
                       <AppText
@@ -1015,6 +1020,10 @@ const styles = StyleSheet.create({
   pricePeriod: {
     color: "#9ca3af",
     marginLeft: 4,
+  },
+  priceDonation: {
+    color: "rgba(168, 201, 154, 0.82)",
+    marginLeft: 6,
   },
   priceDescription: {
     color: "rgba(156, 163, 175, 0.85)",

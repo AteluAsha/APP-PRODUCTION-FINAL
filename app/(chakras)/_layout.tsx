@@ -103,7 +103,6 @@ const ChakrasLayout = () => {
                 gestureEnabled: true,
               }}
             />
-            <Stack.Screen name="DevPaywall" />
             <Stack.Screen name="Paywall" />
             <Stack.Screen name="DateSelection" />
             <Stack.Screen

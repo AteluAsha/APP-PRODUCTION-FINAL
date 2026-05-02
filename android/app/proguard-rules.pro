@@ -11,4 +11,14 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
+# RevenueCat (react-native-purchases / hybrid common)
+-keep class com.revenuecat.purchases.** { *; }
+-keep class com.revenuecat.purchases.hybridcommon.** { *; }
+
+# Expo Modules Core — @DoNotStrip and related (expo-av and other native modules)
+-keep @expo.modules.core.interfaces.DoNotStrip class *
+-keepclassmembers class * {
+    @expo.modules.core.interfaces.DoNotStrip *;
+}
+
 # Add any project specific keep options here:

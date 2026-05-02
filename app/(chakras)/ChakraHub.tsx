@@ -51,7 +51,6 @@ import {
 } from "@/constants/layout"
 import { useHomeSomaticEntrance } from "@/hooks/useHomeSomaticEntrance"
 import { ARCHETYPE_QUIZ_URL } from "@/constants/sharing"
-import { TrialTestFlow } from "@/components/dev/TrialTestFlow"
 import { IntegratedProgressStack } from "@/components/chakras/IntegratedProgressStack"
 
 export default function ChakraHub() {
@@ -259,9 +258,6 @@ export default function ChakraHub() {
       style={{ flex: 1, backgroundColor: "#000000" }}
       edges={["left", "right"]}
     >
-      {__DEV__ && (
-        <TrialTestFlow onUnlockNextDay={() => {}} currentDay={currentDay} />
-      )}
       <ActionBar onBackPress={handleBack} showBackButton={false} />
       <View style={{ flex: 1 }}>
       {/* ScrollView owns all hub content; α/Ω row is a fixed footer below it (not an overlay) so glyphs never cover Sanctuary. */}

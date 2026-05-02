@@ -60,5 +60,13 @@ target 'SOULSCHOOL' do
         end
       end
     end
+
+    # Xcode 16.3+ / Apple Clang: fmt's FMT_STRING + consteval fails at C++20; compile fmt as C++17 only.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
   end
 end

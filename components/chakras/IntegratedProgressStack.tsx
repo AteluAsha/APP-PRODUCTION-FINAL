@@ -42,6 +42,7 @@ import {
   SCROLL_BREATHING_BOTTOM_PADDING,
   LIFETIME_HUB_CHAKRA_BALL_DIVISOR,
   LIFETIME_HUB_DAY_TITLE_SIDE_GAP,
+  TRIAL_HOME_CHAKRA_BALL_DIVISOR,
 } from "@/constants/layout"
 import { getTimeRemaining } from "@/utils/date"
 import { formatCountdown } from "@/utils/format"
@@ -576,11 +577,11 @@ export const IntegratedProgressStack = ({
                   >
                     <PulsingButton
                       source={source}
-                      small={showAllChakrasForLifetimeHub}
+                      small
                       smallDivisor={
                         showAllChakrasForLifetimeHub
                           ? LIFETIME_HUB_CHAKRA_BALL_DIVISOR
-                          : undefined
+                          : TRIAL_HOME_CHAKRA_BALL_DIVISOR
                       }
                       isAnimating={
                         isCurrentDay &&

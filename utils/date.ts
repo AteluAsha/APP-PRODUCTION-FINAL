@@ -98,7 +98,11 @@ export const getTimeRemaining = (
   seconds: number
 } => {
   const now = new Date()
-  const diffMs = targetDate.getTime() - now.getTime()
+  const targetMs = targetDate.getTime()
+  if (Number.isNaN(targetMs)) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0 }
+  }
+  const diffMs = targetMs - now.getTime()
 
   if (diffMs <= 0) {
     return { days: 0, hours: 0, minutes: 0, seconds: 0 }
@@ -191,11 +195,34 @@ export const calculateCourseStartDate = (
 export const hasReachedCourseStartDate = (
   courseStartDateISO: string,
 ): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(courseStartDateISO)) return false
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
   const courseStartDate = new Date(courseStartDateISO + "T00:00:00")
+  if (Number.isNaN(courseStartDate.getTime())) return false
   courseStartDate.setHours(0, 0, 0, 0)
 
   return today >= courseStartDate
+}
+
+/**
+ * Returns the number of whole days between a past ISO date (YYYY-MM-DD) and today,
+ * in the device's local timezone. Returns 0 for today, positive for past dates,
+ * and a negative number for future dates. Returns null for invalid input.
+ *
+ * Used by trial-window guardrails (e.g. "has Trial 2's 7-day window elapsed?") so
+ * that time-gated branches don't fire the instant a trial begins.
+ */
+export const daysSince = (isoDate: string | null | undefined): number | null => {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null
+  const parsed = new Date(isoDate + "T00:00:00")
+  if (Number.isNaN(parsed.getTime())) return null
+  parsed.setHours(0, 0, 0, 0)
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const diffMs = today.getTime() - parsed.getTime()
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24))
 }

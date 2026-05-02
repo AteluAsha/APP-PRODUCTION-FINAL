@@ -9,9 +9,7 @@ import React from "react"
 import {
   Modal,
   View,
-  Pressable,
   TouchableOpacity,
-  Platform,
   useWindowDimensions,
   StyleSheet,
 } from "react-native"
@@ -146,147 +144,86 @@ export const DateConfirmationModal: React.FC<DateConfirmationModalProps> = ({
               alignItems: "stretch",
             }}
           >
-            {Platform.OS === "android" ? (
-              <>
-                <TouchableOpacity
-                  onPress={() => {
-                    addHapticFeedback(HapticStrength.Light)
-                    onCancel()
-                  }}
-                  hitSlop={TOUCH.hitSlop}
-                  activeOpacity={TOUCH.activeOpacity}
-                  style={{ flex: 1, minWidth: 0 }}
+            {/* iOS + Android: TouchableOpacity only — Pressable + absolute LinearGradient
+                failed to deliver taps on iOS, so Confirm never set courseStartDate (no purple Begin, no waiting room). */}
+            <TouchableOpacity
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Light)
+                onCancel()
+              }}
+              hitSlop={TOUCH.hitSlop}
+              activeOpacity={TOUCH.activeOpacity}
+              style={{ flex: 1, minWidth: 0 }}
+            >
+              <View
+                style={{
+                  backgroundColor: buttonFallbackBg,
+                  borderWidth: 1.5,
+                  borderColor: buttonBorder,
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  paddingHorizontal: 12,
+                  minHeight: 50,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  overflow: "hidden",
+                }}
+              >
+                <LinearGradient
+                  colors={[...buttonGradientColors]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
+                />
+                <AppText
+                  font="instrument-medium"
+                  size="base"
+                  style={{ color: "#ffffff", zIndex: 1 }}
+                  numberOfLines={1}
                 >
-                  <View
-                    style={{
-                      backgroundColor: buttonFallbackBg,
-                      borderWidth: 1.5,
-                      borderColor: buttonBorder,
-                      borderRadius: 12,
-                      paddingVertical: 14,
-                      paddingHorizontal: 12,
-                      minHeight: 50,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <LinearGradient
-                      colors={[...buttonGradientColors]}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
-                    />
-                    <AppText font="instrument-medium" size="base" style={{ color: "#ffffff" }} numberOfLines={1}>
-                      Change
-                    </AppText>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    addHapticFeedback(HapticStrength.Light)
-                    onConfirm()
-                  }}
-                  hitSlop={TOUCH.hitSlop}
-                  activeOpacity={TOUCH.activeOpacity}
-                  style={{ flex: 1, minWidth: 0 }}
+                  Change
+                </AppText>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                addHapticFeedback(HapticStrength.Light)
+                onConfirm()
+              }}
+              hitSlop={TOUCH.hitSlop}
+              activeOpacity={TOUCH.activeOpacity}
+              style={{ flex: 1, minWidth: 0 }}
+            >
+              <View
+                style={{
+                  backgroundColor: buttonFallbackBg,
+                  borderWidth: 1.5,
+                  borderColor: buttonBorder,
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  paddingHorizontal: 12,
+                  minHeight: 50,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  overflow: "hidden",
+                }}
+              >
+                <LinearGradient
+                  colors={[...buttonGradientColors]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
+                />
+                <AppText
+                  font="instrument-semibold"
+                  size="base"
+                  style={{ color: "#ffffff", zIndex: 1 }}
+                  numberOfLines={1}
                 >
-                  <View
-                    style={{
-                      backgroundColor: buttonFallbackBg,
-                      borderWidth: 1.5,
-                      borderColor: buttonBorder,
-                      borderRadius: 12,
-                      paddingVertical: 14,
-                      paddingHorizontal: 12,
-                      minHeight: 50,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <LinearGradient
-                      colors={[...buttonGradientColors]}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
-                    />
-                    <AppText font="instrument-semibold" size="base" style={{ color: "#ffffff" }} numberOfLines={1}>
-                      {confirmLabel}
-                    </AppText>
-                  </View>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Pressable
-                  onPress={() => {
-                    addHapticFeedback(HapticStrength.Light)
-                    onCancel()
-                  }}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-                >
-                  <View
-                    style={{
-                      backgroundColor: buttonFallbackBg,
-                      borderWidth: 1.5,
-                      borderColor: buttonBorder,
-                      borderRadius: 12,
-                      paddingVertical: 14,
-                      paddingHorizontal: 24,
-                      minHeight: 50,
-                      minWidth: 100,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <LinearGradient
-                      colors={[...buttonGradientColors]}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
-                    />
-                    <AppText font="instrument-medium" size="base" style={{ color: "#ffffff" }}>
-                      Change
-                    </AppText>
-                  </View>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    addHapticFeedback(HapticStrength.Light)
-                    onConfirm()
-                  }}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-                >
-                  <View
-                    style={{
-                      backgroundColor: buttonFallbackBg,
-                      borderWidth: 1.5,
-                      borderColor: buttonBorder,
-                      borderRadius: 12,
-                      paddingVertical: 14,
-                      paddingHorizontal: 24,
-                      minHeight: 50,
-                      minWidth: 100,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <LinearGradient
-                      colors={[...buttonGradientColors]}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
-                    />
-                    <AppText font="instrument-semibold" size="base" style={{ color: "#ffffff" }} numberOfLines={1}>
-                      {confirmLabel}
-                    </AppText>
-                  </View>
-                </Pressable>
-              </>
-            )}
+                  {confirmLabel}
+                </AppText>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
       </View>

@@ -29,6 +29,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { Chakra } from "@/types/chakras/Chakra"
 import { getCurrentWeekStartDateISO } from "@/utils/date"
+import { onJourneyWeekStarted } from "@/src/services/journeyNotifications"
 
 const CHAKRA_NAMES = [
   "Root",
@@ -99,6 +100,7 @@ export const DevGallery: React.FC<DevGalleryProps> = ({ visible, onClose }) => {
       resetJourney()
       const weekStartDate = getCurrentWeekStartDateISO()
       store.startJourney(weekStartDate)
+      void onJourneyWeekStarted()
       router.replace("/(chakras)")
     } else if (route === "goodbye") {
       // Navigate to a chakra day - user completes it to see goodbye modal

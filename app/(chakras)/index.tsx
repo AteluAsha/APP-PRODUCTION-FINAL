@@ -1,12 +1,9 @@
 /**
- * (chakras) entry – routing only after root AnimatedSplashScreen finishes.
+ * (chakras) entry – cold-start routing after store rehydration AND JS splash fade-out.
  *
- * Root _layout shows: native shield → JS pulsing hero while fonts/preload → fade out.
- *
- * This route renders nothing but the Void: no logos, no spinners. Store + nav resolve in
- * silence while the chakras Stack fade (~600ms) runs; replace() then hands off to the
- * destination (Welcome / ChakraHome / ChakraHub / DateSelection) for its own entrance
- * (e.g. 3000ms somatic inhalation on home dashboards).
+ * Root _layout: native shield → AnimatedSplashScreen (Soul School hero) → fade out.
+ * We do not replace() to Welcome/ChakraHome/etc. until `jsSplashFadeComplete` is true so
+ * ChakraHome/WaitingScreen (and portaled Modals) never mount under the splash stack.
  */
 import React, { useRef, useEffect, useCallback, useState } from "react"
 import { View } from "react-native"
@@ -15,8 +12,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY } from "@/constants/onboardingKeys"
 import { useStoreRehydration } from "@/hooks/useStoreRehydration"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
+import { isWellFormedCourseStartIso } from "@/utils/journeySchedulingHealth"
 
 const FORCE_READY_MS = 5000
+/** If JS splash never completes fade (e.g. asset hang), unblock routing */
+const SPLASH_FADE_FALLBACK_MS = 12000
 
 export default function HomeScreen() {
   const router = useRouter()
@@ -35,6 +36,7 @@ export default function HomeScreen() {
   const dateSelectionEmbodimentHandoffComplete = useChakraJourneyStore(
     (s) => s.dateSelectionEmbodimentHandoffComplete,
   )
+  const jsSplashFadeComplete = useSplashOverlayStore((s) => s.jsSplashFadeComplete)
 
   const appReady = Boolean(
     (storeRehydrationReady && rootNavigationState?.key) || forceReady,
@@ -45,8 +47,25 @@ export default function HomeScreen() {
     return () => clearTimeout(t)
   }, [])
 
+  useEffect(() => {
+    if (!appReady || jsSplashFadeComplete) return
+    const t = setTimeout(() => {
+      useSplashOverlayStore.getState().setJsSplashFadeComplete(true)
+    }, SPLASH_FADE_FALLBACK_MS)
+    return () => clearTimeout(t)
+  }, [appReady, jsSplashFadeComplete])
+
   const navigate = useCallback(async () => {
     if (navigatedRef.current) return
+
+    const snap0 = useChakraJourneyStore.getState()
+    if (
+      !snap0.hasLifetimeAccess &&
+      snap0.courseStartDate &&
+      !isWellFormedCourseStartIso(snap0.courseStartDate)
+    ) {
+      snap0.recoverStuckCourseSchedulingToDateSelection()
+    }
 
     // Legacy key: migrate before routing so first paint does not trap users on DateSelection.
     if (
@@ -101,10 +120,12 @@ export default function HomeScreen() {
     router,
   ])
 
+  const routeWhenReady = appReady && jsSplashFadeComplete
+
   useEffect(() => {
-    if (!appReady) return
+    if (!routeWhenReady) return
     void navigate()
-  }, [appReady, navigate])
+  }, [routeWhenReady, navigate])
 
   // Solid black only — never null (avoids default window flash); never loading UI here.
   return <View style={{ flex: 1, backgroundColor: "#000000" }} />

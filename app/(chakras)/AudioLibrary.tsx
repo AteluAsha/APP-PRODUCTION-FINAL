@@ -719,7 +719,6 @@ const AudioLibrary = () => {
           {
             requireFullDownload: true,
             allowStreamingFallback: false,
-            downloadTimeoutMs: 180000,
           },
         )
         const uri =

@@ -361,7 +361,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                         {
                           requireFullDownload: true,
                           allowStreamingFallback: false,
-                          downloadTimeoutMs: 180000,
                         },
                       )
                     }
@@ -399,7 +398,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                         {
                           requireFullDownload: true,
                           allowStreamingFallback: false,
-                          downloadTimeoutMs: 180000,
                         },
                       )
                     }
@@ -446,7 +444,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                       {
                         requireFullDownload: true,
                         allowStreamingFallback: false,
-                        downloadTimeoutMs: 180000,
                       },
                     )
                   }

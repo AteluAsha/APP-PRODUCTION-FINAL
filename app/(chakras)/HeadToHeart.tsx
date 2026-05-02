@@ -171,7 +171,6 @@ const HeadToHeart = () => {
                           {
                             requireFullDownload: true,
                             allowStreamingFallback: false,
-                            downloadTimeoutMs: 180000,
                           },
                         )
                     : undefined

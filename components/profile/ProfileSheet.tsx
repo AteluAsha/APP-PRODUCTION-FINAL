@@ -7,7 +7,7 @@
  * "Return to SOUL SCHOOL Course Selection" (SOUL SCHOOL section) is the only way to path selection after date is set.
  */
 
-import React, { useEffect, useState, useMemo } from "react"
+import React, { useEffect, useState, useMemo, useCallback } from "react"
 import {
   Modal,
   View,
@@ -21,6 +21,7 @@ import {
   Alert,
   Linking,
   useWindowDimensions,
+  Switch,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
@@ -32,6 +33,7 @@ import { useRouter } from "expo-router"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
 import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import { useShallow } from "zustand/react/shallow"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
 import { useTribeFriends } from "@/hooks/useTribeFriends"
 import { getUserId, requestNewUserId } from "@/src/services/userId"
@@ -47,6 +49,13 @@ import {
 } from "@/src/services/communityEmailList"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { PROJECT_STARSEED_URL, CONTRIBUTE_URL, SUPPORT_EMAIL } from "@/constants/sharing"
+import {
+  cancelAllSoulJourneyScheduled,
+  requestNotificationPermissions,
+  scheduleSoulJourneyAfterPermission,
+  syncLifetimeSustenanceNotifications,
+  syncSporadicWisdomNotifications,
+} from "@/src/services/journeyNotifications"
 
 type MenuSection = "profile" | "account" | "help" | "soulschool" | null
 
@@ -89,6 +98,14 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
   const setProfileImageUri = usePresenceStore((s) => s.setProfileImageUri)
   const setLocation = usePresenceStore((s) => s.setLocation)
   const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
+  const { soulJourneyNudgesEnabled, setSoulJourneyNudgesEnabled } =
+    useChakraJourneyStore(
+      useShallow((s) => ({
+        soulJourneyNudgesEnabled: s.soulJourneyNudgesEnabled,
+        setSoulJourneyNudgesEnabled: s.setSoulJourneyNudgesEnabled,
+      })),
+    )
+  const journeyNudgesSwitchValue = soulJourneyNudgesEnabled !== false
   const { customerInfo } = useRevenueCat()
   const { connected: tribeConnected } = useTribeFriends("global-trial-tribe", effectiveOpen)
 
@@ -158,6 +175,44 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
       setEditing(false)
     }
   }, [effectiveOpen, displayName, profileImageUri, location])
+
+  const handleJourneyNudgesToggle = useCallback(
+    async (next: boolean) => {
+      addHapticFeedback(HapticStrength.Light)
+      setSoulJourneyNudgesEnabled(next)
+      if (!next) {
+        await cancelAllSoulJourneyScheduled()
+        return
+      }
+      const granted = await requestNotificationPermissions()
+      if (!granted) {
+        Alert.alert(
+          "Allow notifications",
+          "To hear from us along your journey, turn on notifications for SOUL SCHOOL in Settings. You can change this anytime.",
+          [
+            { text: "Not now", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => {
+                void Linking.openSettings()
+              },
+            },
+          ],
+        )
+        return
+      }
+      const cs = useChakraJourneyStore.getState().courseStartDate
+      const io = useChakraJourneyStore.getState().initialOpenDate
+      if (cs) {
+        const signup = io ?? cs
+        await scheduleSoulJourneyAfterPermission(signup, cs)
+      } else {
+        await syncLifetimeSustenanceNotifications()
+        await syncSporadicWisdomNotifications()
+      }
+    },
+    [setSoulJourneyNudgesEnabled],
+  )
 
   const handleClose = () => {
     addHapticFeedback(HapticStrength.Light)
@@ -752,6 +807,50 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   </AppText>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
                 </Pressable>
+                <View style={styles.menuRowSwitch} accessibilityRole="none">
+                  <Ionicons
+                    name="notifications-outline"
+                    size={22}
+                    color="rgba(168, 201, 154, 0.95)"
+                  />
+                  <View style={styles.menuRowSwitchTextCol}>
+                    <AppText
+                      font="instrument-medium"
+                      size="base"
+                      style={styles.menuRowSwitchTitle}
+                    >
+                      Journey reminders
+                    </AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={styles.menuRowSubtextMuted}
+                    >
+                      Gentle nudges before and during your course (iOS and Android). No
+                      marketing — turn off anytime. You can also silence the app in system
+                      settings.
+                    </AppText>
+                  </View>
+                  <Switch
+                    value={journeyNudgesSwitchValue}
+                    onValueChange={(v) => {
+                      void handleJourneyNudgesToggle(v)
+                    }}
+                    trackColor={{
+                      false: "rgba(255,255,255,0.2)",
+                      true: "rgba(168, 201, 154, 0.45)",
+                    }}
+                    thumbColor={
+                      Platform.OS === "android"
+                        ? journeyNudgesSwitchValue
+                          ? "rgba(230, 245, 220, 0.95)"
+                          : "rgba(200, 200, 200, 0.95)"
+                        : undefined
+                    }
+                    ios_backgroundColor="rgba(255,255,255,0.2)"
+                    accessibilityLabel="Journey reminders"
+                  />
+                </View>
                 <Pressable
                   onPress={() => {
                     addHapticFeedback(HapticStrength.Light)
@@ -1407,6 +1506,31 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.03)",
   },
   menuRowText: { color: "rgba(255,255,255,0.95)", flex: 1 },
+  menuRowSwitch: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(135, 174, 115, 0.2)",
+    backgroundColor: "rgba(255,255,255,0.03)",
+  },
+  menuRowSwitchTextCol: {
+    flex: 1,
+    paddingRight: 4,
+    minWidth: 0,
+  },
+  menuRowSwitchTitle: {
+    color: "rgba(255,255,255,0.95)",
+  },
+  menuRowSubtextMuted: {
+    color: "rgba(255,255,255,0.48)",
+    marginTop: 6,
+    lineHeight: 18,
+  },
   soulSchoolBlurb: {
     color: "rgba(255,255,255,0.82)",
     textAlign: "center",

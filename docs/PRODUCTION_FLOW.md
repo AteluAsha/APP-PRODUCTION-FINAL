@@ -4,8 +4,8 @@ Single reference for the path from first launch through trials and lifetime. Aud
 
 ## First open
 
-1. **Native splash** (`SoulSchool_APP_HeroLoadImage.png`): small centered shield until JS mounts.
-2. **AnimatedSplashScreen** (`app/_layout.tsx`): native shield stays until the Soul School hero image has loaded and painted (`onLoad` + frame), then `SplashScreen.hideAsync()`; solid black + 5s sine breath pulse on `SoulSchool_HERO_Logo.png` while fonts/preloads finish, then fades out. **`(chakras)/index`** stays black and **replaces** to the first screen when store rehydration + nav are ready.
+1. **Native splash** (`SoulSchool_APP_HeroLoadImage.png`): small centered shield. `app/splash-prevent.ts` calls `SplashScreen.preventAutoHideAsync()` at module load (before first render) so Android 12+ keeps the “7” until JS dismisses it.
+2. **AnimatedSplashScreen** (`app/_layout.tsx`): native shield stays until the Soul School hero image has loaded and painted (`onLoad` + frame), then `SplashScreen.hideAsync()`; solid black + 5s sine breath pulse on `SoulSchool_HERO_Logo.png` while fonts/preloads finish, then fades out. **`(chakras)/index`** stays black and **replaces** to the first screen when store rehydration + nav are ready. ChakraHome uses a black void only while `!contentReady` (no second Soul School hero).
 3. **First screen** is one of: WelcomeScreen (trial first time), DateSelection (trial after trial 1), ChakraHome (trial in journey / waiting room), ChakraHub (lifetime).
 
 No error screen on success; ErrorBoundary fallback shows hero logo only.
@@ -46,7 +46,7 @@ No error screen on success; ErrorBoundary fallback shows hero logo only.
 
 ## Key files
 
-- **Entry / splash:** `app/_layout.tsx` (preventAutoHideAsync + `AnimatedSplashScreen`), `app/(chakras)/index.tsx` (routing after overlay); `app.config.js` native shield; no legacy StillnessScreen or SplashScreenReveal
+- **Entry / splash:** `app/splash-prevent.ts` + `app/_layout.tsx` (`AnimatedSplashScreen`), `app/(chakras)/index.tsx` (routing after overlay); `app.config.js` native shield; no legacy StillnessScreen or SplashScreenReveal
 - **Preload:** `components/chakras/WaitingScreen.tsx` (effect), `src/utils/audioPreloadManifest.ts`, `src/utils/audioPreloadGuard.ts`
 - **Preview (waiting room):** `app/(chakras)/Preview.tsx`, `components/chakras/PreviewJourney.tsx`
 - **Menu bar:** `components/navigation/PermanentMenuBar.tsx` (visibility and items by route + trial/lifetime + waiting room)

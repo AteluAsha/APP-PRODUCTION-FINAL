@@ -3,8 +3,11 @@
  * Use when content must clear the menu bar / bottom nav area.
  */
 
-/** JS splash (AnimatedSplashScreen) must stay visible at least this long after mount. */
-export const SPLASH_MIN_DISPLAY_MS = 2500
+/** JS splash (AnimatedSplashScreen) must stay visible at least this long after mount (wall clock before fade may start). */
+export const SPLASH_MIN_DISPLAY_MS = 4000
+
+/** After assets are ready, hold the pulsing hero this long before fade-out (rest breath). */
+export const SPLASH_BREATH_HOLD_BEFORE_FADE_MS = 1200
 
 export const FLOATING_NAV_SCROLL_BOTTOM_PADDING = 140
 
@@ -18,10 +21,13 @@ export const OPENING_LOGO = {
   height: { ios: 130, android: 109 },
 } as const
 
-/** Opening JS splash only (AnimatedSplashScreen). +15% vs prior 200×100 / 180×90. */
+/**
+ * Opening JS splash only (`AnimatedSplashScreen` + `SoulSchool_HERO_Logo.png`).
+ * Does not resize the native shield golden 7 (`SoulSchool_APP_HeroLoadImage` in app.config.js).
+ */
 export const OPENING_SPLASH_LOGO = {
-  width: { ios: 230, android: 207 },
-  height: { ios: 115, android: 104 },
+  width: { ios: 300, android: 270 },
+  height: { ios: 150, android: 135 },
 } as const
 
 /**
@@ -54,6 +60,12 @@ export const ROOT_BOTTOM_OFFSET_LIFETIME_HUB_IOS =
  * Base was 9.5; +10% orb size → 9.5 / 1.1. Keeps IntegratedProgressStack title math in sync.
  */
 export const LIFETIME_HUB_CHAKRA_BALL_DIVISOR = 9.5 / 1.1
+
+/**
+ * Trial ChakraHome stack: PulsingButton uses small=true with this divisor (was implicit H/8.5 via small=false).
+ * From base: 7% smaller (÷0.93), 10% smaller (÷0.9), then 5% larger (×1.05 on size → ÷1.05 on divisor). Lifetime hub uses LIFETIME_HUB_CHAKRA_BALL_DIVISOR only.
+ */
+export const TRIAL_HOME_CHAKRA_BALL_DIVISOR = 8.5 / (0.93 * 0.9 * 1.05)
 
 /** Lifetime hub: horizontal gap between the day title (left of orb) and the orb edge (absolute label). */
 export const LIFETIME_HUB_DAY_TITLE_SIDE_GAP = 12

@@ -108,6 +108,20 @@ interface ChakraJourneyState {
   dateSelectionEmbodimentHandoffComplete: boolean
   setDateSelectionEmbodimentHandoffComplete: (value: boolean) => void
 
+  /** ISO timestamp of last app foreground (for re-engagement local notifications). */
+  lastAppActiveAt: string | null
+  /** After silent-integration (F) fires, stop scheduling E/F until next course week. */
+  engagementSilentIntegrationDone: boolean
+  touchLastAppActive: () => void
+  setEngagementSilentIntegrationDone: (value: boolean) => void
+
+  /**
+   * User preference: Soul Journey local nudges (waiting room, course, horizon).
+   * When false, no scheduling; existing scheduled nudges are cancelled from settings.
+   */
+  soulJourneyNudgesEnabled: boolean
+  setSoulJourneyNudgesEnabled: (value: boolean) => void
+
   // Actions
   startJourney: (startDate: string) => void
   setInitialOpenDate: (date: string) => void
@@ -166,6 +180,12 @@ interface ChakraJourneyState {
 
   /** Dev only: Reset onboarding so user sees WelcomeScreen → DateSelection again */
   resetOnboarding: () => void
+
+  /**
+   * Clears persisted course start / handoff so user can pick a date again.
+   * Use when ISO is corrupt or waiting room shows a dead countdown after restore.
+   */
+  recoverStuckCourseSchedulingToDateSelection: () => void
 }
 
 /**
@@ -243,6 +263,17 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         setDateSelectionEmbodimentHandoffComplete: (value: boolean) =>
           set({ dateSelectionEmbodimentHandoffComplete: value }),
 
+        lastAppActiveAt: null,
+        engagementSilentIntegrationDone: false,
+        touchLastAppActive: () =>
+          set({ lastAppActiveAt: new Date().toISOString() }),
+        setEngagementSilentIntegrationDone: (value: boolean) =>
+          set({ engagementSilentIntegrationDone: value }),
+
+        soulJourneyNudgesEnabled: true,
+        setSoulJourneyNudgesEnabled: (value: boolean) =>
+          set({ soulJourneyNudgesEnabled: value }),
+
         // Actions
         setInitialOpenDate: (date: string) => {
           const courseStart = calculateCourseStartDate(date)
@@ -310,6 +341,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
               userChoseTrial2: false, // Clear when starting Trial 2
               userChoseSovereignDepart: false, // Clear so they see Seal again when Trial 2 completes
               userChoseGentleDepart: false, // Clear so they see Grace again when starting new journey
+              engagementSilentIntegrationDone: false,
             }
             return newState
           })
@@ -468,6 +500,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
               completedChakras: [],
               participatedDays: [],
               allChakrasCompleted: false, // Reset for new trial week
+              engagementSilentIntegrationDone: false,
             }
             // Persist trial and payment state across resets
             return {
@@ -664,6 +697,8 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
             participatedDays: [],
             allChakrasCompleted: false,
             dateSelectionEmbodimentHandoffComplete: false,
+            lastAppActiveAt: null,
+            engagementSilentIntegrationDone: false,
           }),
         setDevOpenPaywall: (value: boolean) => set({ devOpenPaywall: value }),
 
@@ -671,6 +706,14 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         clearAllCompleted: () => set({ completedChakras: [] }),
         _setAllCompleted: (value: boolean) =>
           set({ allChakrasCompleted: value }),
+
+        recoverStuckCourseSchedulingToDateSelection: () =>
+          set({
+            courseStartDate: null,
+            journeyStarted: false,
+            journeyWeekStartDate: null,
+            dateSelectionEmbodimentHandoffComplete: false,
+          }),
 
         resetOnboarding: () =>
           set({
@@ -692,6 +735,8 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
             userChoseTrial2: false,
             userChoseSovereignDepart: false,
             userChoseGentleDepart: false,
+            lastAppActiveAt: null,
+            engagementSilentIntegrationDone: false,
           }),
       }
     },
@@ -705,6 +750,9 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
       onRehydrateStorage: () => (state) => {
         useStoreRehydration.getState().setJourneyRehydrated()
         if (state) {
+          if (typeof state.soulJourneyNudgesEnabled !== "boolean") {
+            useChakraJourneyStore.setState({ soulJourneyNudgesEnabled: true })
+          }
           if (
             state.paymentStatus === "scholarship" &&
             state.scholarshipExpiryDate

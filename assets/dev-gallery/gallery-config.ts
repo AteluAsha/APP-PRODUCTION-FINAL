@@ -286,14 +286,6 @@ export const GALLERY_SCREENS: ScreenEntry[] = [
     props: {},
     expectedFileName: "lifetime-notes-along-the-way.png",
   },
-  {
-    id: "lifetime-dev-paywall",
-    label: "Dev: DevPaywall (CommitmentGate)",
-    type: "lifetime",
-    componentPath: "@/app/(chakras)/DevPaywall",
-    props: {},
-    expectedFileName: "dev-paywall-commitment-gate.png",
-  },
 ]
 
 export const TOTAL_SCREENS = GALLERY_SCREENS.length
