@@ -36,9 +36,10 @@ android/_backups/
 # Firebase Android: must stay in archive (app.config.js android.googleServicesFile).
 # Optional: EAS env GOOGLE_SERVICES_JSON (type File) if the file is absent locally.
 
-# Native projects – builder generates its own iOS/Android; exclude to reduce upload size
-ios/
-android/
+# Native projects – builder generates top-level iOS/Android via prebuild.
+# Use leading slash so local Expo modules (e.g. modules/meditation-playback/android) stay in archive.
+/ios/
+/android/
 
 # Sanctuary AAC is downloaded at runtime — never ship in the binary
 assets/meditation-audio/*.aac
