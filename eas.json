@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 14.0.2",
-    "appVersionSource": "local"
+    "appVersionSource": "local",
+    "requireCommit": true
   },
   "build": {
     "development": {
@@ -29,7 +30,8 @@
       "environment": "production",
       "node": "20.19.0",
       "env": {
-        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=\"-Xmx12g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=2 -Dorg.gradle.daemon=false"
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=\"-Xmx12g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=2 -Dorg.gradle.daemon=false",
+        "EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK": "1"
       },
       "ios": {
         "image": "latest",
