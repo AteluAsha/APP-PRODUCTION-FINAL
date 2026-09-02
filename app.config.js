@@ -172,6 +172,7 @@ module.exports = {
       "expo-audio",
       "./plugins/withAndroidMediaPlayback",
       "./plugins/withLauncherDisplayName",
+      "./plugins/withFmtConstevalWorkaround",
     ],
     experiments: {
       typedRoutes: true,

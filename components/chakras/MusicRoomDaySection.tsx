@@ -7,6 +7,7 @@ import {
     MusicRoomTrackButton,
     type MusicRoomTrackButtonProps,
 } from '@/components/chakras/MusicRoomTrackButton'
+import { getTuningForkHertz } from '@/hooks/useTuningForkAudio'
 
 export type MusicRoomRowProps = Omit<
     MusicRoomTrackButtonProps,
@@ -26,6 +27,7 @@ type DaySectionProps = {
 }
 
 export function MusicRoomDaySection({
+    chakra,
     chakraName,
     dayIndex,
     accentColor,
@@ -35,8 +37,7 @@ export function MusicRoomDaySection({
     brings,
     trackRows,
 }: DaySectionProps) {
-    const hertzLabels = ['396', '417', '528', '639', '741', '852', '963']
-    const hz = hertzLabels[dayIndex] ?? '396'
+    const hz = getTuningForkHertz(chakra)
 
     return (
         <View

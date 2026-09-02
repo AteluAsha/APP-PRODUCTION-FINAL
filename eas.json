@@ -13,7 +13,7 @@
       "ios": {
         "simulator": true,
         "buildConfiguration": "Debug",
-        "image": "latest"
+        "image": "sdk-53"
       },
       "node": "20.19.0",
       "developmentClient": true,
@@ -22,7 +22,7 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "image": "latest"
+        "image": "sdk-53"
       }
     },
     "production": {
@@ -34,7 +34,7 @@
         "EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK": "1"
       },
       "ios": {
-        "image": "latest",
+        "image": "sdk-53",
         "simulator": false
       },
       "android": {

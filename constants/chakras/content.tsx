@@ -213,7 +213,7 @@ export const chakraContent: Record<Chakra, Content> = {
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
-      title: "Connected To The Body",
+      title: "Connected To The Water",
       author: "Ethan",
       durationMs: 20400,
       source: require("@/assets/audio/root-ethan-1.mp3"),
@@ -244,7 +244,7 @@ export const chakraContent: Record<Chakra, Content> = {
         "Emotional flow, releasing stuck patterns, creativity, intimacy",
       realWorldEffect:
         "Emotions move instead of looping; creativity returns; tension in hips/lower belly softens.",
-      body: "Listen to this frequency when you need to release fear and guilt, and any shadows related to your survival of needing more. The 396 Hz frequency, known as the “Liberation Frequency,” can help you find your way back to a place of safety and stability within, allowing you to feel grounded and supported as you navigate life's challenges.",
+      body: "Listen to this frequency when emotional patterns feel stuck or numb. 417 Hz facilitates change and clears out destructive patterns from the past. This frequency supports you in releasing emotional blockages and embracing new possibilities.",
       tuningForkAudio: require("@/assets/audio/day1tuningfork.mp3"),
       crystalBowlAudio: require("@/assets/audio/day1singingbowl.mp3"),
     },
@@ -364,7 +364,7 @@ export const chakraContent: Record<Chakra, Content> = {
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
-      title: "Connected To The Sun",
+      title: "Connected To The Fire",
       author: "Ethan",
       durationMs: 20400,
       source: require("@/assets/audio/root-ethan-1.mp3"),
@@ -394,7 +394,7 @@ export const chakraContent: Record<Chakra, Content> = {
       helpsWith: "Confidence, digestion of stress, personal power, coherence",
       realWorldEffect:
         "Stronger sense of self, less self-doubt, clearer decision-making, reduced gut tension.",
-      body: "Listen to this frequency when you need to release fear and guilt, and any shadows related to your survival of needing more. The 396 Hz frequency, known as the “Liberation Frequency,” can help you find your way back to a place of safety and stability within, allowing you to feel grounded and supported as you navigate life's challenges.",
+      body: "Listen to this frequency when self-doubt or stress settles in the gut. 528 Hz brings transformation and miracles, repairing DNA and promoting healing. This frequency helps to restore balance and harmony within the body and mind. It is often used to clear negative energy and promote feelings of peace and well-being.",
       tuningForkAudio: require("@/assets/audio/day1tuningfork.mp3"),
       crystalBowlAudio: require("@/assets/audio/day1singingbowl.mp3"),
     },
@@ -514,7 +514,7 @@ export const chakraContent: Record<Chakra, Content> = {
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
-      title: "Connected To The Earth",
+      title: "Connected To The Air",
       author: "Ethan",
       durationMs: 20400,
       source: require("@/assets/audio/root-ethan-1.mp3"),
@@ -544,7 +544,7 @@ export const chakraContent: Record<Chakra, Content> = {
         "Connection, compassion, emotional regulation, relational healing",
       realWorldEffect:
         "Chest softens, breathing deepens, empathy increases without overwhelm.",
-      body: "Listen to this frequency when you need to release fear and guilt, and any shadows related to your survival of needing more. The 396 Hz frequency, known as the “Liberation Frequency,” can help you find your way back to a place of safety and stability within, allowing you to feel grounded and supported as you navigate life's challenges.",
+      body: "Listen to this frequency when the heart feels guarded or disconnected. 639 Hz invites love, connection, and harmonious relationships. This frequency helps to open the heart, heal emotional wounds, and foster compassion.",
       tuningForkAudio: require("@/assets/audio/day1tuningfork.mp3"),
       crystalBowlAudio: require("@/assets/audio/day1singingbowl.mp3"),
     },
@@ -661,7 +661,7 @@ export const chakraContent: Record<Chakra, Content> = {
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
-      title: "Connected To The Earth",
+      title: "Connected To The Ether",
       author: "Ethan",
       durationMs: 20400,
       source: require("@/assets/audio/root-ethan-1.mp3"),
@@ -691,7 +691,7 @@ export const chakraContent: Record<Chakra, Content> = {
       helpsWith: "Expression, honesty, clearing mental fog, boundary setting",
       realWorldEffect:
         "Easier speaking, clearer thoughts, less throat/neck tightness, stronger voice presence.",
-      body: "Listen to this frequency when you need to release fear and guilt, and any shadows related to your survival of needing more. The 396 Hz frequency, known as the “Liberation Frequency,” can help you find your way back to a place of safety and stability within, allowing you to feel grounded and supported as you navigate life's challenges.",
+      body: "Listen to this frequency when your truth feels stuck or your voice feels small. 741 Hz promotes expression, clear communication, and intuition. This frequency helps to release blockages, enhance articulation, and inspire creativity.",
       tuningForkAudio: require("@/assets/audio/day1tuningfork.mp3"),
       crystalBowlAudio: require("@/assets/audio/day1singingbowl.mp3"),
     },
@@ -813,7 +813,7 @@ export const chakraContent: Record<Chakra, Content> = {
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
-      title: "Connected To The Earth",
+      title: "Connected To The Light",
       author: "Ethan",
       durationMs: 20400,
       source: require("@/assets/audio/root-ethan-1.mp3"),
@@ -843,7 +843,7 @@ export const chakraContent: Record<Chakra, Content> = {
       helpsWith: "Perception, intuition, pattern recognition, mental clarity",
       realWorldEffect:
         "Reduced mental noise, clearer insight, easier focus without strain.",
-      body: "Listen to this frequency when you need to release fear and guilt, and any shadows related to your survival of needing more. The 396 Hz frequency, known as the “Liberation Frequency,” can help you find your way back to a place of safety and stability within, allowing you to feel grounded and supported as you navigate life's challenges.",
+      body: "Listen to this frequency when mental fog or overthinking clouds your vision. 852 Hz enhances intuition, wisdom, and spiritual connection. This frequency helps to clear mental fog, awaken the third eye, and connect with your higher self.",
       tuningForkAudio: require("@/assets/audio/day1tuningfork.mp3"),
       crystalBowlAudio: require("@/assets/audio/day1singingbowl.mp3"),
     },
@@ -964,7 +964,7 @@ export const chakraContent: Record<Chakra, Content> = {
       source: require("@/assets/audio/root-erin-1.mp3"), // Placeholder - actual audio from Firebase
     },
     audioOutro: {
-      title: "Connected To The Earth",
+      title: "Connected To Consciousness",
       author: "Ethan",
       durationMs: 20400,
       source: require("@/assets/audio/root-ethan-1.mp3"),
@@ -995,7 +995,7 @@ export const chakraContent: Record<Chakra, Content> = {
       helpsWith: "Unity awareness, peace, nervous-system coherence, surrender",
       realWorldEffect:
         "Deep calm, spacious awareness, reduced identity fixation, sense of wholeness.",
-      body: "Listen to this frequency when you need to release fear and guilt, and any shadows related to your survival of needing more. The 396 Hz frequency, known as the “Liberation Frequency,” can help you find your way back to a place of safety and stability within, allowing you to feel grounded and supported as you navigate life's challenges.",
+      body: "Listen to this frequency when you feel cut off from Source or deeper peace. 963 Hz promotes spiritual connection, enlightenment, and a sense of oneness with the universe. This frequency helps to activate the crown chakra and access higher states of consciousness.",
       tuningForkAudio: require("@/assets/audio/day1tuningfork.mp3"),
       crystalBowlAudio: require("@/assets/audio/day1singingbowl.mp3"),
     },
