@@ -1,4 +1,5 @@
 import {
+    bestResumeCandidateMs,
     bookmarkPositionToPersist,
     clampSeekMs,
     isPlaybackPositionRegression,
@@ -97,6 +98,23 @@ describe("player seek / duration", () => {
         expect(isPlaybackPositionRegression(120_000, 120_000, false)).toBe(false)
         expect(isPlaybackPositionRegression(0, 120_000, true)).toBe(false)
         expect(isPlaybackPositionRegression(0, 800, false)).toBe(false)
+    })
+
+    it("prefers a saved bookmark over a native store blip", () => {
+        expect(
+            bestResumeCandidateMs({
+                storeMs: 80,
+                bookmarkMs: 960_000,
+                lastPlaybackMs: 0,
+            }),
+        ).toBe(960_000)
+        expect(
+            bestResumeCandidateMs({
+                storeMs: 2_000,
+                bookmarkMs: 120_000,
+                lastPlaybackMs: 118_000,
+            }),
+        ).toBe(120_000)
     })
 
     it("persists the last real place, not a native 0 blip, on close", () => {

@@ -153,3 +153,20 @@ export function bookmarkPositionToPersist(opts: {
         opts.seekTargetMs || 0,
     )
 }
+
+/**
+ * Resume candidate when store may hold a native 0–2s blip while AsyncStorage
+ * still has the real mid-track place.
+ */
+export function bestResumeCandidateMs(opts: {
+    storeMs?: number
+    bookmarkMs?: number
+    lastPlaybackMs?: number
+}): number {
+    return Math.max(
+        0,
+        opts.storeMs ?? 0,
+        opts.bookmarkMs ?? 0,
+        opts.lastPlaybackMs ?? 0,
+    )
+}

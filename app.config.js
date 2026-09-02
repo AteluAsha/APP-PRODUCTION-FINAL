@@ -81,8 +81,8 @@ module.exports = {
           "Awakening Soul uses your photo library so you can choose a profile picture.",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // Keep in lockstep with Android 1.1.27 / versionCode 36.
-      buildNumber: "36",
+      // Keep in lockstep with Android 1.1.27 / versionCode 37.
+      buildNumber: "37",
     },
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android
@@ -103,8 +103,8 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
-      // User-facing 1.1.27. Production AAB versionCode 36 (appVersionSource: local).
-      versionCode: 36,
+      // User-facing 1.1.27. Production AAB versionCode 37 (appVersionSource: local).
+      versionCode: 37,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
         "RECORD_AUDIO",

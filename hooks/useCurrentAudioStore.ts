@@ -108,11 +108,11 @@ interface CurrentAudioStore {
     rest: PlaylistItem[],
     trackKey?: string,
   ) => void
-  /** Frequency of Gnosis — all 28 tracks; source on active item must be resolved before call. */
+  /** Frequency of Gnosis — all 28 tracks. Source may be null while vault catches up. */
   setMusicRoomPlaylist: (
     items: PlaylistItem[],
     startIndex: number,
-    activeSource: AVPlaybackSource,
+    activeSource: AVPlaybackSource | null,
   ) => void
   applyMusicRoomTrack: (
     index: number,

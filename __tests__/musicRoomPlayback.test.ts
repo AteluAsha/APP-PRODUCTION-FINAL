@@ -11,6 +11,12 @@ describe('music-room playback (Audio Library only)', () => {
         expect(src).toContain('enqueueMusicRoomSwitch')
         expect(src).toContain('setFullScreenPlayerMounted(true)')
         expect(src).toContain('notifyRushedTrackPlaying(audioId)')
+        expect(src).toContain('setMusicRoomPlaylist(items, startIndex, source)')
+        const openFn = src.slice(
+            src.indexOf('export async function openMusicRoomAtIndex'),
+            src.indexOf('export async function switchMusicRoomTrack'),
+        )
+        expect(openFn).not.toContain('if (!source) return false')
     })
 
     it('Audio Library counts vault-ready tracks for offline header', () => {
@@ -48,6 +54,8 @@ describe('music-room playback (Audio Library only)', () => {
         expect(src.indexOf('handleMusicRoomSwipeNext')).toBeLessThan(hooksMarker)
         expect(src.indexOf('musicRoomSwipeGesture')).toBeLessThan(hooksMarker)
         expect(src).not.toContain('closeMusicRoomPlayer({ navigate: false })')
+        expect(src).toContain('isMusicRoom')
+        expect(src).toContain('applyMusicRoomTrack')
     })
 
     it('MusicRoomTrackButton never shows downloading when vault-ready', () => {

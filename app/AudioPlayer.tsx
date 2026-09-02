@@ -67,6 +67,7 @@ import {
 import { peekPlayableVaultUri } from "@/src/utils/sanctuaryAudioVault"
 import { toAbsoluteFileUri } from "@/src/utils/crystalBowlPlayback"
 import {
+  bestResumeCandidateMs,
   clampSeekMs,
   isPlaybackPositionRegression,
   nativeSeekLanded,
@@ -326,17 +327,27 @@ const AudioPlayer = () => {
   useEffect(() => {
     if (source) return
     if (closingRef.current) return
-    const id = fullPlayerTrackId
-    if (!id) return
     const st = useCurrentAudioStore.getState()
-    if (st.audioOrigin !== "full-player") return
-    if (!st.metadata || !st.prefs) return
+    const isFullPlayer = st.audioOrigin === "full-player"
+    const isMusicRoom = st.audioOrigin === "music-room"
+    if (!isFullPlayer && !isMusicRoom) return
+    const id = isMusicRoom
+      ? (st.musicRoomPlaylist?.[st.musicRoomIndex]?.audioId ??
+        st.fullPlayerTrackId)
+      : fullPlayerTrackId
+    if (!id) return
+    if (isFullPlayer && (!st.metadata || !st.prefs)) return
 
     let cancelled = false
     const poll = async () => {
       while (!cancelled && !closingRef.current) {
         const live = useCurrentAudioStore.getState()
-        if (live.source || live.fullPlayerTrackId !== id) return
+        if (live.source) return
+        const liveId = isMusicRoom
+          ? (live.musicRoomPlaylist?.[live.musicRoomIndex]?.audioId ??
+            live.fullPlayerTrackId)
+          : live.fullPlayerTrackId
+        if (liveId !== id) return
         const speed = getVaultDownloadSpeedBps()
         const uri =
           (await peekSanctuaryTrack(id)) ??
@@ -347,6 +358,12 @@ const AudioPlayer = () => {
           }))
         if (cancelled || closingRef.current) return
         if (uri) {
+          if (isMusicRoom) {
+            live.applyMusicRoomTrack(live.musicRoomIndex, {
+              uri: toAbsoluteFileUri(uri),
+            })
+            return
+          }
           clearVaultAutoPlayback(id)
           const bookmark = await loadBookmarkPositionMs(id)
           const cached = useEmbodimentDurationCacheStore.getState().getDuration(id)
@@ -369,7 +386,7 @@ const AudioPlayer = () => {
     return () => {
       cancelled = true
     }
-  }, [source, fullPlayerTrackId, metadata, prefs])
+  }, [source, fullPlayerTrackId, metadata, prefs, audioOrigin])
 
   const vaultTrackComplete = useSanctuaryVaultStore((s) =>
     fullPlayerTrackId ? s.readyIds[fullPlayerTrackId] === true : false,
@@ -388,16 +405,34 @@ const AudioPlayer = () => {
     void (async () => {
       const finalUri = await peekSanctuaryTrack(fullPlayerTrackId)
       if (cancelled || !finalUri) return
-      const pos = Math.max(
-        lastPlaybackPositionMsRef.current,
-        useCurrentAudioStore.getState().positionMs,
-      )
+      const id = fullPlayerTrackId
+      const bookmark = await loadBookmarkPositionMs(id)
+      const cached = useEmbodimentDurationCacheStore.getState().getDuration(id)
       const st = useCurrentAudioStore.getState()
+      const candidate = bestResumeCandidateMs({
+        storeMs: st.positionMs,
+        bookmarkMs: bookmark,
+        lastPlaybackMs: lastPlaybackPositionMsRef.current,
+      })
+      const durationForResume = resolvePlaybackDurationMs({
+        catalogDurationMs: st.metadata?.durationMs ?? 0,
+        fileDurationMs: cached,
+        bookmarkMs: candidate,
+        positionMs: candidate,
+      })
+      const resumeAt = resumePositionMs(candidate, durationForResume)
+      if (st.audioOrigin === "music-room") {
+        st.applyMusicRoomTrack(st.musicRoomIndex, {
+          uri: toAbsoluteFileUri(finalUri),
+        })
+        if (resumeAt > 0) st.setPositionMs(resumeAt)
+        return
+      }
       st.setSource(
         { uri: toAbsoluteFileUri(finalUri) },
         "full-player",
         {
-          resumePositionMs: pos,
+          resumePositionMs: resumeAt,
           fullPlayerTrackId: st.fullPlayerTrackId,
         },
       )
@@ -725,22 +760,24 @@ const AudioPlayer = () => {
             : undefined
         const saved =
           trackId != null ? await loadBookmarkPositionMs(trackId) : undefined
+        const candidate = bestResumeCandidateMs({
+          storeMs: state.positionMs,
+          bookmarkMs: saved,
+          lastPlaybackMs: lastPlaybackPositionMsRef.current,
+        })
         const usableDuration = resolvePlaybackDurationMs({
           fileDurationMs: fileMs || cachedDuration,
           catalogDurationMs: catalogMs,
-          bookmarkMs: saved,
-          positionMs: Math.max(state.positionMs, saved ?? 0),
+          bookmarkMs: candidate,
+          positionMs: candidate,
         })
         if (usableDuration > 0) {
           setDuration(usableDuration)
         }
-        let resumeAt = resumePositionMs(
-          state.positionMs > 0 ? state.positionMs : undefined,
+        const resumeAt = resumePositionMs(
+          candidate > 0 ? candidate : undefined,
           usableDuration > 0 ? usableDuration : catalogMs,
         )
-        if (resumeAt <= 0 && saved) {
-          resumeAt = resumePositionMs(saved, usableDuration > 0 ? usableDuration : catalogMs)
-        }
         if (abandoned()) {
           await silenceAllAudio()
           return
@@ -999,9 +1036,17 @@ const AudioPlayer = () => {
           if (Platform.OS === "android") {
             await waitForSoundReadyForSeek(active)
           }
-          const wasPlaying = !!st.isPlaying
+          const wantPlaying =
+            !!st.isPlaying || useCurrentAudioStore.getState().isPlaying
           await active.setPositionAsync(known)
-          if (wasPlaying) {
+          let nativePlaying = false
+          try {
+            const after = await active.getStatusAsync()
+            nativePlaying = after.isLoaded && !!after.isPlaying
+          } catch {
+            nativePlaying = false
+          }
+          if (wantPlaying && !nativePlaying) {
             await active.playAsync()
             setIsPlaying(true)
             setPlaying(true)
@@ -1088,13 +1133,12 @@ const AudioPlayer = () => {
     const runInit = async () => {
       if (sourceChanged) {
         const id = useCurrentAudioStore.getState().fullPlayerTrackId
-        let resumePos = useCurrentAudioStore.getState().positionMs
-        if (resumePos <= 0 && id) {
-          const saved = await loadBookmarkPositionMs(id)
-          if (saved != null && saved > 0) {
-            resumePos = saved
-          }
-        }
+        const saved = id ? await loadBookmarkPositionMs(id) : undefined
+        const resumePos = bestResumeCandidateMs({
+          storeMs: useCurrentAudioStore.getState().positionMs,
+          bookmarkMs: saved,
+          lastPlaybackMs: lastPlaybackPositionMsRef.current,
+        })
         if (resumePos > 0) {
           lastPlaybackPositionMsRef.current = resumePos
           setPosition(resumePos)

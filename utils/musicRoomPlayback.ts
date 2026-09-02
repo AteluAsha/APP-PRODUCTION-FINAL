@@ -85,7 +85,6 @@ export async function openMusicRoomAtIndex(startIndex: number): Promise<boolean>
     const def = defs[startIndex]
     addHapticFeedback(HapticStrength.Light)
     const source = await resolveMusicRoomSource(def.audioId, def.durationMs)
-    if (!source) return false
 
     const items = musicRoomDefsToPlaylistItems(defs)
     await silenceAllAudio()

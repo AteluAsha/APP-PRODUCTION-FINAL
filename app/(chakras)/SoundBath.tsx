@@ -289,6 +289,7 @@ const SoundBath = () => {
       const uri = await peekSanctuaryTrack(audioId)
       if (!uri) {
         rushSanctuaryTrack(audioId)
+        showHealingToast("gatheringPresence")
         return
       }
       const sound = await createSoundAsyncOffUiThread(
