@@ -14,6 +14,14 @@ if (
     cwd.includes('eas-build-local-nodejs') ||
     workdir.includes('eas-build-local-nodejs')
 ) {
+    const fs = require('fs')
+    const path = require('path')
+    const dest = path.join(cwd, 'google-services.json')
+    const src = process.env.GOOGLE_SERVICES_JSON
+    if (!fs.existsSync(dest) && src && fs.existsSync(src)) {
+        fs.copyFileSync(src, dest)
+        console.log('[eas-build-pre-install] copied google-services.json for local prebuild')
+    }
     console.log('[eas-build-pre-install] local build — skip global npm upgrade')
     process.exit(0)
 }

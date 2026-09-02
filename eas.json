@@ -49,7 +49,8 @@
         "ANDROID_HOME": "/Users/erindinsmore/Library/Android/sdk",
         "ANDROID_SDK_ROOT": "/Users/erindinsmore/Library/Android/sdk",
         "ANDROID_NDK_HOME": "/Users/erindinsmore/Library/Android/sdk/ndk/27.1.12297006",
-        "NPM_CONFIG_CACHE": "/Users/erindinsmore/.npm-eas-local"
+        "NPM_CONFIG_CACHE": "/Users/erindinsmore/.npm-eas-local",
+        "GOOGLE_SERVICES_JSON": "/Users/erindinsmore/Desktop/7chakras7days_app/google-services.json"
       }
     }
   },

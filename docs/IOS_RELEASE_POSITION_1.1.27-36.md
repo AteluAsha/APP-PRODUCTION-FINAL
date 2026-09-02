@@ -47,4 +47,9 @@ No new iOS build required unless further code changes after `7345912`.
 
 - `d6976fee-196e-4808-abdc-d6db96b3cacf`
 - `3ca44fea-47cb-4022-872d-2ae8500e77e7`
+- `165e6beb-1f85-4099-bb53-3978802b9e89`
+- `abb2e4eb-9131-4e19-85e0-e4a95cda04db`
+- `ec79a88f-3fd9-4504-9f30-8ccb33657e78`
 - `c1a05f91-e2e6-489a-9f5f-babe60669aa9`
+
+**Do not rebuild iOS** unless code changes after `7345912`. Android production AAB for the same version is `1.1.27` / versionCode **36**.
