@@ -44,6 +44,11 @@ app-example
 
 # build artifacts
 *.apk
+*.aab
+build-artifacts/
+
+# Pre-compression asset backup – never commit; excluded from EAS via .easignore
+android/_backups/
 
 # backup/old code folders - exclude from all builds and git
 7-chakras-master-path/
