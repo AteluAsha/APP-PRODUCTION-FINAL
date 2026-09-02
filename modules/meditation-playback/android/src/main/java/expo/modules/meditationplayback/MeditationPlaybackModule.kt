@@ -11,11 +11,11 @@ class MeditationPlaybackModule : Module() {
     Name("MeditationPlayback")
 
     Function("start") { title: String, artist: String ->
-      val context = appContext.reactContext?.applicationContext ?: return@Function
+      val context = appContext.reactContext?.applicationContext ?: return@Function null
       if (Build.VERSION.SDK_INT >= 33) {
         val manager = context.getSystemService(NotificationManager::class.java)
         if (manager != null && !manager.areNotificationsEnabled()) {
-          return@Function
+          return@Function null
         }
       }
       val intent = Intent(context, MeditationPlaybackService::class.java).apply {
@@ -34,7 +34,7 @@ class MeditationPlaybackModule : Module() {
     }
 
     Function("stop") {
-      val context = appContext.reactContext?.applicationContext ?: return@Function
+      val context = appContext.reactContext?.applicationContext ?: return@Function null
       val intent = Intent(context, MeditationPlaybackService::class.java).apply {
         action = MeditationPlaybackService.ACTION_STOP
       }
