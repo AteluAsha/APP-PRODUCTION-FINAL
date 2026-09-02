@@ -68,8 +68,11 @@ import { peekPlayableVaultUri } from "@/src/utils/sanctuaryAudioVault"
 import { toAbsoluteFileUri } from "@/src/utils/crystalBowlPlayback"
 import {
   bestResumeCandidateMs,
+  bookmarkPositionToPersist,
   clampSeekMs,
+  commitPlaybackDurationMs,
   isPlaybackPositionRegression,
+  isStubNativeDuration,
   nativeSeekLanded,
   resolvePlaybackDurationMs,
   resumePositionMs,
@@ -281,6 +284,16 @@ const AudioPlayer = () => {
     closingRef.current = false
     allowLeaveRef.current = false
     fileDurationMsRef.current = 0
+    const cached =
+      useEmbodimentDurationCacheStore.getState().getDuration(fullPlayerTrackId)
+    const catalog =
+      useCurrentAudioStore.getState().metadata?.durationMs ?? 0
+    setDuration(
+      resolvePlaybackDurationMs({
+        fileDurationMs: cached,
+        catalogDurationMs: catalog,
+      }),
+    )
     const stored = useCurrentAudioStore.getState().positionMs
     if (stored > 0) {
       lastPlaybackPositionMsRef.current = stored
@@ -445,10 +458,21 @@ const AudioPlayer = () => {
   // Sync duration from metadata when we have source so progress bar shows total even before first status (e.g. Android durationMillis delay)
   useEffect(() => {
     if (!source || !metadata?.durationMs) return
+    const trackId = useCurrentAudioStore.getState().fullPlayerTrackId
+    const cached =
+      trackId != null
+        ? useEmbodimentDurationCacheStore.getState().getDuration(trackId)
+        : undefined
     setDuration((prev) =>
-      metadata.durationMs && metadata.durationMs > 0 && prev === 0
-        ? metadata.durationMs
-        : prev,
+      commitPlaybackDurationMs({
+        currentMs: prev,
+        nextMs: resolvePlaybackDurationMs({
+          fileDurationMs: fileDurationMsRef.current || cached,
+          catalogDurationMs: metadata.durationMs,
+        }),
+        fileDurationMs: fileDurationMsRef.current || cached || 0,
+        catalogDurationMs: metadata.durationMs,
+      }),
     )
   }, [source, metadata?.durationMs])
 
@@ -471,9 +495,7 @@ const AudioPlayer = () => {
       setPositionMs(clamped)
       reportFullPlayerPosition(clamped)
       try {
-        if (Platform.OS === "android") {
-          await waitForSoundReadyForSeek(active)
-        }
+        await waitForSoundReadyForSeek(active)
         let nativePlaying = false
         try {
           const before = await active.getStatusAsync()
@@ -562,20 +584,33 @@ const AudioPlayer = () => {
         if (shouldUpdateProgress) {
           if (isFirstStatus) {
             hasAppliedFirstStatusRef.current = true
-            if (duration > 0) {
-              const cacheKey =
-                useEmbodimentDurationCacheStore.getState()
-                  .embodimentDurationCacheKey
-              if (cacheKey) {
-                useEmbodimentDurationCacheStore.getState().setDuration(cacheKey, duration)
-                useEmbodimentDurationCacheStore.getState().clearEmbodimentDurationCacheKey()
-              }
-            }
+          }
+          const trackId = useCurrentAudioStore.getState().fullPlayerTrackId
+          if (
+            fileMs > 0 &&
+            !isStubNativeDuration(fileMs, metaMs) &&
+            trackId
+          ) {
+            useEmbodimentDurationCacheStore.getState().setDuration(trackId, fileMs)
+          }
+          const cacheKey =
+            useEmbodimentDurationCacheStore.getState()
+              .embodimentDurationCacheKey
+          if (cacheKey && fileMs > 0 && !isStubNativeDuration(fileMs, metaMs)) {
+            useEmbodimentDurationCacheStore.getState().setDuration(cacheKey, fileMs)
+            useEmbodimentDurationCacheStore.getState().clearEmbodimentDurationCacheKey()
           }
           lastStatusUpdateTimeRef.current = now
           setPosition(status.positionMillis)
           setPositionMs(status.positionMillis)
-          setDuration(duration)
+          setDuration((prev) =>
+            commitPlaybackDurationMs({
+              currentMs: prev,
+              nextMs: duration,
+              fileDurationMs: fileMs,
+              catalogDurationMs: metaMs,
+            }),
+          )
         }
 
         if (status.didJustFinish) {
@@ -601,7 +636,6 @@ const AudioPlayer = () => {
         if (playing && status.positionMillis > 0) {
           const stStore = useCurrentAudioStore.getState()
           if (
-            stStore.audioOrigin === "full-player" &&
             stStore.fullPlayerTrackId != null &&
             stStore.fullPlayerTrackId.length > 0
           ) {
@@ -772,7 +806,17 @@ const AudioPlayer = () => {
           positionMs: candidate,
         })
         if (usableDuration > 0) {
-          setDuration(usableDuration)
+          if (fileMs > 0 && !isStubNativeDuration(fileMs, catalogMs) && trackId) {
+            useEmbodimentDurationCacheStore.getState().setDuration(trackId, fileMs)
+          }
+          setDuration((prev) =>
+            commitPlaybackDurationMs({
+              currentMs: prev,
+              nextMs: usableDuration,
+              fileDurationMs: fileMs || cachedDuration || 0,
+              catalogDurationMs: catalogMs,
+            }),
+          )
         }
         const resumeAt = resumePositionMs(
           candidate > 0 ? candidate : undefined,
@@ -789,9 +833,7 @@ const AudioPlayer = () => {
           )
           seekingUntilRef.current = Date.now() + 6000
           seekTargetMsRef.current = clamped
-          if (Platform.OS === "android") {
-            await waitForSoundReadyForSeek(sound)
-          }
+          await waitForSoundReadyForSeek(sound)
           await sound.setPositionAsync(clamped)
           lastPlaybackPositionMsRef.current = clamped
           setPosition(clamped)
@@ -921,6 +963,16 @@ const AudioPlayer = () => {
     setIsLoading(false)
     isLoadedRef.current = false
     if (storeSnapshot.audioOrigin === "music-room") {
+      const id =
+        storeSnapshot.fullPlayerTrackId ??
+        storeSnapshot.musicRoomPlaylist?.[storeSnapshot.musicRoomIndex]
+          ?.audioId
+      const pos = bookmarkPositionToPersist({
+        lastPlaybackMs: lastPlaybackPositionMsRef.current,
+        storeMs: storeSnapshot.positionMs,
+        seekTargetMs: seekTargetMsRef.current,
+      })
+      await saveAudioBookmark(id, pos)
       storeSnapshot.setPlaying(false)
       storeSnapshot.setFullScreenPlayerMounted(false)
       return
@@ -1033,9 +1085,7 @@ const AudioPlayer = () => {
           lastPlaybackPositionMsRef.current = known
           setPosition(known)
           setPositionMs(known)
-          if (Platform.OS === "android") {
-            await waitForSoundReadyForSeek(active)
-          }
+          await waitForSoundReadyForSeek(active)
           const wantPlaying =
             !!st.isPlaying || useCurrentAudioStore.getState().isPlaying
           await active.setPositionAsync(known)
@@ -1162,7 +1212,16 @@ const AudioPlayer = () => {
               setPosition(status.positionMillis)
               if (status.durationMillis) {
                 fileDurationMsRef.current = status.durationMillis
-                setDuration(status.durationMillis)
+                const catalogMs =
+                  useCurrentAudioStore.getState().metadata?.durationMs ?? 0
+                setDuration((prev) =>
+                  commitPlaybackDurationMs({
+                    currentMs: prev,
+                    nextMs: status.durationMillis,
+                    fileDurationMs: status.durationMillis,
+                    catalogDurationMs: catalogMs,
+                  }),
+                )
               }
             }
           } catch (e) {

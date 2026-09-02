@@ -1,7 +1,7 @@
 /**
  * Drop In – somatic entrance to the chakra of the day with tuning fork sound.
- * App2 only. Shows headset icon + "Drop In"; plays tuning fork in-place, toggles to
- * pause while playing, auto-resets when finished.
+ * App2 only. Inline chime, no slider: tap plays from the start, tap again
+ * unloads (does not resume mid-tone), auto-resets when finished.
  * One-audio rule: before playing, resets store and waits so other managers unload;
  * when store gets a source (music-room or other), stops so only one playback path is active.
  */
@@ -169,7 +169,9 @@ export function DropInButton({
       disabled={disabled || isPreparing}
       accessibilityLabel="Drop in with tuning fork"
       accessibilityHint={
-        isPlaying ? "Pause tuning fork sound" : "Plays tuning fork sound for this chakra"
+        isPlaying
+          ? "Stops the tuning fork. Next tap starts from the beginning"
+          : "Plays tuning fork sound for this chakra from the beginning"
       }
       style={{
         minWidth,

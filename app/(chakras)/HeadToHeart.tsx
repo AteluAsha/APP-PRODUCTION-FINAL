@@ -17,7 +17,6 @@ import {
   useAncestralWisdomAudio,
   getHeadToHeartAudioId,
 } from "@/hooks/useAncestralWisdomAudio"
-import { prepareLongAudioForPlay } from "@/src/utils/crystalBowlPlayback"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { getDayFromChakra } from "@/utils/chakraMapping"
 import ParallaxScrollView from "@/components/ParallaxScrollView"
@@ -45,7 +44,7 @@ const HeadToHeart = () => {
   const chakra = isValidChakra(chakraParam) ? chakraParam : Chakra.ROOT
   const chakraContentEntry = chakraContent[chakra]
   const content = chakraContentEntry.headtoheart
-  const { source, url, localUri } = useAncestralWisdomAudio(chakra)
+  useAncestralWisdomAudio(chakra)
 
   if (hasChakraQuery && !isValidChakra(chakraParam)) return null
 
@@ -106,26 +105,11 @@ const HeadToHeart = () => {
             title={content.audio.title}
             author={content.audio.author}
             durationMs={content.audio.duration}
-            audioSource={source ?? { uri: "" }}
             authorColor={content.audio.authorColor}
             isIntroAudio={false}
             chakraColor={getChakraColor(getDayFromChakra(chakra))}
             disabled={false}
             embodimentCacheKey={getHeadToHeartAudioId(chakra)}
-            getAudioSource={async () =>
-              prepareLongAudioForPlay(
-                {
-                  url: url ?? null,
-                  localUri: localUri ?? null,
-                  audioId: getHeadToHeartAudioId(chakra),
-                  fallback: { uri: localUri ?? url ?? "" },
-                },
-                {
-                  requireFullDownload: true,
-                  allowStreamingFallback: false,
-                },
-              )
-            }
           />
 
           <View style={{ marginHorizontal: 20, marginTop: 8 }}>

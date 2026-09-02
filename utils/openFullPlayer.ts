@@ -3,7 +3,6 @@ import { useCurrentAudioStore } from '@/hooks/useCurrentAudioStore'
 import { silenceAllAudio } from '@/src/utils/singleActiveSound'
 import { saveAudioBookmark } from '@/utils/audioBookmark'
 import { bookmarkPositionToPersist } from '@/src/utils/playerControls'
-import { playSanctuaryTrack } from '@/utils/sanctuaryPlayback'
 import { clearVaultAutoPlayback } from '@/src/services/vaultAutoPlayback'
 
 export type { VaultPlaybackRequest } from '@/src/services/vaultAutoPlayback'
@@ -79,19 +78,4 @@ export async function closeFullPlayerAndLeave(opts?: {
             fullPlayerClosing = false
         }, 800)
     }
-}
-
-/** All vault rows — same path as course master meditations. */
-export async function requestVaultPlayback(
-    opts: import('@/src/services/vaultAutoPlayback').VaultPlaybackRequest,
-): Promise<boolean> {
-    await playSanctuaryTrack(opts)
-    return true
-}
-
-/** @deprecated use requestVaultPlayback */
-export function openFullPlayerForVaultTrack(
-    opts: import('@/src/services/vaultAutoPlayback').VaultPlaybackRequest,
-): void {
-    void requestVaultPlayback(opts)
 }

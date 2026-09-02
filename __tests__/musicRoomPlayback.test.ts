@@ -54,6 +54,11 @@ describe('music-room playback (Audio Library only)', () => {
         expect(src.indexOf('handleMusicRoomSwipeNext')).toBeLessThan(hooksMarker)
         expect(src.indexOf('musicRoomSwipeGesture')).toBeLessThan(hooksMarker)
         expect(src).not.toContain('closeMusicRoomPlayer({ navigate: false })')
+        const close = fs.readFileSync(
+            path.join(__dirname, '..', 'utils/musicRoomPlayback.ts'),
+            'utf8',
+        )
+        expect(close).toContain('saveAudioBookmark')
         expect(src).toContain('isMusicRoom')
         expect(src).toContain('applyMusicRoomTrack')
     })

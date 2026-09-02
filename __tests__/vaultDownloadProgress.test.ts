@@ -176,12 +176,18 @@ describe("progressive vault playback", () => {
         expect(src).not.toMatch(/useSanctuaryVaultStore\(\(s\) => s\.bytesWritten\)/)
     })
 
-    it("openFullPlayer delegates to unified sanctuary playback", () => {
+    it("openFullPlayer only closes; playSanctuaryTrack owns navigation", () => {
         const src = fs.readFileSync(
             path.join(__dirname, "..", "utils/openFullPlayer.ts"),
             "utf8",
         )
-        expect(src).toContain("playSanctuaryTrack")
+        expect(src).toContain("closeFullPlayerAndLeave")
+        expect(src).not.toContain("playSanctuaryTrack")
+        const play = fs.readFileSync(
+            path.join(__dirname, "..", "utils/sanctuaryPlayback.ts"),
+            "utf8",
+        )
+        expect(play).toContain("playSanctuaryTrack")
         const auto = fs.readFileSync(
             path.join(__dirname, "..", "src/services/vaultAutoPlayback.ts"),
             "utf8",
@@ -273,6 +279,10 @@ describe("tuning fork and crystal bowl first tap", () => {
         expect(src).toContain("keepPlayingInBackground: true")
         expect(src).not.toContain("keepPlayingInBackground: false")
         expect(src).toContain("AppState.currentState")
+        expect(src).not.toContain("handleTuningForkSeek")
+        expect(src).toContain(
+            "pause/play must restart the chime from 0, not resume mid-tone",
+        )
     })
 
     it("Drop In rushes incomplete audio instead of blocking the first tap", () => {

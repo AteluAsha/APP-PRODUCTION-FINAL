@@ -285,6 +285,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
       return
     }
     const item = musicRoomPlaylist[index]
+    const sameTrack = item.audioId != null && item.audioId === get().fullPlayerTrackId
     set({
       source: activeSource,
       metadata: item.metadata,
@@ -292,7 +293,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
       musicRoomIndex: index,
       currentTrackKey: item.trackKey ?? `library_${index}`,
       chakraColor: item.chakraColor ?? null,
-      positionMs: 0,
+      ...(sameTrack ? {} : { positionMs: 0 }),
       isPlaying: true,
       fullPlayerTrackId: item.audioId ?? null,
     })

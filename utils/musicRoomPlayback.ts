@@ -19,6 +19,7 @@ import { peekPlayableVaultUri } from '@/src/utils/sanctuaryAudioVault'
 import { toAbsoluteFileUri } from '@/src/utils/crystalBowlPlayback'
 import { silenceAllAudio } from '@/src/utils/singleActiveSound'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
+import { saveAudioBookmark } from '@/utils/audioBookmark'
 
 export function musicRoomDefsToPlaylistItems(
     defs: MusicRoomTrackDef[] = MUSIC_ROOM_TRACK_DEFS,
@@ -160,9 +161,12 @@ export async function closeMusicRoomPlayer(options?: {
     musicRoomClosing = true
     musicRoomSwitchSeq += 1
     try {
-        const returnPath =
-            useCurrentAudioStore.getState().playerReturnPath ??
-            '/(chakras)/AudioLibrary'
+        const store = useCurrentAudioStore.getState()
+        const returnPath = store.playerReturnPath ?? '/(chakras)/AudioLibrary'
+        const id =
+            store.fullPlayerTrackId ??
+            store.musicRoomPlaylist?.[store.musicRoomIndex]?.audioId
+        await saveAudioBookmark(id, store.positionMs)
         await silenceAllAudio()
         useCurrentAudioStore.getState().reset()
         useCurrentAudioStore.getState().setFullScreenPlayerMounted(false)

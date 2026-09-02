@@ -101,11 +101,6 @@ const LEGACY_IDS = [
   'trial-sunday-earth-cycle',
 ] as const
 
-/** @deprecated Waiting rooms retired — kept for call-site compatibility. */
-export function isLifetimePreCourseWaitingRoomSync(): boolean {
-  return false
-}
-
 function shouldReceiveHeartReminders(): boolean {
   const s = useChakraJourneyStore.getState()
   return s.hasLifetimeAccess || !!s.courseStartDate
@@ -319,41 +314,6 @@ export async function cancelAllSoulJourneyScheduled(): Promise<void> {
   await cancelByPrefix(DAILY_ALIGN_PREFIX)
 }
 
-/** @deprecated Legacy export — use syncWeeklyHeartReminders. */
-export async function schedulePreCourseNudges(
-  _signupDateISO: string,
-  _courseStartDateISO: string,
-): Promise<void> {
-  await syncWeeklyHeartReminders()
-}
-
-/** @deprecated Legacy export — use syncWeeklyHeartReminders. */
-export async function scheduleHorizonNudges(
-  _courseStartDateISO: string,
-): Promise<void> {
-  await syncWeeklyHeartReminders()
-}
-
-/** @deprecated Legacy export — use syncWeeklyHeartReminders. */
-export async function scheduleDailyChakraPulse(): Promise<void> {
-  await syncWeeklyHeartReminders()
-}
-
-/** @deprecated Legacy export — use syncWeeklyHeartReminders. */
-export async function syncSporadicWisdomNotifications(): Promise<void> {
-  await syncWeeklyHeartReminders()
-}
-
-/** @deprecated Legacy export — use syncWeeklyHeartReminders. */
-export async function syncLifetimeSustenanceNotifications(): Promise<void> {
-  await syncWeeklyHeartReminders()
-}
-
-/** @deprecated Legacy export — use syncWeeklyHeartReminders. */
-export async function syncEngagementNotifications(): Promise<void> {
-  await syncWeeklyHeartReminders()
-}
-
 export async function onJourneyWeekStarted(): Promise<void> {
   await cancelPreCourseNudges()
   await syncWeeklyHeartReminders()
@@ -364,25 +324,6 @@ export async function scheduleSoulJourneyAfterPermission(
   _courseStartDateISO: string,
 ): Promise<void> {
   await syncWeeklyHeartReminders()
-}
-
-/** @deprecated Prefer scheduleSoulJourneyAfterPermission when signup date is known. */
-export async function scheduleJourneyReminders(
-  courseStartDateISO: string,
-): Promise<void> {
-  if (!areSoulJourneyNudgesEnabled()) return
-  const signup =
-    useChakraJourneyStore.getState().initialOpenDate ?? courseStartDateISO
-  const hasPermission = await requestNotificationPermissions()
-  if (!hasPermission) {
-    if (__DEV__) {
-      console.log(
-        '[JourneyNotifications] Permission not granted, skipping reminders',
-      )
-    }
-    return
-  }
-  await scheduleSoulJourneyAfterPermission(signup, courseStartDateISO)
 }
 
 export async function scheduleWaitingRoomNudgesIfPermitted(): Promise<void> {

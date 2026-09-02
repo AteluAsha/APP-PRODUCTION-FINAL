@@ -100,8 +100,6 @@ type VaultStore = {
     progressByAudioId: Record<string, { bytesWritten: number; bytesTotal: number }>
     status: VaultDownloadStatus
     rushedAudioId: string | null
-    showFirstLoadNotice: boolean
-    notifyWhenReady: boolean
     readyIds: Record<string, boolean>
 }
 
@@ -114,8 +112,6 @@ export const useSanctuaryVaultStore = create<VaultStore>(() => ({
     progressByAudioId: {},
     status: 'idle',
     rushedAudioId: null,
-    showFirstLoadNotice: false,
-    notifyWhenReady: false,
     readyIds: {},
 }))
 
@@ -234,8 +230,6 @@ function releaseRushLock(): void {
     rushPlaybackStarted = false
     useSanctuaryVaultStore.setState({
         rushedAudioId: null,
-        showFirstLoadNotice: false,
-        notifyWhenReady: false,
     })
 }
 
@@ -523,7 +517,6 @@ async function commitPartToVault(
     await refreshMissingCount()
     networkBackoffMs = RETRY_PAUSE_MS
     if (rushedAudioId === track.audioId) {
-        useSanctuaryVaultStore.setState({ showFirstLoadNotice: false })
         if (rushPlaybackStarted) {
             releaseRushLock()
             if (!queueRunning) startSanctuaryVaultSync()
@@ -905,7 +898,6 @@ export function rushSanctuaryTrack(audioIdOrFilename: string): void {
     useSanctuaryVaultStore.setState({
         downloadingAudioId: track.audioId,
         rushedAudioId: track.audioId,
-        showFirstLoadNotice: false,
         status: 'downloading',
     })
 

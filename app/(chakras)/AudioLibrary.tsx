@@ -206,7 +206,6 @@ const AudioLibrary = () => {
   const vaultDownloadingId = useSanctuaryVaultStore((s) => s.downloadingAudioId)
   const vaultRushedId = useSanctuaryVaultStore((s) => s.rushedAudioId)
   const [isDownloadingAll, setIsDownloadingAll] = useState(false)
-  const [downloadAllLastError, setDownloadAllLastError] = useState<string | null>(null)
   const [downloadAllProgress, setDownloadAllProgress] = useState<{
     current: number
     total: number
@@ -430,7 +429,6 @@ const AudioLibrary = () => {
     addHapticFeedback(HapticStrength.Light)
     showHealingToast("downloadAll")
     if (downloadAllMountedRef.current) {
-      setDownloadAllLastError(null)
       setIsDownloadingAll(true)
       setDownloadAllProgress({
         current: offlineCount,
@@ -604,7 +602,6 @@ const AudioLibrary = () => {
             offlineCount={offlineCount}
             isDownloadingAll={isDownloadingAll}
             downloadProgress={downloadAllProgress}
-            downloadError={downloadAllLastError}
             hideDownloads={hideSanctuaryDownloads}
             onDownloadAll={handleDownloadAll}
           />

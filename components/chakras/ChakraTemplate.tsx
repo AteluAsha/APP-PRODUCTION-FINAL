@@ -47,7 +47,6 @@ import { useEmbodimentAudio, getEmbodimentAudioId } from "@/hooks/useEmbodimentA
 import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import { useTuningForkAudio, getTuningForkFileName } from "@/hooks/useTuningForkAudio"
 import { hasSanctuaryTuningFork } from "@/constants/sanctuaryAudioManifest"
-import { prepareLongAudioForPlay } from "@/src/utils/crystalBowlPlayback"
 import { storage } from "@/src/services/firebase"
 import { preloadFullFilesForChakra } from "@/src/utils/audioPreloadManifest"
 import { DropInButton } from "@/components/chakras/DropInButton"
@@ -307,33 +306,11 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                   embodimentDurations[getEmbodimentAudioId(chakra)] ??
                   content.audioIntro.durationMs
                 }
-                audioSource={{
-                  uri:
-                    embodimentAudio.localUri ||
-                    embodimentAudio.single ||
-                    "",
-                }}
                 authorColor="#FFFFFF"
                 isIntroAudio={true}
                 chakraColor={getChakraColor(chakraDay)}
                 disabled={false}
                 embodimentCacheKey={getEmbodimentAudioId(chakra)}
-                getAudioSource={async () =>
-                  prepareLongAudioForPlay(
-                    {
-                      url: embodimentAudio.single ?? null,
-                      localUri: embodimentAudio.localUri ?? null,
-                      audioId: getEmbodimentAudioId(chakra),
-                      fallback: {
-                        uri: embodimentAudio.single ?? "",
-                      },
-                    },
-                    {
-                      requireFullDownload: true,
-                      allowStreamingFallback: false,
-                    },
-                  )
-                }
                 onPlayTriggered={triggerBackupCacheForDay}
               />
             </Animated.View>

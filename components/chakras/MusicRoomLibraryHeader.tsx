@@ -8,7 +8,6 @@ type Props = {
     offlineCount: number
     isDownloadingAll: boolean
     downloadProgress: { current: number; total: number } | null
-    downloadError: string | null
     hideDownloads: boolean
     onDownloadAll: () => void
 }
@@ -17,7 +16,6 @@ export function MusicRoomLibraryHeader({
     offlineCount,
     isDownloadingAll,
     downloadProgress,
-    downloadError,
     hideDownloads,
     onDownloadAll,
 }: Props) {
@@ -142,19 +140,6 @@ export function MusicRoomLibraryHeader({
                             All healing audio is on your device.
                         </AppText>
                     )}
-                    {downloadError && !isDownloadingAll ? (
-                        <AppText
-                            font="instrument-regular"
-                            size="xs"
-                            style={{
-                                color: 'rgba(255,200,150,0.9)',
-                                textAlign: 'center',
-                                marginTop: 10,
-                            }}
-                        >
-                            {downloadError}
-                        </AppText>
-                    ) : null}
                 </View>
             ) : null}
         </View>

@@ -9,7 +9,6 @@ import {
 import { usePathname } from "expo-router"
 import { FontAwesome } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
-import { AVPlaybackSource } from "expo-av"
 import { getMinutesString } from "@/utils/format"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import BackgroundOpacity from "../BackgroundOpacity"
@@ -39,26 +38,22 @@ export const AudioRow = ({
   title,
   author,
   durationMs,
-  audioSource: _audioSource,
   authorColor = "#FFFFFF",
   isIntroAudio = false,
   chakraColor,
   rightContent,
   disabled = false,
-  getAudioSource: _getAudioSource,
   embodimentCacheKey,
   onPlayTriggered,
 }: {
   title: string
   author: string
   durationMs: number
-  audioSource: AVPlaybackSource
   authorColor: string
   isIntroAudio?: boolean
   chakraColor?: string
   rightContent?: React.ReactNode
   disabled?: boolean
-  getAudioSource?: () => Promise<AVPlaybackSource>
   embodimentCacheKey?: string
   onPlayTriggered?: () => void
 }) => {

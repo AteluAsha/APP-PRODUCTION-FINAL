@@ -20,6 +20,7 @@ import { silenceAllAudio } from '@/src/utils/singleActiveSound'
 import {
     applySanctuaryMetadata,
     applySanctuarySource,
+    clearMusicRoomSession,
     clearVaultAutoPlayback,
     registerVaultAutoPlayback,
 } from '@/src/services/vaultAutoPlayback'
@@ -29,16 +30,6 @@ export type SanctuaryPlaybackRequest =
         /** Course day route to return to on back (e.g. /(chakras)/root). */
         returnPath?: string
     }
-
-function clearMusicRoomSession(): void {
-    const store = useCurrentAudioStore.getState()
-    if (
-        store.audioOrigin === 'music-room' ||
-        (store.musicRoomPlaylist != null && store.musicRoomPlaylist.length > 0)
-    ) {
-        store.reset()
-    }
-}
 
 async function resolvePlayableUri(
     audioId: string,
@@ -73,10 +64,12 @@ export async function playSanctuaryTrack(
     if (returnPath) {
         useCurrentAudioStore.getState().setPlayerReturnPath(returnPath)
     }
+    const alreadyOpen = useCurrentAudioStore.getState().isFullScreenPlayerMounted
     clearMusicRoomSession()
     registerVaultAutoPlayback(vaultOpts)
     rushSanctuaryTrack(vaultOpts.audioId)
     await silenceAllAudio()
+    useCurrentAudioStore.getState().setFullScreenPlayerMounted(true)
 
     applySanctuaryMetadata(vaultOpts)
     const uri = await resolvePlayableUri(vaultOpts.audioId, vaultOpts.durationMs)
@@ -89,15 +82,7 @@ export async function playSanctuaryTrack(
         setTimeout(resolve, AUDIO_READY_DELAY_MS)
     })
 
-    if (!useCurrentAudioStore.getState().isFullScreenPlayerMounted) {
+    if (!alreadyOpen) {
         router.push('/AudioPlayer')
     }
 }
-
-export type CourseEmbodimentPlaybackRequest = SanctuaryPlaybackRequest
-
-export const openCourseEmbodimentPlayback = playSanctuaryTrack
-export const prepareCourseEmbodimentDownload = (
-    _audioId: string,
-    opts: SanctuaryPlaybackRequest,
-) => prepareSanctuaryTrack(opts)

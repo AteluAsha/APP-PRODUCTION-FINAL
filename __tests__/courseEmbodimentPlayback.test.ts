@@ -12,6 +12,7 @@ describe('sanctuary playback (unified)', () => {
         expect(src).toContain("router.push('/AudioPlayer')")
         expect(src).toContain('applySanctuaryMetadata')
         expect(src).toContain('rushSanctuaryTrack')
+        expect(src).toContain('setFullScreenPlayerMounted(true)')
     })
 
     it('course module clears music-room before opening full-player', () => {

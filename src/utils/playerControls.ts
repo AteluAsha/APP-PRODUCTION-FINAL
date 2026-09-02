@@ -2,8 +2,19 @@
  * AudioPlayer seek / duration helpers.
  *
  * Catalog duration is used when native AAC duration is 0 or a stub, so the
- * soldier can jump. A real file duration that matches the catalog still wins.
+ * soldier can jump. A remaster longer than catalog always wins once native
+ * (or a cached native) length lands. Never shrink a known-good bar back to
+ * a short catalog on the same track.
  */
+
+export function isStubNativeDuration(
+    fileDurationMs: number,
+    catalogDurationMs: number,
+): boolean {
+    if (!(fileDurationMs > 0)) return true
+    if (!(catalogDurationMs > 30_000)) return false
+    return fileDurationMs < catalogDurationMs * 0.25
+}
 
 export function sliderDurationMs(
     fileDurationMs: number,
@@ -14,15 +25,51 @@ export function sliderDurationMs(
         Number.isFinite(catalogDurationMs) && catalogDurationMs > 0
     // AAC on Android often reports 0 or a stub few seconds. Prefer catalog
     // so the soldier can jump; native seek still clamps if the file is short.
-    if (fileOk && catalogOk && catalogDurationMs > 30_000) {
-        if (fileDurationMs < catalogDurationMs * 0.25) {
-            return catalogDurationMs
-        }
-        return fileDurationMs
+    if (fileOk && catalogOk && isStubNativeDuration(fileDurationMs, catalogDurationMs)) {
+        return catalogDurationMs
     }
+    // Credible native length wins — remaster longer than catalog, or
+    // catalog overstated vs the real file. Do not pick max(catalog, file)
+    // here: that would stretch the bar past a shorter real file.
     if (fileOk) return fileDurationMs
     if (catalogOk) return catalogDurationMs
     return 0
+}
+
+/**
+ * Same-track slider: once we know a longer real length, do not snap back
+ * to a short catalog or a stub native report.
+ */
+export function preferLongerDurationMs(
+    currentMs: number,
+    nextMs: number,
+): number {
+    const currentOk = Number.isFinite(currentMs) && currentMs > 0
+    const nextOk = Number.isFinite(nextMs) && nextMs > 0
+    if (currentOk && nextOk) return Math.max(currentMs, nextMs)
+    if (nextOk) return nextMs
+    if (currentOk) return currentMs
+    return 0
+}
+
+/**
+ * Commit a duration update for the open track.
+ * Credible native length replaces the bar (remaster or shorter real file).
+ * Stub / unknown native never shrinks a known-good or cached length.
+ */
+export function commitPlaybackDurationMs(opts: {
+    currentMs: number
+    nextMs: number
+    fileDurationMs: number
+    catalogDurationMs: number
+}): number {
+    if (
+        opts.fileDurationMs > 0 &&
+        !isStubNativeDuration(opts.fileDurationMs, opts.catalogDurationMs)
+    ) {
+        return opts.nextMs > 0 ? opts.nextMs : opts.fileDurationMs
+    }
+    return preferLongerDurationMs(opts.currentMs, opts.nextMs)
 }
 
 export function clampSeekMs(requestedMs: number, durationMs: number): number {
@@ -91,17 +138,6 @@ export function isPlaybackPositionRegression(
     if (!(knownGoodMs > 3000)) return false
     if (!Number.isFinite(incomingMs) || incomingMs < 0) return true
     return incomingMs < knownGoodMs - 2500 && incomingMs < knownGoodMs * 0.5
-}
-
-export function shouldIgnoreStatusPosition(opts: {
-    seekingUntil: number
-    now?: number
-    statusPositionMs: number
-    seekTargetMs: number
-}): boolean {
-    const now = opts.now ?? Date.now()
-    if (now >= opts.seekingUntil) return false
-    return Math.abs(opts.statusPositionMs - opts.seekTargetMs) > 1500
 }
 
 /** True when native currentTime is close enough to the requested seek. */

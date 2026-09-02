@@ -3,7 +3,6 @@ import {
     resolvePlaybackDurationMs,
     resumePositionMs,
 } from '@/src/utils/playerControls'
-import { silenceAllAudio } from '@/src/utils/singleActiveSound'
 import { toAbsoluteFileUri } from '@/src/utils/crystalBowlPlayback'
 import { useCurrentAudioStore } from '@/hooks/useCurrentAudioStore'
 import { useEmbodimentDurationCacheStore } from '@/hooks/useEmbodimentDurationCacheStore'
@@ -36,7 +35,7 @@ export function hasPendingVaultAutoPlayback(audioId: string): boolean {
     return pendingAutoPlayback?.audioId === audioId
 }
 
-function severMusicRoomSession(): void {
+export function clearMusicRoomSession(): void {
     const store = useCurrentAudioStore.getState()
     if (
         store.audioOrigin === 'music-room' ||
@@ -48,7 +47,7 @@ function severMusicRoomSession(): void {
 
 /** Metadata + track id only. Navigation is always playSanctuaryTrack(). */
 export function applySanctuaryMetadata(opts: VaultPlaybackRequest): void {
-    severMusicRoomSession()
+    clearMusicRoomSession()
     const store = useCurrentAudioStore.getState()
     store.setMetadata({
         durationMs: opts.durationMs,
@@ -110,21 +109,4 @@ export function tryFulfillVaultAutoPlayback(
 
 export function getPendingVaultAutoPlayback(): PendingVaultPlayback | null {
     return pendingAutoPlayback
-}
-
-/** @deprecated unused — navigation lives in playSanctuaryTrack */
-export async function openReadyVaultPlayer(
-    uri: string,
-    opts: VaultPlaybackRequest,
-): Promise<void> {
-    await silenceAllAudio()
-    applySanctuaryMetadata(opts)
-    await applySanctuarySource(uri, opts)
-}
-
-export async function openReadyCourseEmbodimentPlayer(
-    uri: string,
-    opts: VaultPlaybackRequest,
-): Promise<void> {
-    await openReadyVaultPlayer(uri, opts)
 }

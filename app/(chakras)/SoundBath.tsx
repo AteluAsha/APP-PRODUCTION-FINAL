@@ -38,9 +38,7 @@ import {
 import {
   createSoundAsyncOffUiThread,
   waitForSoundLoaded,
-  waitForSoundReadyForSeek,
 } from "@/src/utils/audioStreamInit"
-import { clampSeekMs } from "@/src/utils/playerControls"
 import { SOUND_BATH_CLOSING_QUOTE } from "@/constants/soundBathClosingQuote"
 import { playSanctuaryTrack } from "@/utils/sanctuaryPlayback"
 import { showHealingToast } from "@/utils/healingToast"
@@ -118,11 +116,10 @@ const SoundBath = () => {
   const [tuningForkPreparing, setTuningForkPreparing] = useState(false)
   const [crystalBowlPreparing, setCrystalBowlPreparing] = useState(false)
 
-  // Tuning fork: play/pause only on page, no player. One local Sound ref.
+  // Tuning fork: inline chime, no slider. Stop unloads so the next tap
+  // always starts from the beginning. One local Sound ref.
   const tuningForkSoundRef = useRef<HealingSound | null>(null)
   const [tuningForkPlaying, setTuningForkPlaying] = useState(false)
-  const [tuningForkPositionMs, setTuningForkPositionMs] = useState(0)
-  const [tuningForkDurationMs, setTuningForkDurationMs] = useState(0)
 
   const tuningForkHertz = getTuningForkHertz(chakra)
 
@@ -192,8 +189,6 @@ const SoundBath = () => {
     tuningForkSoundRef.current = null
     if (!mountedRef.current) return
     setTuningForkPlaying(false)
-    setTuningForkPositionMs(0)
-    setTuningForkDurationMs(0)
   }, [])
 
   useEffect(() => {
@@ -238,26 +233,6 @@ const SoundBath = () => {
     }, []),
   )
 
-  const handleTuningForkSeek = useCallback((ms: number) => {
-    const s = tuningForkSoundRef.current
-    if (!s) return
-    const clamped = clampSeekMs(ms, tuningForkDurationMs)
-    setTuningForkPositionMs(clamped)
-    void (async () => {
-      try {
-        if (Platform.OS === "android") {
-          await waitForSoundReadyForSeek(s)
-        }
-        await s.setPositionAsync(clamped)
-        if (tuningForkPlaying) {
-          await s.playAsync()
-        }
-      } catch {
-        // keep UI at clamped place
-      }
-    })()
-  }, [tuningForkDurationMs, tuningForkPlaying])
-
   const handleTuningForkPress = useCallback(async () => {
     addHapticFeedback(HapticStrength.Light)
 
@@ -265,22 +240,12 @@ const SoundBath = () => {
       useCurrentAudioStore.getState().setPlaying(false)
     }
 
-    const s = tuningForkSoundRef.current
-    if (!s && tuningForkPreparing) return
-    if (s) {
-      const status = await s.getStatusAsync()
-      if (status.isLoaded && status.isPlaying) {
-        await s.pauseAsync()
-        setTuningForkPlaying(false)
-      } else if (status.isLoaded) {
-        await s.playAsync()
-        setTuningForkPlaying(true)
-        if (status.durationMillis && status.durationMillis > 0) {
-          setTuningForkDurationMs(status.durationMillis)
-        }
-      }
+    // No slider: pause/play must restart the chime from 0, not resume mid-tone.
+    if (tuningForkSoundRef.current || tuningForkPlaying) {
+      await stopInlineTuningFork()
       return
     }
+    if (tuningForkPreparing) return
 
     useCurrentAudioStore.getState().reset()
     const audioId = `tuning_fork_${chakra}_${getTuningForkFileName(chakra)}`
@@ -307,27 +272,10 @@ const SoundBath = () => {
       )
       await waitForSoundLoaded(sound)
       await sound.setVolumeAsync(1)
-      const loaded = await sound.getStatusAsync()
-      const duration =
-        loaded.isLoaded && loaded.durationMillis && loaded.durationMillis > 0
-          ? loaded.durationMillis
-          : 0
-      setTuningForkDurationMs(duration)
-      setTuningForkPositionMs(
-        loaded.isLoaded ? loaded.positionMillis ?? 0 : 0,
-      )
       sound.setOnPlaybackStatusUpdate((status) => {
         if (!status.isLoaded || !mountedRef.current) return
-        if (status.positionMillis != null) {
-          setTuningForkPositionMs(status.positionMillis)
-        }
-        if (status.durationMillis != null && status.durationMillis > 0) {
-          setTuningForkDurationMs(status.durationMillis)
-        }
         if (status.didJustFinish && !status.isLooping) {
-          setTuningForkPlaying(false)
-          setTuningForkPositionMs(0)
-          sound.setPositionAsync(0).catch(() => {})
+          void stopInlineTuningFork()
         }
       })
       tuningForkSoundRef.current = sound
@@ -339,7 +287,7 @@ const SoundBath = () => {
     } finally {
       if (mountedRef.current) setTuningForkPreparing(false)
     }
-  }, [chakra, tuningForkPreparing])
+  }, [chakra, stopInlineTuningFork, tuningForkPlaying, tuningForkPreparing])
 
   const handleCrystalBowlPress = useCallback(async () => {
     if (crystalBowlPreparing || !crystalBowlAudioId) return
