@@ -1,69 +1,127 @@
-import React from "react"
-import { View, Pressable } from "react-native"
-import { AppText } from "../AppText"
+import React from 'react'
+import { View } from 'react-native'
+import { AppText } from '../AppText'
+import { HealingPillTouchable } from './HealingPillTouchable'
 
 interface TextButtonSectionProps {
-  heading: string // Main heading text, e.g., "HEAD TO HEART"
-  description: string // Description text, e.g., "Each chakra holds one of the 7 Divine Laws..."
-  buttonText: string // Button's main text, e.g., "Path 1"
-  buttonSubText: string // Button's subtext, e.g., "Ancestral Knowledge"
-  onPress: () => void // Button press handler
+    heading: string
+    description: string
+    buttonText: string
+    buttonSubText: string
+    onPress: () => void
+    /** Soft accent for Frequency vs Ancestral paths */
+    tone?: 'frequency' | 'ancestral'
+}
+
+const TONE = {
+    frequency: {
+        frameBorder: 'rgba(168, 201, 154, 0.28)',
+        frameBg: 'rgba(168, 201, 154, 0.06)',
+        pillTop: 'rgba(255,255,255,0.14)',
+        pillBottom: 'rgba(0,0,0,0.32)',
+        pillLeft: 'rgba(168, 201, 154, 0.35)',
+        pillColors: [
+            'rgba(168, 201, 154, 0.16)',
+            'rgba(255,255,255,0.06)',
+            'rgba(0,0,0,0.22)',
+        ] as const,
+        pathColor: 'rgba(197, 224, 180, 0.92)',
+    },
+    ancestral: {
+        frameBorder: 'rgba(232, 201, 140, 0.28)',
+        frameBg: 'rgba(232, 201, 140, 0.06)',
+        pillTop: 'rgba(255,255,255,0.14)',
+        pillBottom: 'rgba(0,0,0,0.32)',
+        pillLeft: 'rgba(232, 201, 140, 0.38)',
+        pillColors: [
+            'rgba(232, 201, 140, 0.14)',
+            'rgba(255,255,255,0.05)',
+            'rgba(0,0,0,0.24)',
+        ] as const,
+        pathColor: 'rgba(232, 201, 140, 0.92)',
+    },
 }
 
 const TextButtonSection: React.FC<TextButtonSectionProps> = ({
-  heading,
-  description,
-  buttonText,
-  buttonSubText,
-  onPress,
+    heading,
+    description,
+    buttonText,
+    buttonSubText,
+    onPress,
+    tone = 'ancestral',
 }) => {
-  return (
-    <View style={{ marginBottom: 32 }}>
-      <AppText
-        font="instrument-regular"
-        size="sm"
-        style={{ marginBottom: 8, fontSize: 14, color: "#ffffff" }}
-      >
-        {heading}
-      </AppText>
-      <AppText
-        font="instrument-regular"
-        size="sm"
-        style={{ marginBottom: 24, color: "#ffffff" }}
-      >
-        {description}
-      </AppText>
-      <Pressable
-        onPress={onPress}
-        delayPressIn={0}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        style={{
-          borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.38)",
-          borderRadius: 16,
-          paddingVertical: 16,
-          marginHorizontal: 16,
-          marginTop: 8,
-          backgroundColor: "rgba(0,0,0,0.125)",
-        }}
-      >
-        <AppText
-          font="instrument-medium"
-          size="xs"
-          style={{ textAlign: "center", color: "#ffffff" }}
+    const accent = TONE[tone]
+
+    return (
+        <View
+            style={{
+                marginBottom: 28,
+                paddingVertical: 22,
+                paddingHorizontal: 18,
+                borderRadius: 22,
+                borderWidth: 1,
+                borderColor: accent.frameBorder,
+                backgroundColor: accent.frameBg,
+            }}
         >
-          {buttonText}
-        </AppText>
-        <AppText
-          font="instrument-regular"
-          size="lg"
-          style={{ textAlign: "center", color: "#ffffff" }}
-        >
-          {buttonSubText}
-        </AppText>
-      </Pressable>
-    </View>
-  )
+            <AppText
+                font="cormorant-regular"
+                style={{
+                    marginBottom: 10,
+                    fontSize: 13,
+                    letterSpacing: 2.4,
+                    textTransform: 'uppercase',
+                    textAlign: 'center',
+                    color: 'rgba(232, 201, 140, 0.88)',
+                }}
+            >
+                {heading}
+            </AppText>
+            <AppText
+                font="cormorant-italic"
+                style={{
+                    marginBottom: 22,
+                    fontSize: 17,
+                    lineHeight: 27,
+                    textAlign: 'center',
+                    color: 'rgba(255, 248, 236, 0.9)',
+                    paddingHorizontal: 4,
+                }}
+            >
+                {description}
+            </AppText>
+            <HealingPillTouchable
+                accent={accent}
+                onPress={onPress}
+                accessibilityLabel={`${buttonText}, ${buttonSubText}`}
+            >
+                <AppText
+                    font="cormorant-regular"
+                    style={{
+                        textAlign: 'center',
+                        fontSize: 13,
+                        letterSpacing: 2,
+                        textTransform: 'uppercase',
+                        color: accent.pathColor,
+                        marginBottom: 4,
+                    }}
+                >
+                    {buttonText}
+                </AppText>
+                <AppText
+                    font="cormorant-italic"
+                    style={{
+                        textAlign: 'center',
+                        fontSize: 22,
+                        lineHeight: 28,
+                        color: 'rgba(255, 248, 236, 0.96)',
+                    }}
+                >
+                    {buttonSubText}
+                </AppText>
+            </HealingPillTouchable>
+        </View>
+    )
 }
 
 export default TextButtonSection

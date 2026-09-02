@@ -51,6 +51,33 @@ const CHAKRA_BALL_HEIGHT_APPROX = 88
 /** iOS lifetime hub (ChakraHub): reduce the stack block height by this so the stack sits higher (root well above alpha-omega symbols). Stack and alpha/omega are separate; this reserve keeps the stack from being dragged down. */
 export const LIFETIME_HUB_STACK_RAISE_IOS = 320
 
+/**
+ * ChakraHub α/Ω strip sits below the ScrollView (not over the stack).
+ * First-open stack height = window minus this footer minus the status-bar inset
+ * so the 7 balls optically center on the opening screen.
+ */
+export const HUB_ALPHA_OMEGA_FOOTER_PADDING_TOP = 10
+export const HUB_ALPHA_OMEGA_GLYPH_LINE = 28
+
+export function hubAlphaOmegaFooterHeight(insetsBottom: number): number {
+    return (
+        HUB_ALPHA_OMEGA_FOOTER_PADDING_TOP +
+        HUB_ALPHA_OMEGA_GLYPH_LINE +
+        Math.max(insetsBottom, 12)
+    )
+}
+
+export function lifetimeHubFirstScreenStackHeight(
+    windowHeight: number,
+    insetsTop: number,
+    insetsBottom: number,
+): number {
+    return Math.max(
+        windowHeight - hubAlphaOmegaFooterHeight(insetsBottom) - insetsTop,
+        420,
+    )
+}
+
 /** iOS lifetime hub: bottom padding under the stack so the root ball is pinned higher (single source for pin offset). */
 export const ROOT_BOTTOM_OFFSET_LIFETIME_HUB_IOS =
   20 + CHAKRA_BALL_HEIGHT_APPROX + LIFETIME_HUB_STACK_RAISE_IOS

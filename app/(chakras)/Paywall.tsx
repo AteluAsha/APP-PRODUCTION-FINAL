@@ -1,33 +1,24 @@
 /**
- * Paywall Screen (Upgrade to Lifetime)
+ * Paywall Screen (Energy Exchange)
  *
- * Standalone route so trial users (APP1) can open the paywall from the hamburger
- * (SOUL SCHOOL → Upgrade to Lifetime). They can pay and go to ChakraHub or revert with back.
- * Only linked from trial mode; not shown in lifetime hamburger.
+ * Periodic and menu-opened gate. Dismissable. Continue returns to ChakraHub.
  */
 
-import React, { useMemo } from "react"
+import React, { useEffect } from "react"
 import { useRouter } from "expo-router"
 import { CommitmentGate } from "@/components/chakras/CommitmentGate"
-import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { getCurrentDayOfWeek } from "@/utils/date"
 import { requestChakraHubRevealBreath } from "@/utils/homeSessionEntrance"
+import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 
 export default function PaywallScreen() {
   const router = useRouter()
-  const journeyStarted = useChakraJourneyStore((s) => s.journeyStarted)
-  const trialHistory = useChakraJourneyStore((s) => s.trialHistory)
-  const allChakrasCompleted = useChakraJourneyStore((s) => s.allChakrasCompleted)
-  const setUserChoseTrial2 = useChakraJourneyStore((s) => s.setUserChoseTrial2)
+  const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
 
-  const currentDay = useMemo(() => getCurrentDayOfWeek(), [])
-  const currentTrialNumber = useMemo(
-    () => (journeyStarted ? trialHistory.length : 0),
-    [journeyStarted, trialHistory.length],
-  )
-
-  const isFirstTrialComplete =
-    currentTrialNumber === 1 && allChakrasCompleted && currentDay === 6
+  useEffect(() => {
+    if (!hasLifetimeAccess) return
+    if (router.canGoBack()) router.back()
+    else router.replace("/(chakras)/ChakraHub")
+  }, [hasLifetimeAccess, router])
 
   const handleComplete = () => {
     requestChakraHubRevealBreath()
@@ -35,20 +26,19 @@ export default function PaywallScreen() {
   }
 
   const handleBack = () => {
-    router.back()
+    if (router.canGoBack()) {
+      router.back()
+    } else {
+      router.replace("/(chakras)/ChakraHub")
+    }
   }
 
-  const handleContinueToTrial2 = () => {
-    setUserChoseTrial2(true)
-    router.replace("/(chakras)/DateSelection")
-  }
+  if (hasLifetimeAccess) return null
 
   return (
     <CommitmentGate
       onComplete={handleComplete}
       onBack={handleBack}
-      showContinueToTrial2={isFirstTrialComplete}
-      onContinueToTrial2={handleContinueToTrial2}
       onContinueJourney={handleBack}
     />
   )

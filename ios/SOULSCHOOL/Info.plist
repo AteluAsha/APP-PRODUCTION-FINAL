@@ -7,7 +7,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>SOUL SCHOOL</string>
+    <string>Awakening Soul</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -15,11 +15,11 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
+    <string>Awakening Soul</string>
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.2</string>
+    <string>1.1.19</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -39,7 +39,7 @@
       </dict>
     </array>
 	<key>CFBundleVersion</key>
-	<string>6</string>
+	<string>27</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
       <string>whatsapp</string>
@@ -47,7 +47,7 @@
       <string>mailto</string>
     </array>
     <key>LSMinimumSystemVersion</key>
-    <string>12.0</string>
+    <string>15.1</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>NSAppTransportSecurity</key>
@@ -71,15 +71,13 @@
       </dict>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>Allow SOUL SCHOOL to access your camera to record videos for sharing your journey.</string>
-    <key>NSContactsUsageDescription</key>
-    <string>Allow SOUL SCHOOL to find friends who are also on the journey.</string>
+    <string>Allow Awakening Soul to access your camera to record videos for sharing your journey.</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>Allow SOUL SCHOOL to connect to your local Metro dev server during development.</string>
+    <string>Allow Awakening Soul to connect to your local Metro dev server during development.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Allow SOUL SCHOOL to access your microphone to record audio with your videos.</string>
+    <string>Allow Awakening Soul to access your microphone to record audio with your videos.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>SOUL SCHOOL uses your photo library so you can choose a profile picture and share images in the community.</string>
+    <string>Awakening Soul uses your photo library so you can choose a profile picture.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
@@ -97,7 +95,7 @@
     <key>UIRequiresFullScreen</key>
     <false/>
     <key>UIStatusBarStyle</key>
-    <string>UIStatusBarStyleDefault</string>
+    <string>UIStatusBarStyleLightContent</string>
     <key>UISupportedInterfaceOrientations</key>
     <array>
       <string>UIInterfaceOrientationPortrait</string>

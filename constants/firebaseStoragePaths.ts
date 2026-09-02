@@ -15,10 +15,10 @@
 /** Tuning Fork Audio – folder in Storage. Files: Day1_396hz_plus256_TuningFork.aac … Day7_963hz_tuningfork.aac */
 export const FIREBASE_TUNING_FORK_FOLDER = "TuningForkAudio"
 
-/** Crystal Bowl 1hr – folder in Storage. Filenames: see SANCTUARY_CRYSTAL_BOWL_FILE in sanctuaryAudioManifest.ts (Day1 Hero3.aac, Day3 …SoundBAth…, etc.). */
+/** Crystal Bowl 1hr – folder in Storage. Filenames: see SANCTUARY_CRYSTAL_BOWL_FILE in sanctuaryAudioManifest.ts */
 export const FIREBASE_CRYSTAL_BOWL_FOLDER = "crystal_Bowl_Meditation_Audio"
 
-/** Master Embodiment – folder in Storage. Day 1: Day1_ROOT_DAY_MASTER_EMBODIMENT_SoulSchool_MotherJJ.aac (44:44); Day2…Day7 as in useEmbodimentAudio. */
+/** Master Embodiment – folder in Storage. Filenames: see SANCTUARY_EMBODIMENT_FILES in sanctuaryAudioManifest.ts */
 export const FIREBASE_EMBODIMENT_FOLDER =
   "Course Audio - MASTER EMBODIMENT - 7 Chakras in 7 Days"
 

@@ -30,10 +30,11 @@ const GOOGLE_SERVICES_FILE =
 
 module.exports = {
   expo: {
-    // Home screen label under icon; store listing may use longer name (e.g. SOUL SCHOOL | ProjectStarseed)
-    name: "SOUL SCHOOL",
+    // Store title (App Store / Play). Home-screen label is CFBundleDisplayName /
+    // Android app_name via withLauncherDisplayName — both "Awakening Soul".
+    name: "Awakening Soul",
     slug: "soul-school",
-    version: "1.1.4",
+    version: "1.1.27",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
     // Native shield: golden "7" load art (small, centered). JS splash uses SoulSchool_HERO_Logo. Run prebuild --clean after change.
@@ -54,10 +55,12 @@ module.exports = {
       infoPlist: {
         // App Store export compliance: app only uses exempt encryption (e.g. HTTPS)
         ITSAppUsesNonExemptEncryption: false,
-        // iOS home screen label; production uses SOUL SCHOOL (App Store listing may differ)
-        CFBundleDisplayName: "SOUL SCHOOL",
+        // iOS home-screen label under the icon
+        CFBundleDisplayName: "Awakening Soul",
+        CFBundleName: "Awakening Soul",
         LSApplicationQueriesSchemes: ["whatsapp", "sms", "mailto"],
         UIBackgroundModes: ["audio"],
+        UIStatusBarStyle: "UIStatusBarStyleLightContent",
         // Allow Metro bundler at localhost/127.0.0.1 in simulator and dev (required for "Could not connect to development server")
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: false,
@@ -69,17 +72,17 @@ module.exports = {
         },
         // Required for iOS to access your local network (e.g. Metro on 192.168.x.x).
         NSLocalNetworkUsageDescription:
-          "Allow SOUL SCHOOL to connect to your local Metro dev server during development.",
+          "Allow Awakening Soul to connect to your local Metro dev server during development.",
         NSCameraUsageDescription:
-          "We need access to your camera to record a video for sharing your journey.",
+          "Allow Awakening Soul to access your camera to record videos for sharing your journey.",
         NSMicrophoneUsageDescription:
-          "We need access to your microphone to record audio with your video.",
+          "Allow Awakening Soul to access your microphone to record audio with your videos.",
         NSPhotoLibraryUsageDescription:
-          "SOUL SCHOOL uses your photo library so you can choose a profile picture and share images in the community.",
+          "Awakening Soul uses your photo library so you can choose a profile picture.",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // Bump for each TestFlight / store upload; each new iOS binary must exceed the last build on ASC (e.g. after 1.1.3 (13) use 14+).
-      buildNumber: "14",
+      // Keep in lockstep with Android 1.1.27 / versionCode 36.
+      buildNumber: "36",
     },
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android
@@ -100,15 +103,25 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
-      versionCode: 6,
+      // User-facing 1.1.27. Production AAB versionCode 36 (appVersionSource: local).
+      versionCode: 36,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
-        "CAMERA",
         "RECORD_AUDIO",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "SCHEDULE_EXACT_ALARM",
-        "READ_CONTACTS",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "WAKE_LOCK",
+        "POST_NOTIFICATIONS",
+      ],
+      // Strip unused / plugin leftovers so Play does not review dead permissions.
+      // CAMERA stays only via expo-image-picker (Energy Exchange video).
+      blockedPermissions: [
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM",
       ],
     },
     plugins: [
@@ -139,12 +152,14 @@ module.exports = {
       ],
       "expo-font",
       [
-        "expo-camera",
+        "expo-image-picker",
         {
+          photosPermission:
+            "Awakening Soul uses your photo library so you can choose a profile picture.",
           cameraPermission:
-            "Allow SOUL SCHOOL to access your camera to record videos for sharing your journey.",
+            "Allow Awakening Soul to access your camera to record videos for sharing your journey.",
           microphonePermission:
-            "Allow SOUL SCHOOL to access your microphone to record audio with your videos.",
+            "Allow Awakening Soul to access your microphone to record audio with your videos.",
         },
       ],
       [
@@ -154,13 +169,9 @@ module.exports = {
           color: "#9D4EDD",
         },
       ],
-      [
-        "expo-contacts",
-        {
-          contactsPermission:
-            "Allow SOUL SCHOOL to find friends who are also on the journey.",
-        },
-      ],
+      "expo-audio",
+      "./plugins/withAndroidMediaPlayback",
+      "./plugins/withLauncherDisplayName",
     ],
     experiments: {
       typedRoutes: true,

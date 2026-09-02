@@ -3,7 +3,7 @@
  *
  * For those who chose the Path of the Sovereign. A gentle resting place with
  * a summary of their 7-day journey. They can view their chakra cards, return
- * to SOUL SCHOOL, or choose to anchor deeper (paywall).
+ * to Awakening Soul, or choose to anchor deeper (paywall).
  *
  * Aesthetic: Stillness background, Cormorant Garamond.
  */
@@ -50,7 +50,7 @@ export function JourneySummaryGift({
 
   const handleReturn = () => {
     addHapticFeedback(HapticStrength.Light)
-    router.replace("/(chakras)/ChakraHome")
+    router.replace("/(chakras)/ChakraHub")
   }
 
   return (
@@ -195,7 +195,7 @@ export function JourneySummaryGift({
                   size="sm"
                   style={{ color: "rgba(255,255,255,0.98)" }}
                 >
-                  I'm ready to anchor deeper into SOUL SCHOOL
+                  I'm ready to anchor deeper into Awakening Soul
                 </AppText>
               </LinearGradient>
             </Pressable>
@@ -216,7 +216,7 @@ export function JourneySummaryGift({
                   textDecorationLine: "underline",
                 }}
               >
-                Return to SOUL SCHOOL
+                Return to Awakening Soul
               </AppText>
             </Pressable>
           </View>

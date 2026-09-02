@@ -38,7 +38,7 @@ import { purchaseErrorForPaywallBanner } from "@/utils/purchaseUserFacingError"
 
 interface CommitmentGateProps {
   onComplete: () => void
-  /** Dev only: when provided, shows back arrow to dismiss paywall */
+  /** When provided, shows back arrow to dismiss paywall */
   onBack?: () => void
   /** When true (Trial 1 complete), show "Continue to trial number 2" link */
   showContinueToTrial2?: boolean
@@ -46,6 +46,9 @@ interface CommitmentGateProps {
   onContinueToTrial2?: () => void
   /** Optional: when provided, "Continue Journey" in AccessGranted modal calls this instead of onComplete (e.g. Paywall route uses router.back()) */
   onContinueJourney?: () => void
+  /** Calendar-week trial (Monday = Root … Sunday = Crown), no date picker */
+  showEnterTrial?: boolean
+  onEnterTrial?: () => void
 }
 
 type AccessOption = "monthly" | "annual" | "scholarship"
@@ -56,6 +59,8 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
   showContinueToTrial2 = false,
   onContinueToTrial2,
   onContinueJourney,
+  showEnterTrial = false,
+  onEnterTrial,
 }) => {
   const [selectedOption, setSelectedOption] = useState<AccessOption>("monthly")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -234,14 +239,23 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
           {/* Title Section */}
           <View style={styles.titleContainer}>
             <AppText font="instrument-bold" size="lg" style={styles.titleText}>
-              Your Path Awaits
+              An energy exchange
             </AppText>
             <AppText
               font="instrument-regular"
               size="xs"
               style={styles.subtitle}
             >
-              All Paths Open to You
+              Made with love — not by a corporation
+            </AppText>
+            <AppText
+              font="instrument-regular"
+              size="sm"
+              style={styles.energyExchangeCopy}
+            >
+              This sanctuary was crafted by hand, as an offering. If these
+              teachings meet you, please honor the work by sending some energy
+              back — a gift that keeps the path open for others.
             </AppText>
           </View>
 
@@ -674,7 +688,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
               size="xs"
               style={[styles.footerText, { marginTop: 8, opacity: 0.5 }]}
             >
-              SOUL SCHOOL is operated by Project Starseed, an IRS-recognized
+              Awakening Soul is operated by Project Starseed, an IRS-recognized
               501(c)(3) tax-exempt organization. All donations are
               tax-deductible.
             </AppText>
@@ -710,6 +724,46 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                   ]}
                 >
                   Continue to trial number 2
+                </AppText>
+              </Pressable>
+            )}
+
+            {showEnterTrial && onEnterTrial && (
+              <Pressable
+                onPress={() => {
+                  addHapticFeedback(HapticStrength.Light)
+                  onEnterTrial()
+                }}
+                style={{ marginTop: 20, paddingHorizontal: 8 }}
+                accessibilityLabel="Take the Earth Alignment Course"
+                accessibilityHint="Walk one chakra for each day of the week with Earth's feminine rhythm"
+              >
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={[
+                    styles.footerText,
+                    {
+                      color: "rgba(255, 255, 255, 0.72)",
+                      lineHeight: 20,
+                      marginBottom: 10,
+                    },
+                  ]}
+                >
+                  Earth herself moves in a seven-day breath. Monday holds the
+                  Root, Sunday the Crown — one chakra for each day, the divine
+                  feminine written into time. Walk this week with her, and your
+                  own feminine rhythm remembers its place in her cycles.
+                </AppText>
+                <AppText
+                  font="instrument-medium"
+                  size="sm"
+                  style={[
+                    styles.footerText,
+                    { color: "rgba(212, 165, 116, 0.98)", opacity: 1 },
+                  ]}
+                >
+                  Take the Earth Alignment Course
                 </AppText>
               </Pressable>
             )}
@@ -889,6 +943,14 @@ const styles = StyleSheet.create({
     color: "#d1d5db",
     marginTop: 2,
     marginBottom: 10,
+  },
+  energyExchangeCopy: {
+    color: "rgba(255, 255, 255, 0.78)",
+    textAlign: "center",
+    lineHeight: 22,
+    marginTop: 4,
+    marginBottom: 6,
+    paddingHorizontal: 8,
   },
   featuresCardWrap: {
     marginBottom: 12,

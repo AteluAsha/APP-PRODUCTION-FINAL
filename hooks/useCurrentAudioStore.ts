@@ -1,5 +1,6 @@
 import { AVPlaybackSource } from "expo-av"
 import { create } from "zustand"
+import type { MusicRoomTrackKind } from "@/constants/musicRoomLibrary"
 
 /** Delay (ms) after reset before setting new source. Ensures MusicRoomAudioManager
  * and OtherOriginAudioManager have time to unload their tracks before new playback starts.
@@ -35,6 +36,11 @@ export interface PlaylistItem {
   metadata: AudioMetadata
   prefs: AudioPlayerPrefs
   trackKey?: string
+  /** Music Room vault id (Frequency of Gnosis library). */
+  audioId?: string
+  dayIndex?: number
+  trackKind?: MusicRoomTrackKind
+  chakraColor?: string
 }
 
 /**
@@ -45,7 +51,7 @@ export interface PlaylistItem {
  * Only one origin at a time; setSource/setSourceWithPlaylist reset before setting.
  *
  * Audio hard rules (single-owner, no double-play):
- * - Single active playback: Only one AV.Sound should be active. Full-screen playback is owned by AudioPlayer; mini-player by OtherOriginAudioManager / MusicRoomAudioManager; they never play when pathname is AudioPlayer.
+ * - Single active playback: Only one AV.Sound should be active. Full-screen playback is owned by AudioPlayer; mini-player by OtherOriginAudioManager / MusicRoomAudioManager; they never play when isFullScreenPlayerMounted is true (includes Notes overlay on player).
  * - Full-player ownership: When audioOrigin === "full-player", only AudioPlayer creates and owns the sound; it must stop and unload that sound before any reset() and navigation. The full-player track is stopped only in AudioPlayer.closePlayerAndNavigate (X button or Android back from player). On blur (e.g. opening Notes Along the Way) we do not stop/unload so playback continues and returning shows the same track.
  * - Close rule: Any "close player and navigate" must go through one code path (AudioPlayer.closePlayerAndNavigate) that awaits stop + unload, then reset, then navigate. Prevents double-play when user taps the same or another track.
  * - AudioPlayer never routes to goodbye: only close or revert back. Goodbye is shown only by the course page (ChakraHome) when the user is on it with a completed day.
@@ -62,6 +68,9 @@ interface CurrentAudioStore {
   metadata: AudioMetadata | null
   prefs: AudioPlayerPrefs | null
   playlist: PlaylistItem[] | null
+  /** Full 28-track Frequency of Gnosis queue (indexed). */
+  musicRoomPlaylist: PlaylistItem[] | null
+  musicRoomIndex: number
   audioOrigin: AudioOrigin | null
   /** When set, AudioPlayer uses this for the gradient instead of parsing Hz from metadata (e.g. embodiment from chakra day) */
   chakraColor: string | null
@@ -75,7 +84,14 @@ interface CurrentAudioStore {
   pendingTrackKey: string | null
   /** Full-player track id (e.g. embodiment or Head to Heart audio id) for persisting position on close. */
   fullPlayerTrackId: string | null
+  /** Screen to return to when stack pop fails (course day vs Audio Library). */
+  playerReturnPath: string | null
+  /** True while AudioPlayer route is mounted — managers must not start parallel playback (e.g. Notes overlay). */
+  isFullScreenPlayerMounted: boolean
+  setFullScreenPlayerMounted: (mounted: boolean) => void
   setPendingTrackKey: (key: string | null) => void
+  setFullPlayerTrackId: (id: string | null) => void
+  setPlayerReturnPath: (path: string | null) => void
   setPositionMs: (ms: number) => void
   setSeekTo: (ms: number | null) => void
   setSource: (
@@ -92,7 +108,18 @@ interface CurrentAudioStore {
     rest: PlaylistItem[],
     trackKey?: string,
   ) => void
+  /** Frequency of Gnosis — all 28 tracks; source on active item must be resolved before call. */
+  setMusicRoomPlaylist: (
+    items: PlaylistItem[],
+    startIndex: number,
+    activeSource: AVPlaybackSource,
+  ) => void
+  applyMusicRoomTrack: (
+    index: number,
+    activeSource: AVPlaybackSource,
+  ) => void
   advanceToNext: () => boolean
+  advanceToPrevious: () => boolean
   reset: (opts?: { keepPending?: boolean }) => void
 }
 
@@ -101,6 +128,8 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
   metadata: null,
   prefs: null,
   playlist: null,
+  musicRoomPlaylist: null,
+  musicRoomIndex: 0,
   audioOrigin: null,
   chakraColor: null,
   isPlaying: false,
@@ -109,7 +138,36 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
   currentTrackKey: null,
   pendingTrackKey: null,
   fullPlayerTrackId: null,
+  playerReturnPath: null,
+  isFullScreenPlayerMounted: false,
+  setFullScreenPlayerMounted: (mounted) => set({ isFullScreenPlayerMounted: mounted }),
   setPendingTrackKey: (key) => set({ pendingTrackKey: key }),
+  setPlayerReturnPath: (path) => set({ playerReturnPath: path }),
+  setFullPlayerTrackId: (id) => {
+    const current = get()
+    if (id && id === current.fullPlayerTrackId) {
+      set({
+        audioOrigin: "full-player" as const,
+        pendingTrackKey: "full-player-row",
+        playlist: null,
+        isPlaying: false,
+      })
+      return
+    }
+    set({
+      fullPlayerTrackId: id,
+      ...(id
+        ? {
+            audioOrigin: "full-player" as const,
+            pendingTrackKey: "full-player-row",
+            positionMs: 0,
+            source: null,
+            playlist: null,
+            isPlaying: false,
+          }
+        : {}),
+    })
+  },
   setPositionMs: (ms) => set({ positionMs: ms }),
   setSeekTo: (ms) => set({ seekToMs: ms }),
   setSource: (
@@ -137,6 +195,8 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
       set({
         source,
         playlist: null,
+        musicRoomPlaylist: null,
+        musicRoomIndex: 0,
         audioOrigin: origin,
         currentTrackKey: null,
         pendingTrackKey: null,
@@ -160,6 +220,8 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
       audioOrigin: "music-room",
       currentTrackKey: trackKey ?? null,
       isPlaying: true,
+      musicRoomPlaylist: null,
+      musicRoomIndex: 0,
     })
     pendingSetTimeoutId = setTimeout(() => {
       pendingSetTimeoutId = null
@@ -181,11 +243,66 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
         audioOrigin: "music-room",
         currentTrackKey: trackKey ?? null,
         pendingTrackKey: null,
+        fullPlayerTrackId: null,
+        chakraColor: item.chakraColor ?? null,
       })
     }, UNLOAD_GRACE_MS)
   },
+  setMusicRoomPlaylist: (items, startIndex, activeSource) => {
+    clearPendingSet()
+    get().reset({ keepPending: true })
+    const item = items[startIndex]
+    if (!item) {
+      get().reset({ keepPending: false })
+      return
+    }
+    set({
+      audioOrigin: "music-room",
+      pendingTrackKey: item.trackKey ?? `library_${startIndex}`,
+      isPlaying: true,
+    })
+    pendingSetTimeoutId = setTimeout(() => {
+      pendingSetTimeoutId = null
+      set({
+        source: activeSource,
+        metadata: item.metadata,
+        prefs: { ...item.prefs, shouldLoop: false },
+        playlist: null,
+        musicRoomPlaylist: items,
+        musicRoomIndex: startIndex,
+        audioOrigin: "music-room",
+        currentTrackKey: item.trackKey ?? `library_${startIndex}`,
+        pendingTrackKey: null,
+        fullPlayerTrackId: item.audioId ?? null,
+        chakraColor: item.chakraColor ?? null,
+        positionMs: 0,
+      })
+    }, UNLOAD_GRACE_MS)
+  },
+  applyMusicRoomTrack: (index, activeSource) => {
+    const { musicRoomPlaylist } = get()
+    if (!musicRoomPlaylist || index < 0 || index >= musicRoomPlaylist.length) {
+      return
+    }
+    const item = musicRoomPlaylist[index]
+    set({
+      source: activeSource,
+      metadata: item.metadata,
+      prefs: { ...item.prefs, shouldLoop: false },
+      musicRoomIndex: index,
+      currentTrackKey: item.trackKey ?? `library_${index}`,
+      chakraColor: item.chakraColor ?? null,
+      positionMs: 0,
+      isPlaying: true,
+      fullPlayerTrackId: item.audioId ?? null,
+    })
+  },
   advanceToNext: () => {
-    const { playlist } = get()
+    const { musicRoomPlaylist, musicRoomIndex, playlist } = get()
+    if (musicRoomPlaylist && musicRoomPlaylist.length > 0) {
+      if (musicRoomIndex >= musicRoomPlaylist.length - 1) return false
+      return false
+    }
     if (!playlist || playlist.length === 0) return false
     const [next, ...rest] = playlist
     set({
@@ -197,20 +314,37 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
     })
     return true
   },
+  advanceToPrevious: () => {
+    const { musicRoomIndex } = get()
+    if (musicRoomIndex <= 0) return false
+    return false
+  },
   reset: (opts?: { keepPending?: boolean }) => {
     clearPendingSet()
     const keep = opts?.keepPending === true
+    const current = get()
     set({
-      prefs: null,
-      metadata: null,
       source: null,
       playlist: null,
-      audioOrigin: null,
-      chakraColor: null,
-      positionMs: 0,
+      musicRoomPlaylist: null,
+      musicRoomIndex: 0,
       seekToMs: null,
-      fullPlayerTrackId: null,
-      ...(keep ? {} : { isPlaying: false, currentTrackKey: null, pendingTrackKey: null }),
+      ...(keep
+        ? {
+            audioOrigin: current.audioOrigin ?? "full-player",
+          }
+        : {
+            prefs: null,
+            metadata: null,
+            audioOrigin: null,
+            chakraColor: null,
+            positionMs: 0,
+            fullPlayerTrackId: null,
+            playerReturnPath: null,
+            isPlaying: false,
+            currentTrackKey: null,
+            pendingTrackKey: null,
+          }),
     })
   },
 }))

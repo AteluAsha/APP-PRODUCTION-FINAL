@@ -1,0 +1,4 @@
+Sanctuary AAC is no longer bundled in the app.
+
+See constants/sanctuaryHostedUrls.ts — files download into
+FileSystem.documentDirectory/sanctuary-audio/ after install.

@@ -1,5 +1,5 @@
 /**
- * Soul School — local notification copy (iOS + Android).
+ * Awakening Soul — local notification copy (iOS + Android).
  * Single source of truth for gentle "Soul Journey Nudges" messaging.
  */
 
@@ -17,7 +17,7 @@ export const PRE_COURSE_COPY = {
   /** Scenario B — 3 days before start (morning) */
   b3: {
     title: 'The rule of threes',
-    body: 'Where you were, where you are, where you are going. Your Soul School journey begins in exactly three days.',
+    body: 'Where you were, where you are, where you are going. Your Awakening Soul journey begins in exactly three days.',
   },
   /** Scenario B — 2 days before start (evening) */
   b2: {
@@ -67,15 +67,33 @@ export const HORIZON_COPY = {
   },
 } as const
 
-/** Paid / scholarship — weekly rhythm + long idle (parallel to trial course nudges). */
+/** Sunday — align with the Earth; Monday renewal. Sent even before the journey starts. */
+export const SUNDAY_EARTH_CYCLE_COPY = {
+  title: 'Align with the Earth',
+  body: 'Rest in the rhythm of the week. Awaken the soul — we begin again on Monday.',
+} as const
+
+/** Modal copy when opting in to daily alignment reminders. */
+export const DAILY_ALIGNMENT_MODAL_COPY = {
+  title: 'Partner on the path',
+  body:
+    'Allow gentle daily reminders to align with the rhythm of your energy body. We walk beside you — heart-minded nudges toward soul alignment, never noise.',
+  profileNote: 'You can turn daily reminders off anytime in Profile.',
+  allowLabel: 'Activate daily reminders to align',
+  notNowLabel: 'Not now',
+} as const
+
+/** Wednesday — loving mid-week nudge; only after journeyStarted. */
+export const WEDNESDAY_ENERGY_BODY_COPY = {
+  title: 'Your energy body',
+  body: 'A loving nudge from the heart mind — check in with what is alive in you today, and meet it with gentle presence.',
+} as const
+
 export const SUSTENANCE_COPY = {
-  sundayEve: {
-    title: 'The Temple is Prepared',
-    body: 'The doors open tomorrow. Rest well and set your intention to join the river at sunrise.',
-  },
+  sundayEve: SUNDAY_EARTH_CYCLE_COPY,
   pulseMon: {
     title: 'The anchor',
-    body: 'Monday is the anchor. Reconnect with your tribe and your physical vessel. You are safe. You are home.',
+    body: 'Root is the anchor. Reconnect with your physical vessel. You are safe. You are home.',
   },
   pulseTue: {
     title: 'Sweetness',

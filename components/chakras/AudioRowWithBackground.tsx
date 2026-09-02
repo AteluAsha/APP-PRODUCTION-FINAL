@@ -1,28 +1,28 @@
 import { useState } from "react"
 import { View, ImageBackground, Pressable, ActivityIndicator } from "react-native"
-import { useRouter } from "expo-router"
+import { usePathname } from "expo-router"
 import { FontAwesome } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
-import { useCurrentAudioStore, AUDIO_READY_DELAY_MS } from "@/hooks/useCurrentAudioStore"
 import { AVPlaybackSource } from "expo-av"
 import { getMinutesString } from "@/utils/format"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import BackgroundOpacity from "../BackgroundOpacity"
-import {
-  getAudioBookmarkStorageKey,
-  loadBookmarkPositionMs,
-} from "@/utils/audioBookmark"
+import { VaultDownloadLine } from "@/components/chakras/VaultDownloadLine"
+import { playSanctuaryTrack } from "@/utils/sanctuaryPlayback"
+import { useSanctuaryTrackReady } from "@/hooks/useSanctuaryTrackReady"
+import { AUDIO_READY_RIM } from "@/constants/audioUi"
 
 export const AudioRowWithBackground = ({
   title,
   author,
   durationMs,
   audioSource,
-  getAudioSource,
+  getAudioSource: _getAudioSource,
   authorColor = "#FFFFFF",
   isIntroAudio = false,
   chakraColor,
   fullPlayerTrackId,
+  disabled = false,
 }: {
   title: string
   author: string
@@ -35,79 +35,25 @@ export const AudioRowWithBackground = ({
   chakraColor?: string
   /** When set, used to persist/restore playback position for this track (e.g. embodiment or Head to Heart audio id). */
   fullPlayerTrackId?: string
+  disabled?: boolean
 }) => {
-  const router = useRouter()
   const [isPreparing, setIsPreparing] = useState(false)
-
-  const applyMetadataAndPrefs = () => {
-    const s = useCurrentAudioStore.getState()
-    s.setMetadata({ durationMs, title, author })
-    s.setPrefs({ shouldLoop: false, isIntroAudio })
-    if (chakraColor) s.setChakraColor(chakraColor)
-  }
+  const isReady = useSanctuaryTrackReady(fullPlayerTrackId)
+  const pathname = usePathname()
 
   const onPress = () => {
-    if (isPreparing) return
+    if (isPreparing || disabled || !fullPlayerTrackId) return
     addHapticFeedback(HapticStrength.Light)
     setIsPreparing(true)
-
-    ;(async () => {
-      try {
-        const bookmarkMs = await loadBookmarkPositionMs(fullPlayerTrackId)
-        if (__DEV__ && fullPlayerTrackId) {
-          console.log("[DEBUG] Using Bookmark Key:", fullPlayerTrackId)
-          console.log(
-            "[DEBUG] Full storage key:",
-            getAudioBookmarkStorageKey(fullPlayerTrackId),
-          )
-        }
-
-        const store = useCurrentAudioStore.getState()
-        store.setPendingTrackKey("full-player-row")
-        store.setPlaying(true)
-        store.setMetadata({ durationMs, title, author })
-        store.setPrefs({ shouldLoop: false, isIntroAudio })
-        if (chakraColor) store.setChakraColor(chakraColor)
-
-        if (getAudioSource) {
-          const src = await getAudioSource()
-          const uri =
-            src &&
-            typeof src === "object" &&
-            "uri" in src
-              ? (src as { uri?: string }).uri
-              : ""
-          if (!uri || String(uri).trim() === "") {
-            useCurrentAudioStore.getState().setPendingTrackKey(null)
-            useCurrentAudioStore.getState().setPlaying(false)
-            return
-          }
-          useCurrentAudioStore.getState().setSource(src, "full-player", {
-            resumePositionMs: bookmarkMs,
-            fullPlayerTrackId: fullPlayerTrackId ?? undefined,
-          })
-          applyMetadataAndPrefs()
-          setTimeout(() => {
-            router.push("/AudioPlayer")
-          }, AUDIO_READY_DELAY_MS)
-        } else if (audioSource) {
-          useCurrentAudioStore.getState().setSource(audioSource, "full-player", {
-            resumePositionMs: bookmarkMs,
-            fullPlayerTrackId: fullPlayerTrackId ?? undefined,
-          })
-          applyMetadataAndPrefs()
-          setTimeout(() => router.push("/AudioPlayer"), AUDIO_READY_DELAY_MS)
-        } else {
-          useCurrentAudioStore.getState().setPendingTrackKey(null)
-          useCurrentAudioStore.getState().setPlaying(false)
-        }
-      } catch {
-        useCurrentAudioStore.getState().setPendingTrackKey(null)
-        useCurrentAudioStore.getState().setPlaying(false)
-      } finally {
-        setIsPreparing(false)
-      }
-    })()
+    void playSanctuaryTrack({
+      audioId: fullPlayerTrackId,
+      title,
+      author,
+      durationMs,
+      chakraColor,
+      isIntroAudio,
+      returnPath: pathname,
+    }).finally(() => setIsPreparing(false))
   }
 
   return (
@@ -117,12 +63,12 @@ export const AudioRowWithBackground = ({
         alignSelf: "center",
         marginTop: 24,
         borderWidth: 2,
-        borderColor: "#9D9D9D",
+        borderColor: isReady ? AUDIO_READY_RIM : "#9D9D9D",
         borderRadius: 14,
         overflow: "hidden",
       }}
       onPress={onPress}
-      disabled={isPreparing}
+      disabled={isPreparing || disabled}
     >
       <ImageBackground
         source={require("@/assets/images/colorbar.png")}
@@ -146,7 +92,7 @@ export const AudioRowWithBackground = ({
           <View
             style={{
               borderWidth: 2,
-              borderColor: "#ffffff",
+              borderColor: isReady ? AUDIO_READY_RIM : "#ffffff",
               borderRadius: 20,
               width: 40,
               height: 40,
@@ -182,6 +128,7 @@ export const AudioRowWithBackground = ({
               </AppText>{" "}
               - {getMinutesString(durationMs)}
             </AppText>
+            <VaultDownloadLine audioId={fullPlayerTrackId} />
           </View>
         </View>
       </ImageBackground>

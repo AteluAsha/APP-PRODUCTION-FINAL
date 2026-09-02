@@ -91,7 +91,7 @@ export function TribeRoomInviteModal({
     await openSystemShare({
       message: inviteMessage,
       url: referralLink,
-      title: "Join me in the room – SOUL SCHOOL",
+      title: "Join me in the room – Awakening Soul",
     })
   }
 
@@ -205,7 +205,7 @@ export function TribeRoomInviteModal({
             <ShareDestinationList
               message={inviteMessage}
               url={referralLink}
-              title="Join me in the room – SOUL SCHOOL"
+              title="Join me in the room – Awakening Soul"
               onSuccess={onInviteSent}
               variant="embedded"
               sectionLabel="Share via"
@@ -233,7 +233,7 @@ export function TribeRoomInviteModal({
                     size="sm"
                     style={styles.findFriendsBtnText}
                   >
-                    Find friends on SOUL SCHOOL
+                    Find friends on Awakening Soul
                   </AppText>
                 </LinearGradient>
               </Pressable>

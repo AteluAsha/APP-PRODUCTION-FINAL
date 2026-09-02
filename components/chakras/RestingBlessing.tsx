@@ -2,7 +2,7 @@
  * Resting Blessing
  *
  * Graceful exit for those who chose the Path of the Gentle. A final "I Am"
- * blessing before they rest. They can return to SOUL SCHOOL (RestingBlessing
+ * blessing before they rest. They can return to Awakening Soul (RestingBlessing
  * as home) or choose the sanctuary when ready.
  *
  * Aesthetic: Warm amber / dusk glow, Cormorant Garamond.
@@ -34,7 +34,7 @@ export function RestingBlessing({
 
   const handleReturnToSoulSchool = () => {
     addHapticFeedback(HapticStrength.Light)
-    router.replace("/(chakras)/WelcomeScreen")
+    router.replace("/(chakras)/ChakraHub")
   }
 
   const handleReadyForSanctuary = () => {
@@ -167,7 +167,7 @@ export function RestingBlessing({
                     textAlign: "center",
                   }}
                 >
-                  Return to SOUL SCHOOL
+                  Return to Awakening Soul
                 </AppText>
               </LinearGradient>
             </Pressable>

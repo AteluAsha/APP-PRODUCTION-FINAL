@@ -1,30 +1,51 @@
-import React, { useState } from "react"
-import { Pressable, View, ActivityIndicator } from "react-native"
-
-import { useRouter } from "expo-router"
-import { Ionicons } from "@expo/vector-icons"
+import React, { useRef, useState } from "react"
+import {
+  Pressable,
+  View,
+  ActivityIndicator,
+  ImageBackground,
+  Platform,
+} from "react-native"
+import { usePathname } from "expo-router"
+import { FontAwesome } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
-import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
-import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import { AVPlaybackSource } from "expo-av"
 import { getMinutesString } from "@/utils/format"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import BackgroundOpacity from "../BackgroundOpacity"
+import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
+import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { VaultDownloadLine } from "@/components/chakras/VaultDownloadLine"
 import {
-  getAudioBookmarkStorageKey,
-  loadBookmarkPositionMs,
-} from "@/utils/audioBookmark"
+  playSanctuaryTrack,
+  prepareSanctuaryTrack,
+  type SanctuaryPlaybackRequest,
+} from "@/utils/sanctuaryPlayback"
+import { showHealingToast } from "@/utils/healingToast"
+import { useSanctuaryTrackReady } from "@/hooks/useSanctuaryTrackReady"
+import {
+    SANCTUARY_READY_BORDER,
+    SANCTUARY_IDLE_BORDER,
+    SANCTUARY_READY_GLOW,
+    SANCTUARY_IDLE_GLOW,
+} from "@/constants/audioUi"
+import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
+import { MasterMeditationWelcomeModal } from "@/components/chakras/MasterMeditationWelcomeModal"
+import { shouldShowMasterMeditationWelcome } from "@/constants/masterMeditationWelcome"
+
+const WELCOME_OPEN_PLAYER_DELAY_MS = Platform.OS === "android" ? 360 : 80
 
 export const AudioRow = ({
   title,
   author,
   durationMs,
-  audioSource,
+  audioSource: _audioSource,
   authorColor = "#FFFFFF",
   isIntroAudio = false,
   chakraColor,
   rightContent,
   disabled = false,
-  getAudioSource,
+  getAudioSource: _getAudioSource,
   embodimentCacheKey,
   onPlayTriggered,
 }: {
@@ -36,154 +57,167 @@ export const AudioRow = ({
   isIntroAudio?: boolean
   chakraColor?: string
   rightContent?: React.ReactNode
-  /** When true, row is not pressable (e.g. audio still loading). */
   disabled?: boolean
-  /** When provided, called on press to resolve source (e.g. prepareLongAudioForPlay). Use for long/embodiment on Android. */
   getAudioSource?: () => Promise<AVPlaybackSource>
-  /** When set, player will cache loaded duration under this key so buttons stay in sync. */
   embodimentCacheKey?: string
-  /** Optional: called when user taps play (backup trigger to cache rest of day's audio). */
   onPlayTriggered?: () => void
 }) => {
-  const router = useRouter()
   const [isPreparing, setIsPreparing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [welcomeVisible, setWelcomeVisible] = useState(false)
+  const openingAfterWelcomeRef = useRef(false)
+  const isReady = useSanctuaryTrackReady(embodimentCacheKey)
+  const hasSeenMasterMeditationWelcome = useFirstLaunchStore(
+    (s) => s.hasSeenMasterMeditationWelcome,
+  )
+  const markMasterMeditationWelcomeSeen = useFirstLaunchStore(
+    (s) => s.markMasterMeditationWelcomeSeen,
+  )
+  const offerWelcome = shouldShowMasterMeditationWelcome(
+    embodimentCacheKey,
+    hasSeenMasterMeditationWelcome,
+  )
+  const mountWelcomeModal =
+    embodimentCacheKey != null &&
+    shouldShowMasterMeditationWelcome(embodimentCacheKey, false)
+  const pathname = usePathname()
 
-  const applyMetadataAndPrefs = () => {
-    const s = useCurrentAudioStore.getState()
-    s.setMetadata({ durationMs, title, author })
-    s.setPrefs({ shouldLoop: false, isIntroAudio })
-    if (chakraColor != null) s.setChakraColor(chakraColor)
+  const buildPlaybackRequest = (): SanctuaryPlaybackRequest | null => {
+    if (!embodimentCacheKey) return null
+    return {
+      audioId: embodimentCacheKey,
+      title,
+      author,
+      durationMs,
+      chakraColor,
+      isIntroAudio,
+      returnPath: pathname,
+    }
+  }
+
+  const startPlayback = () => {
+    onPlayTriggered?.()
+    setLoadError(null)
+    const opts = buildPlaybackRequest()
+    if (!opts) return
+    showHealingToast("gatheringPresence")
+    useEmbodimentDurationCacheStore
+      .getState()
+      .setEmbodimentDurationCacheKey(opts.audioId)
+    setIsPreparing(true)
+    void playSanctuaryTrack(opts).finally(() => setIsPreparing(false))
   }
 
   const onMainPress = () => {
     if (disabled || isPreparing) return
-    onPlayTriggered?.()
-    addHapticFeedback(HapticStrength.Light)
-    setLoadError(null)
-    setIsPreparing(true)
-
-    ;(async () => {
-      try {
-        // Persistence-first: bookmark before prepare so resume survives long downloads
-        const bookmarkMs = await loadBookmarkPositionMs(embodimentCacheKey)
-        if (__DEV__ && embodimentCacheKey) {
-          console.log("[DEBUG] Using Bookmark Key:", embodimentCacheKey)
-          console.log(
-            "[DEBUG] Full storage key:",
-            getAudioBookmarkStorageKey(embodimentCacheKey),
-          )
-        }
-
-        const store = useCurrentAudioStore.getState()
-        store.setPendingTrackKey("full-player-row")
-        store.setPlaying(true)
-        store.setMetadata({ durationMs, title, author })
-        store.setPrefs({ shouldLoop: false, isIntroAudio })
-        if (chakraColor != null) store.setChakraColor(chakraColor)
-        if (embodimentCacheKey) {
-          useEmbodimentDurationCacheStore
-            .getState()
-            .setEmbodimentDurationCacheKey(embodimentCacheKey)
-        }
-
-        if (getAudioSource) {
-          const src = await getAudioSource()
-          const uri =
-            typeof src === "object" && src !== null && "uri" in src
-              ? (src as { uri?: string }).uri
-              : ""
-          if (!uri || String(uri).trim() === "") {
-            useCurrentAudioStore.getState().setPendingTrackKey(null)
-            useCurrentAudioStore.getState().setPlaying(false)
-            setLoadError("No audio URL available.")
-            return
-          }
-          useCurrentAudioStore.getState().setSource(src, "full-player", {
-            resumePositionMs: bookmarkMs,
-            fullPlayerTrackId: embodimentCacheKey ?? undefined,
-          })
-          applyMetadataAndPrefs()
-          addHapticFeedback(HapticStrength.Light)
-          router.push("/AudioPlayer")
-        } else {
-          useCurrentAudioStore.getState().setSource(audioSource, "full-player", {
-            resumePositionMs: bookmarkMs,
-            fullPlayerTrackId: embodimentCacheKey ?? undefined,
-          })
-          applyMetadataAndPrefs()
-          addHapticFeedback(HapticStrength.Light)
-          router.push("/AudioPlayer")
-        }
-      } catch {
-        useCurrentAudioStore.getState().setPendingTrackKey(null)
-        useCurrentAudioStore.getState().setPlaying(false)
-        setLoadError("Load failed – tap to try again.")
-      } finally {
-        setIsPreparing(false)
+    if (offerWelcome) {
+      addHapticFeedback(HapticStrength.Light)
+      showHealingToast("gatheringPresence")
+      setWelcomeVisible(true)
+      const opts = buildPlaybackRequest()
+      if (opts && !isReady) {
+        prepareSanctuaryTrack(opts)
       }
-    })()
+      return
+    }
+    addHapticFeedback(HapticStrength.Light)
+    startPlayback()
+  }
+
+  const finishWelcome = () => {
+    markMasterMeditationWelcomeSeen()
+    setWelcomeVisible(false)
+    if (openingAfterWelcomeRef.current) return
+    openingAfterWelcomeRef.current = true
+    setTimeout(() => {
+      const opts = buildPlaybackRequest()
+      const store = useCurrentAudioStore.getState()
+      if (
+        opts &&
+        store.fullPlayerTrackId === opts.audioId &&
+        store.source &&
+        store.audioOrigin === "full-player"
+      ) {
+        openingAfterWelcomeRef.current = false
+        return
+      }
+      startPlayback()
+      openingAfterWelcomeRef.current = false
+    }, WELCOME_OPEN_PLAYER_DELAY_MS)
   }
 
   return (
-    <View
+    <>
+    <Pressable
       style={{
-        width: "83.33%",
+        width: "92%",
         alignSelf: "center",
-        marginTop: 12,
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.75)",
+        marginTop: 24,
+        borderWidth: 2.5,
+        borderColor: isReady ? SANCTUARY_READY_BORDER : SANCTUARY_IDLE_BORDER,
         borderRadius: 18,
-        paddingVertical: 18,
         overflow: "hidden",
+        opacity: disabled || isPreparing ? 0.72 : 1,
+        shadowColor: isReady ? SANCTUARY_READY_GLOW : SANCTUARY_IDLE_GLOW,
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 6,
       }}
+      onPress={onMainPress}
+      disabled={disabled || isPreparing}
+      accessibilityLabel={`Play ${title}`}
+      accessibilityHint="Opens full-screen audio player"
     >
-      <View
+      <ImageBackground
+        source={require("@/assets/images/colorbar.png")}
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingLeft: 32,
-          paddingRight: rightContent ? 8 : 32,
-          justifyContent: "space-between",
+          minHeight: 108,
+          width: "100%",
+          justifyContent: "center",
+          alignItems: "flex-start",
         }}
+        imageStyle={{ resizeMode: "cover" }}
       >
-        <Pressable
-          onPress={onMainPress}
-          disabled={disabled || isPreparing}
-          accessibilityLabel={`Play ${title}`}
-          accessibilityHint="Opens full-screen audio player"
-          style={[
-            { flex: 1, flexDirection: "row", alignItems: "center" },
-            (disabled || isPreparing) && { opacity: 0.65 },
-          ]}
+        <BackgroundOpacity backgroundOpacity={0.32} />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            width: "100%",
+            paddingLeft: 24,
+            paddingRight: rightContent ? 8 : 18,
+            paddingVertical: 18,
+          }}
         >
           <View
             style={{
-              borderWidth: 1,
-              borderColor: "#ffffff",
-              borderRadius: 24,
-              width: 48,
-              height: 48,
+              borderWidth: 2.5,
+              borderColor: isReady ? SANCTUARY_READY_BORDER : "#ffffff",
+              borderRadius: 26,
+              width: 52,
+              height: 52,
               alignItems: "center",
               justifyContent: "center",
+              backgroundColor: "rgba(0, 0, 0, 0.28)",
             }}
           >
-            {isPreparing ? (
+            {isPreparing || disabled ? (
               <ActivityIndicator size="small" color="rgba(255,255,255,0.9)" />
             ) : (
-              <Ionicons
+              <FontAwesome
                 name="play"
-                size={14}
+                size={22}
                 color="white"
-                style={{ marginLeft: 2 }}
+                style={{ marginLeft: 4 }}
               />
             )}
           </View>
-          <View style={{ marginLeft: 24, flex: 1 }}>
+          <View style={{ marginLeft: 16, flex: 1 }}>
             <AppText
-              font="instrument-regular"
-              size="base"
-              style={{ marginBottom: 4, fontSize: 18 }}
+              font="instrument-medium"
+              size="lg"
+              style={{ marginBottom: 2, color: "#ffffff" }}
             >
               {title}
             </AppText>
@@ -197,6 +231,7 @@ export const AudioRow = ({
               </AppText>{" "}
               - {getMinutesString(durationMs)}
             </AppText>
+            <VaultDownloadLine audioId={embodimentCacheKey} />
             {loadError ? (
               <AppText
                 font="instrument-regular"
@@ -210,9 +245,17 @@ export const AudioRow = ({
               </AppText>
             ) : null}
           </View>
-        </Pressable>
-        {rightContent != null ? <View>{rightContent}</View> : null}
-      </View>
-    </View>
+          {rightContent != null ? <View>{rightContent}</View> : null}
+        </View>
+      </ImageBackground>
+    </Pressable>
+    {mountWelcomeModal ? (
+      <MasterMeditationWelcomeModal
+        visible={welcomeVisible}
+        onBegin={finishWelcome}
+        onDismiss={finishWelcome}
+      />
+    ) : null}
+    </>
   )
 }

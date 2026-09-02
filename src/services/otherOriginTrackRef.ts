@@ -6,10 +6,10 @@
  * and the mini player can control it.
  */
 
-import { Audio } from "expo-av"
+import type { HealingSound } from "@/src/utils/singleActiveSound"
 
 export interface OtherOriginTrackRef {
-  sound: Audio.Sound
+  sound: HealingSound
   sourceSignature: string
 }
 

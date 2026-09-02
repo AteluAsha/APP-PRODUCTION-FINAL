@@ -16,14 +16,12 @@
 import { AVPlaybackSource } from "expo-av"
 import {
   getLocalAudioUri,
-  getLocalAudioHeadUri,
-  getLocalAudioHeadUriWithMinSize,
   downloadAndCacheAudio,
   downloadAndCacheAudioResumable,
   downloadAudioHead,
-  isCachedFullFileComplete,
-  clearCachedFullAudioOnly,
 } from "./audioDownload"
+import { isSanctuaryVaultAudioId } from "@/constants/sanctuaryVaultTracks"
+import { peekSanctuaryTrack } from "@/src/services/sanctuaryVaultDownloader"
 
 export interface CrystalBowlSourceInput {
   url: string | null
@@ -40,10 +38,40 @@ interface LongAudioOptions {
 }
 
 /**
- * Prepare long audio for playback: prefer full file, then head (first 3 min).
- * If only URL: download head first (fast), play head; optionally start full
- * download in background. Ensures no playback glitches at start.
+ * expo-av on Android and iOS needs file:/// (three slashes). Native File.toURI()
+ * can emit file:/ (one slash). Normalize so createAsync always gets an absolute
+ * file:/// URI for on-device playback.
  */
+export function toAbsoluteFileUri(uri: string): string {
+  const trimmed = uri.trim()
+  if (!trimmed) return trimmed
+  if (trimmed.startsWith("file:///")) return trimmed
+  if (trimmed.startsWith("content:")) return trimmed
+  if (trimmed.startsWith("file:/")) {
+    const afterScheme = trimmed.slice("file:".length)
+    const path = afterScheme.replace(/^\/+/, "/")
+    return `file://${path}`
+  }
+  if (trimmed.startsWith("/")) return `file://${trimmed}`
+  return trimmed
+}
+
+export function isLocalPlaybackUri(uri: string | null | undefined): boolean {
+  if (!uri) return false
+  return (
+    uri.startsWith("file:") ||
+    uri.startsWith("content:") ||
+    uri.startsWith("/")
+  )
+}
+
+function playbackSourceForUri(uri: string): AVPlaybackSource {
+  if (isLocalPlaybackUri(uri)) {
+    return { uri: toAbsoluteFileUri(uri) }
+  }
+  return { uri }
+}
+
 export async function prepareLongAudioForPlay(
   input: CrystalBowlSourceInput,
   options: LongAudioOptions = {},
@@ -51,9 +79,35 @@ export async function prepareLongAudioForPlay(
   const { url, localUri, audioId, fallback } = input
   const {
     requireFullDownload = false,
-    allowStreamingFallback = true,
+    allowStreamingFallback = false,
     useResumableForBackgroundFull = false,
   } = options
+
+  if (isSanctuaryVaultAudioId(audioId)) {
+    const vaultUri = await peekSanctuaryTrack(audioId)
+    if (!vaultUri) {
+      throw new Error("This track is not on this device")
+    }
+    return playbackSourceForUri(vaultUri)
+  }
+
+  if (isLocalPlaybackUri(localUri)) return playbackSourceForUri(localUri as string)
+  if (isLocalPlaybackUri(url)) return playbackSourceForUri(url as string)
+
+  const cached = await getLocalAudioUri(audioId)
+  if (cached && isLocalPlaybackUri(cached)) return playbackSourceForUri(cached)
+
+  const fallbackUri =
+    typeof fallback === "object" && fallback !== null && "uri" in fallback
+      ? (fallback as { uri?: string }).uri
+      : ""
+  if (isLocalPlaybackUri(fallbackUri)) {
+    return playbackSourceForUri(fallbackUri as string)
+  }
+
+  if (!allowStreamingFallback) {
+    throw new Error("This track is not on this device")
+  }
 
   const startBackgroundFullDownload = (): void => {
     if (!url) return
@@ -66,17 +120,9 @@ export async function prepareLongAudioForPlay(
 
   if (requireFullDownload) {
     if (url) {
-      const existingPath = localUri || (await getLocalAudioUri(audioId))
-      if (existingPath) {
-        const complete = await isCachedFullFileComplete(audioId, url)
-        if (complete) {
-          return { uri: existingPath }
-        }
-        await clearCachedFullAudioOnly(audioId)
-      }
       try {
         const localPath = await downloadAndCacheAudioResumable(url, audioId)
-        return { uri: localPath }
+        return playbackSourceForUri(localPath)
       } catch (error) {
         if (__DEV__) {
           console.warn(
@@ -84,39 +130,17 @@ export async function prepareLongAudioForPlay(
             error,
           )
         }
-        if (!allowStreamingFallback) {
-          downloadAndCacheAudioResumable(url, audioId).catch(() => {})
-          throw error
-        }
-        return { uri: url }
+        throw error
       }
     }
-    const fallbackUri =
-      typeof fallback === "object" && fallback !== null && "uri" in fallback
-        ? (fallback as { uri?: string }).uri
-        : ""
-    if (!fallbackUri || String(fallbackUri).trim() === "") {
-      throw new Error("No audio URL available for playback")
-    }
-    return fallback
-  }
-
-  if (localUri) return { uri: localUri }
-  const full = await getLocalAudioUri(audioId)
-  if (full) return { uri: full }
-
-  // Master Embodiment and Head to Heart use requireFullDownload above (never this head path for them).
-  let head = await getLocalAudioHeadUriWithMinSize(audioId)
-  if (head) {
-    startBackgroundFullDownload()
-    return { uri: head }
+    throw new Error("No audio URL available for playback")
   }
 
   if (url) {
     try {
-      head = await downloadAudioHead(url, audioId)
+      const head = await downloadAudioHead(url, audioId)
       startBackgroundFullDownload()
-      return { uri: head }
+      return playbackSourceForUri(head)
     } catch (error) {
       if (__DEV__) {
         console.warn(
@@ -124,27 +148,14 @@ export async function prepareLongAudioForPlay(
           error,
         )
       }
-      try {
-        const localPath = useResumableForBackgroundFull
-          ? await downloadAndCacheAudioResumable(url, audioId)
-          : await downloadAndCacheAudio(url, audioId)
-        return { uri: localPath }
-      } catch (fullError) {
-        if (__DEV__) {
-          console.warn(
-            "[prepareLongAudioForPlay] Full download failed, fallback to stream:",
-            fullError,
-          )
-        }
-        if (allowStreamingFallback && url) {
-          return { uri: url }
-        }
-        return fallback
-      }
+      const localPath = useResumableForBackgroundFull
+        ? await downloadAndCacheAudioResumable(url, audioId)
+        : await downloadAndCacheAudio(url, audioId)
+      return playbackSourceForUri(localPath)
     }
   }
 
-  return fallback
+  throw new Error("This track is not on this device")
 }
 
 /**
@@ -159,30 +170,27 @@ export async function prepareCrystalBowlForPlay(
 ): Promise<AVPlaybackSource> {
   const { url, localUri, audioId, fallback } = input
 
-  if (localUri) return { uri: localUri }
-  const full = await getLocalAudioUri(audioId)
-  if (full) return { uri: full }
-
-  let head = await getLocalAudioHeadUriWithMinSize(audioId)
-  if (head) {
-    if (url) downloadAndCacheAudioResumable(url, audioId).catch(() => {})
-    return { uri: head }
-  }
-  if (url) {
-    try {
-      head = await downloadAudioHead(url, audioId)
-      downloadAndCacheAudioResumable(url, audioId).catch(() => {})
-      return { uri: head }
-    } catch (e) {
-      if (__DEV__) {
-        console.warn(
-          "[prepareCrystalBowlForPlay] Head failed, streaming from URL:",
-          e,
-        )
-      }
-      return { uri: url }
+  if (isSanctuaryVaultAudioId(audioId)) {
+    const vaultUri = await peekSanctuaryTrack(audioId)
+    if (!vaultUri) {
+      throw new Error("This track is not on this device")
     }
+    return playbackSourceForUri(vaultUri)
   }
 
-  return fallback
+  if (isLocalPlaybackUri(localUri)) return playbackSourceForUri(localUri as string)
+  if (isLocalPlaybackUri(url)) return playbackSourceForUri(url as string)
+
+  const cached = await getLocalAudioUri(audioId)
+  if (cached && isLocalPlaybackUri(cached)) return playbackSourceForUri(cached)
+
+  const fallbackUri =
+    typeof fallback === "object" && fallback !== null && "uri" in fallback
+      ? (fallback as { uri?: string }).uri
+      : ""
+  if (isLocalPlaybackUri(fallbackUri)) {
+    return playbackSourceForUri(fallbackUri as string)
+  }
+
+  throw new Error("Crystal bowl is not on this device")
 }

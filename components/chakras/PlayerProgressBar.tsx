@@ -1,12 +1,12 @@
 /**
  * PlayerProgressBar - Custom progress bar for AudioPlayer
  *
- * Full-width, tappable, draggable. Visible white thumb; drag updates only local
- * state (thumb follows finger); seek runs once on release for responsive Android UX.
+ * Full-width, tappable, draggable. Thumb follows the finger; seek runs on
+ * release using window coordinates so Android does not snap back to 0:00.
  */
 
 import React, { useCallback, useRef, useState } from "react"
-import { View, Pressable, StyleSheet, LayoutChangeEvent } from "react-native"
+import { View, StyleSheet, LayoutChangeEvent } from "react-native"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import { runOnJS } from "react-native-reanimated"
 import { formatTime } from "@/utils/format"
@@ -29,6 +29,8 @@ export const PlayerProgressBar = ({
   seekToPosition: (newPositionMs: number) => Promise<void>
 }) => {
   const trackWidthRef = useRef(0)
+  const trackOriginXRef = useRef(0)
+  const trackViewRef = useRef<View>(null)
   const [trackWidth, setTrackWidth] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [dragFraction, setDragFraction] = useState<number | null>(null)
@@ -38,69 +40,85 @@ export const PlayerProgressBar = ({
     ? Math.min(1, Math.max(0, positionMs / durationMs))
     : 0
   const displayProgress = dragFraction ?? progressFromPlayback
+  const displayMs =
+    dragFraction != null && isValidDuration
+      ? dragFraction * durationMs
+      : positionMs
 
-  const seekFromX = useCallback(
-    (x: number) => {
-      if (!isValidDuration || trackWidthRef.current <= 0) return
-      const fraction = Math.min(1, Math.max(0, x / trackWidthRef.current))
-      seekToPosition(fraction * durationMs)
-    },
-    [durationMs, isValidDuration, seekToPosition],
-  )
-
-  const onLayout = useCallback((e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width
-    trackWidthRef.current = w
-    setTrackWidth(w)
-  }, [])
-
-  const onPress = useCallback(
-    (e: { nativeEvent: { locationX: number } }) => {
-      seekFromX(e.nativeEvent.locationX)
-    },
-    [seekFromX],
-  )
-
-  const updateDragFraction = useCallback((x: number) => {
-    const w = trackWidthRef.current
-    if (w <= 0) return
-    const fraction = Math.min(1, Math.max(0, x / w))
-    setDragFraction(fraction)
-  }, [])
-
-  const seekFromDragEnd = useCallback(
-    (x: number) => {
-      const w = trackWidthRef.current
-      if (isValidDuration && w > 0) {
-        const fraction = Math.min(1, Math.max(0, x / w))
-        seekToPosition(fraction * durationMs)
+  const measureTrack = useCallback(() => {
+    trackViewRef.current?.measureInWindow((x, _y, width) => {
+      if (width > 0) {
+        trackOriginXRef.current = x
+        trackWidthRef.current = width
+        setTrackWidth(width)
       }
+    })
+  }, [])
+
+  const onLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const w = e.nativeEvent.layout.width
+      trackWidthRef.current = w
+      setTrackWidth(w)
+      measureTrack()
     },
-    [durationMs, isValidDuration, seekToPosition],
+    [measureTrack],
   )
 
-  const clearDragState = useCallback(() => {
-    setIsDragging(false)
-    setDragFraction(null)
+  const fractionFromAbsoluteX = useCallback((absoluteX: number) => {
+    const w = trackWidthRef.current
+    if (w <= 0) return 0
+    return Math.min(1, Math.max(0, (absoluteX - trackOriginXRef.current) / w))
   }, [])
+
+  const updateDragFromAbsoluteX = useCallback(
+    (absoluteX: number) => {
+      setDragFraction(fractionFromAbsoluteX(absoluteX))
+    },
+    [fractionFromAbsoluteX],
+  )
+
+  const seekFromAbsoluteX = useCallback(
+    (absoluteX: number) => {
+      if (!isValidDuration || trackWidthRef.current <= 0) {
+        setIsDragging(false)
+        return
+      }
+      const fraction = fractionFromAbsoluteX(absoluteX)
+      setDragFraction(fraction)
+      void seekToPosition(fraction * durationMs).finally(() => {
+        setTimeout(() => {
+          setIsDragging(false)
+          setDragFraction(null)
+        }, 180)
+      })
+    },
+    [durationMs, fractionFromAbsoluteX, isValidDuration, seekToPosition],
+  )
 
   const panGesture = Gesture.Pan()
-    .onStart(() => {
+    .activeOffsetX([-4, 4])
+    .failOffsetY([-28, 28])
+    .onStart((e) => {
       "worklet"
       runOnJS(setIsDragging)(true)
+      runOnJS(updateDragFromAbsoluteX)(e.absoluteX)
     })
     .onUpdate((e) => {
       "worklet"
-      runOnJS(updateDragFraction)(e.x)
+      runOnJS(updateDragFromAbsoluteX)(e.absoluteX)
     })
     .onEnd((e) => {
       "worklet"
-      runOnJS(seekFromDragEnd)(e.x)
+      runOnJS(seekFromAbsoluteX)(e.absoluteX)
     })
-    .onFinalize(() => {
-      "worklet"
-      runOnJS(clearDragState)()
-    })
+
+  const tapGesture = Gesture.Tap().onEnd((e) => {
+    "worklet"
+    runOnJS(seekFromAbsoluteX)(e.absoluteX)
+  })
+
+  const composed = Gesture.Exclusive(panGesture, tapGesture)
 
   const thumbSize = isDragging ? THUMB_SIZE_DRAGGING : THUMB_SIZE
   const thumbLeft =
@@ -123,15 +141,15 @@ export const PlayerProgressBar = ({
           style={styles.timeLeft}
           numberOfLines={1}
         >
-          {isValidDuration ? formatTime(positionMs) : "0:00"}
+          {isValidDuration ? formatTime(displayMs) : "0:00"}
         </AppText>
-        <GestureDetector gesture={panGesture}>
-          <Pressable
-            onPress={onPress}
-            style={styles.trackWrap}
-            delayPressIn={0}
-          >
-            <View style={styles.touchArea} onLayout={onLayout}>
+        <GestureDetector gesture={composed}>
+          <View style={styles.trackWrap} collapsable={false}>
+            <View
+              ref={trackViewRef}
+              style={styles.touchArea}
+              onLayout={onLayout}
+            >
               <View style={[styles.track, { backgroundColor: TRACK_BG }]}>
                 <View
                   style={[
@@ -156,7 +174,7 @@ export const PlayerProgressBar = ({
                 ]}
               />
             </View>
-          </Pressable>
+          </View>
         </GestureDetector>
         <AppText
           font="instrument-medium"

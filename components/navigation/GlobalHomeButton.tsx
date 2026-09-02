@@ -4,8 +4,8 @@
  * Provides a backup home button on all screens (except Chakras101) to ensure users
  * can always return to their home screen even if there are navigation glitches.
  *
- * For trial users: navigates to ChakraHome (or Chakras101 when already on home).
- * For lifetime users: ChakraHub, or ChakraHome when in somatic/journey mode; hidden on ChakraHub (header has menu/profile).
+ * Hidden on ChakraHub, course-day focus screens, and gates.
+ * Elsewhere, returns to ChakraHub.
  */
 
 import React from "react"
@@ -13,10 +13,10 @@ import { View, Pressable, StyleSheet, Platform, Image } from "react-native"
 import { useRouter, usePathname, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
+import { isCourseFocusScreen } from "@/utils/courseFocusScreen"
 import { ICON, ANDROID_PRESS_DELAY_MS } from "@/constants/layout"
 
 export const GlobalHomeButton: React.FC = () => {
@@ -25,23 +25,6 @@ export const GlobalHomeButton: React.FC = () => {
   const segments = useSegments()
   const insets = useSafeAreaInsets()
 
-  // Lifetime: target ChakraHub by default; somatic journey → ChakraHome (week course hub).
-  const { hasLifetimeAccess, lifetimeChosenTimegateJourney } =
-    useChakraJourneyStore(
-      useShallow((state) => ({
-        hasLifetimeAccess: state.hasLifetimeAccess,
-        lifetimeChosenTimegateJourney: state.lifetimeChosenTimegateJourney,
-      })),
-    )
-
-  /** Pops stack until dashboard; avoids landing on (chakras)/index gate (black screen → redirect). */
-  const dismissToLifetimePrimaryHome = () => {
-    if (lifetimeChosenTimegateJourney) {
-      router.dismissTo("/(chakras)/ChakraHome")
-    } else {
-      router.dismissTo("/(chakras)/ChakraHub")
-    }
-  }
   const { completedChakra, clearCompletedChakra } = useCompletedChakraStore(
     useShallow((state) => ({
       completedChakra: state.completedChakra,
@@ -50,58 +33,33 @@ export const GlobalHomeButton: React.FC = () => {
   )
   const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
 
-  // Hide on Chakras101, CommitmentGate, EnergyExchange, WelcomeScreen, DateSelection, and WaitingScreen
-  // Use both pathname and segments for reliable detection
-  // WelcomeScreen is the index route - check segments array for empty or just ['(chakras)']
-  // WaitingScreen is shown inside ChakraHome when showWaitingScreen is true
-  const segmentsLength: number = segments.length
-  const isRootChakrasRoute =
-    segmentsLength === 0 ||
-    (segmentsLength === 1 && segments[0] === "(chakras)") ||
-    pathname === "/(chakras)" ||
-    pathname === "/(chakras)/" ||
-    pathname === "/(chakras)/index" ||
+  const isEntryGate =
+    !pathname ||
     pathname === "/" ||
-    (pathname &&
-      pathname.startsWith("/(chakras)") &&
-      pathname.split("/").filter(Boolean).length <= 2)
-
-  const isWelcomeScreen =
-    isRootChakrasRoute ||
-    segments.includes("WelcomeScreen") ||
-    pathname?.includes("/WelcomeScreen") ||
-    pathname?.includes("WelcomeScreen") ||
-    pathname?.includes("index")
-
-  // Check if we're on ChakraHome (which shows WaitingScreen when conditions are met)
-  const isChakraHome =
     pathname === "/(chakras)" ||
     pathname === "/(chakras)/" ||
     pathname === "/(chakras)/index" ||
-    pathname === "/(chakras)/ChakraHome" ||
-    pathname?.includes("/ChakraHome") ||
-    isRootChakrasRoute
+    pathname.includes("WelcomeScreen") ||
+    pathname.includes("WellnessGate") ||
+    pathname.includes("DayPresence") ||
+    segments.includes("WelcomeScreen") ||
+    segments.includes("WellnessGate") ||
+    segments.includes("DayPresence")
 
-  // Hide chakra icon on ChakraHome for trial users (redundant with Learn About Chakras).
-  // For lifetime in course mode, show it – takes them to ChakraHub (lifetime home).
-  const shouldHideOnWaitingScreen =
-    (isChakraHome || isRootChakrasRoute) && !hasLifetimeAccess
-
-  // EARLY RETURN - Most important check first
-  // Goodbye modal open: hide so global home doesn't block modal's home/back touches
   if (isGoodbyeVisible) {
     return null
   }
 
-  // Lifetime home (ChakraHub): remove chakra icon entirely; profile/hamburger are in the header
-  const isChakraHubLifetime =
-    hasLifetimeAccess &&
-    (pathname?.startsWith("/(chakras)/ChakraHub") || pathname?.includes("/ChakraHub"))
-  if (isChakraHubLifetime) {
+  const isChakraHub =
+    pathname?.startsWith("/(chakras)/ChakraHub") || pathname?.includes("/ChakraHub")
+  if (isChakraHub) {
     return null
   }
 
-  // Hide on AudioPlayer for distraction-free embodiment listening; hide on AnuaChat so chakra icon doesn't cover close X
+  if (isCourseFocusScreen(pathname, segments)) {
+    return null
+  }
+
   if (
     segments.includes("Chakras101") ||
     segments.includes("CommitmentGate") ||
@@ -126,63 +84,21 @@ export const GlobalHomeButton: React.FC = () => {
     pathname?.includes("AudioPlayer") ||
     pathname?.includes("/AnuaChat") ||
     pathname?.includes("AnuaChat") ||
+    pathname?.includes("ProfileMenu") ||
+    pathname?.includes("Profile") ||
     pathname === "AnuaChat" ||
     (segments.length > 0 && segments[segments.length - 1] === "AnuaChat") ||
-    isWelcomeScreen ||
-    shouldHideOnWaitingScreen || // Hide when waiting screen is shown
-    !pathname || // Safety: hide if pathname is undefined
-    pathname === "/" // Safety: hide on root
+    isEntryGate
   ) {
     return null
   }
-
-  // Check if we're on a home screen (trial or post-paywall)
-  // Trial home: '/(chakras)', '/(chakras)/', '/(chakras)/index', '/(chakras)/ChakraHome'
-  // Post-paywall home: '/(chakras)/ChakraHub'
-  const isTrialHomeScreen =
-    pathname === "/(chakras)" ||
-    pathname === "/(chakras)/" ||
-    pathname === "/(chakras)/index" ||
-    pathname === "/(chakras)/ChakraHome" ||
-    pathname?.includes("/ChakraHome") ||
-    (isRootChakrasRoute && !pathname?.includes("ChakraHub"))
-
-  const isPostPaywallHomeScreen =
-    pathname?.startsWith("/(chakras)/ChakraHub") ||
-    pathname?.includes("/ChakraHub") ||
-    pathname === "/(chakras)/ChakraHub"
-
-  const isHomeScreen = isTrialHomeScreen || isPostPaywallHomeScreen
 
   const handlePress = () => {
     addHapticFeedback(HapticStrength.Light)
     if (completedChakra) {
       clearCompletedChakra()
-      if (hasLifetimeAccess) {
-        dismissToLifetimePrimaryHome()
-      } else {
-        router.dismissTo("/(chakras)/ChakraHome")
-      }
-      return
     }
-    if (isHomeScreen) {
-      // Lifetime on ChakraHome (course mode): chakra icon → ChakraHub
-      // Trial/ChakraHub: chakra icon → Chakras 101
-      if (hasLifetimeAccess && isChakraHome) {
-        router.dismissTo("/(chakras)/ChakraHub")
-      } else {
-        router.push("/(chakras)/Chakras101")
-      }
-    } else {
-      // On other screens, navigate to respective home screen
-      // Trial screens → trial homepage (ChakraHome with progressive chakra reveal)
-      // Post-paywall screens → ChakraHub or ChakraHome (somatic journey)
-      if (hasLifetimeAccess) {
-        dismissToLifetimePrimaryHome()
-      } else {
-        router.dismissTo("/(chakras)/ChakraHome")
-      }
-    }
+    router.dismissTo("/(chakras)/ChakraHub")
   }
 
   return (

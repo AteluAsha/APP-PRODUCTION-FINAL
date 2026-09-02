@@ -3,16 +3,24 @@ import { View, Platform } from "react-native"
 import { Stack, usePathname, useRouter } from "expo-router"
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
 import { SafeAreaProvider } from "react-native-safe-area-context"
+import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
 import {
   SOMATIC_HOME_STACK_FADE_MS,
   SOMATIC_SCREEN_TRANSITION_MS,
   SOMATIC_SCREEN_TRANSITION_MS_IOS,
 } from "@/constants/layout"
 
-/** Calm stack fade for entry / home routes only; other screens keep default durations below. */
+/** Calm stack fade for entry / home routes only; ChakraHub needs transparent card so the field shows. */
 const homeSomaticStackOptions = {
   animation: "fade" as const,
   animationDuration: SOMATIC_HOME_STACK_FADE_MS,
+  contentStyle: { backgroundColor: "#000000" },
+}
+
+const chakraHubStackOptions = {
+  animation: "fade" as const,
+  animationDuration: SOMATIC_HOME_STACK_FADE_MS,
+  contentStyle: { backgroundColor: "transparent" },
 }
 
 const somaticFadeOptions = {
@@ -40,9 +48,10 @@ const ChakrasLayout = () => {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: "#000000" }} pointerEvents="box-none">
-        <BottomSheetModalProvider>
-          <Stack
+      <ScreenCrashBoundary>
+        <View style={{ flex: 1, backgroundColor: "#000000" }} pointerEvents="box-none">
+          <BottomSheetModalProvider>
+            <Stack
             screenOptions={{
               headerShown: false,
               animation: "fade",
@@ -53,6 +62,8 @@ const ChakrasLayout = () => {
             }}
           >
             <Stack.Screen name="index" />
+            <Stack.Screen name="WellnessGate" options={homeSomaticStackOptions} />
+            <Stack.Screen name="DayPresence" options={homeSomaticStackOptions} />
             <Stack.Screen name="WelcomeScreen" />
             <Stack.Screen name="ChakraHome" />
             <Stack.Screen
@@ -110,11 +121,12 @@ const ChakrasLayout = () => {
               options={somaticFadeOptions}
             />
             <Stack.Screen name="QuizScreen" options={somaticFadeOptions} />
-            <Stack.Screen name="ChakraHub" options={homeSomaticStackOptions} />
+            <Stack.Screen name="ChakraHub" options={chakraHubStackOptions} />
             <Stack.Screen name="CoursePreview" />
             <Stack.Screen name="Preview" />
             <Stack.Screen name="[chakra]" />
             <Stack.Screen name="SoundBath" />
+            <Stack.Screen name="IntegrationPractice" />
             <Stack.Screen name="AudioLibrary" />
             <Stack.Screen name="HeadToHeart" />
             <Stack.Screen name="Chakras101" />
@@ -127,6 +139,7 @@ const ChakrasLayout = () => {
           </Stack>
         </BottomSheetModalProvider>
       </View>
+      </ScreenCrashBoundary>
     </SafeAreaProvider>
   )
 }

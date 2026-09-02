@@ -75,7 +75,7 @@ export function formatJourneyNotesPlainText(
 ): string {
   const exportedAt = new Date().toISOString()
   const lines: string[] = []
-  lines.push("SOUL SCHOOL — Notes Along the Way")
+  lines.push("Awakening Soul — Notes Along the Way")
   lines.push(`Exported: ${formatExportHeaderDate(exportedAt)}`)
   lines.push(
     exportKind === "full"

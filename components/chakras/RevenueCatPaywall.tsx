@@ -148,7 +148,7 @@ export const RevenueCatPaywall = ({
         contentContainerClassName="p-6"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with SOUL SCHOOL logo */}
+        {/* Header with Awakening Soul logo */}
         <View className="items-center mb-6">
           {onDismiss && (
             <Pressable
@@ -170,7 +170,7 @@ export const RevenueCatPaywall = ({
             size="3xl"
             className="text-center mb-4"
           >
-            Unlock SOUL SCHOOL Pro
+            Unlock Awakening Soul Pro
           </AppText>
           <AppText
             font="instrument-regular"
@@ -414,7 +414,7 @@ export const RevenueCatPaywall = ({
             size="xs"
             className="text-center text-white/50 mb-4"
           >
-            SOUL SCHOOL is operated by Project Starseed, an IRS-recognized
+            Awakening Soul is operated by Project Starseed, an IRS-recognized
             501(c)(3) tax-exempt organization. All donations are tax-deductible.
           </AppText>
 

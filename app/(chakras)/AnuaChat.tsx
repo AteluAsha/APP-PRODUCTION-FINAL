@@ -7,14 +7,16 @@
  * Escape: onClose and hardware back call router.back() + store.close().
  */
 
-import React, { useEffect } from "react"
-import { View, StyleSheet, BackHandler, Platform } from "react-native"
+import React, { useCallback, useEffect } from "react"
+import { View, StyleSheet } from "react-native"
 import { useRouter } from "expo-router"
+import { useFocusEffect } from "@react-navigation/native"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { AnuaChatPage } from "@/components/social/AnuaChatModal"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { getChakraName } from "@/constants/chakras/chakraConstants"
 import { stopAnuaAudio } from "@/src/services/elevenlabs"
+import { registerAndroidBackCleanup } from "@/utils/androidBackCleanup"
 
 export default function AnuaChatScreen() {
   const router = useRouter()
@@ -40,15 +42,14 @@ export default function AnuaChatScreen() {
     }
   }, [close])
 
-  // Android: hardware back closes chat (escape hatch so user is never stuck)
-  useEffect(() => {
-    if (Platform.OS !== "android") return
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      handleClose()
-      return true
-    })
-    return () => sub.remove()
-  }, [handleClose])
+  useFocusEffect(
+    useCallback(() => {
+      return registerAndroidBackCleanup(() => {
+        stopAnuaAudio()
+        close()
+      })
+    }, [close]),
+  )
 
   return (
     <View style={styles.container}>

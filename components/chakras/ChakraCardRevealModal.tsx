@@ -116,7 +116,7 @@ export const ChakraCardRevealModal: React.FC<ChakraCardRevealModalProps> = ({
     handleClose()
     // Delay for modal to fully dismiss before navigation (avoids glitch screen)
     setTimeout(() => {
-      router.replace("/(chakras)/GalleryOfGnosis" as const)
+      router.replace(`/(chakras)/GalleryOfGnosis?chakra=${chakra}` as const)
     }, 550)
   }, [handleClose, router])
 

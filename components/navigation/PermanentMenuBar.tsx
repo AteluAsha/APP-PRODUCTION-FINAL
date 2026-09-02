@@ -5,8 +5,8 @@
  * Features: Sacred geometry icons, chakra-colored gradients, pulsating animations, light reveals
  */
 
-import React, { useState, useEffect, useRef } from "react"
-import { View, Pressable, StyleSheet, Platform } from "react-native"
+import React, { useState, useEffect } from "react"
+import { View, Pressable, StyleSheet, Image } from "react-native"
 import { useRouter, usePathname, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
@@ -22,27 +22,20 @@ import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withRepeat,
   withTiming,
-  withSequence,
   Easing,
   interpolate,
 } from "react-native-reanimated"
 import { LinearGradient } from "expo-linear-gradient"
 import { useMemo } from "react"
-import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
-import { useShallow } from "zustand/react/shallow"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { getContextChakraDayFromRoute } from "@/utils/notesContextChakra"
+import { isChakraHubPath, isCourseFocusScreen } from "@/utils/courseFocusScreen"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
-import { DAY_NAMES, getDayName } from "@/constants/chakras/chakraConstants"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
 import { MenuBarMiniPlayer } from "@/components/navigation/MenuBarMiniPlayer"
-import { getChakraName } from "@/constants/chakras/chakraConstants"
-import { Image } from "react-native"
 interface MenuItem {
   id: string
   iconComponent?: "tree" | "chakraCard" | "feather" | "leaf" | "audio" // Optional for custom icons like Anua
@@ -62,8 +55,6 @@ const MENU_BAR_PADDING_RIGHT_DEFAULT = 56
  * Do not use a small value here — it replaces the default and was previously 16px (too tight).
  */
 const MENU_BAR_PADDING_RIGHT_WITH_TOGGLE = 76
-/** Trial ChakraHome horizontal cluster only — space between the four icons (waiting room uses its own row gap). */
-const TRIAL_CHAKRA_HOME_ICON_GAP = 12
 
 // Sacred geometry and chakra energy colors for each menu item
 const MENU_ITEM_CONFIG = {
@@ -126,57 +117,19 @@ export const PermanentMenuBar: React.FC = () => {
   const insets = useSafeAreaInsets()
   const [localMenuOpen, setLocalMenuOpen] = useState(false) // Local state for animations
   const setIsMenuOpen = useMenuBarStore((state) => state.setIsMenuOpen)
-  const isWaitingScreenVisible = useMenuBarStore(
-    (state) => state.isWaitingScreenVisible,
-  )
-  const waitingRoomActions = useMenuBarStore(
-    (state) => state.waitingRoomActions,
-  )
 
   const currentDay = getCurrentDayOfWeek()
-  const chakraName = getChakraName(currentDay)
   const contextChakraDay =
     getContextChakraDayFromRoute(pathname, segments) ?? currentDay
 
-  // Get lifetime access status - menu bar ONLY shows after paywall
-  const hasLifetimeAccess = useChakraJourneyStore(
-    useShallow((state) => state.hasLifetimeAccess),
-  )
-  const source = useCurrentAudioStore((s) => s.source)
-  const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
   const isGoodbyeVisible = useGoodbyeModalStore((state) => state.isGoodbyeVisible)
   const splashOverlayActive = useSplashOverlayStore((s) => s.splashOverlayActive)
-  // Lifetime menu bar is permanently visible. Trial uses same menu bar (4 or 5 items).
+  const onChakraHub = isChakraHubPath(pathname)
+  const onCourseFocus = isCourseFocusScreen(pathname, segments)
 
-  // Determine if we're on a home/landing screen where menu should be hidden by default
-  // NOTE: All hooks must run unconditionally (Rules of Hooks) - no early return before hooks
-  const isHomeOrLandingScreen = useMemo(() => {
-    return (
-      pathname === "/(chakras)" ||
-      pathname === "/(chakras)/" ||
-      pathname?.startsWith("/(chakras)/ChakraHub") ||
-      pathname?.includes("/WelcomeScreen")
-    )
-  }, [pathname])
-
-  // Hide menu bar on paywall (CommitmentGate) - it's a gate, not a navigation screen
-  const isPaywallScreen = useMemo(() => {
-    return pathname?.includes("CommitmentGate")
-  }, [pathname])
-
-  // Determine if we should use vertical (left wall) layout for healing screens
-  const useVerticalLayout = useMemo(() => {
-    return (
-      pathname?.startsWith("/(chakras)/[chakra]") ||
-      pathname?.startsWith("/(chakras)/SoundBath") ||
-      pathname?.startsWith("/(chakras)/AudioLibrary") ||
-      pathname?.startsWith("/(chakras)/HeadToHeart") ||
-      pathname?.startsWith("/(chakras)/Chakras101") ||
-      pathname?.startsWith("/(chakras)/DivineLaws") ||
-      pathname?.startsWith("/(chakras)/AccountabilityOfAwakening") ||
-      pathname?.startsWith("/(chakras)/GalleryOfGnosis")
-    )
-  }, [pathname])
+  useEffect(() => {
+    if (!onChakraHub) setLocalMenuOpen(false)
+  }, [onChakraHub])
 
   // Menu bar slide animation - Default to hidden everywhere
   const menuTranslateY = useSharedValue(100) // Always start hidden
@@ -237,113 +190,33 @@ export const PermanentMenuBar: React.FC = () => {
     return pathname === route || pathname?.startsWith(route)
   }
 
-  // Menu items with energetic configurations
-  // Trial waiting room: exactly 4 buttons – Preview, Chakras 101, Anua, Notes (no Tribe, no arrow).
-  // Trial elsewhere: Sanctuary, Anua, Notes, Tribe + arrow.
-  // APP_2 (Lifetime): Full bar. Lifetime on waiting room: no menu bar.
+  // Notes, Audio Library, Gallery of Gnosis, Anua — nothing else.
   const menuItems: MenuItem[] = useMemo(() => {
-    const sanctuaryItem: MenuItem = {
-      id: "community",
-      iconComponent: "feather",
-      label: "Sanctuary",
-      route: "/CommunityHalls",
-      isActive: getIsActive("/CommunityHalls"),
-      gradient: MENU_ITEM_CONFIG.sanctuary.gradient,
-      pulseDelay: MENU_ITEM_CONFIG.sanctuary.pulseDelay,
-      geometryIcon: MENU_ITEM_CONFIG.sanctuary.geometryIcon,
-    }
-    const anuaItem: MenuItem = {
-      id: "anua",
-      iconComponent: "leaf",
-      label: "Anua",
-      onPress: () =>
-        useAnuaChatStore.getState().open({
-          chakraDayOverride: contextChakraDay ?? undefined,
-        }),
-      isActive: false,
-      gradient: MENU_ITEM_CONFIG.anua.gradient,
-      pulseDelay: MENU_ITEM_CONFIG.anua.pulseDelay,
-      geometryIcon: MENU_ITEM_CONFIG.anua.geometryIcon,
-    }
-    const notesItem: MenuItem = {
-      id: "notes",
-      iconComponent: "leaf",
-      label: "Notes",
-      onPress: () => {
-        router.push(
-          `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
-        )
-      },
-      isActive: false,
-      gradient: MENU_ITEM_CONFIG.notes.gradient,
-      pulseDelay: MENU_ITEM_CONFIG.notes.pulseDelay,
-      geometryIcon: MENU_ITEM_CONFIG.notes.geometryIcon,
-    }
-    const tribeItem: MenuItem = {
-      id: "tribe",
-      iconComponent: "leaf",
-      label: "Tribe",
-      route: "/(chakras)/TribeChat",
-      isActive: false,
-      gradient: MENU_ITEM_CONFIG.tribe.gradient,
-      pulseDelay: MENU_ITEM_CONFIG.tribe.pulseDelay,
-      geometryIcon: MENU_ITEM_CONFIG.tribe.geometryIcon,
-    }
-
-    // Trial waiting room: ONLY these 4 options (Preview, Chakras 101, Anua, Notes). No Tribe. Toggle arrow is shown so user can expand/collapse the bar.
-    // From waiting room, Anua ALWAYS opens directly to Anua chat (never Social Sanctuary modal).
-    if (!hasLifetimeAccess && isWaitingScreenVisible) {
-      const previewItem: MenuItem = {
-        id: "preview",
-        iconComponent: "feather",
-        label: "Preview",
-        onPress: () => waitingRoomActions.onPreviewPress?.(),
-        isActive: false,
-        gradient: MENU_ITEM_CONFIG.preview.gradient,
-        pulseDelay: MENU_ITEM_CONFIG.preview.pulseDelay,
-        geometryIcon: MENU_ITEM_CONFIG.preview.geometryIcon,
-      }
-      const chakras101Item: MenuItem = {
-        id: "chakras101",
-        iconComponent: "chakraCard",
-        label: "Chakras 101",
-        onPress: () => waitingRoomActions.onChakras101Press?.(),
-        isActive: false,
-        gradient: MENU_ITEM_CONFIG.chakras101.gradient,
-        pulseDelay: MENU_ITEM_CONFIG.chakras101.pulseDelay,
-        geometryIcon: MENU_ITEM_CONFIG.chakras101.geometryIcon,
-      }
-      const anuaWaitingRoomItem: MenuItem = {
-        ...anuaItem,
-        onPress: () =>
-          useAnuaChatStore.getState().open({
-            chakraDayOverride: contextChakraDay ?? undefined,
-          }),
-      }
-      return [previewItem, chakras101Item, anuaWaitingRoomItem, notesItem]
-    }
-
-    if (!hasLifetimeAccess) {
-      // Trial (not waiting room): Sanctuary → CommunityHalls, Anua → chat, Notes, Tribe + arrow (all go directly)
-      return [sanctuaryItem, anuaItem, notesItem, tribeItem]
-    }
-
-    // Lifetime: Music, Sanctuary, Anua, Notes, Tribe, Gallery
     return [
       {
-        id: "music",
+        id: "notes",
+        iconComponent: "leaf",
+        label: "Notes",
+        onPress: () => {
+          router.push(
+            `/(chakras)/NotesAlongTheWay?contextDay=${contextChakraDay}`,
+          )
+        },
+        isActive: false,
+        gradient: MENU_ITEM_CONFIG.notes.gradient,
+        pulseDelay: MENU_ITEM_CONFIG.notes.pulseDelay,
+        geometryIcon: MENU_ITEM_CONFIG.notes.geometryIcon,
+      },
+      {
+        id: "audio",
         iconComponent: "audio",
-        label: "Music",
+        label: "Audio",
         route: "/(chakras)/AudioLibrary",
         isActive: getIsActive("/(chakras)/AudioLibrary"),
         gradient: MENU_ITEM_CONFIG.audio.gradient,
         pulseDelay: MENU_ITEM_CONFIG.audio.pulseDelay,
         geometryIcon: MENU_ITEM_CONFIG.audio.geometryIcon,
       },
-      sanctuaryItem,
-      anuaItem,
-      notesItem,
-      tribeItem,
       {
         id: "gallery",
         iconComponent: "chakraCard",
@@ -354,8 +227,21 @@ export const PermanentMenuBar: React.FC = () => {
         pulseDelay: MENU_ITEM_CONFIG.gallery.pulseDelay,
         geometryIcon: MENU_ITEM_CONFIG.gallery.geometryIcon,
       },
+      {
+        id: "anua",
+        iconComponent: "tree",
+        label: "Anua",
+        onPress: () =>
+          useAnuaChatStore.getState().open({
+            chakraDayOverride: contextChakraDay ?? undefined,
+          }),
+        isActive: false,
+        gradient: MENU_ITEM_CONFIG.anua.gradient,
+        pulseDelay: MENU_ITEM_CONFIG.anua.pulseDelay,
+        geometryIcon: MENU_ITEM_CONFIG.anua.geometryIcon,
+      },
     ]
-  }, [pathname, hasLifetimeAccess, isWaitingScreenVisible, waitingRoomActions])
+  }, [pathname, contextChakraDay, router])
 
   const handleItemPress = (item: MenuItem) => {
     addHapticFeedback(HapticStrength.Light)
@@ -373,178 +259,77 @@ export const PermanentMenuBar: React.FC = () => {
     }
   }
 
-  const isTrialChakraHomeRoute =
-    Boolean(pathname?.includes("ChakraHome")) ||
-    (segments as string[]).includes("ChakraHome")
+  const showMenuToggleArrow = onChakraHub
 
-  /** Trial: chevron on waiting room or ChakraHome dashboard only (gated). */
-  const showTrialMenuToggleArrow =
-    !hasLifetimeAccess &&
-    (isWaitingScreenVisible ||
-      (isTrialChakraHomeRoute && !useVerticalLayout && !isWaitingScreenVisible))
-
-  /** Lifetime: standard expand/collapse chevron on ChakraHub and ChakraHome (horizontal bar). */
-  const showLifetimeMenuToggleArrow =
-    hasLifetimeAccess &&
-    !useVerticalLayout &&
-    (Boolean(pathname?.includes("ChakraHub")) ||
-      Boolean(pathname?.includes("ChakraHome")))
-
-  const showMenuToggleArrow =
-    showTrialMenuToggleArrow || showLifetimeMenuToggleArrow
-
-  // Goodbye modal open: hide so menu bar doesn't block modal touches
   if (isGoodbyeVisible) {
     return null
   }
 
-  // Sacred void: no menu layer during JS splash / somatic fade-in (Android arrival polish)
   if (splashOverlayActive) {
     return null
   }
 
-  // Hide menu bar on WelcomeScreen, DateSelection, and index (stillness) only. ChakraHome and ChakraHub SHOW the menu bar.
-  const isWelcomeScreen =
-    pathname === "/(chakras)" ||
-    pathname === "/(chakras)/" ||
-    pathname === "/(chakras)/index" ||
-    pathname === "/" ||
-    pathname?.includes("/WelcomeScreen") ||
-    pathname?.includes("WelcomeScreen") ||
-    segments.includes("WelcomeScreen")
-
-  // EARLY RETURN - Hide on onboarding/selection/stillness only (NOT ChakraHome, NOT ChakraHub)
-  if (
-    segments.includes("DateSelection") ||
-    pathname?.includes("/DateSelection") ||
-    pathname?.includes("DateSelection") ||
-    isWelcomeScreen ||
-    pathname === "/"
-  ) {
-    return null
+  // Course days are a focus space: no hub toggle menu.
+  // Crystal bowl may keep playing — still show the mini player.
+  if (onCourseFocus) {
+    return (
+      <View pointerEvents="box-none" collapsable={false}>
+        <MenuBarMiniPlayer />
+      </View>
+    )
   }
 
-  // Hide menu bar on paywall (all variants), Energy Exchange, Tribe Chat, AudioPlayer, Anua Chat, CommunityHalls, Notes Along the Way, and GiftChakra
-  if (
-    pathname?.includes("CommitmentGate") ||
+  const onFullScreenOverlay =
+    pathname?.includes("AudioPlayer") ||
     pathname?.includes("Paywall") ||
     pathname?.includes("EnergyExchange") ||
-    pathname?.includes("TribeChat") ||
-    pathname?.includes("AudioPlayer") ||
-    pathname?.includes("CommunityHalls") ||
+    pathname?.includes("WellnessGate") ||
+    pathname?.includes("DayPresence") ||
     pathname?.includes("NotesAlongTheWay") ||
-    pathname?.includes("AnuaChat") ||
+    pathname?.includes("ProfileMenu") ||
+    pathname?.includes("Profile") ||
     pathname?.includes("GiftChakra") ||
-    pathname === "AnuaChat" ||
-    segments.includes("EnergyExchange") ||
-    segments.includes("AudioPlayer") ||
-    segments.includes("AnuaChat") ||
-    segments.includes("NotesAlongTheWay") ||
-    segments.includes("GiftChakra") ||
-    (segments.length > 0 && segments[segments.length - 1] === "AnuaChat") ||
-    (segments.length > 0 && segments[segments.length - 1] === "GiftChakra")
-  ) {
+    pathname?.includes("GalleryOfGnosis") ||
+    pathname?.includes("Contribute")
+
+  if (onFullScreenOverlay) {
     return null
   }
 
-  // Lifetime user viewing trial waiting room: no menu bar (they have "Exit course mode" / return to lifetime).
-  if (isWaitingScreenVisible && hasLifetimeAccess) {
-    return null
+  // Toggle menu lives only on ChakraHub. Elsewhere, only the mini player if audio is going.
+  if (!onChakraHub) {
+    return (
+      <View pointerEvents="box-none" collapsable={false}>
+        <MenuBarMiniPlayer />
+      </View>
+    )
   }
-
-  const waitingRoomBarStyle =
-    isWaitingScreenVisible &&
-    !hasLifetimeAccess &&
-    Platform.OS === "android"
-      ? { elevation: 24, zIndex: 9999 }
-      : undefined
-
-  /** Trial 4-icon bottom bar (ChakraHome, etc.) — not waiting room, not vertical healing layout. */
-  const isTrialMainHorizontalBar =
-    !hasLifetimeAccess &&
-    !isWaitingScreenVisible &&
-    !useVerticalLayout
 
   return (
-    <View
-      style={[{ opacity: 1 }, waitingRoomBarStyle]}
-      pointerEvents="box-none"
-      collapsable={false}
-    >
-      {/* Menu Bar - Vertical (left wall) for healing screens, Horizontal (bottom) for others */}
-      {useVerticalLayout ? (
-        <Animated.View
-          style={[
-            styles.verticalContainer,
-            {
-              top: Math.max(insets.top, 8) + 60,
-              bottom: Math.max(insets.bottom, 8) + 60,
-            },
-          ]}
-        >
-          {menuItems.map((item) => (
-            <MenuBarItem
-              key={item.id}
-              item={item}
-              onPress={() => handleItemPress(item)}
-              isVertical={true}
-            />
-          ))}
-        </Animated.View>
-      ) : (
-        <>
-          <Animated.View
-            style={[
-              styles.container,
-              { paddingBottom: Math.max(insets.bottom, 4) },
-              animatedMenuStyle,
-              // Trial waiting room: center row (full width inside waitingRoomMenuRow). Trial ChakraHome: centered cluster (not edge-to-edge). Lifetime: space-between.
-              isWaitingScreenVisible && !hasLifetimeAccess
-                ? { justifyContent: "center" as const }
-                : isTrialMainHorizontalBar
-                  ? {
-                      justifyContent: "center" as const,
-                      gap: TRIAL_CHAKRA_HOME_ICON_GAP,
-                    }
-                  : { justifyContent: "space-between" as const },
-              showMenuToggleArrow
-                ? { paddingRight: MENU_BAR_PADDING_RIGHT_WITH_TOGGLE }
-                : { paddingRight: MENU_BAR_PADDING_RIGHT_DEFAULT },
-            ]}
-          >
-            {isWaitingScreenVisible && !hasLifetimeAccess ? (
-              <View style={styles.waitingRoomMenuRow}>
-                {menuItems.map((item) => (
-                  <MenuBarItem
-                    key={item.id}
-                    item={item}
-                    onPress={() => handleItemPress(item)}
-                    isVertical={false}
-                    waitingRoomSlot
-                  />
-                ))}
-              </View>
-            ) : (
-              <>
-                {menuItems.map((item) => (
-                  <MenuBarItem
-                    key={item.id}
-                    item={item}
-                    onPress={() => handleItemPress(item)}
-                    isVertical={false}
-                    trialChakraHomeCluster={isTrialMainHorizontalBar}
-                  />
-                ))}
-              </>
-            )}
-          </Animated.View>
-        </>
-      )}
+    <View style={{ opacity: 1 }} pointerEvents="box-none" collapsable={false}>
+      <Animated.View
+        style={[
+          styles.container,
+          { paddingBottom: Math.max(insets.bottom, 4) },
+          animatedMenuStyle,
+          { justifyContent: "space-between" as const },
+          showMenuToggleArrow
+            ? { paddingRight: MENU_BAR_PADDING_RIGHT_WITH_TOGGLE }
+            : { paddingRight: MENU_BAR_PADDING_RIGHT_DEFAULT },
+        ]}
+      >
+        {menuItems.map((item) => (
+          <MenuBarItem
+            key={item.id}
+            item={item}
+            onPress={() => handleItemPress(item)}
+            isVertical={false}
+          />
+        ))}
+      </Animated.View>
 
-      {/* Mini player - above Music icon, stays when menu toggles closed */}
       <MenuBarMiniPlayer />
 
-      {/* Trial: gated chevron. Lifetime: chevron on ChakraHub / ChakraHome horizontal bar. */}
       {showMenuToggleArrow ? (
         <Animated.View
           style={[
@@ -578,7 +363,6 @@ export const PermanentMenuBar: React.FC = () => {
           </Pressable>
         </Animated.View>
       ) : null}
-
     </View>
   )
 }
@@ -604,7 +388,7 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
   const [isHovered, setIsHovered] = useState(false)
   const geometryOpacity = useSharedValue(0)
   const geometryScale = useSharedValue(0.8)
-  const labelOpacity = useSharedValue(0.5)
+  const labelOpacity = useSharedValue(0.88)
   const labelColor = useSharedValue(0)
 
   // Gentle, flowing animations for hover state - "awakening and sleeping"
@@ -637,7 +421,7 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
         duration: 500,
         easing: Easing.in(Easing.ease),
       })
-      labelOpacity.value = withTiming(0.5, {
+      labelOpacity.value = withTiming(0.88, {
         duration: 500,
         easing: Easing.in(Easing.ease),
       })

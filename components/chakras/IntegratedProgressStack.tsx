@@ -1,17 +1,9 @@
 /**
  * Integrated Progress Stack Component
  *
- * ARCHITECTURE: "Two Apps in One"
- * - APP_1 (Trial): Progressive reveal, teaser logic, missed day handling
- * - APP_2 (Lifetime): All chakras visible and interactive (not used in lifetime mode)
- *
- * This component is primarily for APP_1 (Trial mode).
- * APP_2 (Lifetime) uses ChakraHub instead.
- *
- * LOCKED (trials home): The 7 chakra balls are pinned to the base of the
- * viewport (minHeight/maxHeight: viewportHeight, justifyContent: "flex-end",
- * paddingBottom: TRIAL_HOME_ROOT_CHAKRA.BOTTOM_PADDING). They must never be
- * centered; this placement is non-negotiable.
+ * Open 7-day course stack for ChakraHub.
+ * All seven balls are visible. Root starts lit; others grey until tapped.
+ * Every ball is open — no waiting room, no weekday lock.
  */
 
 import React, { useState, useEffect } from "react"
@@ -43,6 +35,7 @@ import {
   LIFETIME_HUB_CHAKRA_BALL_DIVISOR,
   LIFETIME_HUB_DAY_TITLE_SIDE_GAP,
   TRIAL_HOME_CHAKRA_BALL_DIVISOR,
+  lifetimeHubFirstScreenStackHeight,
 } from "@/constants/layout"
 import { getTimeRemaining } from "@/utils/date"
 import { formatCountdown } from "@/utils/format"
@@ -56,6 +49,8 @@ interface IntegratedProgressStackProps {
   inCourseMode?: boolean // When true (lifetime somatic journey), apply trial timegates
   /** When true (ChakraHub): show all 7 chakras, no current-day label or teaser */
   showAllChakrasForLifetimeHub?: boolean
+  /** Hub: Root starts lit; others stay grey until the seeker taps them. */
+  isHubChakraAwakened?: (day: number) => boolean
   chakraData: {
     day: number
     affirmation: string
@@ -137,6 +132,7 @@ export const IntegratedProgressStack = ({
   hasLifetimeAccess = false, // APP_2 (Lifetime): Default to false for trial mode
   inCourseMode = false, // Lifetime somatic journey: apply trial timegates
   showAllChakrasForLifetimeHub = false,
+  isHubChakraAwakened,
   chakraData,
   router,
 }: IntegratedProgressStackProps) => {
@@ -172,13 +168,15 @@ export const IntegratedProgressStack = ({
     scrollPaddingTop -
     scrollPaddingBottom
 
-  // Viewport height for base-pinned stack (flex-end). iOS lifetime hub uses trial-home viewport; Android lifetime uses full safe height.
-  const viewportHeight =
-    showAllChakrasForLifetimeHub && Platform.OS === "ios"
-      ? viewportHeightForTrialHome
-      : showAllChakrasForLifetimeHub
-        ? windowHeight - insets.top - insets.bottom
-        : viewportHeightForTrialHome
+  // Lifetime hub: first-screen height so the 7 balls center on open.
+  // Trial home: reduced viewport + flex-end (LOCKED — do not center).
+  const viewportHeight = showAllChakrasForLifetimeHub
+    ? lifetimeHubFirstScreenStackHeight(
+        windowHeight,
+        insets.top,
+        insets.bottom,
+      )
+    : viewportHeightForTrialHome
 
   const stackContainerHeight = viewportHeight
 
@@ -202,20 +200,17 @@ export const IntegratedProgressStack = ({
     return () => clearInterval(interval)
   }, [currentDay])
 
-  // LOCKED: viewport-sized container + stack pinned to base – do not center (trials home). iOS lifetime hub uses trial-home viewport height. flexGrow (not flex) so min/max height are respected.
+  // Trial home LOCKED: viewport + flex-end. Hub: first-screen height + center.
   return (
     <View
       style={{
         flexGrow: 1,
         minHeight: stackContainerHeight,
         maxHeight: stackContainerHeight,
+        overflow: "visible",
       }}
     >
-      {/* Lifetime hub: vertical drop — pushes stack down so Heart sits more centered in frame */}
-      {showAllChakrasForLifetimeHub ? (
-        <View style={{ height: 120 }} />
-      ) : null}
-      {/* Chakra stack – pinned to base (flex-end); same position Monday–Sunday; never center by day */}
+      {/* Trial: pin to base (flex-end). Hub: optically center on the opening screen. */}
       <View
         style={{
           flex: 1,
@@ -224,9 +219,6 @@ export const IntegratedProgressStack = ({
             : "flex-end",
           alignItems: "center",
           paddingBottom: showAllChakrasForLifetimeHub ? 0 : bottomPadding,
-          ...(showAllChakrasForLifetimeHub && {
-            paddingVertical: bottomPadding,
-          }),
         }}
       >
         {/* Reverse chakraData so Root (day 0) appears at bottom, Crown (day 6) at top */}
@@ -546,7 +538,11 @@ export const IntegratedProgressStack = ({
                         ? { transform: [{ scale: 1.15 }] }
                         : { transform: [{ scale: 1 }] }),
                       opacity: showAllChakrasForLifetimeHub
-                        ? 1.0
+                        ? isHubChakraAwakened
+                          ? isHubChakraAwakened(chakraDay)
+                            ? 1.0
+                            : 0.28
+                          : 1.0
                         : isTeaserPosition
                           ? 0.15
                           : isCompleted ||
@@ -607,6 +603,9 @@ export const IntegratedProgressStack = ({
                     !isTeaserPosition &&
                     (() => {
                       const chakraColor = getChakraColor(chakraDay)
+                      const badgeColor = showAllChakrasForLifetimeHub
+                        ? "#E8C98C"
+                        : chakraColor
                       const hexToRgba = (hex: string, alpha: number) => {
                         const r = parseInt(hex.slice(1, 3), 16)
                         const g = parseInt(hex.slice(3, 5), 16)
@@ -614,9 +613,9 @@ export const IntegratedProgressStack = ({
                         return `rgba(${r}, ${g}, ${b}, ${alpha})`
                       }
                       const gradientColors: [string, string, string] = [
-                        hexToRgba(chakraColor, 0.7),
-                        hexToRgba(chakraColor, 0.5),
-                        hexToRgba(chakraColor, 0.6),
+                        hexToRgba(badgeColor, 0.95),
+                        hexToRgba(badgeColor, 0.72),
+                        hexToRgba(badgeColor, 0.88),
                       ]
                       const badgeRight = showAllChakrasForLifetimeHub ? -12 : -20
                       return (
@@ -637,8 +636,8 @@ export const IntegratedProgressStack = ({
                               width: 12,
                               height: 12,
                               borderRadius: 6,
-                              backgroundColor: hexToRgba(chakraColor, 0.12),
-                              shadowColor: chakraColor,
+                              backgroundColor: hexToRgba(badgeColor, 0.16),
+                              shadowColor: badgeColor,
                               shadowOffset: { width: 0, height: 0 },
                               shadowOpacity: 0.3,
                               shadowRadius: 4,
@@ -659,8 +658,8 @@ export const IntegratedProgressStack = ({
                               justifyContent: "center",
                               alignItems: "center",
                               borderWidth: 0.5,
-                              borderColor: hexToRgba(chakraColor, 0.3),
-                              shadowColor: chakraColor,
+                              borderColor: hexToRgba(badgeColor, 0.45),
+                              shadowColor: badgeColor,
                               shadowOffset: { width: 0, height: 1 },
                               shadowOpacity: 0.4,
                               shadowRadius: 2,

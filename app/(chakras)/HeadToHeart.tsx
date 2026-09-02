@@ -1,31 +1,53 @@
-import { View, ActivityIndicator, useWindowDimensions } from "react-native"
+import { View, useWindowDimensions } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { AppText } from "../../components/AppText"
 import { ActionBarAnimated } from "@/components/ActionBarAnimated"
 import Animated, { useAnimatedRef } from "react-native-reanimated"
-import { useLocalSearchParams } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useEffect } from "react"
 import { chakraContent } from "@/constants/chakras/content"
-import { AudioRowWithBackground } from "@/components/chakras/AudioRowWithBackground"
+import { AudioRow } from "@/components/chakras/AudioRow"
 import { Chakra } from "@/types/chakras/Chakra"
 import FormattedText from "@/components/FormattedText"
-import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
-import { useAncestralWisdomAudio, getHeadToHeartAudioId } from "@/hooks/useAncestralWisdomAudio"
+import {
+  FLOATING_NAV_SCROLL_BOTTOM_PADDING,
+  SCROLL_BREATHING_BOTTOM_PADDING,
+} from "@/constants/layout"
+import {
+  useAncestralWisdomAudio,
+  getHeadToHeartAudioId,
+} from "@/hooks/useAncestralWisdomAudio"
 import { prepareLongAudioForPlay } from "@/src/utils/crystalBowlPlayback"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { getDayFromChakra } from "@/utils/chakraMapping"
 import ParallaxScrollView from "@/components/ParallaxScrollView"
 import { HeaderSection } from "@/components/chakras/HeaderSection"
 import { HeaderBackground } from "@/components/chakras/HeaderBackground"
+import { isValidChakra } from "@/utils/validation"
 
 const HeadToHeart = () => {
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
   const { width: screenWidth } = useWindowDimensions()
+  const router = useRouter()
 
   const searchParams = useLocalSearchParams()
-  const chakra = searchParams.chakra as Chakra
+  const rawChakra = searchParams.chakra
+  const chakraParam = Array.isArray(rawChakra) ? rawChakra[0] : rawChakra
+  const hasChakraQuery =
+    typeof chakraParam === "string" && chakraParam.trim().length > 0
+
+  useEffect(() => {
+    if (hasChakraQuery && !isValidChakra(chakraParam)) {
+      router.replace("/(chakras)/ChakraHub")
+    }
+  }, [chakraParam, hasChakraQuery, router])
+
+  const chakra = isValidChakra(chakraParam) ? chakraParam : Chakra.ROOT
   const chakraContentEntry = chakraContent[chakra]
   const content = chakraContentEntry.headtoheart
-  const { source, url, localUri, isLoading } = useAncestralWisdomAudio(chakra)
+  const { source, url, localUri } = useAncestralWisdomAudio(chakra)
+
+  if (hasChakraQuery && !isValidChakra(chakraParam)) return null
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
@@ -75,112 +97,86 @@ const HeadToHeart = () => {
       >
         <View
           style={{
-            paddingBottom: FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
-            paddingTop: 16,
+            paddingBottom:
+              FLOATING_NAV_SCROLL_BOTTOM_PADDING + SCROLL_BREATHING_BOTTOM_PADDING,
+            paddingTop: 4,
           }}
         >
-          <View style={{ backgroundColor: "#000000", marginHorizontal: 16 }}>
+          <AudioRow
+            title={content.audio.title}
+            author={content.audio.author}
+            durationMs={content.audio.duration}
+            audioSource={source ?? { uri: "" }}
+            authorColor={content.audio.authorColor}
+            isIntroAudio={false}
+            chakraColor={getChakraColor(getDayFromChakra(chakra))}
+            disabled={false}
+            embodimentCacheKey={getHeadToHeartAudioId(chakra)}
+            getAudioSource={async () =>
+              prepareLongAudioForPlay(
+                {
+                  url: url ?? null,
+                  localUri: localUri ?? null,
+                  audioId: getHeadToHeartAudioId(chakra),
+                  fallback: { uri: localUri ?? url ?? "" },
+                },
+                {
+                  requireFullDownload: true,
+                  allowStreamingFallback: false,
+                },
+              )
+            }
+          />
+
+          <View style={{ marginHorizontal: 20, marginTop: 8 }}>
             <FormattedText
-              font="instrument-regular"
-              size="sm"
+              font="cormorant-regular"
+              size="base"
               segments={content.description}
               baseClassName="text-justify"
               textStyle={{
                 textAlign: "justify",
-                marginTop: 24,
-                lineHeight: 24,
+                marginTop: 20,
+                lineHeight: 28,
+                color: "rgba(255, 248, 236, 0.88)",
               }}
             />
 
             <View
               style={{
-                marginTop: 24,
-                paddingVertical: 20,
-                paddingHorizontal: 20,
-                borderRadius: 12,
-                backgroundColor: "rgba(255, 255, 255, 0.06)",
-                borderLeftWidth: 3,
-                borderLeftColor: "rgba(255, 215, 0, 0.6)",
+                marginTop: 28,
+                paddingVertical: 22,
+                paddingHorizontal: 22,
+                borderRadius: 16,
+                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                borderWidth: 1,
+                borderColor: "rgba(232, 201, 140, 0.18)",
               }}
             >
               <AppText
-                font="instrument-semibold"
-                size="sm"
+                font="cormorant-regular"
                 style={{
-                  color: "rgba(251,191,36,0.9)",
-                  marginBottom: 8,
-                  letterSpacing: 0.5,
+                  color: "rgba(232, 201, 140, 0.92)",
+                  marginBottom: 10,
+                  letterSpacing: 2.4,
+                  fontSize: 13,
+                  textTransform: "uppercase",
                 }}
               >
-                THE MASTER KEY
+                The Master Key
               </AppText>
               <AppText
-                font="instrument-regular"
-                size="sm"
+                font="cormorant-italic"
                 style={{
-                  color: "rgba(255,255,255,0.95)",
+                  color: "rgba(255, 248, 236, 0.94)",
                   textAlign: "justify",
-                  fontStyle: "italic",
+                  fontSize: 17,
+                  lineHeight: 27,
                 }}
               >
                 {content.masterKey.text}
               </AppText>
             </View>
-
-            {/* Audio Player – Power of Creation (Ancestral Wisdom) from Firebase */}
-            {isLoading && source === null ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginTop: 24,
-                  paddingVertical: 20,
-                  paddingHorizontal: 24,
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                  borderRadius: 14,
-                  width: "83.33%",
-                  alignSelf: "center",
-                }}
-              >
-                <ActivityIndicator size="small" color="#FFDEBA" />
-                <AppText
-                  font="instrument-regular"
-                  size="sm"
-                  style={{ color: "rgba(255,255,255,0.7)", marginLeft: 12 }}
-                >
-                  Loading audio…
-                </AppText>
-              </View>
-            ) : source ? (
-              <AudioRowWithBackground
-                title={content.audio.title}
-                author={content.audio.author}
-                durationMs={content.audio.duration}
-                audioSource={source}
-                getAudioSource={
-                  url ?? localUri
-                    ? async () =>
-                        prepareLongAudioForPlay(
-                          {
-                            url: url ?? null,
-                            localUri: localUri ?? null,
-                            audioId: getHeadToHeartAudioId(chakra),
-                            fallback: { uri: url ?? localUri ?? "" },
-                          },
-                          {
-                            requireFullDownload: true,
-                            allowStreamingFallback: false,
-                          },
-                        )
-                    : undefined
-                }
-                authorColor={content.audio.authorColor}
-                isIntroAudio={false}
-                chakraColor={getChakraColor(getDayFromChakra(chakra))}
-                fullPlayerTrackId={getHeadToHeartAudioId(chakra)}
-              />
-            ) : null}
           </View>
         </View>
       </ParallaxScrollView>

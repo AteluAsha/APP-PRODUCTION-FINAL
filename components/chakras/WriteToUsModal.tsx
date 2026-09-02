@@ -40,7 +40,7 @@ export const WriteToUsModal: React.FC<WriteToUsModalProps> = ({
   const handleSend = async () => {
     addHapticFeedback(HapticStrength.Medium)
     const encodedSubject = encodeURIComponent(
-      subject.trim() || "SOUL SCHOOL - Message",
+      subject.trim() || "Awakening Soul - Message",
     )
     const encodedBody = encodeURIComponent(message.trim() || "")
     const mailto = `mailto:${EMAIL}?subject=${encodedSubject}&body=${encodedBody}`

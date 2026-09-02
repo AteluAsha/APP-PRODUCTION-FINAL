@@ -13,8 +13,15 @@
  */
 
 import * as FileSystem from "expo-file-system"
+import { isSanctuaryVaultFsPath } from "@/src/utils/sanctuaryAudioVault"
 
 const CACHE_DIR = `${FileSystem.cacheDirectory}audio/`
+
+function assertNotVaultPath(path: string): void {
+  if (isSanctuaryVaultFsPath(path)) {
+    throw new Error("Refusing to mutate sanctuary vault from cache audio layer")
+  }
+}
 const HEAD_SUFFIX = "_head"
 
 /** ~3 min of AAC at ~64–128 kbps: use 2.5 MB to be safe */
@@ -22,24 +29,6 @@ export const AUDIO_HEAD_BYTES = 2.5 * 1024 * 1024
 
 /** Minimum head file size to accept; below this we throw or return null so callers fall back to full download or stream (avoids ~30s cutoff). */
 const MIN_HEAD_BYTES = 500 * 1024
-
-const BASE64_CHARS =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let result = ""
-  for (let i = 0; i < bytes.length; i += 3) {
-    const a = bytes[i]
-    const b = bytes[i + 1]
-    const c = bytes[i + 2]
-    result += BASE64_CHARS[a >> 2]
-    result += BASE64_CHARS[((a & 3) << 4) | ((b ?? 0) >> 4)]
-    result +=
-      b !== undefined ? BASE64_CHARS[((b & 15) << 2) | ((c ?? 0) >> 6)] : "="
-    result += c !== undefined ? BASE64_CHARS[c & 63] : "="
-  }
-  return result
-}
 
 /** Extensions we treat as "has extension" so we don't append .aac (e.g. Day1 Hero2.mov, other .aac) */
 const AUDIO_EXTENSIONS = [".aac", ".mov", ".m4a", ".mp3"]
@@ -136,6 +125,7 @@ export async function isCachedFullFileComplete(
 export async function clearCachedFullAudioOnly(audioId: string): Promise<void> {
   try {
     const path = getFullPath(audioId)
+    assertNotVaultPath(path)
     const fileInfo = await FileSystem.getInfoAsync(path)
     if (fileInfo.exists) {
       await FileSystem.deleteAsync(path)
@@ -247,6 +237,7 @@ export async function downloadAndCacheAudio(
     }
 
     const fileUri = getFullPath(audioId)
+    assertNotVaultPath(fileUri)
     const downloadResult = await FileSystem.downloadAsync(audioUrl, fileUri)
 
     if (__DEV__) {
@@ -268,6 +259,7 @@ export async function downloadAndCacheAudio(
 /**
  * Download and cache a large audio file using resumable download.
  * Avoids iOS/Android timeout on full-file downloadAsync (~60s); use for crystal bowl (~1 hr).
+ * Wi-Fi drops keep the partial file and resumeData so the next attempt continues.
  */
 export async function downloadAndCacheAudioResumable(
   audioUrl: string,
@@ -280,26 +272,76 @@ export async function downloadAndCacheAudioResumable(
     }
 
     const fileUri = getFullPath(audioId)
-    const resumable = FileSystem.createDownloadResumable(
+    assertNotVaultPath(fileUri)
+    const snapshotUri = `${fileUri}.resume.json`
+    let resumeData: string | undefined
+    try {
+      const snapInfo = await FileSystem.getInfoAsync(snapshotUri)
+      if (snapInfo.exists) {
+        const parsed = JSON.parse(
+          await FileSystem.readAsStringAsync(snapshotUri),
+        ) as { resumeData?: string }
+        if (parsed?.resumeData) resumeData = parsed.resumeData
+      }
+    } catch {
+      // Start fresh if the snapshot is unreadable; do not delete fileUri.
+    }
+
+    let lastSnap = 0
+    let resumable: ReturnType<typeof FileSystem.createDownloadResumable>
+    resumable = FileSystem.createDownloadResumable(
       audioUrl,
       fileUri,
       {},
-      (progress) => {
-        if (__DEV__ && progress.totalBytesExpectedToWrite > 0) {
-          const pct = Math.round(
-            (100 * progress.totalBytesWritten) /
-              progress.totalBytesExpectedToWrite,
+      () => {
+        const now = Date.now()
+        if (now - lastSnap < 2000) return
+        lastSnap = now
+        try {
+          const savable = resumable.savable()
+          void FileSystem.writeAsStringAsync(
+            snapshotUri,
+            JSON.stringify(savable),
           )
-          if (pct % 20 === 0 || pct === 100) {
-            console.log(`[audioDownload] Resumable ${audioId}: ${pct}%`)
-          }
+        } catch {
+          // ignore
         }
       },
+      resumeData,
     )
-    const result = await resumable.downloadAsync()
+    let result: Awaited<ReturnType<typeof resumable.downloadAsync>>
+    try {
+      result = await resumable.downloadAsync()
+    } catch (downloadError) {
+      try {
+        const savable = await resumable.pauseAsync()
+        await FileSystem.writeAsStringAsync(
+          snapshotUri,
+          JSON.stringify(savable),
+        )
+      } catch {
+        // keep whatever snapshot we already have
+      }
+      throw downloadError
+    }
 
     if (!result?.uri) {
+      try {
+        const savable = await resumable.pauseAsync()
+        await FileSystem.writeAsStringAsync(
+          snapshotUri,
+          JSON.stringify(savable),
+        )
+      } catch {
+        // keep whatever snapshot we already have
+      }
       throw new Error("Resumable download did not return a URI")
+    }
+
+    try {
+      await FileSystem.deleteAsync(snapshotUri, { idempotent: true })
+    } catch {
+      // ignore
     }
 
     if (__DEV__) {
@@ -339,7 +381,7 @@ export const MEDITATION_DOWNLOAD_TIMEOUT_MS = 180 * 1000
 
 /**
  * Resumable download with timeout. Rejects with Error('Download timeout') after timeoutMs.
- * On timeout, deletes the destination full file to avoid playing a partial cache on retry.
+ * Partial bytes are kept so a later retry can continue. Never delete on timeout.
  * Prefer bare `downloadAndCacheAudioResumable` for hero meditations (no truncation risk from race).
  */
 export async function downloadAndCacheAudioResumableWithTimeout(
@@ -353,18 +395,10 @@ export async function downloadAndCacheAudioResumableWithTimeout(
       timeoutMs,
     )
   })
-  try {
-    return await Promise.race([
-      downloadAndCacheAudioResumable(audioUrl, audioId),
-      timeoutPromise,
-    ])
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    if (msg === "Download timeout") {
-      await clearCachedFullAudioOnly(audioId)
-    }
-    throw e
-  }
+  return await Promise.race([
+    downloadAndCacheAudioResumable(audioUrl, audioId),
+    timeoutPromise,
+  ])
 }
 
 /**
@@ -385,37 +419,30 @@ export async function downloadAudioHead(
 
     const fileUri = getHeadPath(audioId)
 
-    const response = await fetch(audioUrl, {
-      method: "GET",
+    // Native downloadAsync with Range — avoids ~2.5MB sync base64 encode on the JS thread
+    // (that encode blocked Android UI when Wi‑Fi reconnected during preload/play).
+    const downloadResult = await FileSystem.downloadAsync(audioUrl, fileUri, {
       headers: { Range: `bytes=0-${maxBytes - 1}` },
     })
 
-    if (!response.ok && response.status !== 206) {
-      throw new Error(`Head download failed: ${response.status}`)
+    if (
+      downloadResult.status !== 200 &&
+      downloadResult.status !== 206
+    ) {
+      try {
+        assertNotVaultPath(fileUri)
+        await FileSystem.deleteAsync(fileUri, { idempotent: true })
+      } catch {
+        /* ignore */
+      }
+      throw new Error(`Head download failed: ${downloadResult.status}`)
     }
-
-    const arrayBuffer = await response.arrayBuffer()
-    const bytes = new Uint8Array(arrayBuffer)
-    let binary = ""
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i])
-    }
-    const base64 =
-      typeof globalThis.btoa !== "undefined"
-        ? globalThis.btoa(binary)
-        : bytesToBase64(bytes)
-    if (!base64) {
-      throw new Error("Base64 encode not available")
-    }
-
-    await FileSystem.writeAsStringAsync(fileUri, base64, {
-      encoding: FileSystem.EncodingType.Base64,
-    })
 
     const fileInfo = await FileSystem.getInfoAsync(fileUri, { size: true })
     const size = (fileInfo as { size?: number })?.size ?? 0
     if (size < MIN_HEAD_BYTES) {
       try {
+        assertNotVaultPath(fileUri)
         await FileSystem.deleteAsync(fileUri)
       } catch (_) {
         /* ignore */
@@ -452,6 +479,7 @@ export async function downloadAudioHead(
 export async function clearCachedAudio(audioId: string): Promise<void> {
   try {
     for (const path of [getFullPath(audioId), getHeadPath(audioId)]) {
+      assertNotVaultPath(path)
       const fileInfo = await FileSystem.getInfoAsync(path)
       if (fileInfo.exists) {
         await FileSystem.deleteAsync(path)
@@ -475,6 +503,7 @@ export async function clearCachedAudio(audioId: string): Promise<void> {
  */
 export async function clearAllCachedAudio(): Promise<void> {
   try {
+    assertNotVaultPath(CACHE_DIR)
     const dirInfo = await FileSystem.getInfoAsync(CACHE_DIR)
     if (dirInfo.exists) {
       await FileSystem.deleteAsync(CACHE_DIR, { idempotent: true })

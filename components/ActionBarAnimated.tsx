@@ -13,6 +13,7 @@ import {
   View,
   Image,
   ImageSourcePropType,
+  Platform,
 } from "react-native"
 import Animated, {
   AnimatedRef,
@@ -24,6 +25,8 @@ import { useAnimatedStyle } from "react-native-reanimated"
 import { useScrollViewOffset } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { goToChakraHubRoot } from "@/utils/navigationHelpers"
+import { runAndroidBackCleanup } from "@/utils/androidBackCleanup"
 import { ICON } from "@/constants/layout"
 
 export const ActionBarAnimated = ({
@@ -37,7 +40,7 @@ export const ActionBarAnimated = ({
   headerImageSource?: ImageSourcePropType
   scrollThreshold?: number
   onBackPress?: () => void
-  /** When false, back arrow is hidden (e.g. main course day pages use menu bar home only). Default true. */
+  /** When false, back arrow is hidden. Default true. */
   showBackButton?: boolean
 }) => {
   const router = useRouter()
@@ -59,11 +62,16 @@ export const ActionBarAnimated = ({
   }))
 
   const handleBack = () => {
+    if (Platform.OS === "android") {
+      runAndroidBackCleanup()
+    }
     addHapticFeedback(HapticStrength.Light)
     if (onBackPress) {
       onBackPress()
-    } else {
+    } else if (router.canGoBack()) {
       router.back()
+    } else {
+      router.replace("/(chakras)/ChakraHub")
     }
   }
 

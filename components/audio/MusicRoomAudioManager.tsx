@@ -9,16 +9,16 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import {
-  Audio,
-  AVPlaybackStatus,
-  InterruptionModeIOS,
-  InterruptionModeAndroid,
-} from "expo-av"
-import { Platform } from "react-native"
+import { AVPlaybackStatus } from "expo-av"
 import { usePathname } from "expo-router"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { isEmulatorOrSimulator } from "@/constants/emulator"
+import { createSoundAsyncOffUiThread } from "@/src/utils/audioStreamInit"
+import {
+  configureHealingAudioMode,
+  type HealingSound,
+} from "@/src/utils/singleActiveSound"
 
 export function MusicRoomAudioManager() {
   const pathname = usePathname()
@@ -27,10 +27,15 @@ export function MusicRoomAudioManager() {
   const audioOrigin = useCurrentAudioStore((s) => s.audioOrigin)
   const isPlayingFromStore = useCurrentAudioStore((s) => s.isPlaying)
   const setPlaying = useCurrentAudioStore((s) => s.setPlaying)
+  const isFullScreenPlayerMounted = useCurrentAudioStore(
+    (s) => s.isFullScreenPlayerMounted,
+  )
 
   const isOnAudioPlayer = pathname?.includes("AudioPlayer") ?? false
+  const playerOwnsAudio = isFullScreenPlayerMounted || isOnAudioPlayer
+  const isGoodbyeVisible = useGoodbyeModalStore((s) => s.isGoodbyeVisible)
 
-  const trackRef = useRef<Audio.Sound | null>(null)
+  const trackRef = useRef<HealingSound | null>(null)
   const lastSourceRef = useRef<typeof source>(null)
   const lastIsPlayingRef = useRef(false)
   const userPauseRequestedAtRef = useRef<number>(0)
@@ -70,24 +75,21 @@ export function MusicRoomAudioManager() {
 
     initInProgressRef.current = true
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-        shouldDuckAndroid: true,
-        ...(Platform.OS === "android" && { playThroughEarpieceAndroid: false }),
-      })
+      await configureHealingAudioMode({ background: true })
 
-      const { sound } = await Audio.Sound.createAsync(
-        src,
-        {
+      const sound = await createSoundAsyncOffUiThread(src, {
+        initialStatus: {
           shouldPlay: true,
           isLooping: false,
-          ...(Platform.OS === "android" && { androidImplementation: "MediaPlayer" }),
         },
         onPlaybackStatusUpdate,
-      )
+        androidPreCreateDelayMs: isEmulatorOrSimulator() ? 100 : 50,
+        keepPlayingInBackground: true,
+        lockScreen: {
+          title: state.metadata?.title ?? "Frequency of Gnosis",
+          artist: state.metadata?.author ?? "Awakening Soul",
+        },
+      })
       trackRef.current = sound
       await sound.setProgressUpdateIntervalAsync(
         isEmulatorOrSimulator() ? 1000 : 500,
@@ -164,9 +166,16 @@ export function MusicRoomAudioManager() {
     unloadTrack()
   }, [justFinished, audioOrigin, unloadTrack])
 
-  // Main effect: init when source changes for music-room, but NOT when user is on full-screen AudioPlayer (it owns the track there)
+  // Main effect: init when source changes for music-room, but NOT when user is on
+  // full-screen AudioPlayer (it owns the track there) or on goodbye.
   useEffect(() => {
-    if (audioOrigin !== "music-room" || !source || !prefs || isOnAudioPlayer) {
+    if (
+      audioOrigin !== "music-room" ||
+      !source ||
+      !prefs ||
+      playerOwnsAudio ||
+      isGoodbyeVisible
+    ) {
       unloadTrack()
       return
     }
@@ -183,7 +192,7 @@ export function MusicRoomAudioManager() {
     return () => {
       unloadTrack()
     }
-  }, [source, prefs, audioOrigin, isOnAudioPlayer])
+  }, [source, prefs, audioOrigin, playerOwnsAudio, isGoodbyeVisible])
 
   // Unload when store reset (source cleared)
   useEffect(() => {

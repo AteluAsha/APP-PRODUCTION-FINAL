@@ -23,6 +23,8 @@ import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { formatTime } from "@/utils/format"
+import { useSanctuaryTrackReady } from "@/hooks/useSanctuaryTrackReady"
+import { AUDIO_READY_RIM } from "@/constants/audioUi"
 
 const SLIDER_TRACK_HEIGHT = 8
 const SLIDER_THUMB_SIZE = 14
@@ -40,6 +42,8 @@ interface CrystalBowlButtonProps {
   /** Hz value to display below title (e.g. "396 Hz") */
   subtitle?: string
   isLoading?: boolean
+  /** When set, show the error on the button. Press still fires so the parent can explain. */
+  error?: Error | null
   audioId?: string
   firebaseUrl?: string | null
   firebasePath?: string
@@ -64,6 +68,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
   title,
   subtitle,
   isLoading = false,
+  error = null,
   audioId,
   firebaseUrl,
   firebasePath,
@@ -76,9 +81,10 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
   onSeek,
 }) => {
   const isLayered = variant === "layered"
+  const isReady = useSanctuaryTrackReady(audioId)
+  const readyRim = isReady ? AUDIO_READY_RIM : null
   const label = title
-  const showProgress =
-    isPlaying && durationMs > 0 && positionMs >= 0
+  const showProgress = durationMs > 0 && positionMs >= 0
   const isValidDuration = durationMs > 0
   const progressFromPlayback = isValidDuration
     ? Math.min(1, Math.max(0, positionMs / durationMs))
@@ -214,7 +220,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
   )
 
   const labelBlock =
-    showHeart && subtitle && !isLoading ? (
+    showHeart && subtitle && !error ? (
       <View
         style={{
           flexDirection: "row",
@@ -278,7 +284,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
               ...(titleLineHeight != null ? { lineHeight: titleLineHeight } : {}),
             }}
           >
-            {isLoading ? "Preparing..." : label}
+            {error && !isLoading ? "Not on this device" : label}
           </AppText>
           {showHeart && !isLoading && (
             <Ionicons
@@ -289,7 +295,20 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
             />
           )}
         </View>
-        {subtitle && !isLoading && !(showHeart && subtitle) && (
+        {error && !isLoading && (
+          <AppText
+            font="instrument-regular"
+            size="xs"
+            numberOfLines={2}
+            style={{
+              color: "rgba(251,191,36,0.95)",
+              marginTop: Platform.OS === "android" ? 4 : 2,
+            }}
+          >
+            {error.message || "This track is not on the device."}
+          </AppText>
+        )}
+        {subtitle && !error && !(showHeart && subtitle) && (
           <AppText
             font="instrument-regular"
             size="xs"
@@ -325,9 +344,11 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
           justifyContent: "center",
           flexShrink: 0,
           borderWidth: 1,
-          borderColor: isLayered
-            ? "rgba(255,255,255,0.2)"
-            : "rgba(255,255,255,0.82)",
+          borderColor: readyRim
+            ? readyRim
+            : isLayered
+              ? "rgba(255,255,255,0.2)"
+              : "rgba(255,255,255,0.82)",
           backgroundColor: isLayered ? "rgba(0,0,0,0.3)" : undefined,
         }}
       >
@@ -352,7 +373,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
     maxWidth: Platform.OS === "android" ? ("100%" as const) : ("95%" as const),
     alignSelf: Platform.OS === "android" ? ("stretch" as const) : undefined,
     borderRadius: layeredRadius,
-    overflow: "hidden" as const,
+    overflow: "visible" as const,
     ...(Platform.OS === "android" && isLayered ? { paddingHorizontal: 8 } : {}),
     ...(Platform.OS === "ios"
       ? {
@@ -369,7 +390,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
       {Platform.OS === "android" ? (
         <TouchableOpacity
           onPress={onPress}
-          disabled={isLoading}
+          disabled={false}
           activeOpacity={0.85}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={{ flex: 1 }}
@@ -377,7 +398,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
           {content}
         </TouchableOpacity>
       ) : (
-        <Pressable onPress={onPress} disabled={isLoading} style={{ flex: 1 }}>
+        <Pressable onPress={onPress} style={{ flex: 1 }}>
           {content}
         </Pressable>
       )}
@@ -396,7 +417,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
             flex: 1,
             borderRadius: layeredRadius,
             borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.15)",
+            borderColor: readyRim ?? "rgba(255,255,255,0.15)",
             paddingVertical: Platform.OS === "android" ? 14 : 16,
           }}
         >
@@ -423,7 +444,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
 
   const defaultStyle = {
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.38)",
+    borderColor: readyRim ?? "rgba(255,255,255,0.38)",
     borderRadius: Platform.OS === "android" ? 28 : 16,
     paddingVertical: 16,
     width: Platform.OS === "android" ? ("100%" as const) : 360,
@@ -437,7 +458,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
       {Platform.OS === "android" ? (
         <TouchableOpacity
           onPress={onPress}
-          disabled={isLoading}
+          disabled={false}
           activeOpacity={0.85}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={{ flex: 1 }}
@@ -445,7 +466,7 @@ const CrystalBowlButton: React.FC<CrystalBowlButtonProps> = ({
           {content}
         </TouchableOpacity>
       ) : (
-        <Pressable onPress={onPress} disabled={isLoading} style={{ flex: 1 }}>
+        <Pressable onPress={onPress} style={{ flex: 1 }}>
           {content}
         </Pressable>
       )}
@@ -458,6 +479,7 @@ const styles = StyleSheet.create({
   progressBlock: {
     marginTop: 10,
     marginHorizontal: Platform.OS === "android" ? 22 : 28,
+    minHeight: 52,
   },
   progressTime: {
     color: "rgba(255,255,255,0.85)",

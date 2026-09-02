@@ -1,15 +1,8 @@
 /**
  * Journey Notes Store
  *
- * ARCHITECTURE: "Two Apps in One"
- * - APP_1 (Trial): Notes available when journey starts (first Monday opens)
- * - APP_2 (Lifetime): Notes always available
- *
- * CRITICAL: Notes are always stored and never deleted unless user chooses.
- * Storage persists across app restarts, trial resets, and app updates.
- *
- * Manages personal journey notes and reflections
- * Stores notes organized by chakra day
+ * Notes are always available on the 7-day course.
+ * Stored until the seeker deletes them. Never cleared by week rollover.
  */
 
 import { create } from "zustand"

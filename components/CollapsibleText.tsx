@@ -16,6 +16,7 @@ export const CollapsibleText = ({
   textClassName,
   containerStyle,
   textStyle,
+  font = "instrument-regular",
 }: {
   text: string
   linesToTruncate: number
@@ -23,6 +24,7 @@ export const CollapsibleText = ({
   textClassName?: string
   containerStyle?: ViewStyle
   textStyle?: TextStyle
+  font?: "instrument-regular" | "cormorant-regular" | "cormorant-italic"
 }) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isTruncated, setIsTruncated] = useState(false)
@@ -35,7 +37,7 @@ export const CollapsibleText = ({
     <View className={containerClassName} style={containerStyle}>
       {/* Text is NOT tappable – only "See more" expands. Prevents accidental pre-open. */}
       <AppText
-        font="instrument-regular"
+        font={font}
         className={textClassName}
         style={[{ marginHorizontal: 16 }, textStyle]}
         numberOfLines={isExpanded ? undefined : linesToTruncate}
@@ -46,7 +48,7 @@ export const CollapsibleText = ({
 
       {/* Hacky, measures full text invisibly to compare */}
       <AppText
-        font="instrument-regular"
+        font={font}
         className={textClassName}
         style={[
           {

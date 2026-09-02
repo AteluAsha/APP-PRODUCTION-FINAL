@@ -5,6 +5,7 @@
 node_modules/
 .expo/
 dist/
+dist-export-dryrun/
 web-build/
 expo-env.d.ts
 *.orig.*
@@ -39,7 +40,17 @@ android/_backups/
 ios/
 android/
 
+# Sanctuary AAC is downloaded at runtime — never ship in the binary
+assets/meditation-audio/*.aac
+assets/crystal-bowl-audio/*.aac
+assets/head-to-heart-audio/*.aac
+assets/tuning-fork-audio/*.aac
+
 # === Additional exclusions for smaller archive (docs, logs) ===
 *.md
 *.log
 ios_build.log
+.cursor/
+
+# Prior Play AAB/APK outputs — not needed in build archive
+build-artifacts/

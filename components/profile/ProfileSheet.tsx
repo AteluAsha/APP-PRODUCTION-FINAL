@@ -1,10 +1,7 @@
 /**
- * Profile Sheet - Hamburger menu with three sections: Profile, Account, SOUL SCHOOL.
+ * Profile Sheet - Hamburger menu with three sections: Profile, Account, Awakening Soul.
  *
- * Profile: name, photo, location, edit, disclaimer.
- * Account: status, SOUL SCHOOL ID, tribe link, delete account.
- * SOUL SCHOOL: course selection (path to WelcomeScreen), Project Starseed, scholarships link.
- * "Return to SOUL SCHOOL Course Selection" (SOUL SCHOOL section) is the only way to path selection after date is set.
+ * Profile: name, photo, Energy Exchange (RevenueCat), delete account (Play/App Store).
  */
 
 import React, { useEffect, useState, useMemo, useCallback } from "react"
@@ -35,7 +32,6 @@ import { usePresenceStore } from "@/hooks/usePresenceStore"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
-import { useTribeFriends } from "@/hooks/useTribeFriends"
 import { getUserId, requestNewUserId } from "@/src/services/userId"
 import { linkUserId, ENTITLEMENT_ID, KNOWN_PRODUCT_IDS_FOR_LABEL } from "@/src/services/revenuecat"
 import { uploadProfileImage } from "@/src/services/imageUpload"
@@ -48,13 +44,14 @@ import {
   isCommunityEmailStorageAvailable,
 } from "@/src/services/communityEmailList"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { showHealingToast } from "@/utils/healingToast"
 import { PROJECT_STARSEED_URL, CONTRIBUTE_URL, SUPPORT_EMAIL } from "@/constants/sharing"
 import {
+  activateDailyAlignmentReminders,
   cancelAllSoulJourneyScheduled,
   requestNotificationPermissions,
   scheduleSoulJourneyAfterPermission,
-  syncLifetimeSustenanceNotifications,
-  syncSporadicWisdomNotifications,
+  syncWeeklyHeartReminders,
 } from "@/src/services/journeyNotifications"
 
 type MenuSection = "profile" | "account" | "help" | "soulschool" | null
@@ -63,13 +60,19 @@ function getAccountStatusLabel(
   hasLifetimeAccess: boolean,
   customerInfo: { entitlements: { active: Record<string, { productIdentifier?: string }> } } | null,
 ): string {
-  if (!hasLifetimeAccess) return "Trials Exploring (Weekly Access)"
+  if (!hasLifetimeAccess) return "Awakening Soul"
   const entitlement = customerInfo?.entitlements?.active?.[ENTITLEMENT_ID]
   const productId = entitlement?.productIdentifier
   if (!productId) return "Lifetime"
-  if (KNOWN_PRODUCT_IDS_FOR_LABEL.MONTHLY.includes(productId))
+  if (
+    (KNOWN_PRODUCT_IDS_FOR_LABEL.MONTHLY as readonly string[]).includes(
+      productId,
+    )
+  )
     return "New Awakenings"
-  if (KNOWN_PRODUCT_IDS_FOR_LABEL.ANNUAL.includes(productId))
+  if (
+    (KNOWN_PRODUCT_IDS_FOR_LABEL.ANNUAL as readonly string[]).includes(productId)
+  )
     return "Full Sanctuary"
   return "Lifetime"
 }
@@ -79,7 +82,7 @@ export interface ProfileSheetProps {
   asScreen?: boolean
   /** Called when user closes the menu in asScreen mode (e.g. router.back() + close()). */
   onClose?: () => void
-  /** When true with asScreen, show only profile view: SOUL SCHOOL ID, name, photo (editable). */
+  /** When true with asScreen, show only profile view: Awakening Soul ID, name, photo (editable). */
   profileOnly?: boolean
 }
 
@@ -98,16 +101,32 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
   const setProfileImageUri = usePresenceStore((s) => s.setProfileImageUri)
   const setLocation = usePresenceStore((s) => s.setLocation)
   const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
-  const { soulJourneyNudgesEnabled, setSoulJourneyNudgesEnabled } =
-    useChakraJourneyStore(
-      useShallow((s) => ({
-        soulJourneyNudgesEnabled: s.soulJourneyNudgesEnabled,
-        setSoulJourneyNudgesEnabled: s.setSoulJourneyNudgesEnabled,
-      })),
-    )
+  const {
+    soulJourneyNudgesEnabled,
+    setSoulJourneyNudgesEnabled,
+    dailyAlignmentRemindersEnabled,
+    setDailyAlignmentRemindersEnabled,
+  } = useChakraJourneyStore(
+    useShallow((s) => ({
+      soulJourneyNudgesEnabled: s.soulJourneyNudgesEnabled,
+      setSoulJourneyNudgesEnabled: s.setSoulJourneyNudgesEnabled,
+      dailyAlignmentRemindersEnabled: s.dailyAlignmentRemindersEnabled,
+      setDailyAlignmentRemindersEnabled: s.setDailyAlignmentRemindersEnabled,
+    })),
+  )
   const journeyNudgesSwitchValue = soulJourneyNudgesEnabled !== false
+  const dailyAlignmentSwitchValue = dailyAlignmentRemindersEnabled === true
   const { customerInfo } = useRevenueCat()
-  const { connected: tribeConnected } = useTribeFriends("global-trial-tribe", effectiveOpen)
+
+  const openEnergyExchange = useCallback(() => {
+    addHapticFeedback(HapticStrength.Light)
+    close()
+    if (hasLifetimeAccess) {
+      router.push("/(chakras)/EnergyExchange")
+    } else {
+      router.push("/(chakras)/Paywall")
+    }
+  }, [close, hasLifetimeAccess, router])
 
   const [section, setSection] = useState<MenuSection>(null)
   const [userId, setUserId] = useState<string>("")
@@ -181,6 +200,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
       addHapticFeedback(HapticStrength.Light)
       setSoulJourneyNudgesEnabled(next)
       if (!next) {
+        setDailyAlignmentRemindersEnabled(false)
         await cancelAllSoulJourneyScheduled()
         return
       }
@@ -188,7 +208,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
       if (!granted) {
         Alert.alert(
           "Allow notifications",
-          "To hear from us along your journey, turn on notifications for SOUL SCHOOL in Settings. You can change this anytime.",
+          "To hear from us along your journey, turn on notifications for Awakening Soul in Settings. You can change this anytime.",
           [
             { text: "Not now", style: "cancel" },
             {
@@ -207,11 +227,45 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
         const signup = io ?? cs
         await scheduleSoulJourneyAfterPermission(signup, cs)
       } else {
-        await syncLifetimeSustenanceNotifications()
-        await syncSporadicWisdomNotifications()
+        await syncWeeklyHeartReminders()
       }
     },
-    [setSoulJourneyNudgesEnabled],
+    [setSoulJourneyNudgesEnabled, setDailyAlignmentRemindersEnabled],
+  )
+
+  const handleDailyAlignmentToggle = useCallback(
+    async (next: boolean) => {
+      addHapticFeedback(HapticStrength.Light)
+      if (!next) {
+        setDailyAlignmentRemindersEnabled(false)
+        await syncWeeklyHeartReminders()
+        return
+      }
+      if (!journeyNudgesSwitchValue) {
+        setSoulJourneyNudgesEnabled(true)
+      }
+      const granted = await activateDailyAlignmentReminders()
+      if (!granted) {
+        Alert.alert(
+          "Allow notifications",
+          "To receive daily alignment reminders, turn on notifications for Awakening Soul in Settings.",
+          [
+            { text: "Not now", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => {
+                void Linking.openSettings()
+              },
+            },
+          ],
+        )
+      }
+    },
+    [
+      journeyNudgesSwitchValue,
+      setDailyAlignmentRemindersEnabled,
+      setSoulJourneyNudgesEnabled,
+    ],
   )
 
   const handleClose = () => {
@@ -241,7 +295,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
             try {
               await deleteAccountAndClearLocalState()
               close()
-              router.replace("/(chakras)/WelcomeScreen")
+              router.replace("/(chakras)/ChakraHub")
             } catch (e) {
               if (__DEV__) console.warn("[ProfileSheet] deleteAccount:", e)
             } finally {
@@ -257,6 +311,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
     if (!userId) return
     addHapticFeedback(HapticStrength.Medium)
     await Clipboard.setStringAsync(userId)
+    showHealingToast("idCopied")
   }
 
   const handleSubscribeCommunityEmail = async () => {
@@ -298,8 +353,8 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
   const handleRequestNewId = () => {
     addHapticFeedback(HapticStrength.Light)
     Alert.alert(
-      "Request New SOUL SCHOOL ID",
-      "This will give you a new SOUL SCHOOL ID. Your old ID will no longer work. Continue?",
+      "Request New Awakening Soul ID",
+      "This will give you a new Awakening Soul ID. Your old ID will no longer work. Continue?",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -377,6 +432,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
     }
 
     setEditing(false)
+    showHealingToast("profileSaved")
   }
 
   const pickPhoto = async () => {
@@ -452,7 +508,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
   if (!isOpen && !asScreen) return null
 
   const sectionTitle = profileOnly
-    ? "Profile"
+    ? "Your Presence"
     : section === "profile"
       ? "Profile"
       : section === "account"
@@ -460,7 +516,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
         : section === "help"
           ? "Help"
           : section === "soulschool"
-            ? "SOUL SCHOOL"
+            ? "Awakening Soul"
             : null
 
   const innerContent = (
@@ -473,17 +529,37 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
     >
       {(Platform.OS !== "android" || androidContentVisible || asScreen) && (
           <LinearGradient
-            colors={[
-              "rgba(28, 28, 32, 0.92)",
-              "rgba(22, 26, 28, 0.90)",
-              "rgba(20, 26, 32, 0.88)",
-            ]}
+            colors={
+              profileOnly
+                ? [
+                    "rgba(0,0,0,0)",
+                    "rgba(0,0,0,0)",
+                    "rgba(0,0,0,0)",
+                  ]
+                : [
+                    "rgba(28, 28, 32, 0.92)",
+                    "rgba(22, 26, 28, 0.90)",
+                    "rgba(20, 26, 32, 0.88)",
+                  ]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={profileOnly ? styles.profileOnlyGradient : styles.gradient}
           >
             <View style={styles.header}>
-              {!profileOnly && section ? (
+              {profileOnly && asScreen ? (
+                <Pressable
+                  onPress={handleCloseFinal}
+                  hitSlop={12}
+                  style={styles.backBtn}
+                >
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color="rgba(255,255,255,0.85)"
+                  />
+                </Pressable>
+              ) : !profileOnly && section ? (
                 <Pressable
                   onPress={handleBackToMenu}
                   hitSlop={12}
@@ -498,9 +574,17 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
               ) : (
                 <View style={styles.headerSpacer} />
               )}
-              <AppText font="cormorant-italic" size="2xl" style={styles.title}>
+              <AppText
+                font="cormorant-italic"
+                size="2xl"
+                style={[
+                  styles.title,
+                  profileOnly && styles.profileOnlyTitle,
+                ]}
+              >
                 {sectionTitle ?? "I am"}
               </AppText>
+              {!(profileOnly && asScreen) ? (
               <Pressable
                 onPress={handleCloseFinal}
                 hitSlop={12}
@@ -512,6 +596,9 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   color="rgba(255,255,255,0.7)"
                 />
               </Pressable>
+              ) : (
+                <View style={styles.headerSpacer} />
+              )}
             </View>
 
             {profileOnly ? (
@@ -520,8 +607,11 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                 contentContainerStyle={styles.profileOnlyScrollContent}
               >
                 <View style={styles.profileOnlyIdBlock}>
-                  <AppText font="instrument-regular" size="xs" style={styles.idLabel}>
-                    SOUL SCHOOL ID
+                  <AppText
+                    font="cormorant-italic"
+                    style={styles.profileOnlySectionLabel}
+                  >
+                    Awakening Soul ID
                   </AppText>
                   <View style={styles.idKeyBox}>
                     <AppText
@@ -601,7 +691,10 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                           setEditName(displayName ?? "")
                           setEditPhotoUri(profileImageUri)
                         }}
-                        style={styles.editBtn}
+                        style={({ pressed }) => [
+                          styles.profileOnlyPillBtn,
+                          pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] },
+                        ]}
                       >
                         <Ionicons
                           name="pencil"
@@ -770,6 +863,41 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   We do not share your information with anyone. It all stays
                   right here, with you.
                 </AppText>
+                <Pressable
+                  onPress={openEnergyExchange}
+                  style={({ pressed }) => [
+                    styles.profileOnlyPillBtn,
+                    styles.profileOnlyPillBtnGold,
+                    pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] },
+                  ]}
+                >
+                  <Ionicons
+                    name="sparkles-outline"
+                    size={20}
+                    color="rgba(212, 175, 55, 0.95)"
+                  />
+                  <AppText
+                    font="instrument-medium"
+                    size="sm"
+                    style={styles.upgradeRowText}
+                  >
+                    Energy Exchange
+                  </AppText>
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+                </Pressable>
+                <Pressable
+                  onPress={handleDeleteAccount}
+                  style={styles.deleteAccountBtn}
+                  disabled={isDeletingAccount}
+                >
+                  {isDeletingAccount ? (
+                    <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" />
+                  ) : (
+                    <AppText font="instrument-regular" size="sm" style={styles.deleteAccountText}>
+                      Remove my data and start fresh
+                    </AppText>
+                  )}
+                </Pressable>
               </ScrollView>
             ) : section === null ? (
               <View style={styles.menuRows}>
@@ -826,9 +954,9 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                       size="xs"
                       style={styles.menuRowSubtextMuted}
                     >
-                      Gentle nudges before and during your course (iOS and Android). No
-                      marketing — turn off anytime. You can also silence the app in system
-                      settings.
+                      Weekly heart reminders — Sunday evening, and Wednesday
+                      once your journey has started. No marketing; turn off
+                      anytime in system settings.
                     </AppText>
                   </View>
                   <Switch
@@ -849,6 +977,50 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                     }
                     ios_backgroundColor="rgba(255,255,255,0.2)"
                     accessibilityLabel="Journey reminders"
+                  />
+                </View>
+                <View style={styles.menuRowSwitch} accessibilityRole="none">
+                  <Ionicons
+                    name="sunny-outline"
+                    size={22}
+                    color="rgba(232, 201, 140, 0.88)"
+                  />
+                  <View style={styles.menuRowSwitchTextCol}>
+                    <AppText
+                      font="instrument-medium"
+                      size="base"
+                      style={styles.menuRowSwitchTitle}
+                    >
+                      Daily alignment reminders
+                    </AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={styles.menuRowSubtextMuted}
+                    >
+                      Optional 9 AM nudges to check in with your energy body.
+                      Requires journey reminders above.
+                    </AppText>
+                  </View>
+                  <Switch
+                    value={dailyAlignmentSwitchValue}
+                    onValueChange={(v) => {
+                      void handleDailyAlignmentToggle(v)
+                    }}
+                    disabled={!journeyNudgesSwitchValue}
+                    trackColor={{
+                      false: "rgba(255,255,255,0.2)",
+                      true: "rgba(232, 201, 140, 0.42)",
+                    }}
+                    thumbColor={
+                      Platform.OS === "android"
+                        ? dailyAlignmentSwitchValue
+                          ? "rgba(255, 248, 236, 0.95)"
+                          : "rgba(200, 200, 200, 0.95)"
+                        : undefined
+                    }
+                    ios_backgroundColor="rgba(255,255,255,0.2)"
+                    accessibilityLabel="Daily alignment reminders"
                   />
                 </View>
                 <Pressable
@@ -881,7 +1053,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                     color="rgba(168, 201, 154, 0.95)"
                   />
                   <AppText font="instrument-medium" size="base" style={styles.menuRowText}>
-                    SOUL SCHOOL
+                    Awakening Soul
                   </AppText>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
                 </Pressable>
@@ -927,16 +1099,11 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   size="sm"
                   style={styles.soulSchoolBlurb}
                 >
-                  Choose or change your current path. Right now, 7 Chakras: The Map from Self to Soul is the only path
-                  available; more paths are coming.
+                  7 Chakras: The Map from Self to Soul. Return home anytime. More paths are coming.
                 </AppText>
                 {!hasLifetimeAccess ? (
                   <Pressable
-                    onPress={() => {
-                      addHapticFeedback(HapticStrength.Light)
-                      close()
-                      router.push("/(chakras)/Paywall")
-                    }}
+                    onPress={openEnergyExchange}
                     style={styles.upgradeRow}
                   >
                     <Ionicons
@@ -949,7 +1116,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                       size="sm"
                       style={styles.upgradeRowText}
                     >
-                      Upgrade to Lifetime
+                      Energy Exchange
                     </AppText>
                     <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
                   </Pressable>
@@ -958,7 +1125,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   onPress={() => {
                     addHapticFeedback(HapticStrength.Light)
                     close()
-                    router.replace("/(chakras)/WelcomeScreen")
+                    router.replace("/(chakras)/ChakraHub")
                   }}
                   style={styles.courseSelectionRow}
                 >
@@ -972,7 +1139,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                     size="sm"
                     style={styles.courseSelectionText}
                   >
-                    Return to SOUL SCHOOL Course Selection
+                    Return to Sanctuary Home
                   </AppText>
                 </Pressable>
                 <Pressable
@@ -1006,11 +1173,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                 </AppText>
                 {!hasLifetimeAccess ? (
                   <Pressable
-                    onPress={() => {
-                      addHapticFeedback(HapticStrength.Light)
-                      close()
-                      router.push("/(chakras)/Paywall")
-                    }}
+                    onPress={openEnergyExchange}
                     style={styles.upgradeRow}
                   >
                     <Ionicons
@@ -1024,14 +1187,14 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                         size="sm"
                         style={styles.upgradeRowText}
                       >
-                        Open Full Course
+                        Open Energy Exchange
                       </AppText>
                       <AppText
                         font="instrument-regular"
                         size="xs"
                         style={[styles.upgradeRowText, { opacity: 0.8, marginTop: 2 }]}
                       >
-                        Upgrade to lifetime access
+                        Continue with RevenueCat
                       </AppText>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
@@ -1039,7 +1202,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                 ) : null}
                 <View style={styles.idBlock}>
                   <AppText font="instrument-regular" size="xs" style={styles.idLabel}>
-                    SOUL SCHOOL ID
+                    Awakening Soul ID
                   </AppText>
                   <View style={styles.idKeyBox}>
                     <AppText
@@ -1078,7 +1241,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   size="xs"
                   style={[styles.idLabel, { marginTop: 24 }]}
                 >
-                  SOUL SCHOOL updates and new offerings
+                  Awakening Soul updates and new offerings
                 </AppText>
                 <View style={styles.communityEmailRow}>
                   <TextInput
@@ -1111,7 +1274,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                 </View>
                 {communityEmailSuccess && (
                   <AppText font="instrument-regular" size="xs" style={styles.communityEmailSuccess}>
-                    You’re on the list for SOUL SCHOOL Community updates.
+                    You’re on the list for Awakening Soul Community updates.
                   </AppText>
                 )}
                 {communityEmailError && (
@@ -1120,17 +1283,11 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   </AppText>
                 )}
                 <Pressable
-                  onPress={() => {
-                    addHapticFeedback(HapticStrength.Light)
-                    close()
-                    router.push("/(chakras)/TribeChat")
-                  }}
+                  onPress={openEnergyExchange}
                   style={styles.linkRow}
                 >
                   <AppText font="instrument-medium" size="sm" style={styles.linkRowText}>
-                    {tribeConnected.length > 0
-                      ? `Tribe connections (${tribeConnected.length})`
-                      : "Open Tribe Chat"}
+                    Energy Exchange
                   </AppText>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
                 </Pressable>
@@ -1396,7 +1553,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
         style={[
           styles.overlay,
           Platform.OS === "android" && styles.overlayAndroid,
-          profileOnly && styles.profileOnlyOverlay,
+          profileOnly && styles.profileOnlyScreenOverlay,
         ]}
       >
         {innerContent}
@@ -1437,6 +1594,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 28,
   },
+  profileOnlyScreenOverlay: {
+    flex: 1,
+    backgroundColor: "transparent",
+    justifyContent: "flex-start",
+    alignItems: "stretch",
+    padding: 0,
+  },
+  profileOnlyTitle: {
+    fontSize: 26,
+    letterSpacing: 0.6,
+    color: "rgba(255,248,236,0.96)",
+  },
+  profileOnlySectionLabel: {
+    color: "rgba(232, 201, 140, 0.78)",
+    fontSize: 13,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    marginBottom: 10,
+    textAlign: "center",
+  },
   card: {
     width: "100%",
     maxWidth: 320,
@@ -1455,26 +1632,20 @@ const styles = StyleSheet.create({
     }),
   },
   profileOnlyCard: {
+    flex: 1,
     width: "100%",
-    maxWidth: 420,
-    borderRadius: 28,
+    maxWidth: "100%",
+    borderRadius: 0,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(135, 174, 115, 0.25)",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 14 },
-        shadowOpacity: 0.45,
-        shadowRadius: 28,
-      },
-      android: { elevation: 24 },
-    }),
+    borderWidth: 0,
+    backgroundColor: "transparent",
   },
   gradient: { padding: 24 },
   profileOnlyGradient: {
-    paddingVertical: 28,
-    paddingHorizontal: 28,
+    flex: 1,
+    paddingTop: Platform.OS === "android" ? 8 : 4,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
   },
   scrollContent: { alignItems: "center", paddingBottom: 16 },
   header: {
@@ -1610,42 +1781,53 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     paddingVertical: 18,
     paddingHorizontal: 18,
-    backgroundColor: "transparent",
-    borderRadius: 14,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.4)",
-  },
-  profileOnlyAvatarWrap: {
-    marginBottom: 20,
+    borderTopColor: "rgba(255,255,255,0.14)",
+    borderBottomColor: "rgba(0,0,0,0.32)",
+    borderLeftColor: "rgba(232, 201, 140, 0.2)",
+    borderRightColor: "rgba(0,0,0,0.2)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.28,
+        shadowRadius: 10,
       },
-      android: { elevation: 8 },
+      android: { elevation: 4 },
     }),
   },
+  profileOnlyAvatarWrap: {
+    alignSelf: "center",
+    marginBottom: 16,
+    padding: 4,
+    borderRadius: 76,
+    borderWidth: 2,
+    borderTopColor: "rgba(232, 201, 140, 0.45)",
+    borderBottomColor: "rgba(0,0,0,0.35)",
+    borderLeftColor: "rgba(135, 174, 115, 0.35)",
+    borderRightColor: "rgba(0,0,0,0.25)",
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
   profileOnlyAvatar: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 112,
+    height: 112,
+    borderRadius: 56,
   },
   profileOnlyAvatarPlaceholder: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.15)",
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: "rgba(135, 174, 115, 0.12)",
     justifyContent: "center",
     alignItems: "center",
   },
   profileOnlyDisplayName: {
-    color: "rgba(255,255,255,0.98)",
+    color: "rgba(255,248,236,0.96)",
     textAlign: "center",
     marginBottom: 6,
+    fontSize: 22,
   },
   profileOnlyNamePlaceholder: { height: 32, marginBottom: 6 },
   profileOnlyLocation: {
@@ -1669,6 +1851,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   profileOnlyLabel: { marginTop: 0 },
+  profileOnlyPillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    width: "100%",
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.16)",
+    borderBottomColor: "rgba(0,0,0,0.32)",
+    borderLeftColor: "rgba(135, 174, 115, 0.28)",
+    borderRightColor: "rgba(0,0,0,0.22)",
+    backgroundColor: "rgba(135, 174, 115, 0.12)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+      },
+      android: { elevation: 3 },
+    }),
+  },
+  profileOnlyPillBtnGold: {
+    marginTop: 8,
+    borderLeftColor: "rgba(232, 201, 140, 0.35)",
+    backgroundColor: "rgba(232, 201, 140, 0.1)",
+  },
   avatarWrap: {
     marginBottom: 12,
     ...Platform.select({

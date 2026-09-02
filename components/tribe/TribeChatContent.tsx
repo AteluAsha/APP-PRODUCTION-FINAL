@@ -696,7 +696,7 @@ export function TribeChatContent({
                     size="base"
                     style={[styles.descriptionBody, Platform.OS === "android" && styles.descriptionBodyAndroid]}
                   >
-                    When your friends join SOUL SCHOOL, you&apos;ll see them
+                    When your friends join Awakening Soul, you&apos;ll see them
                     here and can start chatting.
                   </AppText>
                   <LinearGradient

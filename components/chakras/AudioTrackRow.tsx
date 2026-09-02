@@ -12,6 +12,9 @@ import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { DownloadIconCell, type DownloadIconVariant } from "@/components/chakras/DownloadIconCell"
+import { VaultDownloadLine } from "@/components/chakras/VaultDownloadLine"
+import { useSanctuaryTrackReady } from "@/hooks/useSanctuaryTrackReady"
+import { AUDIO_READY_RIM } from "@/constants/audioUi"
 
 /** Fixed column for download / cloud control */
 const COL_DOWNLOAD_WIDTH = 60
@@ -40,6 +43,8 @@ export interface AudioTrackRowProps {
   isQueued?: boolean
   /** When true, download button is enabled even without url (parent will resolve URL on tap, e.g. crystal bowl from Firebase) */
   canResolveDownload?: boolean
+  /** When true, omit the download column (PAD/ODR ships audio with the app). */
+  hideDownload?: boolean
   /** Optional content below subtitle (e.g. Drop In) — lives in middle column only */
   rightContent?: React.ReactNode
 }
@@ -63,9 +68,12 @@ export const AudioTrackRow = ({
   downloadingId = null,
   isQueued = false,
   canResolveDownload = false,
+  hideDownload = false,
   rightContent,
 }: AudioTrackRowProps) => {
   const isDownloaded = audioId ? localUri || downloadedIds.has(audioId) : false
+  const vaultReady = useSanctuaryTrackReady(audioId)
+  const showReadyRim = vaultReady || !!isDownloaded
   const isDownloading = audioId && downloadingId === audioId
   const showPause = isActiveTrack && isPlaying
   const isDownloadable = canDownload || canResolveDownload
@@ -78,7 +86,7 @@ export const AudioTrackRow = ({
         : "cloud"
   const showDownloadAsDisabled = !isDownloadable
 
-  const playDisabled = isLoading || (disabledWhenUnconnected && !isConnected)
+  const playDisabled = isLoading
   const downloadDisabled =
     showDownloadAsDisabled ||
     isDownloading ||
@@ -125,6 +133,7 @@ export const AudioTrackRow = ({
               disabled={playDisabled}
               style={({ pressed }) => [
                 pressed && { opacity: 0.85 },
+                disabledWhenUnconnected && !isConnected && { opacity: 0.7 },
               ]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
@@ -134,8 +143,10 @@ export const AudioTrackRow = ({
                   height: 44,
                   borderRadius: 22,
                   backgroundColor: "rgba(255,255,255,0.08)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.2)",
+                  borderWidth: showReadyRim ? 1.5 : 1,
+                  borderColor: showReadyRim
+                    ? AUDIO_READY_RIM
+                    : "rgba(255,255,255,0.2)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -206,6 +217,7 @@ export const AudioTrackRow = ({
             >
               {durationLabel}
             </AppText>
+            {audioId ? <VaultDownloadLine audioId={audioId} /> : null}
             {rightContent != null ? (
               <View style={{ marginTop: 10, alignSelf: "flex-start" }}>
                 {rightContent}
@@ -213,7 +225,8 @@ export const AudioTrackRow = ({
             ) : null}
           </View>
 
-          {/* Column 3: download */}
+          {/* Column 3: download — omitted when packs ship with the app */}
+          {!hideDownload ? (
           <View
             style={{
               width: COL_DOWNLOAD_WIDTH,
@@ -233,6 +246,7 @@ export const AudioTrackRow = ({
               disabled={downloadDisabled}
             />
           </View>
+          ) : null}
         </View>
       </LinearGradient>
     </View>

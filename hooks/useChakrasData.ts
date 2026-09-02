@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/src/services/firebase"
-import { ref, getDownloadURL } from "firebase/storage"
-import { storage } from "@/src/services/firebase"
 import { checkRateLimit, waitForRateLimit } from "@/src/utils/rateLimiter"
-import { getChakraFromDay } from "@/utils/chakraMapping"
+import {
+  buildLocalChakraData,
+  type ChakraData,
+} from "@/src/utils/localChakraStack"
 
-// Map day numbers to Firestore document IDs
+export type { ChakraData }
+
+const FIRESTORE_ENRICH_TIMEOUT_MS = 8000
+
 const DAY_TO_DOC_ID: Record<number, string> = {
   0: "root",
   1: "sacral",
@@ -17,29 +21,6 @@ const DAY_TO_DOC_ID: Record<number, string> = {
   6: "crown",
 }
 
-// Map document IDs to image sources (static require for React Native)
-const DOC_ID_TO_IMAGE: Record<string, any> = {
-  root: require("@/assets/images/root.png"),
-  sacral: require("@/assets/images/sacral.png"),
-  solar_plexus: require("@/assets/images/solar.png"),
-  heart: require("@/assets/images/heart.png"),
-  throat: require("@/assets/images/throat.png"),
-  third_eye: require("@/assets/images/thirdeye.png"),
-  crown: require("@/assets/images/crown.png"),
-}
-
-export interface ChakraData {
-  day: number
-  affirmation: string
-  description: string
-  source: any
-  onPress: (router: any) => void
-  title?: string
-  color?: string
-  day_name?: string
-  audiopath?: string
-}
-
 interface FirestoreChakraData {
   title: string
   color: string
@@ -47,35 +28,51 @@ interface FirestoreChakraData {
   audiopath: string
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("Chakra metadata fetch timed out")),
+      ms,
+    )
+    promise
+      .then((value) => {
+        clearTimeout(timer)
+        resolve(value)
+      })
+      .catch((err) => {
+        clearTimeout(timer)
+        reject(err)
+      })
+  })
+}
+
 /**
- * Hook to fetch chakra data from Firestore
- * Fetches title, color, day_name, and audiopath for all chakras
+ * Chakra stack data is local-first.
+ *
+ * The 7 balls (image, day, route) render from bundled assets immediately.
+ * Firestore only enriches copy when it responds. Audio URLs are never fetched
+ * here — playback hooks own that, and a hung Storage call must not blank the course.
  */
 export const useChakrasData = () => {
-  const [chakrasData, setChakrasData] = useState<ChakraData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const [chakrasData, setChakrasData] = useState<ChakraData[]>(() =>
+    buildLocalChakraData(),
+  )
 
   useEffect(() => {
-    const fetchChakrasData = async () => {
+    let cancelled = false
+
+    const enrichFromFirestore = async () => {
+      if (!db) {
+        return
+      }
+
       try {
-        setIsLoading(true)
-        setError(null)
-
-        // Check if Firebase is initialized
-        if (!db) {
-          throw new Error(
-            "Firebase is not initialized. Please check your configuration.",
-          )
-        }
-
-        // Check rate limit for Firestore reads (batch operation)
-        // For batch reads, we check once and allow all documents to be fetched
         if (!checkRateLimit("firebase")) {
           await waitForRateLimit("firebase")
         }
+        if (cancelled) return
 
-        // Fetch all chakra documents from Firestore
+        const localByDay = buildLocalChakraData()
         const chakrasPromises = Object.entries(DAY_TO_DOC_ID).map(
           async ([dayStr, docId]) => {
             if (!db) {
@@ -84,86 +81,53 @@ export const useChakrasData = () => {
             const day = parseInt(dayStr, 10)
             const chakraDocRef = doc(db, "chakras", docId)
             const chakraDocSnap = await getDoc(chakraDocRef)
+            const local = localByDay[day]
 
             if (!chakraDocSnap.exists()) {
-              throw new Error(`Chakra document ${docId} not found in Firestore`)
+              return local
             }
 
             const data = chakraDocSnap.data() as FirestoreChakraData
-
-            // Get download URL for audio file if audiopath exists
-            // Skip Day 3 (solar_plexus), Day 6 (third_eye), and Day 7 (crown) -
-            // these use Firebase Storage audio files handled by useEmbodimentAudio hook
-            let audioUrl: string | undefined
-            const chakrasUsingEmbodimentAudio = [
-              "solar_plexus",
-              "third_eye",
-              "crown",
-            ]
-            if (
-              data.audiopath &&
-              !chakrasUsingEmbodimentAudio.includes(docId)
-            ) {
-              if (!storage) {
-                throw new Error("Firebase Storage is not initialized")
-              }
-              try {
-                const audioRef = ref(storage, data.audiopath)
-                audioUrl = await getDownloadURL(audioRef)
-              } catch (storageError) {
-                if (__DEV__) {
-                  console.warn(
-                    `useChakrasData: Failed to get audio URL for ${docId}:`,
-                    storageError,
-                  )
-                }
-              }
-            }
-            // For Day 3, 6, and 7, audio is handled by useEmbodimentAudio hook with correct Firebase Storage paths
-
-            // Map to route using Chakra enum so [chakra] route always gets valid segment (APP1 + APP2)
-            const chakraSlug = getChakraFromDay(day) as string
-            const routerPath = `/(chakras)/${chakraSlug}` as const
-
-            // Get image source from static mapping
-            const imageSource = DOC_ID_TO_IMAGE[docId]
+            const title = data.title || local.title
+            const dayName = data.day_name || local.day_name
 
             return {
-              day,
-              affirmation: `"${data.title}"`, // Wrap title in quotes for affirmation
-              description: data.day_name || "", // Use day_name as description
-              source: imageSource, // Use static image mapping
-              onPress: (router: any) => router.push(routerPath),
-              title: data.title,
-              color: data.color,
-              day_name: data.day_name,
-              audiopath: audioUrl || data.audiopath,
+              ...local,
+              affirmation: `"${title}"`,
+              description: dayName || "",
+              title,
+              color: data.color || local.color,
+              day_name: dayName,
+              audiopath: data.audiopath,
             } as ChakraData
           },
         )
 
-        const fetchedChakras = await Promise.all(chakrasPromises)
+        const fetchedChakras = await withTimeout(
+          Promise.all(chakrasPromises),
+          FIRESTORE_ENRICH_TIMEOUT_MS,
+        )
+        if (cancelled) return
 
-        // Sort by day number (0-6)
         fetchedChakras.sort((a, b) => a.day - b.day)
-
-        setChakrasData(fetchedChakras)
+        if (fetchedChakras.length === 7) {
+          setChakrasData(fetchedChakras)
+        }
       } catch (err) {
         if (__DEV__) {
-          console.error("useChakrasData: Error fetching chakras data:", err)
+          console.warn(
+            "useChakrasData: Firestore enrich failed; keeping bundled stack",
+            err,
+          )
         }
-        setError(
-          err instanceof Error
-            ? err
-            : new Error("Failed to fetch chakras data"),
-        )
-      } finally {
-        setIsLoading(false)
       }
     }
 
-    fetchChakrasData()
+    void enrichFromFirestore()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  return { chakrasData, isLoading, error }
+  return { chakrasData, isLoading: false, error: null as Error | null }
 }

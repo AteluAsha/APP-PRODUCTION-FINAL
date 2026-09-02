@@ -1,5 +1,5 @@
 /**
- * RevenueCat configuration for SOUL SCHOOL
+ * RevenueCat configuration for Awakening Soul
  *
  * Central config for RevenueCat SDK keys and app identifiers.
  * Used by the RevenueCat service for initialization at app start.
@@ -18,4 +18,4 @@ export const REVENUECAT_PUBLIC_SDK_KEY_IOS =
   "appl_AiMuaJOOxeQBfwAVQcDndElOpmt"
 
 /** App display name for RevenueCat user attributes */
-export const REVENUECAT_APP_NAME = "SOUL SCHOOL"
+export const REVENUECAT_APP_NAME = "Awakening Soul"

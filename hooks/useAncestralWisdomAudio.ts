@@ -1,26 +1,16 @@
 /**
- * Ancestral Wisdom Audio Hook
+ * Ancestral Wisdom / Head to Heart Audio Hook
  *
- * Fetches the hero "Power of Creation" (and future Divine Law) audios from Firebase.
- * Folder: AncestralWisdomAudioFiles_Days_1_7
- * Base: gs://soul-school-367ee.firebasestorage.app
- *
- * Day 1–7: All Divine Law hero audios configured.
+ * Permanent documentDirectory vault. Peek only.
  */
 
 import { useState, useEffect } from "react"
-import { ref, getDownloadURL } from "firebase/storage"
-import { storage } from "@/src/services/firebase"
 import { Chakra } from "@/types/chakras/Chakra"
 import { AVPlaybackSource } from "expo-av"
-import { checkRateLimit, waitForRateLimit } from "@/src/utils/rateLimiter"
-import { getCachedAudioUrl, setCachedAudioUrl } from "@/src/utils/audioCache"
-import { retryWithBackoff, isRetryableError } from "@/src/utils/audioRetry"
-import { getLocalAudioUri } from "@/src/utils/audioDownload"
-import { FIREBASE_ANCESTRAL_WISDOM_FOLDER } from "@/constants/firebaseStoragePaths"
 import { SANCTUARY_ANCESTRAL_FILE } from "@/constants/sanctuaryAudioManifest"
-
-const STORAGE_FOLDER = FIREBASE_ANCESTRAL_WISDOM_FOLDER
+import { getHeadToHeartAssetFilename } from "@/constants/meditationAssetPack"
+import { loadHeadToHeartDropUriOrNull } from "@/src/utils/bundledSanctuaryAudio"
+import { useSanctuaryVaultStore } from "@/src/services/sanctuaryVaultDownloader"
 
 const CHAKRA_TO_ANCESTRAL_FILE = SANCTUARY_ANCESTRAL_FILE
 
@@ -32,13 +22,13 @@ export interface AncestralWisdomAudioState {
   error: Error | null
 }
 
-/** Audio ID for download/cache – used by Music Room for offline listening */
 export function getHeadToHeartAudioId(chakra: Chakra): string {
   const audioFile = SANCTUARY_ANCESTRAL_FILE[chakra]
   return `head_to_heart_${chakra}_${audioFile}`
 }
 
 export const useAncestralWisdomAudio = (chakra: Chakra) => {
+  const generation = useSanctuaryVaultStore((s) => s.generation)
   const [state, setState] = useState<AncestralWisdomAudioState>({
     source: null,
     url: null,
@@ -61,169 +51,25 @@ export const useAncestralWisdomAudio = (chakra: Chakra) => {
       return
     }
 
-    const audioId = getHeadToHeartAudioId(chakra)
-    const cacheKey = audioId
-
-    const fetchUrl = async () => {
-      try {
-        if (!isMounted) return
-        setState((prev) => ({ ...prev, isLoading: true, error: null }))
-
-        // Check if Firebase Storage is initialized
-        if (!storage) {
-          if (__DEV__) {
-            console.warn(
-              "[useAncestralWisdomAudio] Firebase Storage not initialized yet, retrying in 500ms",
-            )
-          }
-          setTimeout(() => {
-            if (isMounted && storage) {
-              fetchUrl()
-            } else if (isMounted) {
-              setState({
-                source: null,
-                url: null,
-                localUri: null,
-                isLoading: false,
-                error: new Error(
-                  "Firebase Storage is not initialized. Please check your configuration.",
-                ),
-              })
-            }
-          }, 500)
-          return
-        }
-
-        // Check cache for Firebase URL
-        const cachedUrl = await getCachedAudioUrl(cacheKey)
-        if (cachedUrl) {
-          if (__DEV__) {
-            console.log(
-              `[useAncestralWisdomAudio] Using cached URL for ${chakra}`,
-            )
-          }
-          let localUri: string | null = null
-          try {
-            localUri = await getLocalAudioUri(audioId)
-          } catch {
-            // ignore
-          }
-          if (isMounted) {
-            setState({
-              source: localUri ? { uri: localUri } : { uri: cachedUrl },
-              url: cachedUrl,
-              localUri,
-              isLoading: false,
-              error: null,
-            })
-          }
-          return
-        }
-
-        // Check rate limit for Firebase Storage reads
-        if (!checkRateLimit("firebase")) {
-          await waitForRateLimit("firebase")
-        }
-
-        const audioPath = `${STORAGE_FOLDER}/${audioFile}`
-
-        if (__DEV__) {
-          console.log(
-            `[useAncestralWisdomAudio] Fetching audio file: ${audioPath}`,
-          )
-        }
-
-        const storageInstance = storage
-        const url = await retryWithBackoff(
-          async () => {
-            return await getDownloadURL(ref(storageInstance, audioPath))
-          },
-          {
-            maxRetries: 3,
-            initialDelayMs: 1000,
-            maxDelayMs: 5000,
-          },
-        )
-
-        if (__DEV__) {
-          console.log(
-            `[useAncestralWisdomAudio] Successfully fetched audio URL for ${chakra}`,
-          )
-        }
-
-        if (!url || !url.startsWith("http")) {
-          throw new Error(`Invalid audio URL format: ${url?.substring(0, 50)}`)
-        }
-
-        await setCachedAudioUrl(cacheKey, url)
-
-        // Prefer local file if it exists (e.g. downloaded in background)
-        let localUri: string | null = null
-        try {
-          localUri = await getLocalAudioUri(audioId)
-        } catch {
-          // ignore
-        }
-
-        if (isMounted) {
-          setState({
-            source: localUri ? { uri: localUri } : { uri: url },
-            url,
-            localUri,
-            isLoading: false,
-            error: null,
-          })
-        }
-      } catch (err) {
-        const isNotFound =
-          err instanceof Error &&
-          (err.message.includes("object-not-found") ||
-            err.message.includes("404"))
-        if (__DEV__ && !isNotFound) {
-          console.error(
-            `[useAncestralWisdomAudio] Error fetching audio for ${chakra}:`,
-            err,
-          )
-        }
-
-        let errorMessage = "Failed to fetch audio URL"
-        if (err instanceof Error) {
-          if (
-            err.message.includes("object-not-found") ||
-            err.message.includes("404")
-          ) {
-            errorMessage = `Audio file not found in Firebase Storage. Please verify the file exists: ${audioFile}`
-          } else if (
-            err.message.includes("permission") ||
-            err.message.includes("403")
-          ) {
-            errorMessage =
-              "Permission denied. Please check Firebase Storage rules."
-          } else if (isRetryableError(err)) {
-            errorMessage =
-              "Network error. Please check your connection and try again."
-          } else {
-            errorMessage = err.message
-          }
-        }
-
-        if (isMounted) {
-          setState({
-            source: null,
-            url: null,
-            localUri: null,
-            isLoading: false,
-            error: new Error(errorMessage),
-          })
-        }
-      }
+    const load = async () => {
+      const localUri = await loadHeadToHeartDropUriOrNull(
+        getHeadToHeartAssetFilename(chakra),
+      )
+      if (!isMounted) return
+      setState({
+        source: localUri ? { uri: localUri } : null,
+        url: localUri,
+        localUri,
+        isLoading: false,
+        error: null,
+      })
     }
 
-    fetchUrl()
+    void load()
     return () => {
       isMounted = false
     }
-  }, [chakra])
+  }, [chakra, generation])
 
   return state
 }

@@ -7,20 +7,18 @@
  */
 
 import { useCallback, useEffect, useRef } from "react"
-import {
-  Audio,
-  AVPlaybackStatus,
-  InterruptionModeIOS,
-  InterruptionModeAndroid,
-} from "expo-av"
+import { AVPlaybackStatus } from "expo-av"
 import { Platform } from "react-native"
 import { usePathname } from "expo-router"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { isEmulatorOrSimulator } from "@/constants/emulator"
 import {
   otherOriginTrackRef,
   getSourceSignature,
 } from "@/src/services/otherOriginTrackRef"
+import { createSoundAsyncOffUiThread } from "@/src/utils/audioStreamInit"
+import { configureHealingAudioMode } from "@/src/utils/singleActiveSound"
 
 export function OtherOriginAudioManager() {
   const pathname = usePathname()
@@ -32,8 +30,13 @@ export function OtherOriginAudioManager() {
   const setPositionMs = useCurrentAudioStore((s) => s.setPositionMs)
   const seekToMs = useCurrentAudioStore((s) => s.seekToMs)
   const setSeekTo = useCurrentAudioStore((s) => s.setSeekTo)
+  const isFullScreenPlayerMounted = useCurrentAudioStore(
+    (s) => s.isFullScreenPlayerMounted,
+  )
 
   const isOnAudioPlayer = pathname?.includes("AudioPlayer") ?? false
+  const playerOwnsAudio = isFullScreenPlayerMounted || isOnAudioPlayer
+  const isGoodbyeVisible = useGoodbyeModalStore((s) => s.isGoodbyeVisible)
   const lastIsPlayingRef = useRef(false)
 
   const onPlaybackStatusUpdate = useCallback(
@@ -64,46 +67,44 @@ export function OtherOriginAudioManager() {
     }
 
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-        shouldDuckAndroid: true,
-        ...(Platform.OS === "android" && { playThroughEarpieceAndroid: false }),
-      })
+      await configureHealingAudioMode({ background: true })
 
-      const { sound } = await Audio.Sound.createAsync(
-        src,
-        {
-          shouldPlay: true,
+      const sound = await createSoundAsyncOffUiThread(src, {
+        initialStatus: {
+          shouldPlay: false,
           isLooping: pref.shouldLoop ?? true,
-          ...(Platform.OS === "android" && { androidImplementation: "MediaPlayer" }),
         },
         onPlaybackStatusUpdate,
-      )
+        androidPreCreateDelayMs: isEmulatorOrSimulator() ? 100 : 50,
+        keepPlayingInBackground: true,
+        lockScreen: {
+          title: meta?.title ?? "Crystal Bowl",
+          artist: meta?.author ?? "Awakening Soul",
+        },
+      })
       await sound.setProgressUpdateIntervalAsync(
         isEmulatorOrSimulator() ? 1000 : 500,
       )
       await sound.setIsLoopingAsync(pref.shouldLoop ?? true)
       await sound.setVolumeAsync(1)
-      setPositionMs(0)
-
+      const loaded = await sound.getStatusAsync()
+      if (loaded.isLoaded && loaded.positionMillis > 0) {
+        setPositionMs(loaded.positionMillis)
+      }
       const sig = getSourceSignature(src)
       otherOriginTrackRef.current = { sound, sourceSignature: sig }
       setPlaying(true)
-      if (Platform.OS === "android") {
-        try {
-          await sound.playAsync()
-        } catch (e) {
-          if (__DEV__) console.warn("[OtherOriginAudioManager] Android playAsync after create:", e)
-        }
+      try {
+        await sound.playAsync()
+      } catch (e) {
+        console.warn("[OtherOriginAudioManager] playAsync after create:", e)
+        setPlaying(false)
       }
     } catch (e) {
-      if (__DEV__) console.warn("[OtherOriginAudioManager] Init error:", e)
+      console.warn("[OtherOriginAudioManager] Init error:", e)
       setPlaying(false)
     }
-  }, [onPlaybackStatusUpdate, setPlaying])
+  }, [onPlaybackStatusUpdate, setPlaying, setPositionMs])
 
   const unloadTrack = useCallback(async () => {
     const ref = otherOriginTrackRef.current
@@ -120,7 +121,14 @@ export function OtherOriginAudioManager() {
 
   // Create track when not on AudioPlayer and source is set for "other" origin
   useEffect(() => {
-    if (isOnAudioPlayer || audioOrigin !== "other" || !source || !prefs) {
+    if (
+      isGoodbyeVisible ||
+      playerOwnsAudio ||
+      audioOrigin !== "other" ||
+      !source ||
+      !prefs
+    ) {
+      if (isGoodbyeVisible) unloadTrack()
       return
     }
 
@@ -134,7 +142,7 @@ export function OtherOriginAudioManager() {
     unloadTrack().then(() => {
       initAndPlay()
     })
-  }, [isOnAudioPlayer, source, prefs, audioOrigin, initAndPlay, unloadTrack])
+  }, [isGoodbyeVisible, playerOwnsAudio, source, prefs, audioOrigin, initAndPlay, unloadTrack])
 
   // Seek when seekToMs is set (crystal bowl slider). On Android, resume playback after seek if was playing.
   useEffect(() => {
@@ -159,7 +167,7 @@ export function OtherOriginAudioManager() {
 
   // Sync play/pause from store (mini player or crystal bowl button)
   useEffect(() => {
-    if (isOnAudioPlayer || audioOrigin !== "other") return
+    if (playerOwnsAudio || audioOrigin !== "other") return
     const ref = otherOriginTrackRef.current
     if (!ref) return
     if (isPlayingFromStore === lastIsPlayingRef.current) return
@@ -177,15 +185,15 @@ export function OtherOriginAudioManager() {
       }
     }
     apply()
-  }, [isOnAudioPlayer, audioOrigin, isPlayingFromStore])
+  }, [playerOwnsAudio, audioOrigin, isPlayingFromStore])
 
   // When we get the track back (ref has same source), sync initial play state
   useEffect(() => {
-    if (isOnAudioPlayer || audioOrigin !== "other" || !source) return
+    if (playerOwnsAudio || audioOrigin !== "other" || !source) return
     const ref = otherOriginTrackRef.current
     if (!ref || ref.sourceSignature !== getSourceSignature(source)) return
     lastIsPlayingRef.current = isPlayingFromStore
-  }, [isOnAudioPlayer, audioOrigin, source, isPlayingFromStore])
+  }, [playerOwnsAudio, audioOrigin, source, isPlayingFromStore])
 
   // Unload when store reset or no source
   useEffect(() => {

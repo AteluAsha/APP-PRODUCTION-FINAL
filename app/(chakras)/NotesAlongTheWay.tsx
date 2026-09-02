@@ -12,7 +12,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  BackHandler,
 } from "react-native"
 import { ScrollView } from "react-native-gesture-handler"
 import { useRouter, useLocalSearchParams } from "expo-router"
@@ -26,7 +25,6 @@ import { LinearGradient } from "expo-linear-gradient"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
-import { useTribeChatStore } from "@/hooks/useTribeChatStore"
 import { ActionBar } from "@/components/ActionBar"
 import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
 import { getCurrentDayOfWeek } from "@/utils/date"
@@ -191,17 +189,12 @@ export default function NotesAlongTheWay() {
 
   const handleBack = useCallback(() => {
     addHapticFeedback(HapticStrength.Light)
-    router.back()
+    if (router.canGoBack()) {
+      router.back()
+    } else {
+      router.replace("/(chakras)/ChakraHub")
+    }
   }, [router])
-
-  useEffect(() => {
-    if (Platform.OS !== "android") return
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      handleBack()
-      return true
-    })
-    return () => sub.remove()
-  }, [handleBack])
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
@@ -397,24 +390,6 @@ export default function NotesAlongTheWay() {
                                 style={{ color: "rgba(255,255,255,0.4)" }}
                               >
                                 Send thought to Anua
-                              </AppText>
-                            </Pressable>
-                            <Pressable
-                              onPress={() => {
-                                addHapticFeedback(HapticStrength.Light)
-                                useTribeChatStore
-                                  .getState()
-                                  .open({ initialMessage: note.content })
-                              }}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                              style={{ alignSelf: "flex-start" }}
-                            >
-                              <AppText
-                                font="instrument-regular"
-                                size="xs"
-                                style={{ color: "rgba(255,255,255,0.4)" }}
-                              >
-                                Send to Tribe
                               </AppText>
                             </Pressable>
                           </View>

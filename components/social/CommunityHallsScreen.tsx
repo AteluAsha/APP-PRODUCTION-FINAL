@@ -1720,7 +1720,7 @@ export const CommunityHallsScreen: React.FC<CommunityHallsScreenProps> = ({
                 </Pressable>
               )}
               <Pressable
-                onPress={() => router.push("/Profile")}
+                onPress={() => router.push("/(chakras)/Profile")}
                 style={{ padding: 6 }}
               >
                 <Ionicons

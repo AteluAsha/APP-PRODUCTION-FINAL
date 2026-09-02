@@ -3,6 +3,8 @@ import { Pressable, View, Platform } from "react-native"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { formatTime } from "@/utils/format"
+import { useSanctuaryTrackReady } from "@/hooks/useSanctuaryTrackReady"
+import { AUDIO_READY_RIM } from "@/constants/audioUi"
 
 interface SoundBathButtonProps {
   className?: string // Additional Tailwind classes for styling
@@ -17,6 +19,7 @@ interface SoundBathButtonProps {
   positionMs?: number
   durationMs?: number
   onSeek?: (positionMs: number) => void
+  audioId?: string
 }
 
 const SoundBathButton: React.FC<SoundBathButtonProps> = ({
@@ -30,16 +33,15 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
   positionMs = 0,
   durationMs = 0,
   onSeek,
+  audioId,
 }) => {
+  const isReady = useSanctuaryTrackReady(audioId)
   const hasError = !!error
-  const disabled = isLoading || hasError
   const subtitleText = hasError
-    ? "Unable to load. Check connection."
-    : isLoading
-      ? "Preparing..."
-      : subtitle
+    ? (error?.message || "This track is not on the device.")
+    : subtitle
 
-  const showProgress = isPlaying && durationMs > 0 && positionMs >= 0
+  const showProgress = durationMs > 0 && positionMs >= 0
   const progressFraction =
     durationMs > 0 ? Math.min(1, Math.max(0, positionMs / durationMs)) : 0
   const progressTrackWidthRef = useRef(0)
@@ -67,7 +69,7 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
     <View
       style={{
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.38)",
+        borderColor: isReady ? AUDIO_READY_RIM : "rgba(255,255,255,0.38)",
         borderRadius: isAndroid ? 28 : 16,
         paddingVertical: isAndroid ? 18 : 16,
         paddingHorizontal: isAndroid ? 16 : 0,
@@ -79,7 +81,6 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
     >
       <Pressable
         onPress={onPress}
-        disabled={disabled}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -102,10 +103,10 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
           }}
         >
           <Ionicons
-            name={isPlaying ? "pause" : "play"}
+            name={isLoading ? "hourglass-outline" : isPlaying ? "pause" : "play"}
             size={isPlaying ? 14 : 12}
             color="white"
-            style={!isPlaying ? { marginLeft: 2 } : undefined}
+            style={!isPlaying && !isLoading ? { marginLeft: 2 } : undefined}
           />
         </View>
 
@@ -138,7 +139,7 @@ const SoundBathButton: React.FC<SoundBathButtonProps> = ({
             size="xs"
             numberOfLines={1}
             style={{
-              opacity: disabled ? 0.7 : 1,
+              opacity: isLoading ? 0.85 : 1,
               fontSize: 11,
               color: hasError ? "rgba(251,191,36,0.95)" : "#ffffff",
               ...(isAndroid ? { lineHeight: 16 } : {}),

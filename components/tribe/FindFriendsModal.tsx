@@ -1,7 +1,7 @@
 /**
- * Find Friends Modal – Add a friend on SOUL SCHOOL
+ * Find Friends Modal – Add a friend on Awakening Soul
  *
- * Primary: SOUL SCHOOL ID input → lookup → profile card → Connect (tribe invite).
+ * Primary: Awakening Soul ID input → lookup → profile card → Connect (tribe invite).
  * Secondary: Copy link / Share invite link.
  * Recipient sees invite in Tribe Chat and can accept the transmission.
  */
@@ -182,7 +182,7 @@ export function FindFriendsModal({
     await openSystemShare({
       message: inviteMessage,
       url: referralLink,
-      title: "Join me on SOUL SCHOOL",
+      title: "Join me on Awakening Soul",
     })
   }, [inviteMessage, referralLink])
 
@@ -238,7 +238,7 @@ export function FindFriendsModal({
                 >
               <View style={styles.headerRow}>
                 <AppText font="instrument-semibold" size="xl" style={styles.title}>
-                  Find friends on SOUL SCHOOL
+                  Find friends on Awakening Soul
                 </AppText>
                 <Pressable onPress={handleClose} hitSlop={12} style={styles.closeBtn}>
                   <Ionicons name="close" size={24} color="rgba(255,255,255,0.7)" />
@@ -255,12 +255,12 @@ export function FindFriendsModal({
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {/* Section 1: Add by SOUL SCHOOL ID */}
+                  {/* Section 1: Add by Awakening Soul ID */}
                   <AppText font="instrument-medium" size="sm" style={styles.sectionLabel}>
-                    Add by SOUL SCHOOL ID
+                    Add by Awakening Soul ID
                   </AppText>
                   <AppText font="instrument-regular" size="xs" style={styles.sectionHint}>
-                    Ask your friend for their SOUL SCHOOL ID or Soul Signature from Profile.
+                    Ask your friend for their Awakening Soul ID or Soul Signature from Profile.
                   </AppText>
                   <TextInput
                     value={soulSchoolIdInput}
@@ -268,7 +268,7 @@ export function FindFriendsModal({
                       setSoulSchoolIdInput(t)
                       if (lookupStatus !== "idle") setLookupStatus("idle")
                     }}
-                    placeholder="Soul Signature or SOUL SCHOOL ID"
+                    placeholder="Soul Signature or Awakening Soul ID"
                     placeholderTextColor="rgba(255,255,255,0.4)"
                     style={styles.input}
                     autoCapitalize="none"
@@ -331,7 +331,7 @@ export function FindFriendsModal({
                   )}
                   {lookupStatus === "not_found" && (
                     <AppText font="instrument-regular" size="sm" style={styles.errorMsg}>
-                      No SOUL SCHOOL member found with this ID.
+                      No Awakening Soul member found with this ID.
                     </AppText>
                   )}
                   {lookupStatus === "error" && (
@@ -515,7 +515,7 @@ export function FindFriendsModal({
         onClose={() => setShowSharePicker(false)}
         message={inviteMessage}
         url={referralLink}
-        modalTitle="Invite to SOUL SCHOOL"
+        modalTitle="Invite to Awakening Soul"
         modalSubtitle="Choose where to share"
       />
     </Modal>

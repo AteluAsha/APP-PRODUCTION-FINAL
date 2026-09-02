@@ -1,35 +1,18 @@
 /**
- * App Mode Constants
- *
- * This app operates as "Two Apps in One":
- * - APP_1 (Trial): Pre-paywall experience with timegates and progressive reveal
- * - APP_2 (Lifetime): Post-paywall experience with full access
- *
- * The paywall is the switch between the two apps.
+ * One app: open 7-day course on ChakraHub.
+ * Trial / APP_1 mode is retired. Paywall / RevenueCat still grant access.
  */
 
-export type AppMode = "trial" | "lifetime"
+export type AppMode = 'lifetime'
 
-/**
- * Get the current app mode based on lifetime access status
- *
- * @param hasLifetimeAccess - Whether user has lifetime access
- * @returns 'trial' if pre-paywall, 'lifetime' if post-paywall
- */
-export const getAppMode = (hasLifetimeAccess: boolean): AppMode => {
-  return hasLifetimeAccess ? "lifetime" : "trial"
+export const getAppMode = (_hasLifetimeAccess?: boolean): AppMode => {
+    return 'lifetime'
 }
 
-/**
- * Check if we're in App 1 (Trial mode)
- */
-export const isTrialMode = (hasLifetimeAccess: boolean): boolean => {
-  return !hasLifetimeAccess
+export const isTrialMode = (_hasLifetimeAccess?: boolean): boolean => {
+    return false
 }
 
-/**
- * Check if we're in App 2 (Lifetime mode)
- */
-export const isLifetimeMode = (hasLifetimeAccess: boolean): boolean => {
-  return hasLifetimeAccess
+export const isLifetimeMode = (_hasLifetimeAccess?: boolean): boolean => {
+    return true
 }

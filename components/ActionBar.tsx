@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { runAndroidBackCleanup } from "@/utils/androidBackCleanup"
 import { ICON } from "@/constants/layout"
 
 /** Same row as GlobalHomeButton (chakra icon): top offset and 40px height */
@@ -21,6 +22,10 @@ interface ActionBarProps {
   onBackPress?: () => void
   /** When false, hide back arrow (e.g. ChakraHub is root for lifetime users) */
   showBackButton?: boolean
+  /** Home icon instead of back chevron. Still uses onBackPress (ChakraHub). */
+  useHomeButton?: boolean
+  /** Icon color. Default white for dark screens. */
+  iconColor?: string
 }
 
 export const ActionBar: React.FC<ActionBarProps> = ({
@@ -30,18 +35,23 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   onXPress,
   onBackPress,
   showBackButton = true,
+  useHomeButton = false,
+  iconColor = "rgba(255, 255, 255, 0.95)",
 }) => {
   const router = useRouter()
   const insets = useSafeAreaInsets()
 
   const backWithHapticFeedback = () => {
+    if (Platform.OS === "android") {
+      runAndroidBackCleanup()
+    }
     addHapticFeedback(HapticStrength.Light)
     if (onBackPress) {
       onBackPress()
     } else if (router.canGoBack()) {
       router.back()
     } else {
-      router.replace("/(chakras)")
+      router.replace("/(chakras)/ChakraHub")
     }
   }
 
@@ -63,6 +73,9 @@ export const ActionBar: React.FC<ActionBarProps> = ({
     return (
       <TouchableOpacity
         onPress={() => {
+          if (Platform.OS === "android") {
+            runAndroidBackCleanup()
+          }
           if (onXPress) {
             onXPress()
             addHapticFeedback(HapticStrength.Light)
@@ -87,7 +100,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
         accessibilityLabel="Close"
         accessibilityHint="Closes the audio player"
       >
-        <Ionicons name="close" size={ICON.actionBar + 2} color="white" />
+        <Ionicons name="close" size={ICON.actionBar + 2} color={iconColor} />
       </TouchableOpacity>
     )
   }
@@ -108,13 +121,17 @@ export const ActionBar: React.FC<ActionBarProps> = ({
       }}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       activeOpacity={Platform.OS === "ios" ? 0.78 : 0.7}
-      accessibilityLabel="Back"
-      accessibilityHint="Go back to previous screen"
+      accessibilityLabel={useHomeButton ? "Home" : "Back"}
+      accessibilityHint={
+        useHomeButton
+          ? "Return to sanctuary home"
+          : "Go back to previous screen"
+      }
     >
       <Ionicons
-        name="arrow-back"
+        name={useHomeButton ? "home-outline" : "arrow-back"}
         size={ICON.actionBar}
-        color="rgba(255, 255, 255, 0.95)"
+        color={iconColor}
       />
     </TouchableOpacity>
   )

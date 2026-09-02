@@ -21,7 +21,7 @@ const Chakras101 = () => {
       router.back()
     } else {
       // Fallback when no history (e.g. deep link)
-      router.replace("/(chakras)/ChakraHome")
+      router.replace("/(chakras)/ChakraHub")
     }
   }
 

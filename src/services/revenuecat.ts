@@ -34,6 +34,8 @@ import {
   REVENUECAT_PUBLIC_SDK_KEY_IOS,
   REVENUECAT_APP_NAME,
 } from "@/src/core/config/revenueCatConfig"
+import { getUserId } from "@/src/services/userId"
+import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 
 // EAS: REVENUECAT_API_KEY (iOS) + REVENUECAT_ANDROID_API_KEY (Android) → extra.revenuecat via app.config.js
 const getRevenueCatApiKey = (): string | null => {
@@ -218,7 +220,6 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
     // Get user ID if not provided (for linking purchases)
     let finalUserId: string | undefined = userId
     if (!finalUserId) {
-      const { getUserId } = await import("./userId")
       finalUserId = await getUserId()
     }
 
@@ -276,8 +277,6 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
     try {
       const hasEntitlement = await hasActiveEntitlement()
       if (hasEntitlement) {
-        const { useChakraJourneyStore } =
-          await import("@/hooks/useChakraJourneyStore")
         useChakraJourneyStore.getState().grantLifetimeAccess("paid")
       }
     } catch (syncErr) {

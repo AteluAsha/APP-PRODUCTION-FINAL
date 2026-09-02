@@ -3,7 +3,7 @@
  *
  * A moment of sovereign recognition before the paywall. Honors the user for
  * completing their 7-day journey and offers a choice: carry the keys forward
- * on their own, or anchor deeper into SOUL SCHOOL.
+ * on their own, or anchor deeper into Awakening Soul.
  *
  * Aesthetic: Stillness background, Cormorant Garamond, gentle and ceremonial.
  */
@@ -233,7 +233,7 @@ export function SealOfTheInitiate({
                     fontStyle: "italic",
                   }}
                 >
-                  I am ready to anchor deeper into SOUL SCHOOL.
+                  I am ready to anchor deeper into Awakening Soul.
                 </AppText>
               </LinearGradient>
             </Pressable>

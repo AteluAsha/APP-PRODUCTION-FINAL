@@ -4,8 +4,6 @@ import {
   Image,
   useWindowDimensions,
   Pressable,
-  ImageBackground,
-  StyleSheet,
   RefreshControl,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -25,7 +23,7 @@ import { PillBottomSheet } from "@/components/chakras/PillBottomSheet"
 import { PillSection } from "@/components/chakras/PillSection"
 import { Divider } from "@/components/chakras/Divider"
 import { AudioRow } from "@/components/chakras/AudioRow"
-import { TextSection } from "@/components/chakras/TextSection"
+import { WisdomOverviewSection } from "@/components/chakras/WisdomOverviewSection"
 import { AffirmationSection } from "@/components/chakras/AffirmationSection"
 import { PillType } from "@/types/chakras/PillType"
 import ParallaxScrollView from "@/components/ParallaxScrollView"
@@ -40,13 +38,15 @@ import { Chakra } from "@/types/chakras/Chakra"
 import { useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
+import { goToChakraHubRoot } from "@/utils/navigationHelpers"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import GoodbyeModal from "@/components/chakras/GoodbyeModal"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useEmbodimentAudio, getEmbodimentAudioId } from "@/hooks/useEmbodimentAudio"
 import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
-import { useTuningForkAudio } from "@/hooks/useTuningForkAudio"
+import { useTuningForkAudio, getTuningForkFileName } from "@/hooks/useTuningForkAudio"
+import { hasSanctuaryTuningFork } from "@/constants/sanctuaryAudioManifest"
 import { prepareLongAudioForPlay } from "@/src/utils/crystalBowlPlayback"
 import { storage } from "@/src/services/firebase"
 import { preloadFullFilesForChakra } from "@/src/utils/audioPreloadManifest"
@@ -54,17 +54,12 @@ import { DropInButton } from "@/components/chakras/DropInButton"
 // Social Sanctuary and Anua access handled globally by PermanentMenuBar
 import { getChakraIndex } from "@/utils/chakraMapping"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
-import { getIntegrationMomentContent } from "@/constants/chakras/integrationMomentContent"
-import { IntegrationMomentModal } from "@/components/chakras/IntegrationMomentModal"
-
-const INTEGRATION_BUTTON_BG = require("@/assets/images/DailyIntegration_BGB_utton_Image.png")
 import { usePillBottomSheetStore } from "@/hooks/usePillBottomSheetStore"
-import { LinearGradient } from "expo-linear-gradient"
+import { RemembranceButton } from "@/components/chakras/RemembranceButton"
 
 const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false)
   const [currentPill, setCurrentPill] = useState<PillType | null>(null)
-  const [integrationModalVisible, setIntegrationModalVisible] = useState(false)
   // Note: Social Sanctuary and Anua access handled globally by PermanentMenuBar
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
   const router = useRouter()
@@ -78,14 +73,10 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
 
   const {
     markChakraCompleted,
-    hasLifetimeAccess,
-    lifetimeChosenTimegateJourney,
     completedChakras,
   } = useChakraJourneyStore(
     useShallow((state) => ({
       markChakraCompleted: state.markChakraCompleted,
-      hasLifetimeAccess: state.hasLifetimeAccess,
-      lifetimeChosenTimegateJourney: state.lifetimeChosenTimegateJourney,
       completedChakras: state.completedChakras,
     })),
   )
@@ -147,21 +138,25 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
       markChakraCompleted(chakraIndex)
       setCompletedChakra(chakra)
       setShowGoodbyeModal(true)
-    } else {
+    } else if (router.canGoBack()) {
       router.back()
+    } else {
+      router.replace("/(chakras)/ChakraHub")
+    }
+  }
+
+  const handleBackToHub = () => {
+    addHapticFeedback(HapticStrength.Light)
+    if (router.canGoBack()) {
+      router.back()
+    } else {
+      router.replace("/(chakras)/ChakraHub")
     }
   }
 
   const handleGoodbyeNavigateHome = () => {
-    clearCompletedChakra()
     setShowGoodbyeModal(false)
-    if (hasLifetimeAccess && lifetimeChosenTimegateJourney) {
-      router.replace("/(chakras)/ChakraHome")
-    } else if (hasLifetimeAccess) {
-      router.replace("/(chakras)/ChakraHub")
-    } else {
-      router.replace("/(chakras)/ChakraHome")
-    }
+    goToChakraHubRoot()
   }
 
   const content = chakraContent[chakra]
@@ -180,7 +175,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
     preloadFullFilesForChakra(storage, chakra).catch(() => {})
   }, [chakra])
 
-  // Fetch Firebase Storage URLs for embodiment audio files
+  // Master Embodiment: on-device pack / ODR only. Miss = local error.
   const embodimentAudio = useEmbodimentAudio(chakra)
   const tuningForkAudio = useTuningForkAudio(chakra)
   const embodimentDurations = useEmbodimentDurationCacheStore((s) => s.durations)
@@ -226,7 +221,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
       <ActionBarAnimated
         scrollViewRef={scrollRef}
         headerImageSource={content.chakraHeaderImage}
-        showBackButton={false}
+        onBackPress={handleBackToHub}
       />
 
       <ParallaxScrollView
@@ -292,165 +287,55 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                 .easing(Easing.out(Easing.ease))}
               style={{ marginBottom: 8 }}
             >
-              {embodimentAudio.error ? (
-                <View
-                  style={{
-                    marginHorizontal: 24,
-                    marginBottom: 12,
-                    paddingVertical: 10,
-                    paddingHorizontal: 16,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: "rgba(168,85,247,0.4)",
-                    backgroundColor: "rgba(168,85,247,0.08)",
-                  }}
-                >
-                  <AppText
-                    font="instrument-regular"
-                    size="sm"
-                    style={{
-                      color: "rgba(216,180,254,0.9)",
-                      textAlign: "center",
-                    }}
-                  >
-                    The audio is taking a moment to arrive. Please try again, or
-                    continue your journey.
-                  </AppText>
+            {/* Drop In above master meditation — tuning fork somatic entrance */}
+            {hasSanctuaryTuningFork(chakra) ? (
+                <View style={{ alignItems: "center", marginTop: 8, marginBottom: 14 }}>
+                  <DropInButton
+                    audioUri={
+                      tuningForkAudio.localUri ?? tuningForkAudio.url ?? null
+                    }
+                    audioId={`tuning_fork_${chakra}_${getTuningForkFileName(chakra)}`}
+                    disabled={false}
+                    compact
+                  />
                 </View>
               ) : null}
-              <View style={{ alignItems: "center", marginBottom: 12 }}>
-                <DropInButton
-                  audioUri={
-                    tuningForkAudio.localUri ?? tuningForkAudio.url ?? null
-                  }
-                  disabled={tuningForkAudio.isLoading}
-                  compact
-                />
-              </View>
-              {chakra === Chakra.THIRD_EYE ? (
-                <>
-                  <AudioRow
-                    title="Part One: Ajna Embodiment"
-                    author="Mother JJ"
-                    durationMs={
-                      embodimentDurations[getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")] ?? 1750000
-                    }
-                    audioSource={{
-                      uri:
-                        embodimentAudio.localUriPartOne ||
-                        embodimentAudio.partOne ||
-                        "",
-                    }}
-                    authorColor="#FFFFFF"
-                    isIntroAudio={true}
-                    chakraColor={getChakraColor(chakraDay)}
-                    disabled={
-                      embodimentAudio.isLoading || !!embodimentAudio.error
-                    }
-                    embodimentCacheKey={getEmbodimentAudioId(Chakra.THIRD_EYE, "part1")}
-                    getAudioSource={async () =>
-                      prepareLongAudioForPlay(
-                        {
-                          url: embodimentAudio.partOne ?? null,
-                          localUri: embodimentAudio.localUriPartOne ?? null,
-                          audioId: getEmbodimentAudioId(Chakra.THIRD_EYE, "part1"),
-                          fallback: {
-                            uri: embodimentAudio.partOne ?? "",
-                          },
-                        },
-                        {
-                          requireFullDownload: true,
-                          allowStreamingFallback: false,
-                        },
-                      )
-                    }
-                    onPlayTriggered={triggerBackupCacheForDay}
-                  />
-                  <AudioRow
-                    title="Part Two: Somatic Healing"
-                    author="Mother JJ"
-                    durationMs={
-                      embodimentDurations[getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")] ?? 1257000
-                    }
-                    audioSource={{
-                      uri:
-                        embodimentAudio.localUriPartTwo ||
-                        embodimentAudio.partTwo ||
-                        "",
-                    }}
-                    authorColor="#FFFFFF"
-                    isIntroAudio={true}
-                    chakraColor={getChakraColor(chakraDay)}
-                    disabled={
-                      embodimentAudio.isLoading || !!embodimentAudio.error
-                    }
-                    embodimentCacheKey={getEmbodimentAudioId(Chakra.THIRD_EYE, "part2")}
-                    getAudioSource={async () =>
-                      prepareLongAudioForPlay(
-                        {
-                          url: embodimentAudio.partTwo ?? null,
-                          localUri: embodimentAudio.localUriPartTwo ?? null,
-                          audioId: getEmbodimentAudioId(Chakra.THIRD_EYE, "part2"),
-                          fallback: {
-                            uri: embodimentAudio.partTwo ?? "",
-                          },
-                        },
-                        {
-                          requireFullDownload: true,
-                          allowStreamingFallback: false,
-                        },
-                      )
-                    }
-                    onPlayTriggered={triggerBackupCacheForDay}
-                  />
-                </>
-              ) : (
-                <>
-                  {/* Master Embodiment: hard-wired to this screen's chakra only; must never load another chakra's audio. */}
-                  <AudioRow
-                  title={content.audioIntro.title}
-                  author="Mother JJ"
-                  durationMs={
-                    embodimentDurations[getEmbodimentAudioId(chakra)] ??
-                    (chakra === Chakra.CROWN
-                      ? 2684000
-                      : content.audioIntro.durationMs)
-                  }
-                  audioSource={{
-                    uri:
-                      embodimentAudio.localUri ||
-                      embodimentAudio.single ||
-                      "",
-                  }}
-                  authorColor="#FFFFFF"
-                  isIntroAudio={true}
-                  chakraColor={getChakraColor(chakraDay)}
-                  disabled={
-                    embodimentAudio.isLoading ||
-                    !!embodimentAudio.error ||
-                    (!embodimentAudio.localUri && !embodimentAudio.single)
-                  }
-                  embodimentCacheKey={getEmbodimentAudioId(chakra)}
-                  getAudioSource={async () =>
-                    prepareLongAudioForPlay(
-                      {
-                        url: embodimentAudio.single ?? null,
-                        localUri: embodimentAudio.localUri ?? null,
-                        audioId: getEmbodimentAudioId(chakra),
-                        fallback: {
-                          uri: embodimentAudio.single ?? embodimentAudio.partOne ?? "",
-                        },
+              <AudioRow
+                title={content.audioIntro.title}
+                author="Mother JJ"
+                durationMs={
+                  embodimentDurations[getEmbodimentAudioId(chakra)] ??
+                  content.audioIntro.durationMs
+                }
+                audioSource={{
+                  uri:
+                    embodimentAudio.localUri ||
+                    embodimentAudio.single ||
+                    "",
+                }}
+                authorColor="#FFFFFF"
+                isIntroAudio={true}
+                chakraColor={getChakraColor(chakraDay)}
+                disabled={false}
+                embodimentCacheKey={getEmbodimentAudioId(chakra)}
+                getAudioSource={async () =>
+                  prepareLongAudioForPlay(
+                    {
+                      url: embodimentAudio.single ?? null,
+                      localUri: embodimentAudio.localUri ?? null,
+                      audioId: getEmbodimentAudioId(chakra),
+                      fallback: {
+                        uri: embodimentAudio.single ?? "",
                       },
-                      {
-                        requireFullDownload: true,
-                        allowStreamingFallback: false,
-                      },
-                    )
-                  }
-                  onPlayTriggered={triggerBackupCacheForDay}
-                />
-                </>
-              )}
+                    },
+                    {
+                      requireFullDownload: true,
+                      allowStreamingFallback: false,
+                    },
+                  )
+                }
+                onPlayTriggered={triggerBackupCacheForDay}
+              />
             </Animated.View>
             <Animated.View
               entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
@@ -465,8 +350,10 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                 .easing(Easing.out(Easing.ease))}
             >
               <Divider style={{ marginHorizontal: 32, marginBottom: 16 }} />
-              <TextSection title="OVERVIEW" content={content.overview} />
-              <TextSection title="SANSKRIT" content={content.sanskrit} />
+              <WisdomOverviewSection
+                overview={content.overview}
+                sanskrit={content.sanskrit}
+              />
               <AffirmationSection affirmationText={content.affirmationText} />
             </Animated.View>
             <Animated.View
@@ -484,177 +371,48 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               <Part3Section chakra={chakra} />
             </Animated.View>
           </Animated.View>
-          <Animated.View
-            entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
-              .delay(280)
-              .easing(Easing.out(Easing.ease))}
-          >
-          <Pressable
-            onPress={() => {
-              setIntegrationModalVisible(true)
-              addHapticFeedback(HapticStrength.Light)
-            }}
-            accessibilityLabel={
-              getIntegrationMomentContent(chakraDay)?.title ?? "Integration moment"
-            }
-            accessibilityHint="Opens integration reflection for today"
-            style={{
-              width: "83.33%",
-              alignSelf: "center",
-              marginTop: 6,
-              marginBottom: 28,
-              borderRadius: 18,
-              overflow: "hidden",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.35)",
-            }}
-          >
-            <ImageBackground
-              source={INTEGRATION_BUTTON_BG}
-              resizeMode="cover"
-              style={{
-                borderRadius: 18,
-                paddingVertical: 16,
-                paddingHorizontal: 28,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              {/* Dark overlay so title and subtitle stay readable on all parts of the image */}
-              <View
-                style={{
-                  ...StyleSheet.absoluteFillObject,
-                  backgroundColor: "rgba(0,0,0,0.4)",
-                  borderRadius: 18,
-                }}
-              />
-              <AppText
-                font="cormorant-italic"
-                size="base"
-                style={{
-                  marginBottom: 4,
-                  fontSize: 20,
-                  color: "#ffffff",
-                  textAlign: "center",
-                  textShadowColor: "rgba(0,0,0,0.8)",
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 3,
-                }}
-              >
-                {getIntegrationMomentContent(chakraDay)?.title ??
-                  "Bridge moment"}
-              </AppText>
-              <AppText
-                font="instrument-italic"
-                size="sm"
-                style={{
-                  color: "rgba(255,255,255,0.98)",
-                  textAlign: "center",
-                  textShadowColor: "rgba(0,0,0,0.8)",
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 2,
-                }}
-              >
-                A moment of Integration
-              </AppText>
-            </ImageBackground>
-          </Pressable>
-          <IntegrationMomentModal
-            visible={integrationModalVisible}
-            onClose={() => setIntegrationModalVisible(false)}
-            dayIndex={chakraDay}
-          />
-          </Animated.View>
-          {/* PART IV - Mirror of Embodiment: section header, divider, quiz button */}
+          {/* PART IV - Reflection of Remembrance */}
           <Animated.View
             entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
               .delay(320)
               .easing(Easing.out(Easing.ease))}
-            style={{ marginTop: 28, marginBottom: 24, alignItems: "center" }}
+            style={{
+              marginTop: 48,
+              marginHorizontal: 12,
+              marginBottom: 32,
+              paddingTop: 28,
+              paddingBottom: 32,
+              paddingHorizontal: 16,
+              borderRadius: 24,
+              borderWidth: 1,
+              borderColor: "rgba(232, 201, 140, 0.14)",
+              backgroundColor: "rgba(8, 6, 5, 0.42)",
+              alignItems: "center",
+              width: undefined,
+              alignSelf: "stretch",
+            }}
           >
             <SectionHeader
+              variant="healing"
               subtitle="— PART IV —"
-              title="Mirror of Embodiment"
+              title="Reflection of Remembrance"
             />
             <View
               style={{
                 height: 1,
                 width: 64,
-                backgroundColor: "#8E8E8E",
+                backgroundColor: "rgba(142, 142, 142, 0.65)",
                 alignSelf: "center",
                 marginBottom: 24,
               }}
             />
-            <Pressable
+            <RemembranceButton
+              chakra={chakra}
               onPress={() => {
                 addHapticFeedback(HapticStrength.Medium)
                 router.push(`/(chakras)/QuizScreen?day=${chakraDay + 1}`)
               }}
-              accessibilityLabel="A Test of Remembrance"
-              accessibilityHint={`Take day ${chakraDay + 1} quiz`}
-              style={{
-                shadowColor: "#2a2520",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.7,
-                shadowRadius: 10,
-                elevation: 8,
-              }}
-            >
-              <LinearGradient
-                colors={[
-                  "rgba(212, 197, 169, 0.18)",
-                  "rgba(168, 201, 154, 0.12)",
-                  "rgba(139, 115, 85, 0.22)",
-                  "rgba(90, 74, 58, 0.35)",
-                ]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                locations={[0, 0.35, 0.7, 1]}
-                style={{
-                  borderRadius: 20,
-                  paddingVertical: 14,
-                  paddingHorizontal: 28,
-                  borderWidth: 1,
-                  borderColor: "rgba(139, 115, 85, 0.45)",
-                  alignItems: "center",
-                  minWidth: 220,
-                  overflow: "hidden",
-                }}
-              >
-                <LinearGradient
-                  colors={[
-                    "rgba(255, 255, 255, 0.12)",
-                    "rgba(255, 255, 255, 0.02)",
-                    "transparent",
-                  ]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "55%",
-                    borderTopLeftRadius: 20,
-                    borderTopRightRadius: 20,
-                  }}
-                />
-                <AppText
-                  font="koh-santepheap"
-                  size="lg"
-                  style={{
-                    textAlign: "center",
-                    color: "#ffffff",
-                    textShadowColor: "rgba(0, 0, 0, 0.5)",
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 3,
-                    zIndex: 10,
-                  }}
-                >
-                  A Test of Remembrance
-                </AppText>
-              </LinearGradient>
-            </Pressable>
+            />
           </Animated.View>
           {/* Completion Ceremony - whole section tappable; checkbox fills when completed; resets Monday midnight via week transition */}
           <Animated.View
@@ -739,9 +497,11 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
 
       <GoodbyeModal
         isVisible={showGoodbyeModal}
-        onClose={() => setShowGoodbyeModal(false)}
+        onClose={() => {
+          setShowGoodbyeModal(false)
+          clearCompletedChakra()
+        }}
         chakraDay={chakraDay}
-        navigateToHubOnHome={!lifetimeChosenTimegateJourney}
         onNavigateHome={handleGoodbyeNavigateHome}
       />
 

@@ -56,8 +56,8 @@ export const getStartOfWeek = (date: Date): Date => {
  * Uses local timezone – toISOString() would return UTC and cause timezone bugs.
  * @returns ISO date string (YYYY-MM-DD) in local time.
  */
-export const getCurrentWeekStartDateISO = (): string => {
-  const monday = getStartOfWeek(new Date())
+export const getCurrentWeekStartDateISO = (date?: Date): string => {
+  const monday = getStartOfWeek(date ?? new Date())
   return getLocalDateISO(monday)
 }
 

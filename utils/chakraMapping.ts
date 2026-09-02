@@ -48,3 +48,29 @@ export const getDayFromChakra = (chakra: Chakra): number => {
 export const getChakraIndex = (chakra: Chakra): number => {
   return getDayFromChakra(chakra)
 }
+
+const CHAKRA_SLUGS = new Set<string>(Object.values(Chakra))
+
+/** Parse a route/query slug (`root`, `solar`, `thirdeye`, …) to a Chakra. */
+export function parseChakraSlug(
+  param: string | string[] | undefined,
+): Chakra | null {
+  const raw = Array.isArray(param) ? param[0] : param
+  if (!raw || typeof raw !== "string") return null
+  const slug = raw.toLowerCase().trim()
+  if (!CHAKRA_SLUGS.has(slug)) return null
+  return slug as Chakra
+}
+
+/** Index of a gifted card in the unlocked gallery list; last card if unknown. */
+export function galleryFocusIndex(
+  unlocked: readonly Chakra[],
+  focus: Chakra | null,
+): number {
+  if (unlocked.length === 0) return 0
+  if (focus) {
+    const index = unlocked.indexOf(focus)
+    if (index >= 0) return index
+  }
+  return unlocked.length - 1
+}

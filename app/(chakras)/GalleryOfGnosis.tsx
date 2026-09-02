@@ -1,14 +1,19 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from "react"
 import { View, ScrollView, Dimensions } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import { ActionBar } from "@/components/ActionBar"
 import { AppText } from "@/components/AppText"
 import { ChakraCard } from "@/components/chakras/GalleryOfGnosis/ChakraCard"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
-import { CHAKRA_TO_DAY } from "@/utils/chakraMapping"
+import {
+  CHAKRA_TO_DAY,
+  galleryFocusIndex,
+  parseChakraSlug,
+} from "@/utils/chakraMapping"
+import { goToChakraHubRoot } from "@/utils/navigationHelpers"
 import {
   CHAKRA_NAMES,
   getChakraColor,
@@ -17,6 +22,8 @@ import {
 /**
  * Gallery of Gnosis - Chakra Cards Carousel
  * Uses ScrollView + snapToInterval for reliable centering. Item width = measured viewport.
+ * `?chakra=` from View in Gallery opens that exact unlocked card.
+ * Top-left pops when there is history, else ChakraHub. Gift entry uses Home.
  */
 const { width: WINDOW_WIDTH } = Dimensions.get("window")
 
@@ -32,7 +39,12 @@ const CHAKRA_ORDER: Chakra[] = [
 
 export default function GalleryOfGnosis() {
   const router = useRouter()
-  const { completedChakras, hasEverCompletedChakra, hasLifetimeAccess } =
+  const { chakra: chakraParam } = useLocalSearchParams<{
+    chakra?: string | string[]
+  }>()
+  const focusChakra = parseChakraSlug(chakraParam)
+  const openedFromGift = focusChakra != null
+  const { completedChakras, everCompletedChakras, hasEverCompletedChakra } =
     useChakraJourneyStore()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [viewportWidth, setViewportWidth] = useState(WINDOW_WIDTH)
@@ -52,20 +64,25 @@ export default function GalleryOfGnosis() {
     return CHAKRA_ORDER.filter((chakra) =>
       hasEverCompletedChakra(CHAKRA_TO_DAY[chakra]),
     )
-  }, [completedChakras, hasEverCompletedChakra])
+  }, [completedChakras, everCompletedChakras, hasEverCompletedChakra])
 
-  // Start at last card (most recent) - delay to allow layout
+  const startIndex = useMemo(
+    () => galleryFocusIndex(unlockedChakras, focusChakra),
+    [unlockedChakras, focusChakra],
+  )
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (scrollRef.current && unlockedChakras.length > 0 && itemWidth > 0) {
         scrollRef.current.scrollTo({
-          x: itemWidth * (unlockedChakras.length - 1),
+          x: itemWidth * startIndex,
           animated: false,
         })
+        setCurrentIndex(startIndex)
       }
     }, 50)
     return () => clearTimeout(timer)
-  }, [itemWidth, unlockedChakras.length])
+  }, [itemWidth, unlockedChakras.length, startIndex])
 
   const handleScroll = useCallback(
     (e: { nativeEvent: { contentOffset: { x: number } } }) => {
@@ -78,15 +95,11 @@ export default function GalleryOfGnosis() {
   )
 
   const handleBack = () => {
-    if (hasLifetimeAccess) {
-      if (router.canGoBack()) {
-        router.back()
-      } else {
-        router.replace("/(chakras)/ChakraHub")
-      }
-    } else {
-      router.back()
+    if (openedFromGift || !router.canGoBack()) {
+      goToChakraHubRoot()
+      return
     }
+    router.back()
   }
 
   if (unlockedChakras.length === 0) {
@@ -95,7 +108,10 @@ export default function GalleryOfGnosis() {
         style={{ flex: 1, backgroundColor: "#0f1210" }}
         edges={["top", "left", "right"]}
       >
-        <ActionBar onBackPress={handleBack} />
+        <ActionBar
+          onBackPress={handleBack}
+          useHomeButton={openedFromGift}
+        />
         <View
           style={{
             flex: 1,
@@ -159,7 +175,7 @@ export default function GalleryOfGnosis() {
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-      <ActionBar onBackPress={handleBack} />
+      <ActionBar onBackPress={handleBack} useHomeButton={openedFromGift} />
       <View style={{ flex: 1, backgroundColor: "#000" }}>
         <View
           style={{

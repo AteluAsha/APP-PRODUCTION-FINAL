@@ -1,14 +1,16 @@
 /**
- * Preview screen (waiting room entry)
- *
- * Renders PreviewJourney with Stack fade transition. Back goes to ChakraHome (waiting room).
+ * Trial preview / waiting-room entry is disconnected. Course lives on ChakraHub.
  */
-
-import React from "react"
+import React, { useEffect } from "react"
+import { View } from "react-native"
 import { useRouter } from "expo-router"
-import { PreviewJourney } from "@/components/chakras/PreviewJourney"
 
 export default function Preview() {
   const router = useRouter()
-  return <PreviewJourney onBackPress={() => router.back()} />
+
+  useEffect(() => {
+    router.replace("/(chakras)/ChakraHub")
+  }, [router])
+
+  return <View style={{ flex: 1, backgroundColor: "#000000" }} />
 }

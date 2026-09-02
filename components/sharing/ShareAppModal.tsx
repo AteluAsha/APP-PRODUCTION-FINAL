@@ -46,7 +46,7 @@ export const ShareAppModal: React.FC<ShareAppModalProps> = ({
     await openSystemShare({
       message: inviteMessage,
       url: referralLink,
-      title: "Join me on SOUL SCHOOL",
+      title: "Join me on Awakening Soul",
     })
   }
 
@@ -89,7 +89,7 @@ export const ShareAppModal: React.FC<ShareAppModalProps> = ({
                   source={HERO_ICON}
                   style={styles.heroIcon}
                   resizeMode="contain"
-                  accessibilityLabel="SOUL SCHOOL chakra icon"
+                  accessibilityLabel="Awakening Soul chakra icon"
                 />
                 <View style={styles.headerTextWrap}>
                   <AppText
@@ -97,7 +97,7 @@ export const ShareAppModal: React.FC<ShareAppModalProps> = ({
                     size="xl"
                     className="text-white"
                   >
-                    Share SOUL SCHOOL
+                    Share Awakening Soul
                   </AppText>
                   <AppText
                     font="instrument-regular"
@@ -182,7 +182,7 @@ export const ShareAppModal: React.FC<ShareAppModalProps> = ({
         onClose={() => setShowBackupPicker(false)}
         message={inviteMessage}
         url={referralLink}
-        modalTitle="Share SOUL SCHOOL"
+        modalTitle="Share Awakening Soul"
         modalSubtitle="Copy link or choose app"
       />
     </>

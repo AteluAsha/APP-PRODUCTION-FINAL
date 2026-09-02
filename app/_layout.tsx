@@ -1,8 +1,7 @@
 /**
  * Root Layout - App Entry
  *
- * OPENING SEQUENCE (always first): Splash → Path Selection (WelcomeScreen) → 7 Chakras: The Map from Self to Soul.
- * After Enter Path: DateSelection | Waiting Room | Trial Home | Lifetime Home (ChakraHub).
+ * OPENING SEQUENCE: Splash → Wellness gate (once) → ChakraHub.
  */
 import "react-native-reanimated"
 import "./splash-prevent"
@@ -13,7 +12,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native"
 import { useFonts } from "expo-font"
-import { Stack } from "expo-router"
+import { Stack, usePathname } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { useEffect } from "react"
 import { useColorScheme } from "@/hooks/useColorScheme"
@@ -28,8 +27,9 @@ import {
   AppState,
   type AppStateStatus,
 } from "react-native"
-import { useRouter, usePathname } from "expo-router"
-import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av"
+import { handleAndroidHardwareBack } from "@/utils/navigationHelpers"
+import { isAppErrorRecoveryActive } from "@/utils/appErrorRecovery"
+import { isAppCrashOverlayVisible } from "@/hooks/useAppCrashStore"
 import { useChakraWeekTransition } from "@/hooks/useChakraWeekTransition"
 import {
   SOMATIC_SCREEN_TRANSITION_MS,
@@ -37,29 +37,29 @@ import {
   SPLASH_MIN_DISPLAY_MS,
 } from "@/constants/layout"
 import { useState } from "react"
-import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { AppCrashRecoveryOverlay } from "@/components/AppCrashRecoveryOverlay"
 import { AnimatedSplashScreen } from "@/components/AnimatedSplashScreen"
 import { PermanentMenuBar } from "@/components/navigation/PermanentMenuBar"
+import { FloatingNotesButton } from "@/components/navigation/FloatingNotesButton"
 import { MusicRoomAudioManager } from "@/components/audio/MusicRoomAudioManager"
 import { OtherOriginAudioManager } from "@/components/audio/OtherOriginAudioManager"
-import { GlobalHomeButton } from "@/components/navigation/GlobalHomeButton"
 import { GlobalAnuaChat } from "@/components/navigation/GlobalAnuaChat"
-import { GlobalTribeChat } from "@/components/navigation/GlobalTribeChat"
-import { PathSelectionGate } from "@/components/navigation/PathSelectionGate"
 import { ChakraHubHeader } from "@/components/navigation/ChakraHubHeader"
 import { ProfileSheet } from "@/components/profile/ProfileSheet"
-import { InviteRefApplier } from "@/components/invite/InviteRefApplier"
+import { HealingToastHost } from "@/components/HealingToastHost"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import * as Linking from "expo-linking"
 import "@/src/services/firebase"
 import { initializeSentry } from "@/src/services/sentry"
+import { initializeRevenueCat } from "@/src/services/revenuecat"
+import { getUserId } from "@/src/services/userId"
 import {
-  syncEngagementNotifications,
-  syncLifetimeSustenanceNotifications,
-  syncSporadicWisdomNotifications,
+  syncWeeklyHeartReminders,
 } from "@/src/services/journeyNotifications"
 import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
-import { subscribeResumeCourseFullPreload } from "@/src/utils/audioPreloadLifecycle"
+import { subscribeSanctuaryVaultSync } from "@/src/services/sanctuaryVaultDownloader"
+import { VaultSyncKeepAwake } from "@/components/audio/VaultSyncKeepAwake"
+import { silenceAllAudio, configureHealingAudioMode } from "@/src/utils/singleActiveSound"
 
 LogBox.ignoreLogs([
   "Error fetching tuning fork audio",
@@ -77,7 +77,6 @@ export default function RootLayout() {
   const [nativeReady, setNativeReady] = useState(false)
   const [showSplashOverlay, setShowSplashOverlay] = useState(true)
   const [minSplashElapsed, setMinSplashElapsed] = useState(false)
-  const router = useRouter()
   const pathname = usePathname()
 
   // Defer Reanimated/BottomSheet until native module is initialized (fixes iOS crash).
@@ -116,9 +115,8 @@ export default function RootLayout() {
   useEffect(() => {
     const p = pathname ?? ""
     if (
-      (p.includes("ChakraHub") || p.includes("ChakraHome")) &&
-      !p.includes("WelcomeScreen") &&
-      !p.includes("DateSelection")
+      p.includes("ChakraHub") ||
+      p.includes("WellnessGate")
     ) {
       useSplashOverlayStore.getState().setSplashOverlayActive(false)
     }
@@ -127,16 +125,7 @@ export default function RootLayout() {
   useEffect(() => {
     const setupAudio = async () => {
       try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: true,
-          interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-          interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-          shouldDuckAndroid: true,
-          ...(Platform.OS === "android" && {
-            playThroughEarpieceAndroid: false,
-          }),
-        })
+        await configureHealingAudioMode({ background: true })
       } catch (e) {
         if (__DEV__) {
           console.warn("[RootLayout] Audio setup skipped:", e)
@@ -144,12 +133,13 @@ export default function RootLayout() {
       }
     }
     setupAudio()
-    // Emulator/simulator audio is often poor; real device is source of truth. In __DEV__ on
-    // emulator we apply lighter progress-update intervals and a short pre-play delay (see
-    // constants/emulator.ts and AudioPlayer / *AudioManager). Production builds are unchanged.
+    // Crash-reopen and stacked players can leave native MediaPlayers running.
+    // Mute them once at launch so Day 1 cannot auto-play by itself.
+    void silenceAllAudio()
   }, [])
 
-  useEffect(() => subscribeResumeCourseFullPreload(), [])
+  // Permanent sanctuary vault: Day 1 → Day 7, resume on every open / foreground.
+  useEffect(() => subscribeSanctuaryVaultSync(), [])
 
   useEffect(() => {
     const checkExpiry = () => {
@@ -182,16 +172,12 @@ export default function RootLayout() {
     const onChange = (next: AppStateStatus) => {
       if (next === "active") {
         useChakraJourneyStore.getState().touchLastAppActive()
-        void syncEngagementNotifications()
-        void syncLifetimeSustenanceNotifications()
-        void syncSporadicWisdomNotifications()
+        void syncWeeklyHeartReminders()
       }
     }
     const sub = AppState.addEventListener("change", onChange)
     useChakraJourneyStore.getState().touchLastAppActive()
-    void syncEngagementNotifications()
-    void syncLifetimeSustenanceNotifications()
-    void syncSporadicWisdomNotifications()
+    void syncWeeklyHeartReminders()
     return () => sub.remove()
   }, [])
 
@@ -276,14 +262,11 @@ export default function RootLayout() {
 
   useChakraWeekTransition()
 
-  // RevenueCat: load after first paint so react-native-purchases native module is not required at bundle load (prevents simulator crash).
+  // RevenueCat after first paint. Static import so production AAB eager-bundle
+  // does not depend on Metro async-require (stale EAS temp paths).
   useEffect(() => {
     const initRevenueCat = async () => {
       try {
-        const { initializeRevenueCat } = await import(
-          "@/src/services/revenuecat"
-        )
-        const { getUserId } = await import("@/src/services/userId")
         const userId = await getUserId()
         await initializeRevenueCat(userId)
       } catch (error) {
@@ -370,19 +353,20 @@ export default function RootLayout() {
     return () => subscription.remove()
   }, [])
 
-  // Android: hardware back always goes to previous screen when there is history (never exits app from CoursePreview, etc.)
+  // Android: pop when there is history, otherwise land on ChakraHub. Never exit the app.
   useEffect(() => {
     if (Platform.OS !== "android") return
-    const onBack = () => {
-      if (router.canGoBack()) {
-        router.back()
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (isAppCrashOverlayVisible()) {
+        return false
+      }
+      if (isAppErrorRecoveryActive()) {
         return true
       }
-      return false
-    }
-    const sub = BackHandler.addEventListener("hardwareBackPress", onBack)
+      return handleAndroidHardwareBack(pathname)
+    })
     return () => sub.remove()
-  }, [router])
+  }, [pathname])
 
   // Screenshot capture: run "EXPO_PUBLIC_CAPTURE_SCREENS=1 npm run web" to capture all screens.
   // Saves PNGs to Downloads. See SCREEN_INVENTORY_REFERENCE.md for details.
@@ -413,60 +397,56 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <BottomSheetModalProvider>
-            <View style={{ flex: 1, backgroundColor: "#000000" }}>
-              <View style={{ flex: 1 }}>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    animation: "fade",
-                    animationDuration:
-                      Platform.OS === "ios"
-                        ? SOMATIC_SCREEN_TRANSITION_MS_IOS
-                        : SOMATIC_SCREEN_TRANSITION_MS,
-                  }}
-                >
-                  <Stack.Screen name="(chakras)" />
-                  <Stack.Screen name="AudioPlayer" />
-                  <Stack.Screen name="CommunityHalls" />
-                  <Stack.Screen name="+not-found" />
-                </Stack>
-                <MusicRoomAudioManager />
-                <OtherOriginAudioManager />
-                <PermanentMenuBar />
-                <GlobalHomeButton />
-                <GlobalAnuaChat />
-                <GlobalTribeChat />
-                <PathSelectionGate />
-                <InviteRefApplier />
-                <StatusBar
-                  style="light"
-                  translucent={Platform.OS === "android"}
-                  {...(Platform.OS === "android" && {
-                    backgroundColor: "transparent",
-                  })}
-                />
-                <ProfileSheet />
-                <ChakraHubHeader />
-              </View>
-              {showSplashOverlay && (
-                <AnimatedSplashScreen
-                  loadingComplete={splashLoadingComplete}
-                  onFadeOutComplete={() => {
-                    setShowSplashOverlay(false)
-                    // Explicit clear so PermanentMenuBar is not stuck behind splashOverlayActive
-                    useSplashOverlayStore.getState().setSplashOverlayActive(false)
-                  }}
-                />
-              )}
-              {/* TribeChatModal not in codebase; add when component exists: import from "@/components/tribe/TribeChatModal" and render <TribeChatModal /> */}
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <BottomSheetModalProvider>
+          <View style={{ flex: 1, backgroundColor: "#000000" }}>
+            <View style={{ flex: 1 }}>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: "fade",
+                  animationDuration:
+                    Platform.OS === "ios"
+                      ? SOMATIC_SCREEN_TRANSITION_MS_IOS
+                      : SOMATIC_SCREEN_TRANSITION_MS,
+                }}
+              >
+                <Stack.Screen name="(chakras)" />
+                <Stack.Screen name="AudioPlayer" />
+                <Stack.Screen name="CommunityHalls" />
+                <Stack.Screen name="+not-found" />
+              </Stack>
+              <MusicRoomAudioManager />
+              <OtherOriginAudioManager />
+              <VaultSyncKeepAwake />
+              <PermanentMenuBar />
+              <FloatingNotesButton />
+              <GlobalAnuaChat />
+              <StatusBar
+                style="light"
+                translucent={Platform.OS === "android"}
+                {...(Platform.OS === "android" && {
+                  backgroundColor: "transparent",
+                })}
+              />
+              <ProfileSheet />
+              <HealingToastHost />
+              <ChakraHubHeader />
             </View>
-          </BottomSheetModalProvider>
-        </GestureHandlerRootView>
-      </ThemeProvider>
-    </ErrorBoundary>
+            {showSplashOverlay && (
+              <AnimatedSplashScreen
+                loadingComplete={splashLoadingComplete}
+                onFadeOutComplete={() => {
+                  setShowSplashOverlay(false)
+                  useSplashOverlayStore.getState().setSplashOverlayActive(false)
+                }}
+              />
+            )}
+            <AppCrashRecoveryOverlay />
+          </View>
+        </BottomSheetModalProvider>
+      </GestureHandlerRootView>
+    </ThemeProvider>
   )
 }

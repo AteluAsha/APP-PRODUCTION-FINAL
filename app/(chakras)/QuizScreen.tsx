@@ -1,9 +1,7 @@
 /**
- * Mirror Of Embodiment Quiz Screen
+ * Reflection of Remembrance
  *
- * A mystical, spiritual quiz experience for each chakra day.
- * Features dark background, gradient lights, earth tone accents,
- * and one question at a time with immediate feedback.
+ * A sitting, not a test. One invitation at a time, on the day's field.
  */
 
 import React, { useState, useEffect, useRef } from "react"
@@ -28,13 +26,16 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import {
   getChakraName,
   getChakraImage,
+  getChakraColor,
 } from "@/constants/chakras/chakraConstants"
+import { SanctuaryFieldLayer } from "@/components/chakras/SanctuaryFieldLayer"
 import {
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
   SOMATIC_SPINNER_FADE_OUT_MS,
 } from "@/constants/layout"
 import { getLocalDateISO } from "@/utils/date"
+import { goToChakraHubRoot } from "@/utils/navigationHelpers"
 
 // Import quiz data
 const quizData = require("@/assets/data/ChakraQuizzes/chakra_quizzes.json")
@@ -49,61 +50,61 @@ function shuffleOptions<T>(array: T[]): T[] {
   return out
 }
 
-/** Three-tier mirror messages per chakra (beginner / intermediate / embodied). */
+/** Three-tier remembrance blessings per chakra (awakening / deepening / embodied). */
 const MIRROR_MESSAGES: Record<
   number,
   { beginner: string; intermediate: string; embodied: string }
 > = {
   1: {
     beginner:
-      "Your Mirror suggests your Root could use more grounding. Ask Anua for a short practice.",
+      "Your Root is calling you home. Place your feet on the Earth. You already belong.",
     intermediate:
-      "Your Mirror suggests your Root is finding its footing. A little more practice can deepen stability.",
-    embodied: "Your Mirror reflects a strong Root. You belong here.",
+      "Your Root is finding its ground. Keep listening. Stability is already rising in you.",
+    embodied: "Your Root remembers. You are here. You exist. You belong.",
   },
   2: {
     beginner:
-      "Your Mirror suggests your Sacral could use more flow. Ask Anua for a short practice.",
+      "Your Sacral is inviting you to feel. Soften. Let the water of you move.",
     intermediate:
-      "Your Mirror suggests your Sacral is opening to creativity. A little more practice can deepen the flow.",
-    embodied: "Your Mirror reflects a flowing Sacral. You feel; you create.",
+      "Your Sacral is opening. Your creativity is not something to earn — it is already flowing.",
+    embodied: "Your Sacral remembers. You feel. You flow. You create.",
   },
   3: {
     beginner:
-      "Your Mirror suggests your Solar Plexus could use more fire. Ask Anua for a short practice.",
+      "Your Solar Plexus is waking. Stand a little taller. Your fire is not gone — it is gathering.",
     intermediate:
-      "Your Mirror suggests your Solar Plexus is building power. A little more practice can deepen your truth.",
+      "Your Solar Plexus is building. Your truth has a shape. Trust the heat of it.",
     embodied:
-      "Your Mirror reflects a strong Solar Plexus. Through your truth, you find your soul fire.",
+      "Your Solar Plexus remembers. Through your truth, you find your soul fire.",
   },
   4: {
     beginner:
-      "Your Mirror suggests your Heart could use more opening. Ask Anua for a short practice.",
+      "Your Heart is asking to open. You do not have to force it. Love is already here.",
     intermediate:
-      "Your Mirror suggests your Heart is softening. A little more practice can deepen unconditional love.",
-    embodied: "Your Mirror reflects an open Heart. Your love is unconditional.",
+      "Your Heart is softening. Let it be wide. You are allowed to receive.",
+    embodied: "Your Heart remembers. It is open. Your love is unconditional.",
   },
   5: {
     beginner:
-      "Your Mirror suggests your Throat could use more expression. Ask Anua for a short practice.",
+      "Your Throat is finding its note. Speak even if the voice shakes. It is yours.",
     intermediate:
-      "Your Mirror suggests your Throat is finding its voice. A little more practice can deepen authentic speech.",
-    embodied: "Your Mirror reflects a clear Throat. You speak your truth.",
+      "Your Throat is clearing. What you say can be both true and kind.",
+    embodied: "Your Throat remembers. You speak with purity, compassion, and truth.",
   },
   6: {
     beginner:
-      "Your Mirror suggests your Third Eye could use more vision. Ask Anua for a short practice.",
+      "Your Third Eye is stirring. Quiet the mind of self. Sight is arriving.",
     intermediate:
-      "Your Mirror suggests your Third Eye is opening. A little more practice can deepen inner sight.",
+      "Your Third Eye is opening. Trust the knowing that does not need proof.",
     embodied:
-      "Your Mirror reflects a clear Third Eye. You open your mind to the Universe.",
+      "Your Third Eye remembers. You release the mind of self, and see.",
   },
   7: {
     beginner:
-      "Your Mirror suggests your Crown could use more connection. Ask Anua for a short practice.",
+      "Your Crown is reaching. You are not separate. Rest into the vastness.",
     intermediate:
-      "Your Mirror suggests your Crown is opening to spirit. A little more practice can deepen unity.",
-    embodied: "Your Mirror reflects an open Crown. You are one with all.",
+      "Your Crown is opening to spirit. There is nothing to become — only to remember.",
+    embodied: "Your Crown remembers. You are one with all. The light is yours.",
   },
 }
 
@@ -131,14 +132,13 @@ export default function QuizScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
-  const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
   const scrollViewRef = useRef<ScrollView>(null)
   const rationaleRef = useRef<View>(null)
   const [quiz, setQuiz] = useState<QuizData | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showRationale, setShowRationale] = useState(false)
-  const [score, setScore] = useState(0)
+  const scoreRef = useRef(0)
   const [isComplete, setIsComplete] = useState(false)
 
   // Load quiz data for the specified day; shuffle options so correct answer is not always first
@@ -170,7 +170,7 @@ export default function QuizScreen() {
       quiz &&
       quiz.questions[currentQuestionIndex].options[optionIndex].isCorrect
     ) {
-      setScore((prev) => prev + 1)
+      scoreRef.current += 1
     }
 
     // Scroll to show rationale after a brief delay
@@ -195,7 +195,7 @@ export default function QuizScreen() {
       useChakraJourneyStore.getState().recordQuizCompletion({
         date: getLocalDateISO(new Date()),
         day: dayNum,
-        score,
+        score: scoreRef.current,
         total: quiz.questions.length,
       })
       setIsComplete(true)
@@ -205,14 +205,16 @@ export default function QuizScreen() {
 
   const handleBackToDay = () => {
     addHapticFeedback(HapticStrength.Medium)
-    router.back()
+    if (router.canGoBack()) {
+      router.back()
+    } else {
+      router.replace("/(chakras)/ChakraHub")
+    }
   }
 
   const handleGoToHome = () => {
     addHapticFeedback(HapticStrength.Medium)
-    router.replace(
-      hasLifetimeAccess ? "/(chakras)/ChakraHub" : "/(chakras)/ChakraHome",
-    )
+    goToChakraHubRoot()
   }
 
   if (!quiz) {
@@ -292,48 +294,33 @@ export default function QuizScreen() {
   }
 
   const getResonanceLabel = (tier: EmbodimentTier): string => {
-    if (tier === "beginner") return "Awakening Awareness"
-    if (tier === "intermediate") return "Deepening Integration"
-    return "Radiant Embodiment"
+    if (tier === "beginner") return "The remembering has begun"
+    if (tier === "intermediate") return "You are deepening"
+    return "You remembered"
   }
+
+  const dayIndex = dayNum - 1
+  const accent = getChakraColor(Math.max(0, dayIndex))
 
   // Completion Screen
   if (quiz && isComplete) {
-    const tier = getEmbodimentTier(score, quiz.questions.length)
+    const tier = getEmbodimentTier(scoreRef.current, quiz.questions.length)
     const resonanceRating = getResonanceLabel(tier)
     const mirrorMessage =
       MIRROR_MESSAGES[dayNum]?.[tier] ?? MIRROR_MESSAGES[1].beginner
-    const chakraName = getChakraName(dayNum - 1)
+    const chakraName = getChakraName(dayIndex)
     const anuaMessage =
       tier === "beginner"
-        ? `I just completed the Mirror of Embodiment. The reflection suggests my ${chakraName} Chakra could use more attention. Can you offer a short practice?`
+        ? `I just sat with the Reflection of Remembrance for my ${chakraName} Chakra. I'd like a short practice to go deeper.`
         : tier === "intermediate"
-          ? `I just completed the Mirror of Embodiment. My ${chakraName} is deepening—could you suggest a short practice to go further?`
-          : `I just completed the Mirror of Embodiment. My ${chakraName} reflection felt strong. Any practice to keep it radiant?`
-    const chakraBallSource = getChakraImage(dayNum - 1)
-    const heartsFilled =
-      tier === "beginner" ? 1 : tier === "intermediate" ? 2 : 3
+          ? `I just sat with the Reflection of Remembrance. My ${chakraName} is deepening — a short practice to go further?`
+          : `I just sat with the Reflection of Remembrance. My ${chakraName} felt radiant. A practice to keep this alive?`
+    const chakraBallSource = getChakraImage(dayIndex)
 
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
-        <LinearGradient
-          colors={[
-            "rgba(0, 0, 0, 0)",
-            "rgba(42, 38, 32, 0.3)",
-            "rgba(28, 32, 28, 0.4)",
-            "rgba(22, 26, 22, 0.35)",
-          ]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            opacity: 0.7,
-          }}
-        />
+      <View style={{ flex: 1, backgroundColor: "#000000" }}>
+        <SanctuaryFieldLayer dayIndex={Math.max(0, dayIndex)} />
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
 
         <ScrollView
           style={{ flex: 1 }}
@@ -350,181 +337,73 @@ export default function QuizScreen() {
         >
           <Animated.View
             entering={FadeIn.duration(800).easing(Easing.out(Easing.ease))}
-            style={{ alignItems: "center", flex: 1 }}
+            style={{ alignItems: "center", flex: 1, width: "100%" }}
           >
-            {/* Chakra ball: earth-toned border, subtle depth */}
-            <View style={{ marginBottom: 16 }}>
-              <View
-                style={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: 60,
-                  overflow: "hidden",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: "rgba(42, 38, 32, 0.6)",
-                  borderWidth: 1,
-                  borderColor: "rgba(139, 115, 85, 0.5)",
-                  shadowColor: "#1a1a1a",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 12,
-                  elevation: 8,
-                }}
-              >
-                <View
-                  style={{
-                    width: 96,
-                    height: 96,
-                    borderRadius: 48,
-                    overflow: "hidden",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <Image
-                    source={chakraBallSource}
-                    style={{ width: 96, height: 96 }}
-                    resizeMode="cover"
-                  />
-                </View>
-              </View>
-            </View>
+            <Image
+              source={chakraBallSource}
+              style={{
+                width: 148,
+                height: 148,
+                marginBottom: 24,
+                shadowColor: accent,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.8,
+                shadowRadius: 28,
+              }}
+              resizeMode="contain"
+            />
 
-            {/* Completion Message */}
             <AppText
-              font="koh-santepheap"
-              size="3xl"
-              style={{ textAlign: "center", marginBottom: 8, color: "#ffffff" }}
-            >
-              Journey Complete
-            </AppText>
-
-            {/* Embodiment Resonance Title */}
-            <AppText
-              font="instrument-semibold"
-              size="lg"
+              font="cormorant-italic"
               style={{
                 textAlign: "center",
-                marginBottom: 8,
-                color: "rgba(255,255,255,0.7)",
+                marginBottom: 10,
+                color: "rgba(255, 248, 236, 0.98)",
+                fontSize: 32,
+                lineHeight: 40,
+                textShadowColor: "rgba(232, 201, 140, 0.4)",
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 16,
               }}
             >
-              Embodiment Resonance
+              {resonanceRating}
             </AppText>
 
-            {/* Heart meter: earth-toned, subtle */}
             <View
               style={{
-                flexDirection: "row",
-                marginBottom: 16,
-                justifyContent: "center",
-                gap: 8,
+                width: 48,
+                height: 1,
+                backgroundColor: "rgba(232, 201, 140, 0.45)",
+                marginBottom: 22,
               }}
-            >
-              {[1, 2, 3].map((i) => (
-                <View
-                  key={i}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor:
-                      i <= heartsFilled
-                        ? "rgba(168, 201, 154, 0.4)"
-                        : "rgba(42, 52, 45, 0.8)",
-                    borderWidth: 1,
-                    borderColor:
-                      i <= heartsFilled
-                        ? "rgba(168, 201, 154, 0.5)"
-                        : "rgba(139, 115, 85, 0.3)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <Ionicons
-                    name="heart"
-                    size={18}
-                    color={
-                      i <= heartsFilled
-                        ? "rgba(255,255,255,0.95)"
-                        : "rgba(212, 197, 169, 0.5)"
-                    }
-                  />
-                </View>
-              ))}
-            </View>
+            />
 
-            {/* Result card: hero style, earth tones */}
-            <View style={{ marginBottom: 20 }}>
-              <LinearGradient
-                colors={[
-                  "rgba(212, 197, 169, 0.15)",
-                  "rgba(168, 201, 154, 0.1)",
-                  "rgba(139, 115, 85, 0.2)",
-                ]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={{
-                  paddingHorizontal: 28,
-                  paddingVertical: 14,
-                  borderRadius: 24,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: "rgba(139, 115, 85, 0.45)",
-                  shadowColor: "#2a2520",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 12,
-                  elevation: 6,
-                }}
-              >
-                <AppText
-                  font="koh-santepheap"
-                  size="2xl"
-                  style={{
-                    color: "#ffffff",
-                    textAlign: "center",
-                    textShadowColor: "rgba(0, 0, 0, 0.4)",
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 2,
-                  }}
-                >
-                  {resonanceRating}
-                </AppText>
-              </LinearGradient>
-            </View>
-
-            {/* Mirror message: tier-specific; tap opens Anua with matching message */}
             <Pressable
               onPress={() => {
                 addHapticFeedback(HapticStrength.Light)
                 useAnuaChatStore.getState().open({
                   initialMessage: anuaMessage,
-                  chakraDayOverride: dayNum - 1,
+                  chakraDayOverride: dayIndex,
                 })
               }}
-              style={{ marginBottom: 20 }}
+              style={{ marginBottom: 20, paddingHorizontal: 8 }}
+              accessibilityLabel="Sit with this blessing, or ask Anua"
             >
               <AppText
-                font="instrument-regular"
-                size="sm"
+                font="cormorant-italic"
                 style={{
-                  color: "rgba(255,255,255,0.7)",
+                  color: "rgba(255,255,255,0.9)",
                   textAlign: "center",
-                  fontStyle: "italic",
-                  paddingHorizontal: 16,
+                  fontSize: 20,
+                  lineHeight: 30,
                 }}
               >
                 {mirrorMessage}
               </AppText>
             </Pressable>
 
-            {/* Spacer so Return button sits at bottom */}
             <View style={{ flex: 1 }} />
 
-            {/* Return Button: hero style, earth tones */}
             <View
               style={{
                 paddingBottom: Math.max(insets.bottom, 12),
@@ -534,111 +413,84 @@ export default function QuizScreen() {
             >
               <Pressable
                 onPress={handleBackToDay}
-                style={{
-                  shadowColor: "#2a2520",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.6,
-                  shadowRadius: 10,
-                  elevation: 6,
-                }}
+                style={({ pressed }) => [pressed && { opacity: 0.9 }]}
+                accessibilityLabel="Return to this day's course"
               >
                 <LinearGradient
                   colors={[
-                    "rgba(212, 197, 169, 0.2)",
-                    "rgba(168, 201, 154, 0.15)",
-                    "rgba(139, 115, 85, 0.25)",
+                    "rgba(168, 201, 154, 0.9)",
+                    "rgba(107, 142, 90, 0.94)",
+                    "rgba(212, 165, 116, 0.55)",
                   ]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={{
                     paddingHorizontal: 32,
-                    paddingVertical: 14,
-                    borderRadius: 24,
-                    borderWidth: 1,
-                    borderColor: "rgba(139, 115, 85, 0.45)",
+                    paddingVertical: 16,
+                    borderRadius: 16,
+                    minWidth: 220,
+                    alignItems: "center",
                   }}
                 >
                   <AppText
-                    font="koh-santepheap"
-                    size="xl"
+                    font="instrument-semibold"
+                    size="sm"
                     style={{
                       color: "#ffffff",
                       textAlign: "center",
-                      textShadowColor: "rgba(0, 0, 0, 0.4)",
+                      textShadowColor: "rgba(0, 0, 0, 0.45)",
                       textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 2,
+                      textShadowRadius: 4,
                     }}
                   >
-                    Return to Day {dayNum}
+                    Return to this day
                   </AppText>
                 </LinearGradient>
               </Pressable>
             </View>
           </Animated.View>
         </ScrollView>
-      </SafeAreaView>
+        </SafeAreaView>
+      </View>
     )
   }
 
   // Question Screen
   const selectedOption =
     selectedAnswer !== null ? currentQuestion.options[selectedAnswer] : null
-  const isCorrect = selectedOption?.isCorrect || false
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
-      {/* Always-visible back button - white arrow only, no background */}
+    <View style={{ flex: 1, backgroundColor: "#000000" }}>
+      <SanctuaryFieldLayer dayIndex={Math.max(0, dayIndex)} />
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
       <Pressable
         onPress={handleBackToDay}
         style={{
           position: "absolute",
-          top: Math.max(insets.top, 8) + 8,
+          top: 8,
           left: 16,
           zIndex: 100,
           padding: 8,
           backgroundColor: "transparent",
         }}
+        accessibilityLabel="Back"
       >
-        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        <Ionicons name="chevron-back" size={28} color="rgba(255,255,255,0.9)" />
       </Pressable>
 
-      {/* Emergency home button - top right, refined */}
       <Pressable
         onPress={handleGoToHome}
         style={{
           position: "absolute",
-          top: Math.max(insets.top, 8) + 8,
+          top: 8,
           right: 16,
           zIndex: 100,
-          padding: 10,
-          backgroundColor: "rgba(42, 52, 45, 0.8)",
-          borderRadius: 22,
-          borderWidth: 1,
-          borderColor: "rgba(135, 174, 115, 0.3)",
+          padding: 8,
         }}
+        accessibilityLabel="Home"
       >
-        <Ionicons name="home" size={22} color="rgba(255,255,255,0.95)" />
+        <Ionicons name="home-outline" size={22} color="rgba(255,255,255,0.9)" />
       </Pressable>
-
-      {/* Ambient gradient - subtle earth tones only, NO bright chakra glow */}
-      <LinearGradient
-        colors={[
-          "rgba(0, 0, 0, 0)",
-          "rgba(42, 38, 32, 0.25)",
-          "rgba(28, 32, 28, 0.35)",
-          "rgba(22, 26, 22, 0.3)",
-        ]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          opacity: 0.7,
-        }}
-      />
 
       <ScrollView
         ref={scrollViewRef}
@@ -668,28 +520,38 @@ export default function QuizScreen() {
             }}
           >
             <AppText
-              font="cormorant-italic"
-              size="lg"
+              font="instrument-regular"
+              size="xs"
               style={{
-                fontFamily: "CormorantGaramondItalic",
                 textAlign: "center",
-                color: "rgba(255,255,255,0.9)",
-                lineHeight: 28,
+                color: "rgba(232, 201, 140, 0.92)",
+                letterSpacing: 2,
+                marginBottom: 12,
               }}
             >
-              Feel into each reflection. There are no wrong answers—only
-              invitations to deepen.
+              REFLECTION OF REMEMBRANCE
             </AppText>
             <AppText
-              font="instrument-regular"
+              font="cormorant-italic"
+              style={{
+                textAlign: "center",
+                color: "rgba(255, 248, 236, 0.96)",
+                fontSize: 24,
+                lineHeight: 32,
+              }}
+            >
+              Sit. Breathe. Choose what feels true.
+            </AppText>
+            <AppText
+              font="cormorant-italic"
               size="sm"
               style={{
                 textAlign: "center",
                 marginTop: 12,
-                color: "rgba(212, 197, 169, 0.75)",
+                color: "rgba(255,255,255,0.72)",
               }}
             >
-              Your body knows. Let the mirror reveal what it already holds.
+              There are no wrong answers — only invitations to remember.
             </AppText>
           </View>
 
@@ -750,9 +612,9 @@ export default function QuizScreen() {
           >
             <LinearGradient
               colors={[
-                "rgba(30, 28, 26, 0.98)",
-                "rgba(22, 24, 22, 0.99)",
-                "rgba(18, 20, 18, 0.99)",
+                "rgba(18, 16, 12, 0.55)",
+                "rgba(8, 10, 8, 0.62)",
+                "rgba(6, 8, 6, 0.7)",
               ]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
@@ -760,7 +622,7 @@ export default function QuizScreen() {
                 borderRadius: 24,
                 padding: 24,
                 borderWidth: 1,
-                borderColor: "rgba(139, 115, 85, 0.35)",
+                borderColor: "rgba(232, 201, 140, 0.32)",
                 overflow: "hidden",
               }}
             >
@@ -789,23 +651,23 @@ export default function QuizScreen() {
                 font="instrument-regular"
                 size="xs"
                 style={{
-                  color: "rgba(212, 197, 169, 0.65)",
-                  marginBottom: 12,
-                  letterSpacing: 1,
+                  color: "rgba(232, 201, 140, 0.75)",
+                  marginBottom: 14,
+                  letterSpacing: 2,
+                  textAlign: "center",
                 }}
               >
-                Reflection {currentQuestionIndex + 1} of {quiz.questions.length}
+                {currentQuestionIndex + 1} of {quiz.questions.length}
               </AppText>
 
-              {/* Question Text - site font, bold and prominent */}
               <AppText
-                font="instrument-bold"
-                size="lg"
+                font="cormorant-italic"
                 style={{
-                  fontSize: 19,
-                  lineHeight: 28,
-                  color: "rgba(255,255,255,0.92)",
-                  marginBottom: 20,
+                  fontSize: 24,
+                  lineHeight: 34,
+                  color: "rgba(255, 248, 236, 0.98)",
+                  marginBottom: 24,
+                  textAlign: "center",
                 }}
               >
                 {currentQuestion.question}
@@ -818,25 +680,25 @@ export default function QuizScreen() {
                   const optionIsCorrect = option.isCorrect
                   const showFeedback = selectedAnswer !== null
 
-                  let borderColor = "rgba(139, 115, 85, 0.35)"
+                  let borderColor = "rgba(232, 201, 140, 0.28)"
                   let gradientColors: [string, string] = [
-                    "rgba(35, 38, 34, 0.95)",
-                    "rgba(28, 32, 28, 0.98)",
+                    "rgba(12, 14, 12, 0.72)",
+                    "rgba(8, 10, 8, 0.82)",
                   ]
 
                   if (showFeedback) {
                     if (isSelected) {
                       borderColor = optionIsCorrect
-                        ? "rgba(168, 201, 154, 0.5)"
-                        : "rgba(212, 165, 116, 0.45)"
+                        ? "rgba(168, 201, 154, 0.7)"
+                        : "rgba(232, 201, 140, 0.55)"
                       gradientColors = optionIsCorrect
-                        ? ["rgba(42, 52, 45, 0.9)", "rgba(35, 45, 38, 0.95)"]
-                        : ["rgba(52, 42, 38, 0.9)", "rgba(45, 38, 35, 0.95)"]
+                        ? ["rgba(42, 62, 45, 0.75)", "rgba(28, 42, 32, 0.85)"]
+                        : ["rgba(52, 42, 32, 0.75)", "rgba(38, 30, 24, 0.85)"]
                     } else if (optionIsCorrect) {
-                      borderColor = "rgba(168, 201, 154, 0.35)"
+                      borderColor = "rgba(168, 201, 154, 0.45)"
                       gradientColors = [
-                        "rgba(38, 48, 40, 0.95)",
-                        "rgba(32, 40, 34, 0.98)",
+                        "rgba(32, 48, 36, 0.7)",
+                        "rgba(22, 32, 26, 0.8)",
                       ]
                     }
                   }
@@ -939,7 +801,7 @@ export default function QuizScreen() {
                                       parseInt(dayParam, 10) - 1,
                                     )
                                     const initialMessage =
-                                      `In the Mirror of Embodiment reflection: «${currentQuestion.question}» I wasn't sure; I had thought something like: ${option.text}. I'd like to understand this better—can you explain briefly?`
+                                      `In the Reflection of Remembrance: «${currentQuestion.question}» I wasn't sure; I had thought something like: ${option.text}. I'd like to understand this better—can you explain briefly?`
                                     useAnuaChatStore.getState().open({
                                       initialMessage,
                                       chakraDayOverride: quizChakraDay,
@@ -1038,55 +900,31 @@ export default function QuizScreen() {
                   >
                     <LinearGradient
                       colors={[
-                        "rgba(212, 197, 169, 0.18)",
-                        "rgba(168, 201, 154, 0.12)",
-                        "rgba(139, 115, 85, 0.22)",
-                        "rgba(90, 74, 58, 0.35)",
+                        "rgba(168, 201, 154, 0.9)",
+                        "rgba(107, 142, 90, 0.94)",
+                        "rgba(212, 165, 116, 0.55)",
                       ]}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      locations={[0, 0.35, 0.7, 1]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
                       style={{
-                        paddingVertical: 14,
+                        paddingVertical: 16,
                         paddingHorizontal: 28,
-                        borderRadius: 20,
+                        borderRadius: 16,
                         alignItems: "center",
-                        borderWidth: 1,
-                        borderColor: "rgba(139, 115, 85, 0.45)",
                       }}
                     >
-                      <LinearGradient
-                        colors={[
-                          "rgba(255, 255, 255, 0.1)",
-                          "rgba(255, 255, 255, 0.02)",
-                          "transparent",
-                        ]}
-                        start={{ x: 0.5, y: 0 }}
-                        end={{ x: 0.5, y: 1 }}
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: "55%",
-                          borderTopLeftRadius: 20,
-                          borderTopRightRadius: 20,
-                          pointerEvents: "none",
-                        }}
-                      />
                       <AppText
-                        font="koh-santepheap"
-                        size="base"
+                        font="instrument-semibold"
+                        size="sm"
                         style={{
                           color: "#ffffff",
-                          letterSpacing: 0.5,
-                          zIndex: 1,
-                          textShadowColor: "rgba(0, 0, 0, 0.4)",
+                          letterSpacing: 0.4,
+                          textShadowColor: "rgba(0, 0, 0, 0.45)",
                           textShadowOffset: { width: 0, height: 1 },
-                          textShadowRadius: 2,
+                          textShadowRadius: 4,
                         }}
                       >
-                        {isLastQuestion ? "Complete Journey" : "Continue"}
+                        {isLastQuestion ? "Seal this remembering" : "Continue"}
                       </AppText>
                     </LinearGradient>
                   </Pressable>
@@ -1096,6 +934,7 @@ export default function QuizScreen() {
           </View>
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   )
 }

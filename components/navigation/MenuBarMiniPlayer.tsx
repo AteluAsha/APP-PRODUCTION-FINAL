@@ -18,8 +18,10 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
+import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { Ionicons } from "@expo/vector-icons"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { silenceAllAudio } from "@/src/utils/singleActiveSound"
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window")
 const BAR_WIDTH = 220
@@ -69,30 +71,26 @@ export function MenuBarMiniPlayer() {
 
   const isOnAudioLibrary = pathname?.includes("AudioLibrary")
   const isOnAudioPlayer = pathname?.includes("AudioPlayer")
-  const isVerticalLayoutScreen =
-    pathname?.includes("SoundBath") ||
-    pathname?.includes("GalleryOfGnosis") ||
-    pathname?.includes("HeadToHeart") ||
-    pathname?.includes("Chakras101") ||
-    pathname?.includes("AccountabilityOfAwakening") ||
-    pathname?.includes("DivineLaws") ||
-    /\(chakras\)\/[a-z]+/.test(pathname || "")
+  const isOnSoundBath = pathname?.includes("SoundBath")
+  const isGoodbyeVisible = useGoodbyeModalStore((s) => s.isGoodbyeVisible)
   const shouldShowMusicRoom = !!(
     source &&
     metadata &&
     audioOrigin === "music-room" &&
-    !isOnAudioLibrary
+    !isOnAudioLibrary &&
+    !isOnAudioPlayer
   )
   const shouldShowOther = !!(
     source &&
     metadata &&
     audioOrigin === "other" &&
     !isOnAudioPlayer &&
+    !isOnSoundBath &&
     !prefs?.isIntroAudio
   )
-  const shouldShow = shouldShowMusicRoom || shouldShowOther
+  const shouldShow = !isGoodbyeVisible && (shouldShowMusicRoom || shouldShowOther)
 
-  const baseLeft = isVerticalLayoutScreen ? 78 : 16
+  const baseLeft = 16
   const baseBottom = Math.max(insets.bottom, 4) + 58
 
   const offsetX = useSharedValue(0)
@@ -210,7 +208,7 @@ export function MenuBarMiniPlayer() {
           <Pressable
             onPress={() => {
               addHapticFeedback(HapticStrength.Light)
-              reset()
+              void silenceAllAudio().finally(() => reset())
             }}
             style={styles.button}
             accessibilityLabel="Close and stop audio"

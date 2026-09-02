@@ -57,8 +57,6 @@ export const AccessGrantedModal: React.FC<AccessGrantedModalProps> = ({
     transform: [{ scale: scale.value }],
   }))
 
-  if (!visible) return null
-
   return (
     <Modal
       visible={visible}
@@ -66,7 +64,8 @@ export const AccessGrantedModal: React.FC<AccessGrantedModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-center items-center bg-black/90">
+      {visible ? (
+      <View className="flex-1 justify-center items-center bg-black/90" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
         <Animated.View style={animatedStyle} className="w-[90%] max-w-md">
           <LinearGradient
             colors={[
@@ -197,6 +196,7 @@ export const AccessGrantedModal: React.FC<AccessGrantedModalProps> = ({
           </LinearGradient>
         </Animated.View>
       </View>
+      ) : null}
     </Modal>
   )
 }

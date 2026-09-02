@@ -1,7 +1,8 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { calculateCourseStartDate, getLocalDateISO } from "@/utils/date"
+import { calculateCourseStartDate, getCurrentWeekStartDateISO, getLocalDateISO } from "@/utils/date"
+import { collectEverCompletedIds, planWeeklyVisualReset, uniqueDayIds } from "@/utils/weeklyVisualReset"
 import { useStoreRehydration } from "@/hooks/useStoreRehydration"
 import { safeAsyncStorage } from "@/src/utils/safeAsyncStorage"
 import { getUserId } from "@/src/services/userId"
@@ -26,6 +27,15 @@ interface ChakraJourneyState {
 
   // Array of chakra indices that have been completed (viewed) within the current week
   completedChakras: number[]
+
+  /**
+   * Cards collected in Gallery of Gnosis. Grows only. Monday midnight
+   * never clears this — only completedChakras (checkboxes / gold circles).
+   */
+  everCompletedChakras: number[]
+
+  /** Local Monday YYYY-MM-DD of the last weekly checkbox/gold-circle reset. */
+  weeklyVisualResetWeekStart: string | null
 
   // Array of day indices (0-6) that the user has participated in during the current week
   // A day is "participated" when the user views/completes that day's chakra
@@ -122,6 +132,18 @@ interface ChakraJourneyState {
   soulJourneyNudgesEnabled: boolean
   setSoulJourneyNudgesEnabled: (value: boolean) => void
 
+  /** Optional daily 9 AM alignment nudges (Mon–Sun), layered on weekly heart reminders. */
+  dailyAlignmentRemindersEnabled: boolean
+  setDailyAlignmentRemindersEnabled: (value: boolean) => void
+
+  /**
+   * ChakraHub: days the seeker has touched (Root starts lit).
+   * Grey until tapped; tap lights the ball and opens the teaching.
+   */
+  awakenedHubChakras: number[]
+  awakenHubChakra: (dayIndex: number) => void
+  isHubChakraAwakened: (dayIndex: number) => boolean
+
   // Actions
   startJourney: (startDate: string) => void
   setInitialOpenDate: (date: string) => void
@@ -129,6 +151,8 @@ interface ChakraJourneyState {
   markChakraCompleted: (chakraIndex: number) => void
   markDayParticipated: (dayIndex: number) => void
   resetJourney: () => void
+  /** Monday 00:00 local: uncheck day boxes and gold circles; keep gallery cards. */
+  applyWeeklyVisualReset: () => void
   hasCompletedChakra: (chakraIndex: number) => boolean
   hasEverCompletedChakra: (chakraIndex: number) => boolean
   hasParticipatedDay: (dayIndex: number) => boolean
@@ -232,6 +256,8 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         initialOpenDate: null,
         courseStartDate: null,
         completedChakras: [],
+        everCompletedChakras: [],
+        weeklyVisualResetWeekStart: null,
         participatedDays: [],
         allChakrasCompleted: false,
         completedTrialCourses: 0,
@@ -273,6 +299,23 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         soulJourneyNudgesEnabled: true,
         setSoulJourneyNudgesEnabled: (value: boolean) =>
           set({ soulJourneyNudgesEnabled: value }),
+
+        dailyAlignmentRemindersEnabled: false,
+        setDailyAlignmentRemindersEnabled: (value: boolean) =>
+          set({ dailyAlignmentRemindersEnabled: value }),
+
+        awakenedHubChakras: [0],
+        awakenHubChakra: (dayIndex: number) => {
+          const day = Math.max(0, Math.min(6, Math.floor(dayIndex)))
+          set((state) => {
+            if (state.awakenedHubChakras.includes(day)) return state
+            return { awakenedHubChakras: [...state.awakenedHubChakras, day] }
+          })
+        },
+        isHubChakraAwakened: (dayIndex: number) => {
+          const lit = get().awakenedHubChakras
+          return Array.isArray(lit) && lit.includes(dayIndex)
+        },
 
         // Actions
         setInitialOpenDate: (date: string) => {
@@ -357,15 +400,26 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
             const newCompletedChakras = [...currentCompleted, chakraIndex]
             set({
               completedChakras: newCompletedChakras,
+              everCompletedChakras: uniqueDayIds(
+                get().everCompletedChakras,
+                newCompletedChakras,
+              ),
               totalChakrasCompleted: get().totalChakrasCompleted + 1,
             })
             // Also mark this day as participated
             get().markDayParticipated(chakraIndex)
+            get().awakenHubChakra(chakraIndex)
             // Check if this completion marks the end of the journey
             get().checkAndSetCompletion()
           } else if (allCompleted) {
-            // If all are completed, just ensure the day is marked as participated
+            set({
+              everCompletedChakras: uniqueDayIds(
+                get().everCompletedChakras,
+                [chakraIndex],
+              ),
+            })
             get().markDayParticipated(chakraIndex)
+            get().awakenHubChakra(chakraIndex)
           }
         },
 
@@ -409,6 +463,9 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
          */
         hasEverCompletedChakra: (chakraIndex: number) => {
           const state = get()
+          if ((state.everCompletedChakras ?? []).includes(chakraIndex)) {
+            return true
+          }
 
           // Check current completed chakras
           if (state.completedChakras.includes(chakraIndex)) {
@@ -512,6 +569,21 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
               totalChakrasCompleted: get().totalChakrasCompleted,
               trialHistory: get().trialHistory,
             }
+          })
+        },
+
+        applyWeeklyVisualReset: () => {
+          const plan = planWeeklyVisualReset({
+            lastResetWeekStart: get().weeklyVisualResetWeekStart,
+            thisMonday: getCurrentWeekStartDateISO(),
+            completedChakras: get().completedChakras ?? [],
+            everCompletedChakras: get().everCompletedChakras ?? [],
+          })
+          set({
+            weeklyVisualResetWeekStart: plan.weeklyVisualResetWeekStart,
+            completedChakras: plan.completedChakras,
+            everCompletedChakras: plan.everCompletedChakras,
+            ...(plan.didClearWeekMarks ? { allChakrasCompleted: false } : {}),
           })
         },
 
@@ -737,6 +809,9 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
             userChoseGentleDepart: false,
             lastAppActiveAt: null,
             engagementSilentIntegrationDone: false,
+            awakenedHubChakras: [0],
+            everCompletedChakras: [],
+            weeklyVisualResetWeekStart: null,
           }),
       }
     },
@@ -753,6 +828,31 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
           if (typeof state.soulJourneyNudgesEnabled !== "boolean") {
             useChakraJourneyStore.setState({ soulJourneyNudgesEnabled: true })
           }
+          if (typeof state.dailyAlignmentRemindersEnabled !== "boolean") {
+            useChakraJourneyStore.setState({
+              dailyAlignmentRemindersEnabled: false,
+            })
+          }
+          if (!Array.isArray(state.awakenedHubChakras)) {
+            const seeded = new Set<number>([0])
+            for (let i = 0; i < 7; i++) {
+              if (
+                state.completedChakras?.includes(i) ||
+                state.participatedDays?.includes(i)
+              ) {
+                seeded.add(i)
+              }
+            }
+            useChakraJourneyStore.setState({
+              awakenedHubChakras: [...seeded].sort((a, b) => a - b),
+            })
+          }
+          if (!Array.isArray(state.everCompletedChakras)) {
+            useChakraJourneyStore.setState({
+              everCompletedChakras: collectEverCompletedIds(state),
+            })
+          }
+          useChakraJourneyStore.getState().applyWeeklyVisualReset()
           if (
             state.paymentStatus === "scholarship" &&
             state.scholarshipExpiryDate

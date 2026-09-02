@@ -1,0 +1,7 @@
+Sanctuary AAC is no longer bundled in the app.
+
+The silent vault downloader fetches these files into
+FileSystem.documentDirectory/sanctuary-audio/ from the HTTPS URLs in
+constants/sanctuaryHostedUrls.ts.
+
+Do not drop large AAC files here — they bloat the store binary.

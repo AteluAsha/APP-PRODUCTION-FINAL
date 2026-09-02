@@ -1,0 +1,7 @@
+{
+  "name": "meditation-playback",
+  "version": "1.0.0",
+  "description": "Android mediaPlayback foreground service so meditation survives lock screen",
+  "main": "index.ts",
+  "types": "index.ts"
+}

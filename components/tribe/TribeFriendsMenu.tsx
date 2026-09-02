@@ -85,12 +85,12 @@ export function TribeFriendsMenu({
     const trimmed = connectIdInput.trim()
     if (!trimmed) return
     if (currentUserId && trimmed === currentUserId) {
-      setConnectError("That's your own ID. Enter your friend's SOUL SCHOOL ID.")
+      setConnectError("That's your own ID. Enter your friend's Awakening Soul ID.")
       setConnectStatus("error")
       return
     }
     if (!currentUserId || currentUserId === "soul-school-guest") {
-      setConnectError("Your SOUL SCHOOL ID is not ready. Try again in a moment.")
+      setConnectError("Your Awakening Soul ID is not ready. Try again in a moment.")
       setConnectStatus("error")
       return
     }
@@ -236,21 +236,21 @@ export function TribeFriendsMenu({
               </View>
             </View>
 
-            {/* Connect by SOUL SCHOOL ID */}
+            {/* Connect by Awakening Soul ID */}
             <View style={styles.connectByIdSection}>
               <AppText
                 font="instrument-semibold"
                 size="sm"
                 style={styles.connectByIdLabel}
               >
-                Connect with a SOUL SCHOOL ID
+                Connect with an Awakening Soul ID
               </AppText>
               <AppText
                 font="instrument-regular"
                 size="xs"
                 style={styles.connectByIdHint}
               >
-                Enter your friend's SOUL SCHOOL ID to connect.
+                Enter your friend's Awakening Soul ID to connect.
               </AppText>
               <TextInput
                 value={connectIdInput}
@@ -360,7 +360,7 @@ export function TribeFriendsMenu({
                       "No one in the room yet. Invite friends to get started."}
                     {activeTab === "Pending" && "No pending invites."}
                     {activeTab === "Suggested" &&
-                      "Find friends to see who's on SOUL SCHOOL."}
+                      "Find friends to see who's on Awakening Soul."}
                   </AppText>
                 </View>
               ) : (
@@ -494,7 +494,7 @@ export function TribeFriendsMenu({
                       size="sm"
                       style={styles.findBtnText}
                     >
-                      Find friends on SOUL SCHOOL
+                      Find friends on Awakening Soul
                     </AppText>
                   </LinearGradient>
                 </Pressable>

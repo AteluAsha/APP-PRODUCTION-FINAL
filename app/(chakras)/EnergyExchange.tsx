@@ -12,10 +12,8 @@ import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
 import { ActionBar } from "@/components/ActionBar"
 import { useRouter } from "expo-router"
-import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { useEnergyExchangeStore } from "@/hooks/useEnergyExchangeStore"
-import { useShallow } from "zustand/react/shallow"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { useEnergyExchangeStore } from "@/hooks/useEnergyExchangeStore"
 import { VideoRecorderModal } from "@/components/chakras/VideoRecorderModal"
 import { WriteToUsModal } from "@/components/chakras/WriteToUsModal"
 import { LeaveReviewModal } from "@/components/chakras/LeaveReviewModal"
@@ -35,9 +33,6 @@ export default function EnergyExchange() {
   const [showVideoRecorder, setShowVideoRecorder] = useState(false)
   const [showWriteToUs, setShowWriteToUs] = useState(false)
   const [showLeaveReview, setShowLeaveReview] = useState(false)
-  const hasLifetimeAccess = useChakraJourneyStore(
-    useShallow((s) => s.hasLifetimeAccess),
-  )
   const {
     videoComplete,
     reviewComplete,
@@ -49,12 +44,8 @@ export default function EnergyExchange() {
 
   const handleBack = () => {
     addHapticFeedback(HapticStrength.Light)
-    if (hasLifetimeAccess) {
-      requestChakraHubRevealBreath()
-      router.replace("/(chakras)/ChakraHub")
-    } else {
-      router.replace("/(chakras)/ChakraHome")
-    }
+    requestChakraHubRevealBreath()
+    router.replace("/(chakras)/ChakraHub")
   }
 
   const handleShare = () => {
@@ -260,7 +251,7 @@ export default function EnergyExchange() {
                   size="xs"
                   style={styles.disclosureText}
                 >
-                  SOUL SCHOOL is operated by Project Starseed, an IRS-recognized
+                  Awakening Soul is operated by Project Starseed, an IRS-recognized
                   501(c)(3) tax-exempt organization committed to making
                   spiritual growth accessible to all.
                 </AppText>

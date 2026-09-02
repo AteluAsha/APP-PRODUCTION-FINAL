@@ -51,8 +51,10 @@ export type Content = {
     helpsWith: string
     realWorldEffect: string
     body: string
+    /** Vault track length in ms (ffprobe on remastered MP3). */
+    durationMs: number
     tuningForkAudio: AVPlaybackSource
-    /** Bundled fallback when Firebase crystal bowl is unavailable (7 × 1hr expected from Firebase) */
+    /** Bundled fallback when Firebase crystal bowl is unavailable */
     crystalBowlAudio: AVPlaybackSource
   }
   goodbye: {

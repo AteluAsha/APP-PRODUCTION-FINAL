@@ -7,11 +7,13 @@
  * back call router.back() + store.close().
  */
 
-import React, { useEffect } from "react"
-import { View, StyleSheet, BackHandler, Platform } from "react-native"
+import React, { useCallback, useEffect } from "react"
+import { View, StyleSheet } from "react-native"
 import { useRouter } from "expo-router"
+import { useFocusEffect } from "@react-navigation/native"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
 import { ProfileSheet } from "@/components/profile/ProfileSheet"
+import { registerAndroidBackCleanup } from "@/utils/androidBackCleanup"
 
 export default function ProfileMenuScreen() {
   const router = useRouter()
@@ -26,14 +28,13 @@ export default function ProfileMenuScreen() {
     return () => close()
   }, [close])
 
-  useEffect(() => {
-    if (Platform.OS !== "android") return
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      handleClose()
-      return true
-    })
-    return () => sub.remove()
-  }, [handleClose])
+  useFocusEffect(
+    useCallback(() => {
+      return registerAndroidBackCleanup(() => {
+        close()
+      })
+    }, [close]),
+  )
 
   return (
     <View style={styles.container}>

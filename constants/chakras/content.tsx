@@ -60,7 +60,7 @@ export const chakraContent: Record<Chakra, Content> = {
     audioIntro: {
       title: "Good Morning Root!",
       author: "Mother JJ",
-      durationMs: 2684000, // 44:44 - Root hero embodiment (Day1_ROOT_DAY_MASTER_EMBODIMENT_SoulSchool_MotherJJ.aac)
+      durationMs: 2684000,
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
@@ -88,6 +88,7 @@ export const chakraContent: Record<Chakra, Content> = {
     },
     soundBath: {
       title: "Root Chakra - 396 Hz",
+      durationMs: 3952471,
       subtitle: "muladhara",
       helpsWith: "Grounding, safety, reducing fear, calming survival anxiety",
       realWorldEffect:
@@ -206,9 +207,9 @@ export const chakraContent: Record<Chakra, Content> = {
       textLine3: 'Svadhisthana - "I feel"',
     },
     audioIntro: {
-      title: "Hello Sacral!",
+      title: "Awakening The Authentic Self",
       author: "Mother JJ",
-      durationMs: 2189000, // 36:29
+      durationMs: 2501492,
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
@@ -237,6 +238,7 @@ export const chakraContent: Record<Chakra, Content> = {
     },
     soundBath: {
       title: "Sacral Chakra - 417 Hz",
+      durationMs: 3719477,
       subtitle: "svadhisthana",
       helpsWith:
         "Emotional flow, releasing stuck patterns, creativity, intimacy",
@@ -311,7 +313,7 @@ export const chakraContent: Record<Chakra, Content> = {
       "Power pose meditation: Stand tall with your feet hip-width apart, arms raised overhead, and palms facing forward. Feel the energy surge through your body as you embrace your power. Try to relax and meditate from here in a standing position for ten minutes to release old emotions and old storylines.",
     wordsOfWisdom:
       '"Ignite your inner fire, the spark of willpower that fuels your dreams. Embrace your strength, your courage, your ability to manifest your desires. You are the creator of your reality."',
-    affirmationText: "Through my truth, I find my soul fire.",
+    affirmationText: "Through my truth,\nI find my soul fire.",
     elements: {
       background: require("@/assets/images/elementssolar.png"),
       sanskrit: "Manipura",
@@ -356,9 +358,9 @@ export const chakraContent: Record<Chakra, Content> = {
       textLine3: 'Manipura - "I do"',
     },
     audioIntro: {
-      title: "Good Morning Sun!",
+      title: "Abundance & Accountability",
       author: "Mother JJ",
-      durationMs: 2093000, // 34:53
+      durationMs: 2093000,
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
@@ -387,6 +389,7 @@ export const chakraContent: Record<Chakra, Content> = {
     },
     soundBath: {
       title: "Solar Plexus - 528 Hz",
+      durationMs: 3681965,
       subtitle: "manipura",
       helpsWith: "Confidence, digestion of stress, personal power, coherence",
       realWorldEffect:
@@ -460,7 +463,7 @@ export const chakraContent: Record<Chakra, Content> = {
       "Loving-kindness meditation: Sit comfortably and visualize sending love and compassion to yourself, your loved ones, and all beings.",
     wordsOfWisdom:
       '"Open your heart to the boundless love that surrounds you. Embrace compassion, forgiveness, and gratitude. In the stillness of your heart, find your peace, your joy, your connection to all beings."',
-    affirmationText: "My heart is open; my love is unconditional.",
+    affirmationText: "My heart is open;\nmy love is unconditional.",
     elements: {
       background: require("@/assets/images/elementsheart.png"),
       sanskrit: "Anahata",
@@ -505,9 +508,9 @@ export const chakraContent: Record<Chakra, Content> = {
       textLine3: 'Anahata - "I love"',
     },
     audioIntro: {
-      title: "Good Morning Heart!",
+      title: "The Emerald Flame",
       author: "Mother JJ",
-      durationMs: 2396000, // 39:56
+      durationMs: 2820653,
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
@@ -535,6 +538,7 @@ export const chakraContent: Record<Chakra, Content> = {
     },
     soundBath: {
       title: "Heart Chakra - 639 Hz",
+      durationMs: 3931493,
       subtitle: "anahata",
       helpsWith:
         "Connection, compassion, emotional regulation, relational healing",
@@ -606,7 +610,7 @@ export const chakraContent: Record<Chakra, Content> = {
       "Find your triangle of truth. Observe if your words match your actions and if your actions match your thinking. If not, you're on the path of discovering your authentic self.",
     wordsOfWisdom:
       '"Your voice matters. Speak your truth with courage, clarity, and compassion. Let your words be a beacon of authenticity, inspiring others to embrace their own unique expression."',
-    affirmationText: "I speak with purity, compassion, and truth.",
+    affirmationText: "I speak with purity,\ncompassion, and truth.",
     elements: {
       background: require("@/assets/images/elementsthroat.png"),
       sanskrit: "Vishuddha",
@@ -651,9 +655,9 @@ export const chakraContent: Record<Chakra, Content> = {
       textLine3: 'Vishuddha - "I speak"',
     },
     audioIntro: {
-      title: "Good Morning Throat!",
+      title: "The Power To Speak",
       author: "Mother JJ",
-      durationMs: 2422000, // 40:22
+      durationMs: 2422000,
       source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
@@ -682,6 +686,7 @@ export const chakraContent: Record<Chakra, Content> = {
     },
     soundBath: {
       title: "Throat Chakra - 741 Hz",
+      durationMs: 3768821,
       subtitle: "vishuddha",
       helpsWith: "Expression, honesty, clearing mental fog, boundary setting",
       realWorldEffect:
@@ -802,10 +807,10 @@ export const chakraContent: Record<Chakra, Content> = {
       textLine3: 'Ajna - "I see"',
     },
     audioIntro: {
-      title: "Ajna Embodiment - Part One",
+      title: "The Third Eye Awakens",
       author: "Mother JJ",
-      durationMs: 1750000, // 29:10 - Part One duration
-      source: require("@/assets/audio/root-erin-1.mp3"), // Placeholder - actual audio comes from Firebase
+      durationMs: 2684000,
+      source: require("@/assets/audio/root-erin-1.mp3"),
     },
     audioOutro: {
       title: "Connected To The Earth",
@@ -833,6 +838,7 @@ export const chakraContent: Record<Chakra, Content> = {
     },
     soundBath: {
       title: "Third Eye (Ajna) - 852 Hz",
+      durationMs: 3939965,
       subtitle: "ajna",
       helpsWith: "Perception, intuition, pattern recognition, mental clarity",
       realWorldEffect:
@@ -907,7 +913,7 @@ export const chakraContent: Record<Chakra, Content> = {
     wordsOfWisdom:
       '"Surrender to the divine flow. Trust in the wisdom of the universe. Embrace your connection to all beings. In the stillness of the crown chakra, find your enlightenment, your peace, your oneness with all creation."',
     affirmationText:
-      "I awaken my inner child - and surround myself with light.",
+      "I awaken my inner child -\nand surround myself with light.",
     elements: {
       background: require("@/assets/images/elementscrown.png"),
       sanskrit: "Sahasrara",
@@ -954,7 +960,7 @@ export const chakraContent: Record<Chakra, Content> = {
     audioIntro: {
       title: "The Meadow of The Soul",
       author: "Mother JJ",
-      durationMs: 2684000, // 44:44 - Day 7 Crown Master Embodiment
+      durationMs: 2684000,
       source: require("@/assets/audio/root-erin-1.mp3"), // Placeholder - actual audio from Firebase
     },
     audioOutro: {
@@ -984,6 +990,7 @@ export const chakraContent: Record<Chakra, Content> = {
     },
     soundBath: {
       title: "Crown Chakra - 963 Hz",
+      durationMs: 3826565,
       subtitle: "sahasrara",
       helpsWith: "Unity awareness, peace, nervous-system coherence, surrender",
       realWorldEffect:
@@ -1007,7 +1014,7 @@ export const chakraContent: Record<Chakra, Content> = {
       dailyActivitySubline:
         "Dissolving the ceiling of the ego to remember the vastness of the Soul.",
       audio: {
-        title: "THE MEADOW OF THE SOUL",
+        title: "SURRENDER TO THE SANCTUARY",
         author: "Asha",
         duration: 420000, // 7:00 – hero audio from Firebase AncestralWisdomAudioFiles_Days_1_7
         source: { uri: "" }, // Resolved at runtime via useAncestralWisdomAudio

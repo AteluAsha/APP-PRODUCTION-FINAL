@@ -55,11 +55,14 @@ const NAVIGATION_ROUTES = {
   "head to heart": "/(chakras)/HeadToHeart",
   "from head to heart": "/(chakras)/HeadToHeart",
 
-  // Other sections
-  home: "/(chakras)/",
-  "main screen": "/(chakras)/",
-  accountability: "/(chakras)/AccountabilityOfAwakening",
-  "accountability of awakening": "/(chakras)/AccountabilityOfAwakening",
+  home: "/(chakras)/ChakraHub",
+  "main screen": "/(chakras)/ChakraHub",
+  gallery: "/(chakras)/GalleryOfGnosis",
+  "gallery of gnosis": "/(chakras)/GalleryOfGnosis",
+  notes: "/(chakras)/NotesAlongTheWay",
+  "notes along the way": "/(chakras)/NotesAlongTheWay",
+  audio: "/(chakras)/AudioLibrary",
+  "audio library": "/(chakras)/AudioLibrary",
 } as const
 
 /**
@@ -83,23 +86,27 @@ export const parseNavigationRequest = async (
     // If no direct match, use Anua to interpret the request
     const interpretationPrompt = `A student has requested: "${userRequest}"
 
-Based on this request, determine which screen in the SOUL SCHOOL app they want to navigate to.
+Based on this request, determine which screen in the Awakening Soul app they want to navigate to.
 
 Available screens:
 - Day 1-7 / Root, Sacral, Solar Plexus, Heart, Throat, Third Eye, Crown chakras
 - Sound Healing / Sound Bath (can be for specific chakras)
 - Chakra Study / Chakras 101
 - Head to Heart
-- Home / Main screen
-- Accountability of Awakening
+- Gallery of Gnosis
+- Notes Along the Way
+- Audio Library
+- Home / ChakraHub
 
 Respond with ONLY the route path in this exact format:
 - For chakras: /(chakras)/[chakra_name] (e.g., /(chakras)/heart)
 - For sound healing: /(chakras)/SoundBath?chakra=[chakra_name] (e.g., /(chakras)/SoundBath?chakra=heart)
 - For chakra study: /(chakras)/Chakras101
 - For head to heart: /(chakras)/HeadToHeart
-- For home: /(chakras)/
-- For accountability: /(chakras)/AccountabilityOfAwakening
+- For gallery: /(chakras)/GalleryOfGnosis
+- For notes: /(chakras)/NotesAlongTheWay
+- For audio library: /(chakras)/AudioLibrary
+- For home: /(chakras)/ChakraHub
 
 If the request is unclear or doesn't match any screen, respond with: null
 

@@ -11,7 +11,7 @@ import { Platform, Linking, Share } from "react-native"
 import * as Clipboard from "expo-clipboard"
 import { APP_STORE_URLS } from "@/constants/sharing"
 
-export const SHARE_TITLE = "Join me on SOUL SCHOOL"
+export const SHARE_TITLE = "Join me on Awakening Soul"
 
 /** App store link for current platform (for invite messages). */
 export function getAppStoreLink(): string {
@@ -39,12 +39,12 @@ export function generateReferralLink(
 
 /** Invite copy for modals (single source of truth). */
 export const INVITE_OPENING_COPY =
-  "Invite people to your exact journey. They'll join your Tribe and be with you in tribe chat along the 7 chakra path."
+  "Share Awakening Soul with someone you love. Seven days. Seven chakras. The map from self to soul."
 export const INVITE_PREVIEW_LABEL = "Your invite"
 export const INVITE_PREVIEW_HINT =
   "Tap Share to send, or copy the link below."
 
-/** Generate invite message (heart-minded, SOUL SCHOOL voice). */
+/** Generate invite message (heart-minded, Awakening Soul voice). */
 export function generateInviteMessage(options: {
   startDate?: string
   referralLink?: string
@@ -55,18 +55,18 @@ export function generateInviteMessage(options: {
     options
   const appLink = referralLink ?? getAppStoreLink()
   const defaultOpening =
-    "I'm walking a 7-day chakra journey with SOUL SCHOOL and would love you to join me — your presence would make the path richer."
+    "I'm walking a 7-day chakra journey with Awakening Soul and would love you to join me — your presence would make the path richer."
   let message = personalMessage ?? defaultOpening
   if (startDate) {
     message += `\n\nI'm beginning on ${startDate}.`
   } else {
     message += `\n\nWhenever you're ready, you can begin your own journey from self to soul.`
   }
-  message += `\n\nSOUL SCHOOL — healing through connection:\n${appLink}`
+  message += `\n\nAwakening Soul — healing through connection:\n${appLink}`
   message += `\n\nWith you in spirit. ✨`
   if (senderSoulSchoolId) {
-    message += `\n\nSOUL SCHOOL ID: ${senderSoulSchoolId}`
-    message += `\n\nAfter you download the app, enter this ID in Tribe Chat to sync journeys.`
+    message += `\n\nAwakening Soul ID: ${senderSoulSchoolId}`
+    message += `\n\nAfter you download the app, you can share this ID with support if you ever need help.`
   }
   message += `\n\nGet the app: soulschool.app`
   return message

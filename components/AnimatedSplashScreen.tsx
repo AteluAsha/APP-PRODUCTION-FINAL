@@ -105,8 +105,9 @@ export function AnimatedSplashScreen({
       const finish = () => {
         if (completedRef.current) return
         completedRef.current = true
-        useSplashOverlayStore.getState().setJsSplashFadeComplete(true)
         onFadeOutComplete()
+        useSplashOverlayStore.getState().setSplashOverlayActive(false)
+        useSplashOverlayStore.getState().setJsSplashFadeComplete(true)
       }
 
       cancelAnimation(scale)
@@ -138,12 +139,16 @@ export function AnimatedSplashScreen({
     transform: [{ scale: scale.value }],
   }))
 
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }))
+
   const isIos = Platform.OS === "ios"
   const w = OPENING_SPLASH_LOGO.width[isIos ? "ios" : "android"]
   const h = OPENING_SPLASH_LOGO.height[isIos ? "ios" : "android"]
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <Animated.View style={[styles.container, overlayStyle]} pointerEvents="none">
       <Animated.View style={[styles.logoWrap, animatedStyle]}>
         <Image
           source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
@@ -152,7 +157,7 @@ export function AnimatedSplashScreen({
           onLoad={onHeroLoad}
         />
       </Animated.View>
-    </View>
+    </Animated.View>
   )
 }
 

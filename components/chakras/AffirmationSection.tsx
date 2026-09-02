@@ -1,17 +1,24 @@
 import { View } from "react-native"
 import { AppText } from "../AppText"
+import {
+  formatHeroAffirmationText,
+  HERO_AFFIRMATION_FONT_SIZE,
+  HERO_AFFIRMATION_LINE_HEIGHT,
+  HERO_AFFIRMATION_MAX_LINES,
+} from "@/constants/heroAffirmation"
 
 /**
  * Hero affirmation design – elegant, thin, gentle.
  * CRITICAL: Do NOT revert to system fonts. Cormorant Garamond is required.
- * - affirmation-title: Cormorant Garamond, weight 300, letter-spacing 0.05em
- * - affirmation-text: Cormorant Garamond italic, weight 400, line-height 1.6
+ * Fixed Day 1 size (36px); longer affirmations wrap to a second line — never shrink or clip.
  */
 export const AffirmationSection = ({
   affirmationText,
 }: {
   affirmationText: string
 }) => {
+  const displayText = formatHeroAffirmationText(affirmationText)
+
   return (
     <View style={{ marginTop: 28, marginBottom: 28 }}>
       <View
@@ -26,12 +33,11 @@ export const AffirmationSection = ({
       <View
         style={{
           paddingVertical: 28,
-          marginHorizontal: 24,
+          marginHorizontal: 20,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        {/* affirmation-title: Cormorant Garamond, weight 300, letter-spacing 0.05em */}
         <AppText
           font="cormorant-regular"
           size="xs"
@@ -46,20 +52,21 @@ export const AffirmationSection = ({
         >
           Affirmation
         </AppText>
-        {/* affirmation-text: Cormorant Garamond italic, weight 400, line-height 1.6 */}
         <AppText
           font="cormorant-italic"
+          numberOfLines={HERO_AFFIRMATION_MAX_LINES}
           style={{
             fontFamily: "CormorantGaramondItalic",
             fontWeight: "400",
-            fontSize: 28,
-            lineHeight: 44.8,
-            color: "rgba(255,255,255,0.82)",
+            fontSize: HERO_AFFIRMATION_FONT_SIZE,
+            lineHeight: HERO_AFFIRMATION_LINE_HEIGHT,
+            color: "rgba(255,255,255,0.92)",
             textAlign: "center",
-            paddingHorizontal: 16,
+            width: "100%",
+            paddingHorizontal: 4,
           }}
         >
-          {affirmationText}
+          {displayText}
         </AppText>
       </View>
       <View

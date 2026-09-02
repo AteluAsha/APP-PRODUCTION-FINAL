@@ -28,6 +28,7 @@ import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
 import { useShallow } from "zustand/react/shallow"
 import { useChakrasData } from "@/hooks/useChakrasData"
 import { CommitmentGate } from "@/components/chakras/CommitmentGate"
+import { beginCalendarAlignedTrial } from "@/utils/beginCalendarAlignedTrial"
 import { SealOfTheInitiate } from "@/components/chakras/SealOfTheInitiate"
 import { JourneySummaryGift } from "@/components/chakras/JourneySummaryGift"
 import { GraceOfThePresence } from "@/components/chakras/GraceOfThePresence"
@@ -42,6 +43,7 @@ import {
 } from "@/src/services/timegate"
 // PermanentMenuBar is now rendered globally in app/_layout.tsx
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
+import { openChakraDay } from "@/utils/openChakraDay"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
 import { FirstMondayPresenceModal } from "@/components/presence/FirstMondayPresenceModal"
@@ -574,7 +576,7 @@ export const ChakraHome = () => {
       ...item,
       onPress: (routerInstance: Parameters<typeof item.onPress>[0]) => {
         clearCompletedChakra()
-        item.onPress(routerInstance)
+        openChakraDay(item.day, routerInstance)
       },
     }))
   }, [chakrasData, clearCompletedChakra])
@@ -603,7 +605,7 @@ export const ChakraHome = () => {
     isLoadingChakras,
   ])
 
-  const contentReady = !isLoadingChakras && chakraData.length === 7
+  const contentReady = chakraData.length === 7
 
   /** Only the main dashboard (not gates, waiting, or error) should trigger the session entrance. */
   const mainHomeDashboardVisible = useMemo(
@@ -710,7 +712,12 @@ export const ChakraHome = () => {
         onContinueToTrial2={() => {
           setUserChoseTrial2(true)
           setShowPaymentGate(false)
-          router.replace("/(chakras)/DateSelection")
+          beginCalendarAlignedTrial()
+        }}
+        showEnterTrial
+        onEnterTrial={() => {
+          setShowPaymentGate(false)
+          beginCalendarAlignedTrial()
         }}
       />
     )
@@ -759,7 +766,7 @@ export const ChakraHome = () => {
   }
 
   // Waiting room. Route wrapper redirects trial users without courseStartDate to WelcomeScreen.
-  // Path selection after first date only via hamburger "Return to SOUL SCHOOL Course Selection".
+  // Path selection after first date only via hamburger "Return to Awakening Soul Course Selection".
   // pointerEvents="box-none" so the wrapper never captures touches; only WaitingScreen (and its overlays) receive them (fixes Android stuck layer).
   const needsWaiting =
     !storeRehydrationReady || showWaitingScreen
@@ -807,8 +814,8 @@ export const ChakraHome = () => {
   // Content appears naturally as data becomes available, creating embodied flow
   // Applied somatic healing principles: natural timing, breathing rhythms, smooth transitions
 
-  // Show error state if fetching failed (with smooth fade-in)
-  if (chakrasError) {
+  // Never blank the course. Local stack data is always present.
+  if (chakrasError && chakraData.length !== 7) {
     return (
       <View
         style={{
@@ -845,8 +852,8 @@ export const ChakraHome = () => {
     )
   }
 
-  // Black void only while content loads — do not repeat Soul School hero (root splash already showed it).
-  if (!contentReady) {
+  // Black void only if the 7 local balls somehow failed to build.
+  if (!contentReady && chakraData.length === 0) {
     return (
       <SafeAreaView
         style={{ flex: 1, backgroundColor: "#000000" }}
@@ -1142,7 +1149,7 @@ export const ChakraHome = () => {
           }}
           hitSlop={Platform.OS === "android" ? { top: 16, bottom: 16, left: 16, right: 16 } : { top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityLabel="Profile menu"
-          accessibilityHint="View your profile and SOUL SCHOOL ID"
+          accessibilityHint="View your profile and Awakening Soul ID"
         >
           <Ionicons name="menu" size={22} color="rgba(255, 255, 255, 0.9)" />
         </Pressable>

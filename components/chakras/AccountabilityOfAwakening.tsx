@@ -70,11 +70,10 @@ export const AccountabilityOfAwakening = () => {
   }
 
   const handleBack = () => {
-    if (hasLifetimeAccess) {
-      if (router.canGoBack()) router.back()
-      else router.replace("/(chakras)/ChakraHub")
-    } else {
+    if (router.canGoBack()) {
       router.back()
+    } else {
+      router.replace("/(chakras)/ChakraHub")
     }
   }
 

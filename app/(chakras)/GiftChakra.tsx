@@ -1,7 +1,7 @@
 /**
  * Gift Chakra Screen – Full-screen chakra card reveal after "Open Your Gift" on goodbye.
  * Replaces opening ChakraCardRevealModal on top of GoodbyeModal (which caused Android freeze).
- * Actions: View in Gallery, Return to trials home.
+ * Actions: View in Gallery (that exact card), Return home (ChakraHub).
  */
 import React, { useCallback } from "react"
 import {
@@ -20,37 +20,22 @@ import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
 import { ActionBar } from "@/components/ActionBar"
 import { TOUCH } from "@/constants/layout"
-
-const CHAKRA_PARAM_VALUES: Record<string, Chakra> = {
-  root: Chakra.ROOT,
-  sacral: Chakra.SACRAL,
-  solar: Chakra.SOLAR_PLEXUS,
-  heart: Chakra.HEART,
-  throat: Chakra.THROAT,
-  thirdeye: Chakra.THIRD_EYE,
-  crown: Chakra.CROWN,
-}
-
-function parseChakraParam(param: string | string[] | undefined): Chakra {
-  const s = Array.isArray(param) ? param[0] : param
-  if (!s || typeof s !== "string") return Chakra.ROOT
-  const normalized = s.toLowerCase().trim()
-  return CHAKRA_PARAM_VALUES[normalized] ?? Chakra.ROOT
-}
+import { parseChakraSlug } from "@/utils/chakraMapping"
+import { goToChakraHubRoot } from "@/utils/navigationHelpers"
 
 export default function GiftChakraScreen() {
   const router = useRouter()
   const { chakra: chakraParam } = useLocalSearchParams<{ chakra?: string | string[] }>()
-  const chakra = parseChakraParam(chakraParam)
+  const chakra = parseChakraSlug(chakraParam) ?? Chakra.ROOT
   const content = chakraContent[chakra]
 
   const handleClose = useCallback(() => {
-    router.replace("/(chakras)/ChakraHome" as const)
-  }, [router])
+    goToChakraHubRoot()
+  }, [])
 
   const handleViewInGallery = useCallback(() => {
-    router.replace("/(chakras)/GalleryOfGnosis" as const)
-  }, [router])
+    router.replace(`/(chakras)/GalleryOfGnosis?chakra=${chakra}` as const)
+  }, [router, chakra])
 
   return (
     <View style={styles.root}>
@@ -91,13 +76,13 @@ export default function GiftChakraScreen() {
                 style={styles.closeButton}
               >
                 <AppText font="instrument-regular" size="base" style={styles.closeButtonText}>
-                  Return to trials home
+                  Return home
                 </AppText>
               </TouchableOpacity>
             ) : (
               <Pressable onPress={handleClose} style={styles.closeButton}>
                 <AppText font="instrument-regular" size="base" style={styles.closeButtonText}>
-                  Return to trials home
+                  Return home
                 </AppText>
               </Pressable>
             )}

@@ -1,19 +1,14 @@
 /**
  * (chakras) entry – cold-start routing after store rehydration AND JS splash fade-out.
  *
- * Root _layout: native shield → AnimatedSplashScreen (Soul School hero) → fade out.
- * We do not replace() to Welcome/ChakraHome/etc. until `jsSplashFadeComplete` is true so
- * ChakraHome/WaitingScreen (and portaled Modals) never mount under the splash stack.
+ * Splash → Wellness gate (once) → App 2 homescreen (ChakraHub).
  */
 import React, { useRef, useEffect, useCallback, useState } from "react"
 import { View } from "react-native"
 import { useRouter, useRootNavigationState } from "expo-router"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY } from "@/constants/onboardingKeys"
 import { useStoreRehydration } from "@/hooks/useStoreRehydration"
-import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
-import { isWellFormedCourseStartIso } from "@/utils/journeySchedulingHealth"
+import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
 
 const FORCE_READY_MS = 5000
 /** If JS splash never completes fade (e.g. asset hang), unblock routing */
@@ -28,15 +23,10 @@ export default function HomeScreen() {
   const storeRehydrationReady = useStoreRehydration((s) =>
     s.safetyPassed ? true : s.journeyRehydrated && s.firstLaunchRehydrated,
   )
-  const hasLifetimeAccess = useChakraJourneyStore((s) => s.hasLifetimeAccess)
-  const completedTrialCourses = useChakraJourneyStore(
-    (s) => s.completedTrialCourses,
-  )
-  const courseStartDate = useChakraJourneyStore((s) => s.courseStartDate)
-  const dateSelectionEmbodimentHandoffComplete = useChakraJourneyStore(
-    (s) => s.dateSelectionEmbodimentHandoffComplete,
-  )
   const jsSplashFadeComplete = useSplashOverlayStore((s) => s.jsSplashFadeComplete)
+  const hasStartedMasterTeachings = useFirstLaunchStore(
+    (s) => s.hasStartedMasterTeachings,
+  )
 
   const appReady = Boolean(
     (storeRehydrationReady && rootNavigationState?.key) || forceReady,
@@ -57,68 +47,16 @@ export default function HomeScreen() {
 
   const navigate = useCallback(async () => {
     if (navigatedRef.current) return
-
-    const snap0 = useChakraJourneyStore.getState()
-    if (
-      !snap0.hasLifetimeAccess &&
-      snap0.courseStartDate &&
-      !isWellFormedCourseStartIso(snap0.courseStartDate)
-    ) {
-      snap0.recoverStuckCourseSchedulingToDateSelection()
-    }
-
-    // Legacy key: migrate before routing so first paint does not trap users on DateSelection.
-    if (
-      courseStartDate &&
-      !hasLifetimeAccess &&
-      dateSelectionEmbodimentHandoffComplete !== true
-    ) {
-      try {
-        const legacy = await AsyncStorage.getItem(
-          WAITING_ROOM_CLARITY_MOMENT_SEEN_KEY,
-        )
-        if (legacy === "true") {
-          useChakraJourneyStore.setState({
-            dateSelectionEmbodimentHandoffComplete: true,
-          })
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
-    if (navigatedRef.current) return
     navigatedRef.current = true
-
-    const handoffComplete =
-      useChakraJourneyStore.getState().dateSelectionEmbodimentHandoffComplete ===
-      true
-
-    if (hasLifetimeAccess) {
-      router.replace("/(chakras)/ChakraHub")
+    const agreed =
+      hasStartedMasterTeachings ||
+      useFirstLaunchStore.getState().hasStartedMasterTeachings
+    if (!agreed) {
+      router.replace("/(chakras)/WellnessGate")
       return
     }
-    if (completedTrialCourses === 1) {
-      router.replace("/(chakras)/DateSelection")
-      return
-    }
-    // Persisted course start alone must not skip DateSelection until embodiment handoff (Present).
-    if (courseStartDate && !hasLifetimeAccess && !handoffComplete) {
-      router.replace("/(chakras)/DateSelection")
-      return
-    }
-    if (courseStartDate) {
-      router.replace("/(chakras)/ChakraHome")
-      return
-    }
-    router.replace("/(chakras)/WelcomeScreen")
-  }, [
-    hasLifetimeAccess,
-    completedTrialCourses,
-    courseStartDate,
-    dateSelectionEmbodimentHandoffComplete,
-    router,
-  ])
+    router.replace("/(chakras)/ChakraHub")
+  }, [router, hasStartedMasterTeachings])
 
   const routeWhenReady = appReady && jsSplashFadeComplete
 
@@ -127,6 +65,5 @@ export default function HomeScreen() {
     void navigate()
   }, [routeWhenReady, navigate])
 
-  // Solid black only — never null (avoids default window flash); never loading UI here.
   return <View style={{ flex: 1, backgroundColor: "#000000" }} />
 }
