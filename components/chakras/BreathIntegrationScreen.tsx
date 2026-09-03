@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Image, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
+import { Pressable, StyleSheet, useWindowDimensions } from 'react-native'
+import { SoftChakraBall } from '@/components/chakras/SoftChakraBall'
 import { AppText } from '@/components/AppText'
 import { SanctuaryFieldLayer } from '@/components/chakras/SanctuaryFieldLayer'
 import { getEndOfDayBeats } from '@/constants/endOfDayPresenceCopy'
@@ -161,14 +162,10 @@ export function BreathIntegrationScreen({
             >
                 <Animated.View style={[styles.copy, fadeStyle]}>
                     {beat.showChakra && content?.goodbye?.chakraImage ? (
-                        <Image
+                        <SoftChakraBall
                             source={content.goodbye.chakraImage}
-                            resizeMode="contain"
-                            style={{
-                                width: ballSize,
-                                height: ballSize,
-                                marginBottom: 28,
-                            }}
+                            size={ballSize}
+                            style={{ marginBottom: 28 }}
                         />
                     ) : null}
                     <AppText

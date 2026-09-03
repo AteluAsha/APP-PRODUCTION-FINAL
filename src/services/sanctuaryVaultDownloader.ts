@@ -2,7 +2,8 @@
  * Silent Background Vault downloader
  *
  * Permanent sanctuary audio in FileSystem.documentDirectory only.
- * Completed files are never deleted. cacheDirectory is forbidden.
+ * Current-catalog files are never deleted. Replaced remasters are swept
+ * from sanctuary-audio/ so the new filename can download. cacheDirectory is forbidden.
  *
  * Overnight / bulk sync:
  *   - Day 1 → Day 7 queue runs whenever the app is active
@@ -35,6 +36,7 @@ import {
     isUsableVaultFileSize,
     peekPlayableVaultUri,
     readExpectedVaultBytes,
+    sweepOrphanVaultFiles,
     writeExpectedVaultBytes,
 } from '@/src/utils/sanctuaryAudioVault'
 import { tryFulfillVaultAutoPlayback, getPendingVaultAutoPlayback } from '@/src/services/vaultAutoPlayback'
@@ -58,6 +60,7 @@ const SEEDED_EXPECTED_BYTES: Record<string, number> = {
     'Day1_RootDay_MasterEmbodiment_refined_AwkeningSoul.mp3': 122_235_907,
     'Day2_SacralChakraEmbodiment_SoulSchool.mp3': 68_271_255,
     'Day4_HeartChakraEmbodiment_SoulSchool_Remastered.mp3': 67_704_671,
+    'Day4_CrystalBowl_AwakeningSoul_v2.mp3': 85_904_358,
     'Day1_7thDivineLaw_AshaSpeaks.mp3': 13_627_168,
     'Day2_6thDivineLaw_AshaSpeaks.mp3': 11_465_466,
     'Day3_5thDivineLaw_AshaSpeaks.mp3': 17_515_216,
@@ -712,6 +715,7 @@ async function runSilentQueue(): Promise<void> {
     queueRunning = true
     try {
         await ensureSanctuaryVaultDirectory()
+        await sweepOrphanVaultFiles()
         const failedThisPass = new Set<string>()
         recoverStaleRushLock()
         void updateVaultKeepAwake()

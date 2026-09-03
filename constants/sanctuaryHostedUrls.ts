@@ -42,8 +42,8 @@ export const SANCTUARY_HOSTED_URLS: Record<string, string> = {
 
     'Day4_HeartChakraEmbodiment_SoulSchool_Remastered.mp3':
         r2('Day4_HeartChakraEmbodiment_SoulSchool_Remastered.mp3'),
-    'Day4_CrystalBowlSoundBath_AwakeningSoul.mp3':
-        r2('Day4_CrystalBowlSoundBath_AwakeningSoul.mp3'),
+    'Day4_CrystalBowl_AwakeningSoul_v2.mp3':
+        r2('Day4_CrystalBowl_AwakeningSoul_v2.mp3'),
     'Day4_4thDivineLaw_AshaSpeaks.mp3':
         r2('Day4_4thDivineLaw_AshaSpeaks.mp3'),
     'Day4_639Hz_tuningfork.aac':

@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react"
 import {
   View,
-  Image,
   useWindowDimensions,
   Pressable,
   RefreshControl,
@@ -50,6 +49,7 @@ import { hasSanctuaryTuningFork } from "@/constants/sanctuaryAudioManifest"
 import { storage } from "@/src/services/firebase"
 import { preloadFullFilesForChakra } from "@/src/utils/audioPreloadManifest"
 import { DropInButton } from "@/components/chakras/DropInButton"
+import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 // Social Sanctuary and Anua access handled globally by PermanentMenuBar
 import { getChakraIndex } from "@/utils/chakraMapping"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
@@ -407,10 +407,9 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               accessibilityLabel="Mark day complete"
               accessibilityHint="Tap to complete today's journey"
             >
-              <Image
+              <SoftChakraBall
                 source={content.goodbye.chakraImage}
-                resizeMode="contain"
-                style={{ width: 102, height: 102 }}
+                size={102}
               />
               <View
                 style={{

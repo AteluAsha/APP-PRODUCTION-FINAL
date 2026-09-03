@@ -35,13 +35,14 @@ describe('yoga studio body healing pages', () => {
         expect(YOGA_STUDIO_KICKER).toBe('Body Healing')
     })
 
-    it('opens as one light studio scroll with original yoga and integration wisdom', () => {
+    it('opens as one dark studio scroll with original yoga and integration wisdom', () => {
         const page = fs.readFileSync(
             path.join(__dirname, '..', 'app/(chakras)/IntegrationPractice.tsx'),
             'utf8',
         )
         expect(page).toContain('StatusBar')
-        expect(page).toContain('#FBF7F2')
+        expect(page).toContain('#0C0A08')
+        expect(page).not.toContain('#FBF7F2')
         expect(page).not.toContain('IntegrationMomentButton')
         expect(page).not.toContain('IntegrationMomentModal')
         const studio = fs.readFileSync(

@@ -54,6 +54,23 @@ describe('single sanctuary vault (documentDirectory only)', () => {
         expect(musicRoom).not.toContain('cacheDirectory')
     })
 
+    it('sweeps replaced remasters out of the document vault', () => {
+        const vault = fs.readFileSync(
+            path.join(__dirname, '..', 'src/utils/sanctuaryAudioVault.ts'),
+            'utf8',
+        )
+        expect(vault).toContain('sweepOrphanVaultFiles')
+        const downloader = fs.readFileSync(
+            path.join(
+                __dirname,
+                '..',
+                'src/services/sanctuaryVaultDownloader.ts',
+            ),
+            'utf8',
+        )
+        expect(downloader).toContain('sweepOrphanVaultFiles')
+    })
+
     it('embodiment hook loads from document vault', () => {
         const hook = fs.readFileSync(
             path.join(__dirname, '..', 'hooks/useEmbodimentAudio.ts'),

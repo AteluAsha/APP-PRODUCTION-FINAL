@@ -10,7 +10,6 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Image,
   useWindowDimensions,
   Platform,
 } from "react-native"
@@ -29,6 +28,7 @@ import {
   getChakraColor,
 } from "@/constants/chakras/chakraConstants"
 import { SanctuaryFieldLayer } from "@/components/chakras/SanctuaryFieldLayer"
+import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import {
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
@@ -339,18 +339,11 @@ export default function QuizScreen() {
             entering={FadeIn.duration(800).easing(Easing.out(Easing.ease))}
             style={{ alignItems: "center", flex: 1, width: "100%" }}
           >
-            <Image
+            <SoftChakraBall
               source={chakraBallSource}
-              style={{
-                width: 148,
-                height: 148,
-                marginBottom: 24,
-                shadowColor: accent,
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.8,
-                shadowRadius: 28,
-              }}
-              resizeMode="contain"
+              size={148}
+              glowColor={`${accent}47`}
+              style={{ marginBottom: 24 }}
             />
 
             <AppText

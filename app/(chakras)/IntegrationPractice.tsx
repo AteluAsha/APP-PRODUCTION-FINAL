@@ -1,6 +1,7 @@
 /**
  * Body Healing — day's yoga studio.
- * Light linen page: pose, outline, and the blessing to carry into the day.
+ * Dark sanctuary page: cream pose oval keeps the line art readable,
+ * gold type matches the rest of the app.
  */
 import React, { useEffect } from 'react'
 import { Platform, ScrollView, StyleSheet, View } from 'react-native'
@@ -35,28 +36,26 @@ const IntegrationPractice = () => {
 
     return (
         <View style={styles.safe}>
-            <StatusBar style="dark" />
+            <StatusBar style="light" />
             <LinearGradient
-                colors={['#FBF7F2', '#F3E8DC', '#E8D9C8', '#DFD0BE']}
-                locations={[0, 0.35, 0.72, 1]}
+                colors={['#14110E', '#0C0A08', '#080605']}
+                locations={[0, 0.45, 1]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={StyleSheet.absoluteFill}
             />
             <LinearGradient
                 colors={[
-                    'rgba(255,255,255,0.55)',
-                    'rgba(255,255,255,0)',
+                    'rgba(232, 201, 140, 0.08)',
                     'rgba(0,0,0,0)',
-                    'rgba(92, 72, 58, 0.08)',
+                    'rgba(0,0,0,0.35)',
                 ]}
-                locations={[0, 0.22, 0.65, 1]}
+                locations={[0, 0.28, 1]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={StyleSheet.absoluteFill}
                 pointerEvents="none"
             />
-            <View style={styles.warmGlow} pointerEvents="none" />
             <SafeAreaView style={{ flex: 1 }} edges={['top']}>
                 <ScrollView
                     showsVerticalScrollIndicator={false}
@@ -74,7 +73,7 @@ const IntegrationPractice = () => {
                 <ActionBar
                     useXButton={true}
                     xButtonPosition="left"
-                    iconColor="rgba(58, 44, 36, 0.92)"
+                    iconColor="rgba(255, 248, 236, 0.92)"
                 />
             </SafeAreaView>
         </View>
@@ -84,17 +83,7 @@ const IntegrationPractice = () => {
 const styles = StyleSheet.create({
     safe: {
         flex: 1,
-        backgroundColor: '#F4EDE4',
-    },
-    warmGlow: {
-        position: 'absolute',
-        top: '18%',
-        left: '10%',
-        right: '10%',
-        height: '42%',
-        borderRadius: 999,
-        backgroundColor: 'rgba(255, 248, 240, 0.45)',
-        opacity: 0.9,
+        backgroundColor: '#0C0A08',
     },
 })
 

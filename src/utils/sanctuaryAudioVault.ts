@@ -216,3 +216,37 @@ export async function getVaultedFileUri(
 export function isSanctuaryVaultFsPath(path: string): boolean {
     return /sanctuary-audio/i.test(path)
 }
+
+function catalogBasename(name: string): string {
+    return name
+        .replace(/\.resume\.json$/, '')
+        .replace(/\.expected-bytes$/, '')
+        .replace(/\.part$/, '')
+}
+
+/**
+ * Delete vault files that are no longer in the catalog (replaced remasters).
+ * Sidecars (.part, .expected-bytes, .resume.json) stay if the live filename matches.
+ */
+export async function sweepOrphanVaultFiles(): Promise<number> {
+    const dir = await ensureSanctuaryVaultDirectory()
+    let names: string[] = []
+    try {
+        names = await FileSystem.readDirectoryAsync(dir)
+    } catch {
+        return 0
+    }
+    let removed = 0
+    for (const name of names) {
+        if (getSanctuaryVaultTrackByFilename(catalogBasename(name))) {
+            continue
+        }
+        try {
+            await FileSystem.deleteAsync(`${dir}${name}`, { idempotent: true })
+            removed += 1
+        } catch {
+            // best-effort
+        }
+    }
+    return removed
+}

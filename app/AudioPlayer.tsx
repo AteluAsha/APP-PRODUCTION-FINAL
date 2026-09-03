@@ -6,7 +6,6 @@ import {
   TouchableHighlight,
   Pressable,
   Platform,
-  Image,
   AppState,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -30,6 +29,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
 import { PlayerProgressBar } from "@/components/chakras/PlayerProgressBar"
 import { PulsingChakraBall } from "@/components/chakras/PulsingChakraBall"
+import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import { VaultFirstLoadPanel } from "@/components/chakras/VaultFirstLoadPanel"
 import { HeadsetListenReminder } from "@/components/audio/HeadsetListenReminder"
 import {
@@ -100,6 +100,88 @@ import {
 } from "@/utils/musicRoomPlayback"
 
 const FALLBACK_DAY_INDEX = 5 // Third Eye
+
+function PlayerTrackFace({
+  dayIndex,
+  title,
+  author,
+  isLoading,
+  embodimentPulse,
+  animatedStyle,
+}: {
+  dayIndex: number
+  title: string
+  author?: string
+  isLoading: boolean
+  embodimentPulse: boolean
+  animatedStyle: object
+}) {
+  return (
+    <Animated.View
+      style={[
+        {
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          paddingHorizontal: 28,
+          paddingTop: 72,
+          paddingBottom: 168,
+        },
+        animatedStyle,
+      ]}
+    >
+      <PulsingChakraBall
+        source={
+          dayIndex === 5
+            ? require("@/assets/images/ajna.png")
+            : getChakraImage(dayIndex)
+        }
+        embodimentPulse={embodimentPulse}
+      />
+      <AppText
+        font="cormorant-regular"
+        size="xl"
+        numberOfLines={2}
+        style={{
+          marginTop: 4,
+          marginBottom: 6,
+          color: "#ffffff",
+          textAlign: "center",
+          paddingHorizontal: 8,
+        }}
+      >
+        {title}
+      </AppText>
+      {author ? (
+        <AppText
+          font="instrument-regular"
+          size="sm"
+          numberOfLines={1}
+          style={{
+            color: "rgba(255,255,255,0.62)",
+            textAlign: "center",
+            letterSpacing: 0.6,
+          }}
+        >
+          {author}
+        </AppText>
+      ) : null}
+      {isLoading ? (
+        <AppText
+          font="instrument-regular"
+          size="base"
+          style={{
+            marginTop: 16,
+            color: "rgba(255,255,255,0.85)",
+            textAlign: "center",
+          }}
+        >
+          Preparing audio…
+        </AppText>
+      ) : null}
+    </Animated.View>
+  )
+}
 
 /** Nuclear diagnostic: periodic AsyncStorage writes while playing (__DEV__ only). */
 const AUDIO_BOOKMARK_PERIODIC_SAVE_MS = 5000
@@ -1479,10 +1561,10 @@ const AudioPlayer = () => {
         >
           {storeChakraColor != null && !showNoAudioMessage && (
             <View style={{ marginBottom: 20, alignItems: "center" }}>
-              <Image
+              <SoftChakraBall
                 source={getChakraImage(dayIndex)}
-                style={{ width: 56, height: 56, opacity: 0.85 }}
-                resizeMode="contain"
+                size={56}
+                opacity={0.85}
               />
               <AppText
                 font="instrument-regular"
@@ -1609,53 +1691,14 @@ const AudioPlayer = () => {
                 : undefined
             }
           >
-            <Animated.View
-              style={[
-                {
-                  flex: 1,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  paddingHorizontal: 24,
-                },
-                animatedTrackContentStyle,
-              ]}
-            >
-              <PulsingChakraBall
-                source={
-                  dayIndex === 5
-                    ? require("@/assets/images/ajna.png")
-                    : getChakraImage(dayIndex)
-                }
-                embodimentPulse={prefs?.isIntroAudio === true && isPlaying}
-              />
-              <AppText
-                font="instrument-regular"
-                size="xl"
-                style={{ marginBottom: 8, color: "#ffffff", textAlign: "center" }}
-              >
-                {metadata.title}
-              </AppText>
-              <AppText
-                font="fira-code"
-                size="base"
-                style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
-              >
-                {metadata.author}
-              </AppText>
-              {isLoading && (
-                <AppText
-                  font="instrument-regular"
-                  size="base"
-                  style={{
-                    marginTop: 16,
-                    color: "rgba(255,255,255,0.85)",
-                    textAlign: "center",
-                  }}
-                >
-                  Preparing audio…
-                </AppText>
-              )}
-            </Animated.View>
+            <PlayerTrackFace
+              dayIndex={dayIndex}
+              title={metadata.title}
+              author={metadata.author}
+              isLoading={isLoading}
+              embodimentPulse={prefs?.isIntroAudio === true && isPlaying}
+              animatedStyle={animatedTrackContentStyle}
+            />
           </Pressable>
         </GestureDetector>
       ) : (
@@ -1676,53 +1719,14 @@ const AudioPlayer = () => {
               : undefined
           }
         >
-          <Animated.View
-            style={[
-              {
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                paddingHorizontal: 24,
-              },
-              animatedTrackContentStyle,
-            ]}
-          >
-            <PulsingChakraBall
-              source={
-                dayIndex === 5
-                  ? require("@/assets/images/ajna.png")
-                  : getChakraImage(dayIndex)
-              }
-              embodimentPulse={prefs?.isIntroAudio === true && isPlaying}
-            />
-            <AppText
-              font="instrument-regular"
-              size="xl"
-              style={{ marginBottom: 8, color: "#ffffff", textAlign: "center" }}
-            >
-              {metadata.title}
-            </AppText>
-            <AppText
-              font="fira-code"
-              size="base"
-              style={{ color: "rgba(255,255,255,0.9)", textAlign: "center" }}
-            >
-              {metadata.author}
-            </AppText>
-            {isLoading && (
-              <AppText
-                font="instrument-regular"
-                size="base"
-                style={{
-                  marginTop: 16,
-                  color: "rgba(255,255,255,0.85)",
-                  textAlign: "center",
-                }}
-              >
-                Preparing audio…
-              </AppText>
-            )}
-          </Animated.View>
+          <PlayerTrackFace
+            dayIndex={dayIndex}
+            title={metadata.title}
+            author={metadata.author}
+            isLoading={isLoading}
+            embodimentPulse={prefs?.isIntroAudio === true && isPlaying}
+            animatedStyle={animatedTrackContentStyle}
+          />
         </Pressable>
       )}
 
@@ -1858,15 +1862,15 @@ const AudioPlayer = () => {
         hitSlop={TOUCH.hitSlop}
         style={{
           position: "absolute",
-          left: 12,
-          bottom:
-            Math.max(insets.bottom, 12) + (Platform.OS === "android" ? 24 : 0),
+          right: 12,
+          top: insets.top + 4,
           width: 52,
           height: 52,
           alignItems: "center",
           justifyContent: "center",
           borderRadius: 26,
           backgroundColor: "rgba(135, 174, 115, 0.14)",
+          zIndex: 20,
         }}
         accessibilityLabel="Notes Along the Way"
         accessibilityHint="Tap to view and add your journey notes; playback continues"

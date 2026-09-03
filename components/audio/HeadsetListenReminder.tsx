@@ -9,6 +9,7 @@
 
 import { useEffect } from 'react'
 import { StyleSheet } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -21,6 +22,7 @@ const FADE_IN_MS = 700
 const FADE_OUT_MS = 1200
 
 export function HeadsetListenReminder() {
+    const insets = useSafeAreaInsets()
     const opacity = useSharedValue(0)
 
     useEffect(() => {
@@ -42,7 +44,7 @@ export function HeadsetListenReminder() {
             pointerEvents="none"
             accessible={false}
             importantForAccessibility="no-hide-descendants"
-            style={[styles.wrap, style]}
+            style={[styles.wrap, { top: insets.top + 52 }, style]}
         >
             <Ionicons name="headset" size={30} color="#FFFFFF" />
         </Animated.View>
@@ -52,7 +54,6 @@ export function HeadsetListenReminder() {
 const styles = StyleSheet.create({
     wrap: {
         position: 'absolute',
-        top: '18%',
         left: 0,
         right: 0,
         alignItems: 'center',

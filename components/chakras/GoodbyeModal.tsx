@@ -37,6 +37,7 @@ import {
   getChakraColor,
 } from "@/constants/chakras/chakraConstants"
 import { BreathIntegrationScreen } from "@/components/chakras/BreathIntegrationScreen"
+import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
@@ -274,29 +275,11 @@ const GoodbyeModal = ({
             ]}
           >
             {content?.goodbye?.chakraImage ? (
-              <View
-                style={[
-                  styles.ballWrap,
-                  {
-                    shadowColor: chakraColor,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.85,
-                    shadowRadius: 28,
-                    elevation: 14,
-                  },
-                ]}
-              >
-                <View
-                  pointerEvents="none"
-                  style={[
-                    styles.ballGlow,
-                    { backgroundColor: hexToRgba(chakraColor, 0.28) },
-                  ]}
-                />
-                <Image
+              <View style={styles.ballWrap}>
+                <SoftChakraBall
                   source={content.goodbye.chakraImage}
-                  style={styles.ball}
-                  resizeMode="contain"
+                  size={148}
+                  glowColor={hexToRgba(chakraColor, 0.28)}
                 />
               </View>
             ) : null}
@@ -446,16 +429,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
-  },
-  ballGlow: {
-    position: "absolute",
-    width: 196,
-    height: 196,
-    borderRadius: 98,
-  },
-  ball: {
-    width: 148,
-    height: 148,
   },
   heroMantra: {
     fontSize: HERO_AFFIRMATION_FONT_SIZE,

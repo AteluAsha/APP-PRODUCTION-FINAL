@@ -7,7 +7,8 @@
  */
 
 import React, { useEffect } from "react"
-import { View, Image, ImageSourcePropType, StyleSheet, Platform } from "react-native"
+import { View, ImageSourcePropType, StyleSheet, Platform } from "react-native"
+import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -24,6 +25,8 @@ const EASE = Easing.inOut(Easing.sin)
 const EMBODIMENT_PULSE_SCALE_MAX = 1.7
 const EMBODIMENT_PULSE_SCALE_MAX_IOS = 1.36 // 20% smaller at peak for all days
 const EMBODIMENT_PULSE_HALF_DURATION_MS = 22000
+/** In-flow well so the pulse cannot grow over the title. */
+const PULSE_WELL = Math.ceil(SIZE * EMBODIMENT_PULSE_SCALE_MAX)
 
 interface PulsingChakraBallProps {
   source: ImageSourcePropType
@@ -75,7 +78,7 @@ export const PulsingChakraBall = ({
   return (
     <View style={styles.container} pointerEvents="none">
       <Animated.View style={[styles.ball, animatedStyle]}>
-        <Image source={source} style={styles.image} resizeMode="contain" />
+        <SoftChakraBall source={source} size={SIZE} />
       </Animated.View>
     </View>
   )
@@ -83,18 +86,14 @@ export const PulsingChakraBall = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
+    width: PULSE_WELL,
+    height: PULSE_WELL,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 8,
   },
   ball: {
     width: SIZE,
     height: SIZE,
-  },
-  image: {
-    width: "100%",
-    height: "100%",
   },
 })

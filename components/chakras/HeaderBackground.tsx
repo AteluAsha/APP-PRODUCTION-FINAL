@@ -2,7 +2,6 @@ import { PropsWithChildren, useEffect, useState } from "react"
 import {
   View,
   ImageBackground,
-  Image,
   ImageSourcePropType,
 } from "react-native"
 import Animated, {
@@ -10,6 +9,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated"
+import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import { Chakra } from "@/types/chakras/Chakra"
 import { SOMATIC_HERO_IMAGE_FADE_MS } from "@/constants/layout"
 
@@ -71,15 +71,10 @@ export const HeaderBackground = ({
       resizeMode="cover"
       onLoadEnd={() => setBgLoaded(true)}
     >
-      <Image
+      <SoftChakraBall
         source={chakraImageSource}
-        style={{
-          width: chakraImageSizePx,
-          height: chakraImageSizePx,
-          alignSelf: "center",
-          marginTop,
-        }}
-        resizeMode="contain"
+        size={chakraImageSizePx}
+        style={{ alignSelf: "center", marginTop }}
         onLoad={() => setOrbLoaded(true)}
       />
     </ImageBackground>

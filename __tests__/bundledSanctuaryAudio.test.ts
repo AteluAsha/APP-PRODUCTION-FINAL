@@ -168,6 +168,12 @@ describe("sanctuary vault track order", () => {
       SANCTUARY_HOSTED_URLS["Day2_CrystalBowlSoundBacth_AwakeningSoul.mp3"],
     ).toBeDefined()
     expect(
+      SANCTUARY_HOSTED_URLS["Day4_CrystalBowl_AwakeningSoul_v2.mp3"],
+    ).toBeDefined()
+    expect(
+      SANCTUARY_HOSTED_URLS["Day4_CrystalBowlSoundBath_AwakeningSoul.mp3"],
+    ).toBeUndefined()
+    expect(
       SANCTUARY_HOSTED_URLS["Day6_CrystalBowlSoundBath_AwakeningSoul.mp3"],
     ).toBeDefined()
     expect(

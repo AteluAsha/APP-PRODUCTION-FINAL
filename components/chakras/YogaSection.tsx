@@ -120,9 +120,9 @@ const YogaSection: React.FC<YogaSectionProps> = ({ chakra }) => {
 
             <LinearGradient
                 colors={[
-                    'rgba(255, 252, 248, 0.94)',
-                    'rgba(245, 236, 226, 0.88)',
-                    'rgba(232, 214, 198, 0.78)',
+                    'rgba(42, 32, 26, 0.94)',
+                    'rgba(28, 22, 18, 0.96)',
+                    'rgba(18, 14, 12, 0.98)',
                 ]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 28,
     },
     kicker: {
-        color: 'rgba(88, 68, 54, 0.88)',
+        color: 'rgba(232, 201, 140, 0.78)',
         letterSpacing: 3.4,
         fontSize: 12,
         textTransform: 'uppercase',
@@ -208,23 +208,20 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     day: {
-        color: 'rgba(72, 56, 46, 0.88)',
+        color: 'rgba(255, 248, 236, 0.62)',
         fontSize: 16,
         letterSpacing: 1.6,
         textAlign: 'center',
         marginBottom: 8,
     },
     poseName: {
-        color: 'rgba(38, 28, 22, 0.96)',
+        color: 'rgba(255, 248, 236, 0.98)',
         fontSize: 36,
         lineHeight: 44,
         textAlign: 'center',
-        textShadowColor: 'rgba(255,255,255,0.65)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 6,
     },
     sanskrit: {
-        color: 'rgba(98, 76, 62, 0.92)',
+        color: 'rgba(232, 201, 140, 0.72)',
         fontSize: 14,
         letterSpacing: 1.8,
         textAlign: 'center',
@@ -268,7 +265,7 @@ const styles = StyleSheet.create({
         height: '38%',
     },
     essenceLabel: {
-        color: 'rgba(118, 88, 62, 0.95)',
+        color: 'rgba(232, 201, 140, 0.78)',
         fontSize: 15,
         letterSpacing: 2.2,
         textTransform: 'uppercase',
@@ -277,23 +274,20 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     essence: {
-        color: 'rgba(38, 28, 22, 0.98)',
+        color: 'rgba(255, 248, 236, 0.96)',
         fontSize: 32,
         lineHeight: 42,
         textAlign: 'center',
         paddingHorizontal: 8,
-        textShadowColor: 'rgba(255,255,255,0.5)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 4,
     },
     goldLine: {
         width: 42,
         height: 1,
-        backgroundColor: 'rgba(186, 150, 118, 0.55)',
+        backgroundColor: 'rgba(232, 201, 140, 0.45)',
         marginVertical: 22,
     },
     body: {
-        color: 'rgba(42, 32, 26, 0.96)',
+        color: 'rgba(255, 248, 236, 0.86)',
         fontSize: 18,
         lineHeight: 30,
         textAlign: 'center',
@@ -305,16 +299,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 22,
         borderRadius: 20,
         borderWidth: 1.5,
-        borderTopColor: 'rgba(255,255,255,0.65)',
-        borderBottomColor: 'rgba(160, 132, 108, 0.45)',
-        borderLeftColor: 'rgba(196, 168, 140, 0.4)',
-        borderRightColor: 'rgba(140, 112, 92, 0.35)',
+        borderColor: 'rgba(232, 201, 140, 0.28)',
         marginBottom: 12,
         alignItems: 'center',
+        overflow: 'hidden',
         ...Platform.select({
             ios: {
-                shadowColor: '#5c483a',
-                shadowOpacity: 0.16,
+                shadowColor: '#000',
+                shadowOpacity: 0.28,
                 shadowRadius: 14,
                 shadowOffset: { width: 0, height: 8 },
             },
@@ -322,7 +314,7 @@ const styles = StyleSheet.create({
         }),
     },
     somaticLabel: {
-        color: 'rgba(98, 76, 62, 0.95)',
+        color: 'rgba(232, 201, 140, 0.88)',
         letterSpacing: 2,
         fontSize: 12,
         textTransform: 'uppercase',
@@ -330,7 +322,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     somaticCue: {
-        color: 'rgba(38, 28, 22, 0.98)',
+        color: 'rgba(255, 248, 236, 0.96)',
         fontSize: 21,
         lineHeight: 32,
         textAlign: 'center',
@@ -341,7 +333,7 @@ const styles = StyleSheet.create({
         marginBottom: 28,
     },
     guideLabel: {
-        color: 'rgba(98, 76, 62, 0.95)',
+        color: 'rgba(232, 201, 140, 0.82)',
         fontSize: 13,
         letterSpacing: 1.6,
         textTransform: 'uppercase',

@@ -32,7 +32,7 @@ export const SANCTUARY_CRYSTAL_BOWL_FILE: Record<Chakra, string | null> = {
   [Chakra.ROOT]: "Day1_CrystalBowlSoundBath_RootChakra_AwakeningSoul.mp3",
   [Chakra.SACRAL]: "Day2_CrystalBowlSoundBacth_AwakeningSoul.mp3",
   [Chakra.SOLAR_PLEXUS]: "Day3_CrystalBowlSoundBath_AwakeningSoul.mp3",
-  [Chakra.HEART]: "Day4_CrystalBowlSoundBath_AwakeningSoul.mp3",
+  [Chakra.HEART]: "Day4_CrystalBowl_AwakeningSoul_v2.mp3",
   [Chakra.THROAT]: "Day5_CrystalBowlSoundBath_AwakeningSoul.mp3",
   [Chakra.THIRD_EYE]: "Day6_CrystalBowlSoundBath_AwakeningSoul.mp3",
   [Chakra.CROWN]: "Day7_CrystalBowlSoundBath_AwakeningSoul.mp3",
