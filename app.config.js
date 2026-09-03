@@ -34,7 +34,7 @@ module.exports = {
     // Android app_name via withLauncherDisplayName — both "Awakening Soul".
     name: "Awakening Soul",
     slug: "soul-school",
-    version: "1.1.30",
+    version: "1.1.31",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
     // Native shield: golden "7" load art (small, centered). JS splash uses SoulSchool_HERO_Logo. Run prebuild --clean after change.
@@ -79,10 +79,11 @@ module.exports = {
           "Allow Awakening Soul to access your microphone to record audio with your videos.",
         NSPhotoLibraryUsageDescription:
           "Awakening Soul uses your photo library so you can choose a profile picture.",
+        AppStoreID: "6760920862",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // Keep in lockstep with Android 1.1.30 / versionCode 40.
-      buildNumber: "40",
+      // Keep in lockstep with Android 1.1.31 / versionCode 41.
+      buildNumber: "41",
     },
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android
@@ -103,8 +104,8 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
-      // User-facing 1.1.30. Production AAB versionCode 40 (appVersionSource: local).
-      versionCode: 40,
+      // User-facing 1.1.31. Production AAB versionCode 41 (appVersionSource: local).
+      versionCode: 41,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
         "RECORD_AUDIO",

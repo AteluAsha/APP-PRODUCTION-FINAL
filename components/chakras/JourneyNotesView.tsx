@@ -33,6 +33,7 @@ import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
+import { ANUA_CHAT_ENABLED } from "@/constants/anuaAccess"
 import { LinearGradient } from "expo-linear-gradient"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { BottomSheetView, BottomSheetScrollView } from "@gorhom/bottom-sheet"
@@ -559,6 +560,7 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
                         >
                           {note.content}
                         </AppText>
+                        {ANUA_CHAT_ENABLED ? (
                         <Pressable
                           onPress={() => {
                             addHapticFeedback(HapticStrength.Light)
@@ -581,6 +583,7 @@ export const JourneyNotesView: React.FC<JourneyNotesViewProps> = ({
                             Send thought to Anua
                           </AppText>
                         </Pressable>
+                        ) : null}
                       </View>
                     ))}
                   </View>

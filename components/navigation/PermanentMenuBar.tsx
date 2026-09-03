@@ -31,6 +31,7 @@ import { useMemo } from "react"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { getContextChakraDayFromRoute } from "@/utils/notesContextChakra"
 import { isChakraHubPath, isCourseFocusScreen } from "@/utils/courseFocusScreen"
+import { ANUA_CHAT_ENABLED } from "@/constants/anuaAccess"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { useMenuBarStore } from "@/hooks/useMenuBarStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
@@ -190,9 +191,9 @@ export const PermanentMenuBar: React.FC = () => {
     return pathname === route || pathname?.startsWith(route)
   }
 
-  // Notes, Audio Library, Gallery of Gnosis, Anua — nothing else.
+  // Notes, Audio Library, Gallery of Gnosis, Anua.
   const menuItems: MenuItem[] = useMemo(() => {
-    return [
+    const items: MenuItem[] = [
       {
         id: "notes",
         iconComponent: "leaf",
@@ -227,7 +228,9 @@ export const PermanentMenuBar: React.FC = () => {
         pulseDelay: MENU_ITEM_CONFIG.gallery.pulseDelay,
         geometryIcon: MENU_ITEM_CONFIG.gallery.geometryIcon,
       },
-      {
+    ]
+    if (ANUA_CHAT_ENABLED) {
+      items.push({
         id: "anua",
         iconComponent: "tree",
         label: "Anua",
@@ -239,8 +242,9 @@ export const PermanentMenuBar: React.FC = () => {
         gradient: MENU_ITEM_CONFIG.anua.gradient,
         pulseDelay: MENU_ITEM_CONFIG.anua.pulseDelay,
         geometryIcon: MENU_ITEM_CONFIG.anua.geometryIcon,
-      },
-    ]
+      })
+    }
+    return items
   }, [pathname, contextChakraDay, router])
 
   const handleItemPress = (item: MenuItem) => {

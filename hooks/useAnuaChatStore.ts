@@ -6,6 +6,7 @@
  */
 
 import { create } from "zustand"
+import { ANUA_CHAT_ENABLED } from "@/constants/anuaAccess"
 
 interface AnuaChatStore {
   isOpen: boolean
@@ -25,13 +26,15 @@ export const useAnuaChatStore = create<AnuaChatStore>((set) => ({
   initialMessage: null,
   isWaitingRoom: false,
   chakraDayOverride: null,
-  open: (options) =>
+  open: (options) => {
+    if (!ANUA_CHAT_ENABLED) return
     set({
       isOpen: true,
       initialMessage: options?.initialMessage ?? null,
       isWaitingRoom: options?.isWaitingRoom ?? false,
       chakraDayOverride: options?.chakraDayOverride ?? null,
-    }),
+    })
+  },
   close: () =>
     set({
       isOpen: false,

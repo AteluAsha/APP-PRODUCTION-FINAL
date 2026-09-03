@@ -25,6 +25,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
+import { ANUA_CHAT_ENABLED } from "@/constants/anuaAccess"
 import { ActionBar } from "@/components/ActionBar"
 import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
 import { getCurrentDayOfWeek } from "@/utils/date"
@@ -371,6 +372,7 @@ export default function NotesAlongTheWay() {
                               gap: 8,
                             }}
                           >
+                          {ANUA_CHAT_ENABLED ? (
                             <Pressable
                               onPress={() => {
                                 addHapticFeedback(HapticStrength.Light)
@@ -392,6 +394,7 @@ export default function NotesAlongTheWay() {
                                 Send thought to Anua
                               </AppText>
                             </Pressable>
+                          ) : null}
                           </View>
                         </View>
                       ))}

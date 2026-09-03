@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons"
 import Animated, { FadeIn, FadeOut, Easing } from "react-native-reanimated"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
+import { ANUA_CHAT_ENABLED } from "@/constants/anuaAccess"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import {
   getChakraName,
@@ -371,6 +372,7 @@ export default function QuizScreen() {
               }}
             />
 
+            {ANUA_CHAT_ENABLED ? (
             <Pressable
               onPress={() => {
                 addHapticFeedback(HapticStrength.Light)
@@ -394,6 +396,21 @@ export default function QuizScreen() {
                 {mirrorMessage}
               </AppText>
             </Pressable>
+            ) : (
+            <View style={{ marginBottom: 20, paddingHorizontal: 8 }}>
+              <AppText
+                font="cormorant-italic"
+                style={{
+                  color: "rgba(255,255,255,0.9)",
+                  textAlign: "center",
+                  fontSize: 20,
+                  lineHeight: 30,
+                }}
+              >
+                {mirrorMessage}
+              </AppText>
+            </View>
+            )}
 
             <View style={{ flex: 1 }} />
 
@@ -783,7 +800,7 @@ export default function QuizScreen() {
                                   color="rgba(168, 201, 154, 0.9)"
                                 />
                               </View>
-                            ) : (
+                            ) : ANUA_CHAT_ENABLED ? (
                               <Pressable
                                 onPress={() => {
                                   addHapticFeedback(HapticStrength.Light)
@@ -825,7 +842,7 @@ export default function QuizScreen() {
                                   color="rgba(212, 197, 169, 0.8)"
                                 />
                               </Pressable>
-                            ))}
+                            ) : null)}
                         </View>
                       </LinearGradient>
                     </Pressable>

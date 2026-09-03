@@ -5,7 +5,7 @@
  * a direct heart-minded guide for the journey from self to soul through the 7 chakras.
  *
  * Key implementation details:
- * - Uses Google's Gemini 1.5 Pro model
+ * - Uses Google's Gemini 3.6 Flash model (2.5 Pro is retired for these keys)
  * - Anchored in wisdom materials from Firebase Storage
  * - Focuses on 'Heart-Mind' wisdom, avoiding narrow Western thinking
  * - Provides guidance for the chakra journey from self to soul
@@ -79,8 +79,8 @@ const getGeminiApiKeys = (): string[] => {
 const GEMINI_API_KEYS = getGeminiApiKeys()
 const PRIMARY_API_KEY = GEMINI_API_KEYS[0] || null
 
-// Pro model for wisdom over speed - gemini-2.5-pro is our most intelligent thinking model
-const GEMINI_MODEL = "gemini-2.5-pro"
+// gemini-2.5-pro is retired for these keys. 3.6 Flash is live on the backup keys.
+const GEMINI_MODEL = "gemini-3.6-flash"
 
 // Initialize Gemini AI client
 let genAI: GoogleGenerativeAI | null = null
@@ -103,7 +103,6 @@ const initializeAnua = (): void => {
 
     genAI = new GoogleGenerativeAI(PRIMARY_API_KEY)
 
-    // Gemini 2.5 Pro - wisdom over speed
     model = genAI.getGenerativeModel({
       model: GEMINI_MODEL,
       systemInstruction: getAnuaSystemInstruction(),
@@ -153,18 +152,22 @@ const tryWithApiKeys = async <T>(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
 
-      // Check if it's a quota/rate limit error - try next key
+      // Restricted keys, retired models, and quota: try the next key.
       const errorMessage = lastError.message.toLowerCase()
-      const isQuotaError =
+      const isRetryableKeyError =
         errorMessage.includes("quota") ||
         errorMessage.includes("limit") ||
-        errorMessage.includes("429")
+        errorMessage.includes("429") ||
+        errorMessage.includes("403") ||
+        errorMessage.includes("permission") ||
+        errorMessage.includes("blocked") ||
+        errorMessage.includes("not found") ||
+        errorMessage.includes("404")
 
-      if (isQuotaError && i < GEMINI_API_KEYS.length - 1) {
-        // Quota exceeded - try next key
+      if (isRetryableKeyError && i < GEMINI_API_KEYS.length - 1) {
         if (__DEV__) {
           console.log(
-            `[Anua] API key ${i + 1} quota exceeded, trying next key...`,
+            `[Anua] API key ${i + 1} failed, trying next key...`,
           )
         }
         continue

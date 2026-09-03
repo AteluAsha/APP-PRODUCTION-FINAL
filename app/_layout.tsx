@@ -47,6 +47,7 @@ import { GlobalAnuaChat } from "@/components/navigation/GlobalAnuaChat"
 import { ChakraHubHeader } from "@/components/navigation/ChakraHubHeader"
 import { ProfileSheet } from "@/components/profile/ProfileSheet"
 import { HealingToastHost } from "@/components/HealingToastHost"
+import { StoreUpdateNoticeHost } from "@/components/store/StoreUpdateNoticeHost"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import * as Linking from "expo-linking"
 import "@/src/services/firebase"
@@ -432,6 +433,7 @@ export default function RootLayout() {
               />
               <ProfileSheet />
               <HealingToastHost />
+              <StoreUpdateNoticeHost />
               <ChakraHubHeader />
             </View>
             {showSplashOverlay && (
