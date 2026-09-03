@@ -1,43 +1,52 @@
 # iOS release position — 1.1.30 (40)
 
 **Saved:** 2026-09-03  
-**Status:** BUILDING — same commit as Play 1.1.30 / 40
+**Status:** READY TO BUILD TOMORROW — do not start tonight
+
+App Store live listing is still **1.1.3**. The parked 1.1.27 (36) IPA never landed (ASC agreement). Tomorrow’s IPA must be **1.1.30 / 40** to match Play.
 
 ---
 
-## Why this cut
+## Tomorrow
 
-Play is uploading **1.1.30 / versionCode 40**. iOS must match: marketing **1.1.30**, buildNumber **40**, commit `67ba953`.
+From a clean `main` at HEAD (currently includes Anua + store notice + 1.1.30 / 40):
 
-The parked IPA **1.1.27 (36)** at `7345912` is stale (no Heart bowl v2, no Anua Gemini 3.6, no store-update notice).
+```bash
+eas build -p ios --profile production --non-interactive --message "release(ios): 1.1.30 (40) — App Store"
+```
 
----
+EAS ignores the stale local `ios/` folder (`.easignore` `/ios/`). Prebuild reads `app.config.js`: version **1.1.30**, buildNumber **40**, `AppStoreID` **6760920862**, `ITSAppUsesNonExemptEncryption` **false**.
 
-## Target binary
-
-| Field | Value |
-|-------|-------|
-| Version | **1.1.30** |
-| Build number | **40** |
-| Commit | `67ba953` — `chore(release): keep store codes at 1.1.30 / 40` |
-| Profile | `production` |
-| Image | `sdk-53` |
-| Bundle ID | `com.sevenchakras.SevenChakras` |
-| ASC App ID | `6760920862` |
-
-## What this binary includes (same as Play 40)
-
-- Anua on `gemini-3.6-flash` (backup keys skip the iOS-locked primary)
-- Quiet store-update offering if auto-update did not land
-- Heart Day bowl v2 + vault orphan sweep
-- Player / yoga / orb work from the 1.1.29 cut
-
-## Submit
-
-Last iOS submit was blocked on an App Store Connect agreement. After this IPA is ready:
+Then:
 
 ```bash
 eas submit -p ios --profile production --latest
 ```
 
-or Transporter if ASC still rejects EAS submit.
+Last submit failed on a missing App Store Connect agreement. Sign Agreements, Tax, and Banking before submit, or use Transporter.
+
+---
+
+## In place for Apple
+
+| Item | Status |
+|------|--------|
+| Marketing version / build | 1.1.30 / 40 — lockstep with Play |
+| Bundle ID | `com.sevenchakras.SevenChakras` |
+| ASC App ID | `6760920862` (iTunes lookup confirmed) |
+| Export compliance | `ITSAppUsesNonExemptEncryption: false` |
+| Privacy / Terms | soulschool.app/privacy on the paywall |
+| Camera / mic / photos | Usage strings in `app.config.js` |
+| Audio background | `UIBackgroundModes: audio` |
+| EAS iOS image | `sdk-53` |
+| Dist cert / profile | Active through Mar 2027 |
+| Gemini (Anua) | Production EAS secrets present; model `gemini-3.6-flash` |
+| Store-update notice | iOS uses iTunes lookup; fail closed; 24h grace |
+
+---
+
+## Same product as Play 40
+
+- Anua on `gemini-3.6-flash`; hub toggle / notes / quiz on
+- Quiet store-update offering if auto-update did not land
+- Heart Day bowl v2 + vault orphan sweep

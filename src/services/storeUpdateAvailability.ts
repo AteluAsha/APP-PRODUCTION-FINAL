@@ -46,7 +46,11 @@ async function checkIosAppStore(): Promise<StoreUpdateAvailability> {
     const json = (await response.json()) as {
         results?: { version?: string; bundleId?: string }[]
     }
-    const storeVersion = json.results?.[0]?.version ?? ''
+    const result = json.results?.[0]
+    if (result?.bundleId && result.bundleId !== ANDROID_PACKAGE_ID) {
+        return EMPTY
+    }
+    const storeVersion = result?.version ?? ''
     if (!isStoreVersionAhead(storeVersion, installed)) return EMPTY
     return { available: true, storeVersion }
 }

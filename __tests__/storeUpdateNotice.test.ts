@@ -114,5 +114,15 @@ describe('store update notice', () => {
         expect(availability).toContain('if (__DEV__) return EMPTY')
         expect(availability).toContain('checkForUpdate')
         expect(availability).toContain('itunes.apple.com/lookup')
+        expect(availability).toContain('ANDROID_PACKAGE_ID')
+        expect(availability).toContain('bundleId')
+        const config = fs.readFileSync(
+            path.join(__dirname, '..', 'app.config.js'),
+            'utf8',
+        )
+        expect(config).toContain('AppStoreID: "6760920862"')
+        expect(config).toContain('ITSAppUsesNonExemptEncryption: false')
+        expect(config).toContain('buildNumber: "40"')
+        expect(config).toContain('version: "1.1.30"')
     })
 })
