@@ -13,14 +13,11 @@ import {
     type DownloadIconVariant,
 } from '@/components/chakras/DownloadIconCell'
 import { VaultDownloadLine } from '@/components/chakras/VaultDownloadLine'
-import { useSanctuaryTrackReady } from "@/hooks/useSanctuaryTrackReady"
 import { useVaultTrackDownloadUi } from "@/hooks/useVaultTrackDownloadUi"
 import {
     AUDIO_READY_RIM,
     SANCTUARY_READY_BORDER,
-    SANCTUARY_IDLE_BORDER,
     SANCTUARY_READY_GLOW,
-    SANCTUARY_IDLE_GLOW,
 } from "@/constants/audioUi"
 import type { MusicRoomTrackDef } from '@/constants/musicRoomLibrary'
 import { getTuningForkHertz } from '@/hooks/useTuningForkAudio'
@@ -81,10 +78,8 @@ export function MusicRoomTrackButton({
     isConnected,
     isActiveTrack,
     isPlaying,
-    downloadedIds,
     downloadingId,
     isQueued,
-    localUri,
     url,
     hideDownload,
     onPlay,
@@ -99,8 +94,8 @@ export function MusicRoomTrackButton({
     const { vaultReady, isDownloading, percent } = useVaultTrackDownloadUi(
         def.audioId,
     )
-    const isDownloaded = vaultReady || !!localUri || downloadedIds.has(def.audioId)
-    const showReadyRim = vaultReady || !!isDownloaded
+    const isDownloaded = vaultReady
+    const showReadyRim = vaultReady
     const isQueuedForRow =
         !vaultReady && isQueued && !isDownloading
     const downloadVariant: DownloadIconVariant = isDownloading
@@ -115,7 +110,6 @@ export function MusicRoomTrackButton({
         hideDownload ||
         isDownloading ||
         vaultReady ||
-        !!localUri ||
         isQueued ||
         (!url && !hideDownload)
 

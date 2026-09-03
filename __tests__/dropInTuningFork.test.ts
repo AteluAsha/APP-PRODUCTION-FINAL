@@ -32,12 +32,12 @@ describe('Drop In secret tuning fork wiring', () => {
         expect(src).toContain('tuningForkAudio.localUri')
     })
 
-    it('DropInButton plays through the registered audioId vault path', () => {
+    it('DropInButton plays through the shared inline fork hook', () => {
         const src = fs.readFileSync(
             path.join(__dirname, '..', 'components/chakras/DropInButton.tsx'),
             'utf8',
         )
-        expect(src).toContain('peekSanctuaryTrack(audioId)')
-        expect(src).toContain('registerAndroidBackCleanup')
+        expect(src).toContain('useInlineTuningFork')
+        expect(src).toContain('audioId')
     })
 })

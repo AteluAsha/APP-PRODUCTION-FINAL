@@ -518,11 +518,7 @@ const AudioLibrary = () => {
     (def: MusicRoomTrackDef): MusicRoomRowProps => {
       const media = resolveTrackMedia(def, mediaCtx)
       const vaultReady = vaultReadyIds[def.audioId] === true
-      const isConnected = !!(
-        media.url ||
-        media.localUri ||
-        vaultReady
-      )
+      const isConnected = vaultReady || !!media.url
       const activeVaultDownloadId = vaultReady
         ? null
         : (vaultDownloadingId ?? vaultRushedId)

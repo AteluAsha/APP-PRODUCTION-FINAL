@@ -272,17 +272,11 @@ describe("tuning fork and crystal bowl first tap", () => {
             path.join(__dirname, "..", "app/(chakras)/SoundBath.tsx"),
             "utf8",
         )
-        expect(src).toContain("peekSanctuaryTrack")
+        expect(src).toContain("useInlineTuningFork")
         expect(src).toContain("rushSanctuaryTrack")
         expect(src).not.toContain("ensureSanctuaryTrack")
         expect(src).toContain("MusicRoomTrackButton")
-        expect(src).toContain("keepPlayingInBackground: true")
-        expect(src).not.toContain("keepPlayingInBackground: false")
-        expect(src).toContain("AppState.currentState")
         expect(src).not.toContain("handleTuningForkSeek")
-        expect(src).toContain(
-            "pause/play must restart the chime from 0, not resume mid-tone",
-        )
     })
 
     it("Drop In rushes incomplete audio instead of blocking the first tap", () => {
@@ -290,13 +284,9 @@ describe("tuning fork and crystal bowl first tap", () => {
             path.join(__dirname, "..", "components/chakras/DropInButton.tsx"),
             "utf8",
         )
-        expect(src).toContain("peekSanctuaryTrack")
-        expect(src).toContain("rushSanctuaryTrack")
+        expect(src).toContain("useInlineTuningFork")
         expect(src).not.toContain("ensureSanctuaryTrack")
         expect(src).toContain("useVaultTrackDownloadUi")
-        expect(src).toContain("keepPlayingInBackground: true")
-        expect(src).not.toContain("keepPlayingInBackground: false")
-        expect(src).toContain("AppState.currentState")
     })
 
     it("Android hardware back never exits the app", () => {
@@ -413,7 +403,7 @@ describe("Android lock-screen playback is a media foreground service", () => {
             path.join(__dirname, "..", "app/(chakras)/SoundBath.tsx"),
             "utf8",
         )
-        expect(src).toContain("registerAndroidBackCleanup")
+        expect(src).toContain("useInlineTuningFork")
         expect(src).toContain("handleCloseSoundBath")
         expect(src).toContain("onXPress={handleCloseSoundBath}")
         expect(src).toContain("navigateBackWithCleanup")

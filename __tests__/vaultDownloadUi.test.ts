@@ -36,6 +36,43 @@ describe('unified vault download UI', () => {
         expect(audioIdx).toBeGreaterThan(dropIdx)
     })
 
+    it('full player shows a fading headset reminder, not headphone detection', () => {
+        const reminder = fs.readFileSync(
+            path.join(
+                __dirname,
+                '..',
+                'components/audio/HeadsetListenReminder.tsx',
+            ),
+            'utf8',
+        )
+        expect(reminder).toContain('name="headset"')
+        expect(reminder).toContain('60_000')
+        expect(reminder).not.toContain('AudioDevice')
+
+        const player = fs.readFileSync(
+            path.join(__dirname, '..', 'app/AudioPlayer.tsx'),
+            'utf8',
+        )
+        expect(player).toContain('HeadsetListenReminder')
+    })
+
+    it('ready rim is vault-only, not leftover localUri', () => {
+        const library = fs.readFileSync(
+            path.join(__dirname, '..', 'components/chakras/MusicRoomTrackButton.tsx'),
+            'utf8',
+        )
+        expect(library).toContain('const showReadyRim = vaultReady')
+        expect(library).not.toContain('vaultReady || !!localUri')
+        expect(library).not.toContain('vaultReady || !!isDownloaded')
+
+        const row = fs.readFileSync(
+            path.join(__dirname, '..', 'components/chakras/AudioTrackRow.tsx'),
+            'utf8',
+        )
+        expect(row).toContain('const showReadyRim = vaultReady')
+        expect(row).not.toContain('vaultReady || !!isDownloaded')
+    })
+
     it('Sound Bath uses wrapped closing quote section', () => {
         const src = fs.readFileSync(
             path.join(__dirname, '..', 'app/(chakras)/SoundBath.tsx'),

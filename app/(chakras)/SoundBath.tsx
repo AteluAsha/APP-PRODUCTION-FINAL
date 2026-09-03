@@ -7,7 +7,6 @@ import { HapticStrength } from "@/utils/haptic"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
 import { addHapticFeedback } from "@/utils/haptic"
 import { useLocalSearchParams, useRouter, usePathname } from "expo-router"
-import { useFocusEffect } from "@react-navigation/native"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   View,
@@ -15,7 +14,6 @@ import {
   Platform,
   Dimensions,
   StyleSheet,
-  AppState,
 } from "react-native"
 import Animated, {
   useAnimatedStyle,
@@ -29,21 +27,14 @@ import BackgroundOpacity from "@/components/BackgroundOpacity"
 import { isValidChakra } from "@/utils/validation"
 import { getCrystalBowlFileName } from "@/hooks/useCrystalBowlAudio"
 import { getTuningForkHertz, getTuningForkFileName } from "@/hooks/useTuningForkAudio"
-import { toAbsoluteFileUri } from "@/src/utils/crystalBowlPlayback"
+import { useInlineTuningFork } from "@/hooks/useInlineTuningFork"
 import {
-  peekSanctuaryTrack,
   rushSanctuaryTrack,
   useSanctuaryVaultStore,
 } from "@/src/services/sanctuaryVaultDownloader"
-import {
-  createSoundAsyncOffUiThread,
-  waitForSoundLoaded,
-} from "@/src/utils/audioStreamInit"
 import { SOUND_BATH_CLOSING_QUOTE } from "@/constants/soundBathClosingQuote"
 import { playSanctuaryTrack } from "@/utils/sanctuaryPlayback"
 import { showHealingToast } from "@/utils/healingToast"
-import type { HealingSound } from "@/src/utils/singleActiveSound"
-import { registerAndroidBackCleanup } from "@/utils/androidBackCleanup"
 import { navigateBackWithCleanup } from "@/utils/navigationHelpers"
 import { pinRecoveryRoute } from "@/utils/appErrorRecovery"
 import {
@@ -113,13 +104,7 @@ const SoundBath = () => {
     })
   }, [chakra, soundBathBgOpacity])
 
-  const [tuningForkPreparing, setTuningForkPreparing] = useState(false)
   const [crystalBowlPreparing, setCrystalBowlPreparing] = useState(false)
-
-  // Tuning fork: inline chime, no slider. Stop unloads so the next tap
-  // always starts from the beginning. One local Sound ref.
-  const tuningForkSoundRef = useRef<HealingSound | null>(null)
-  const [tuningForkPlaying, setTuningForkPlaying] = useState(false)
 
   const tuningForkHertz = getTuningForkHertz(chakra)
 
@@ -134,6 +119,16 @@ const SoundBath = () => {
   const tuningForkAudioId = tuningForkFilename
     ? `tuning_fork_${chakra}_${tuningForkFilename}`
     : null
+  const {
+    isPlaying: tuningForkPlaying,
+    isPreparing: tuningForkPreparing,
+    toggle: handleTuningForkPress,
+    stop: stopInlineTuningFork,
+  } = useInlineTuningFork({
+    audioId: tuningForkAudioId ?? undefined,
+    lockScreenTitle: `Tuning Fork ${tuningForkHertz} Hz`,
+    stopOnBlur: true,
+  })
   const tuningForkAudio = useTuningForkAudio(chakra)
   const crystalBowlAudio = useCrystalBowlAudio(chakra)
   const vaultReadyIds = useSanctuaryVaultStore((s) => s.readyIds)
@@ -177,26 +172,6 @@ const SoundBath = () => {
   const chakraDayIndex = getDayFromChakra(chakra)
   const chakraAccentColor = getChakraColor(chakraDayIndex)
 
-  const stopInlineTuningFork = useCallback(async () => {
-    const s = tuningForkSoundRef.current
-    if (!s) return
-    try {
-      await s.stopAsync()
-      await s.unloadAsync()
-    } catch {
-      // already stopped
-    }
-    tuningForkSoundRef.current = null
-    if (!mountedRef.current) return
-    setTuningForkPlaying(false)
-  }, [])
-
-  useEffect(() => {
-    return registerAndroidBackCleanup(() => {
-      void stopInlineTuningFork()
-    })
-  }, [stopInlineTuningFork])
-
   const handleCloseSoundBath = useCallback(() => {
     navigateBackWithCleanup(() => {
       if (router.canGoBack()) {
@@ -206,88 +181,6 @@ const SoundBath = () => {
       }
     })
   }, [router])
-
-  // On leave: unload tuning fork. Sleep/lock blurs the route while the
-  // app is already inactive — keep playing. Real navigation stays active.
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        const snapshot = AppState.currentState
-        const s = tuningForkSoundRef.current
-        if (!s) return
-        setTimeout(() => {
-          if (
-            snapshot !== "active" ||
-            AppState.currentState !== "active"
-          ) {
-            return
-          }
-          if (tuningForkSoundRef.current !== s) return
-          void s.stopAsync()
-            .then(() => s.unloadAsync().catch(() => {}))
-            .catch(() => {})
-          tuningForkSoundRef.current = null
-          // Never setState here — Android back may have already unmounted this screen.
-        }, 150)
-      }
-    }, []),
-  )
-
-  const handleTuningForkPress = useCallback(async () => {
-    addHapticFeedback(HapticStrength.Light)
-
-    if (useCurrentAudioStore.getState().isPlaying) {
-      useCurrentAudioStore.getState().setPlaying(false)
-    }
-
-    // No slider: pause/play must restart the chime from 0, not resume mid-tone.
-    if (tuningForkSoundRef.current || tuningForkPlaying) {
-      await stopInlineTuningFork()
-      return
-    }
-    if (tuningForkPreparing) return
-
-    useCurrentAudioStore.getState().reset()
-    const audioId = `tuning_fork_${chakra}_${getTuningForkFileName(chakra)}`
-    setTuningForkPreparing(true)
-    try {
-      const uri = await peekSanctuaryTrack(audioId)
-      if (!uri) {
-        rushSanctuaryTrack(audioId)
-        showHealingToast("gatheringPresence")
-        return
-      }
-      const sound = await createSoundAsyncOffUiThread(
-        { uri: toAbsoluteFileUri(uri) },
-        {
-          initialStatus: {
-            shouldPlay: false,
-          },
-          keepPlayingInBackground: true,
-          lockScreen: {
-            title: `Tuning Fork ${getTuningForkHertz(chakra)} Hz`,
-            artist: "Sound Healing",
-          },
-        },
-      )
-      await waitForSoundLoaded(sound)
-      await sound.setVolumeAsync(1)
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (!status.isLoaded || !mountedRef.current) return
-        if (status.didJustFinish && !status.isLooping) {
-          void stopInlineTuningFork()
-        }
-      })
-      tuningForkSoundRef.current = sound
-      await sound.playAsync()
-      setTuningForkPlaying(true)
-    } catch (e) {
-      console.warn("[SoundBath] Tuning fork play failed:", e)
-      if (mountedRef.current) setTuningForkPlaying(false)
-    } finally {
-      if (mountedRef.current) setTuningForkPreparing(false)
-    }
-  }, [chakra, stopInlineTuningFork, tuningForkPlaying, tuningForkPreparing])
 
   const handleCrystalBowlPress = useCallback(async () => {
     if (crystalBowlPreparing || !crystalBowlAudioId) return
@@ -576,7 +469,7 @@ const SoundBath = () => {
                   def={def}
                   accentColor={chakraAccentColor}
                   isLoading={isLoading}
-                  isConnected={!!(media.url || media.localUri || vaultReady)}
+                  isConnected={vaultReady || !!media.url}
                   isActiveTrack={isActiveTrack}
                   isPlaying={isPlaying}
                   downloadedIds={vaultReadySet}

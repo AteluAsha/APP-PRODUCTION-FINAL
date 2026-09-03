@@ -31,6 +31,7 @@ import { AppText } from "@/components/AppText"
 import { PlayerProgressBar } from "@/components/chakras/PlayerProgressBar"
 import { PulsingChakraBall } from "@/components/chakras/PulsingChakraBall"
 import { VaultFirstLoadPanel } from "@/components/chakras/VaultFirstLoadPanel"
+import { HeadsetListenReminder } from "@/components/audio/HeadsetListenReminder"
 import {
   getChakraImage,
   getChakraName,
@@ -1417,6 +1418,7 @@ const AudioPlayer = () => {
           xButtonPosition="left"
           onXPress={handleCloseXNoSource}
         />
+        <HeadsetListenReminder />
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 }}
         >
@@ -1471,6 +1473,7 @@ const AudioPlayer = () => {
           xButtonPosition="left"
           onXPress={handleCloseXNoSource}
         />
+        <HeadsetListenReminder />
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
@@ -1584,6 +1587,7 @@ const AudioPlayer = () => {
         xButtonPosition="left"
         onXPress={handleCloseX}
       />
+      <HeadsetListenReminder />
 
       {/* Tap center to show controls; music-room swipes live here only (not the control bar). */}
       {musicRoomSwipeGesture ? (

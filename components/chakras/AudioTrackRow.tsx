@@ -60,20 +60,18 @@ export const AudioTrackRow = ({
   onDownload,
   audioId,
   url,
-  localUri,
   canDownload,
   isActiveTrack = false,
   isPlaying = false,
-  downloadedIds = new Set(),
   downloadingId = null,
   isQueued = false,
   canResolveDownload = false,
   hideDownload = false,
   rightContent,
 }: AudioTrackRowProps) => {
-  const isDownloaded = audioId ? localUri || downloadedIds.has(audioId) : false
   const vaultReady = useSanctuaryTrackReady(audioId)
-  const showReadyRim = vaultReady || !!isDownloaded
+  const isDownloaded = vaultReady
+  const showReadyRim = vaultReady
   const isDownloading = audioId && downloadingId === audioId
   const showPause = isActiveTrack && isPlaying
   const isDownloadable = canDownload || canResolveDownload
@@ -81,7 +79,7 @@ export const AudioTrackRow = ({
     ? "downloading"
     : isQueued
       ? "queued"
-      : isDownloaded || localUri
+      : isDownloaded
         ? "downloaded"
         : "cloud"
   const showDownloadAsDisabled = !isDownloadable
@@ -90,7 +88,7 @@ export const AudioTrackRow = ({
   const downloadDisabled =
     showDownloadAsDisabled ||
     isDownloading ||
-    !!localUri ||
+    vaultReady ||
     isQueued ||
     (!url && !canResolveDownload)
 
