@@ -1,7 +1,7 @@
 # iOS release position — 1.1.30 (40)
 
 **Saved:** 2026-09-03  
-**Status:** READY TO BUILD TOMORROW — do not start tonight
+**Status:** SUPERSEDED — Play consumed 40. Tomorrow use **1.1.31 / 41** (`docs/IOS_RELEASE_POSITION_1.1.31-41.md`).
 
 App Store live listing is still **1.1.3**. The parked 1.1.27 (36) IPA never landed (ASC agreement). Tomorrow’s IPA must be **1.1.30 / 40** to match Play.
 
