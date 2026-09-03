@@ -1,15 +1,15 @@
 # Android release position — 1.1.30 (40)
 
 **Saved:** 2026-09-03  
-**Status:** LOCAL AAB — Play rejected versionCode 39; this cut is 40
+**Status:** LOCAL AAB — Anua restored + store-update notice
 
-Same JS as `45ca358` (Heart bowl v2, orphan sweep, player/yoga/orb). Only the store codes changed.
+Play review for the earlier 40 was deleted, so this cut reuses **1.1.30 / versionCode 40**.
 
 ---
 
 ## Why 40
 
-Play already has versionCode **39** (or rejected a second 39). This cut is **1.1.30 / 40**.
+versionCode **36** is live on Play. **39** was rejected as already used. **40** was pulled from review, so this ship keeps **1.1.30 / 40** with the Anua + notice work.
 
 iOS IPA remains **1.1.27 (36)** at commit `7345912` — parked on ASC. Rebuild iOS from **this same commit** (buildNumber 40) for a true mirror.
 
@@ -17,13 +17,10 @@ iOS IPA remains **1.1.27 (36)** at commit `7345912` — parked on ASC. Rebuild i
 
 ## What this binary includes
 
-Same product as the 1.1.29 (39) local AAB:
-
-- Heart Day crystal bowl `Day4_CrystalBowl_AwakeningSoul_v2.mp3`
-- Vault sync sweeps replaced remasters from `sanctuary-audio/` on iOS and Android
-- Drop In + Sound Bath fork share `useInlineTuningFork`
-- Ready rim vault-only, headset reminder, remaster duration cache
-- Circle-clip chakra orbs, in-flow player face, yoga studio dark surface
+- Anua chat restored: Gemini `gemini-3.6-flash`, backup keys skip the iOS-locked primary
+- Hub toggle, notes, and quiz Anua entry points on
+- Quiet store-update offering if auto-update did not land (24h grace)
+- Heart Day bowl v2 + vault orphan sweep
 
 ---
 
