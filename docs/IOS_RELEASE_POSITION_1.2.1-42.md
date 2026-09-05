@@ -1,7 +1,7 @@
 # iOS release position — 1.2.1 (42)
 
 **Saved:** 2026-09-05  
-**Status:** READY TO BUILD — do not start until asked
+**Status:** REBUILDING — first IPA (Xcode 16.4 / sdk-53) was rejected by Apple; production image is now Xcode 26.2
 
 Lockstep with Play: marketing **1.2.1**, buildNumber **42**. App Store live is still **1.1.3**.
 

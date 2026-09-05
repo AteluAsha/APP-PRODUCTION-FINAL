@@ -34,7 +34,9 @@
         "EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK": "1"
       },
       "ios": {
-        "image": "sdk-53",
+        // Apple requires Xcode 26 + iOS 26 SDK for App Store uploads (since 2026-04-28).
+        // sdk-53 maps to Xcode 16.4 and is rejected. This image is Expo's SDK 53 opt-in.
+        "image": "macos-sequoia-15.6-xcode-26.2",
         "simulator": false
       },
       "android": {
