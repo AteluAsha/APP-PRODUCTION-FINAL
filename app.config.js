@@ -34,7 +34,7 @@ module.exports = {
     // Android app_name via withLauncherDisplayName — both "Awakening Soul".
     name: "Awakening Soul",
     slug: "soul-school",
-    version: "1.1.31",
+    version: "1.2.1",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
     // Native shield: golden "7" load art (small, centered). JS splash uses SoulSchool_HERO_Logo. Run prebuild --clean after change.
@@ -72,7 +72,7 @@ module.exports = {
         },
         // Required for iOS to access your local network (e.g. Metro on 192.168.x.x).
         NSLocalNetworkUsageDescription:
-          "Allow Awakening Soul to connect to your local Metro dev server during development.",
+          "Awakening Soul uses the local network only when you connect from this device on your own Wi-Fi.",
         NSCameraUsageDescription:
           "Allow Awakening Soul to access your camera to record videos for sharing your journey.",
         NSMicrophoneUsageDescription:
@@ -82,8 +82,9 @@ module.exports = {
         AppStoreID: "6760920862",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // Keep in lockstep with Android 1.1.31 / versionCode 41.
-      buildNumber: "41",
+      // Keep in lockstep with Android 1.2.1 / versionCode 42.
+      // Play never reuses a versionCode (36–41 already consumed). Cannot be 2.
+      buildNumber: "42",
     },
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android
@@ -104,8 +105,8 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
-      // User-facing 1.1.31. Production AAB versionCode 41 (appVersionSource: local).
-      versionCode: 41,
+      // User-facing 1.2.1. Production AAB versionCode 42 (appVersionSource: local).
+      versionCode: 42,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
         "RECORD_AUDIO",
