@@ -26,11 +26,11 @@ config.resolver = {
 }
 
 config.resetCache = true
-config.cacheVersion = "soul-school-1.2.1-42-isolated-async-require"
+config.cacheVersion = "soul-school-1.2.2-44-isolated-async-require"
 
 const withCss = withNativeWind(config, { input: "./globals.css" })
 withCss.resetCache = true
-withCss.cacheVersion = "soul-school-1.2.1-42-isolated-async-require"
+withCss.cacheVersion = "soul-school-1.2.2-44-isolated-async-require"
 if (withCss.transformer) {
   withCss.transformer.asyncRequireModulePath = asyncRequireModulePath
 }

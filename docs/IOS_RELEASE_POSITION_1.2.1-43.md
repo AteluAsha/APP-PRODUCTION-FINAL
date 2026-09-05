@@ -1,7 +1,7 @@
 # iOS release position — 1.2.1 (43)
 
 **Saved:** 2026-09-05  
-**Status:** BUILD + SUBMIT IN FLIGHT — 1.2.1 (43), Xcode 26.2
+**Status:** REJECTED BY APPLE — 1.2.1 train closed (90062 / 90186). Next cut is 1.2.2 (44).
 
 Hotfix over 1.2.1 (42). Android Play stays **1.2.1 / versionCode 42**. App Store live is still **1.1.3**.
 
