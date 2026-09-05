@@ -82,9 +82,9 @@ module.exports = {
         AppStoreID: "6760920862",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // Keep in lockstep with Android 1.2.1 / versionCode 42.
-      // Play never reuses a versionCode (36–41 already consumed). Cannot be 2.
-      buildNumber: "42",
+      // iOS hotfix 1.2.1 (43): Wellness Gate enter CTA. Android Play stays 1.2.1 / 42.
+      // Play never reuses a versionCode (36–42 already consumed). Cannot be 2.
+      buildNumber: "43",
     },
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android
