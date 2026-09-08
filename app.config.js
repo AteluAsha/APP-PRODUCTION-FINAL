@@ -83,7 +83,7 @@ module.exports = {
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
       // iOS 1.2.3 (45): paid restore after reinstall, scholarship same-phone restore,
-      // cancelled sub returns to soft paywall. Android Play stays 1.2.1 / versionCode 42.
+      // cancelled sub returns to soft paywall. Play cut is 1.2.3 / versionCode 43.
       buildNumber: "45",
     },
     android: {
@@ -105,8 +105,10 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
-      // User-facing 1.2.1. Production AAB versionCode 42 (appVersionSource: local).
-      versionCode: 42,
+      // User-facing 1.2.3. Production AAB versionCode 43 (appVersionSource: local).
+      // Play consumed 36–41. 42 was reserved for 1.2.1 but that AAB was never
+      // produced; this 1.2.3 cut uses 43 so the Play number is unambiguous.
+      versionCode: 43,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
         "RECORD_AUDIO",
