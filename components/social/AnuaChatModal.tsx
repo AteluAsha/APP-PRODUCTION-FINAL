@@ -20,7 +20,6 @@ import {
   Platform,
   Image,
   StyleSheet,
-  useWindowDimensions,
   Alert,
   Dimensions,
 } from "react-native"
@@ -32,6 +31,7 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { Audio } from "expo-av"
 import { AppText } from "@/components/AppText"
+import { AnuaMessageText } from "@/components/anua/AnuaMessageText"
 import {
   askAnua,
   askAnuaWithAudio,
@@ -57,7 +57,6 @@ import {
   isWisdomEngineAvailable,
 } from "@/src/services/wisdomEngine"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
-import { LinearGradient } from "expo-linear-gradient"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { useAnuaMemoryStore } from "@/hooks/useAnuaMemoryStore"
 import { useJourneyNotesStore } from "@/hooks/useJourneyNotesStore"
@@ -68,37 +67,37 @@ const ANUA_INPUT_MAX_LENGTH = 25000
 /** Persisted key: course intro plays only once, when opening Anua from waiting room the first time. */
 const HAS_PLAYED_WAITING_ROOM_COURSE_INTRO_KEY = "hasPlayedWaitingRoomCourseIntro"
 
-/** Chat bubble styles aligned with Tribe Chat: user right, Anua left; same text/bubble styling */
+/** Gemini-style feed: Anua is full-width type, user sits in a small bubble. */
 const chatStyles = StyleSheet.create({
-  messageRow: { marginBottom: 14, paddingHorizontal: 8, flexDirection: "row" },
-  messageRowLeft: { justifyContent: "flex-start" },
-  messageRowRight: { justifyContent: "flex-end" },
-  messageBubble: {
-    maxWidth: "80%",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  messageBubbleLeft: {
-    borderColor: "rgba(135, 174, 115, 0.25)",
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
-    borderBottomLeftRadius: 4,
+  messageRow: { marginBottom: 18, paddingHorizontal: 4, width: "100%" },
+  messageRowLeft: { alignItems: "stretch" },
+  messageRowRight: { alignItems: "flex-end" },
+  anuaColumn: {
+    width: "100%",
+    alignSelf: "stretch",
+    paddingTop: 2,
+    paddingBottom: 4,
   },
   messageBubbleRight: {
-    borderColor: "rgba(168, 201, 154, 0.3)",
-    backgroundColor: "rgba(135, 174, 115, 0.12)",
-    borderBottomRightRadius: 4,
+    maxWidth: "78%",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderBottomRightRadius: 6,
+    backgroundColor: "rgba(255, 252, 245, 0.08)",
   },
-  senderNameWrap: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-    marginBottom: 6,
+  senderText: { color: "rgba(232, 213, 183, 0.72)" },
+  anuaBody: {
+    color: "rgba(255, 248, 235, 0.9)",
+    marginTop: 6,
+    lineHeight: 30,
+    letterSpacing: 0.15,
+    textAlign: "left",
   },
-  senderText: { color: "rgba(255, 255, 255, 0.98)" },
-  messageText: { color: "rgba(255, 255, 255, 0.98)", marginTop: 2 },
+  userBody: {
+    color: "rgba(255, 252, 245, 0.92)",
+    lineHeight: 22,
+  },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -106,18 +105,18 @@ const chatStyles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
     borderTopWidth: 1,
-    borderTopColor: "rgba(135, 174, 115, 0.25)",
+    borderTopColor: "rgba(255, 248, 235, 0.08)",
   },
   input: {
     flex: 1,
     minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
-    borderColor: "rgba(135, 174, 115, 0.3)",
-    color: "#fff",
+    borderColor: "rgba(255, 248, 235, 0.12)",
+    color: "rgba(255, 248, 235, 0.92)",
     fontSize: 16,
   },
 })
@@ -147,6 +146,7 @@ interface ChatMessage {
   text: string
   isUser: boolean
   timestamp: Date
+  isStreaming?: boolean
 }
 
 /** Props for the shared Anua chat UI (used by both Modal and Route). */
@@ -181,15 +181,14 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
     null,
   )
   const scrollViewRef = useRef<ScrollView>(null)
+  const stickToBottomRef = useRef(true)
   const initialMessageSentRef = useRef(false)
   const waitingRoomCourseIntroStartedRef = useRef(false)
   const [isAnuaSpeaking, setIsAnuaSpeaking] = useState(false)
-  const [pendingAnuaMessage, setPendingAnuaMessage] = useState<string | null>(
-    null,
-  )
   const [isRecording, setIsRecording] = useState(false)
   const recordingRef = useRef<Audio.Recording | null>(null)
   const recordingDurationRef = useRef(0)
+  const introCancelledRef = useRef(false)
 
   // Load daily transmission gently after chat/note are visible (so it does not block or lag the open)
   useEffect(() => {
@@ -227,10 +226,30 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
         isUser: true,
         timestamp: new Date(),
       }
-      setMessages((prev) => [...prev, userMessage])
+      const anuaId = `anua-${Date.now()}`
+      const streamingPlaceholder: ChatMessage = {
+        id: anuaId,
+        text: "",
+        isUser: false,
+        timestamp: new Date(),
+        isStreaming: true,
+      }
+      stickToBottomRef.current = true
+      setMessages((prev) => [...prev, userMessage, streamingPlaceholder])
       setInputText("")
       setIsLoading(true)
       setError(null)
+
+      const updateStream = (partial: string) => {
+        if (introCancelledRef.current) return
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === anuaId
+              ? { ...message, text: partial, isStreaming: true }
+              : message,
+          ),
+        )
+      }
 
       try {
         const cosmicContext = getCosmicContextForAnua(new Date())
@@ -266,23 +285,38 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
 
         const response = await askAnua(
           text.trim(),
-          { temperature: 0.9, maxTokens: 500, enableVoice: false },
+          {
+            temperature: 0.9,
+            maxTokens: 500,
+            enableVoice: false,
+            onChunk: updateStream,
+            isCancelled: () => introCancelledRef.current,
+          },
           context,
         )
 
-        if (useVoice && isElevenLabsAvailable()) {
+        if (introCancelledRef.current) return
+        if (!response.trim()) {
+          setMessages((prev) =>
+            prev.filter(
+              (message) =>
+                message.id !== anuaId || message.text.trim().length > 0,
+            ),
+          )
+          return
+        }
+
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === anuaId
+              ? { ...message, text: response, isStreaming: false }
+              : message,
+          ),
+        )
+
+        if (useVoice && isElevenLabsAvailable() && response.trim()) {
           setIsAnuaSpeaking(true)
-          setPendingAnuaMessage(response)
           speakAsAnua(response, undefined, () => introCancelledRef.current)
-            .then(() => {
-              const anuaMessage: ChatMessage = {
-                id: `anua-${Date.now()}`,
-                text: response,
-                isUser: false,
-                timestamp: new Date(),
-              }
-              setMessages((prev) => [...prev, anuaMessage])
-            })
             .catch((err) => {
               if (__DEV__) {
                 console.warn(
@@ -290,28 +324,13 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
                   err instanceof Error ? err.message : String(err),
                 )
               }
-              const anuaMessage: ChatMessage = {
-                id: `anua-${Date.now()}`,
-                text: response,
-                isUser: false,
-                timestamp: new Date(),
-              }
-              setMessages((prev) => [...prev, anuaMessage])
             })
             .finally(() => {
               setIsAnuaSpeaking(false)
-              setPendingAnuaMessage(null)
             })
-        } else {
-          const anuaMessage: ChatMessage = {
-            id: `anua-${Date.now()}`,
-            text: response,
-            isUser: false,
-            timestamp: new Date(),
-          }
-          setMessages((prev) => [...prev, anuaMessage])
         }
       } catch (err) {
+        if (introCancelledRef.current) return
         if (__DEV__) console.error("Error talking to Anua:", err)
         let errorMessage =
           "Anua is having trouble connecting. Please try again, or continue your journey."
@@ -336,8 +355,14 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
           }
         }
         setError(errorMessage)
+        setMessages((prev) =>
+          prev.filter(
+            (message) =>
+              message.id !== anuaId || message.text.trim().length > 0,
+          ),
+        )
       } finally {
-        setIsLoading(false)
+        if (!introCancelledRef.current) setIsLoading(false)
       }
     },
     [isLoading, isWaitingRoom, useVoice, chakraDay, chakraName],
@@ -419,7 +444,19 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
         isUser: true,
         timestamp: new Date(),
       }
-      setMessages((prev) => [...prev, userMsg])
+      const anuaId = `anua-${Date.now()}`
+      stickToBottomRef.current = true
+      setMessages((prev) => [
+        ...prev,
+        userMsg,
+        {
+          id: anuaId,
+          text: "",
+          isUser: false,
+          timestamp: new Date(),
+          isStreaming: true,
+        },
+      ])
       try {
         const cosmicContext = getCosmicContextForAnua()
         const context = isWaitingRoom
@@ -444,44 +481,48 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
               chakraName,
               cosmicContext,
             }
-        const response = await askAnuaWithAudio(audioUri, context)
-        if (useVoice && isElevenLabsAvailable()) {
+        const response = await askAnuaWithAudio(audioUri, context, {
+          onChunk: (partial) => {
+            if (introCancelledRef.current) return
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === anuaId
+                  ? { ...message, text: partial, isStreaming: true }
+                  : message,
+              ),
+            )
+          },
+          isCancelled: () => introCancelledRef.current,
+        })
+        if (introCancelledRef.current) return
+        if (!response.trim()) {
+          setMessages((prev) =>
+            prev.filter(
+              (message) =>
+                message.id !== anuaId || message.text.trim().length > 0,
+            ),
+          )
+          return
+        }
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === anuaId
+              ? { ...message, text: response, isStreaming: false }
+              : message,
+          ),
+        )
+        if (useVoice && isElevenLabsAvailable() && response.trim()) {
           setIsAnuaSpeaking(true)
-          setPendingAnuaMessage(response)
           speakAsAnua(response, undefined, () => introCancelledRef.current)
-            .then(() => {
-              const anuaMessage: ChatMessage = {
-                id: `anua-${Date.now()}`,
-                text: response,
-                isUser: false,
-                timestamp: new Date(),
-              }
-              setMessages((prev) => [...prev, anuaMessage])
-            })
             .catch((err) => {
               if (__DEV__) console.warn("Voice synthesis:", err)
-              const anuaMessage: ChatMessage = {
-                id: `anua-${Date.now()}`,
-                text: response,
-                isUser: false,
-                timestamp: new Date(),
-              }
-              setMessages((prev) => [...prev, anuaMessage])
             })
             .finally(() => {
               setIsAnuaSpeaking(false)
-              setPendingAnuaMessage(null)
             })
-        } else {
-          const anuaMessage: ChatMessage = {
-            id: `anua-${Date.now()}`,
-            text: response,
-            isUser: false,
-            timestamp: new Date(),
-          }
-          setMessages((prev) => [...prev, anuaMessage])
         }
       } catch (err) {
+        if (introCancelledRef.current) return
         if (__DEV__) console.error("Error talking to Anua (voice):", err)
         let errorMessage =
           "Anua is having trouble connecting. Please try again."
@@ -506,8 +547,14 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
           }
         }
         setError(errorMessage)
+        setMessages((prev) =>
+          prev.filter(
+            (message) =>
+              message.id !== anuaId || message.text.trim().length > 0,
+          ),
+        )
       } finally {
-        setIsLoading(false)
+        if (!introCancelledRef.current) setIsLoading(false)
       }
     },
     [isLoading, isWaitingRoom, useVoice, chakraDay, chakraName],
@@ -598,7 +645,6 @@ As you prepare, I'd love to understand your starting point. How do you currently
   }, [isWaitingRoom])
 
   // When user leaves Anua chat: cancel any in-flight/queued speech and stop playback (Anua only speaks while in chat).
-  const introCancelledRef = useRef(false)
   useEffect(() => {
     return () => {
       introCancelledRef.current = true
@@ -651,13 +697,10 @@ As you prepare, I'd love to understand your starting point. How do you currently
     sendMessage(initialMessage)
   }, [initialMessage, messages.length, isLoading, sendMessage])
 
-  // Scroll to bottom when new messages arrive
+  // Keep the expanding stream in view unless the seeker has scrolled up to read.
   useEffect(() => {
-    if (messages.length > 0 && scrollViewRef.current) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true })
-      }, 100)
-    }
+    if (!stickToBottomRef.current) return
+    scrollViewRef.current?.scrollToEnd({ animated: false })
   }, [messages])
 
   const handleSend = () => {
@@ -716,6 +759,7 @@ As you prepare, I'd love to understand your starting point. How do you currently
           dailyTransmission={dailyTransmission}
           isAnuaSpeaking={isAnuaSpeaking}
           scrollViewRef={scrollViewRef}
+          stickToBottomRef={stickToBottomRef}
           handleSend={handleSend}
           formatTime={formatTime}
           isRecording={isRecording}
@@ -925,6 +969,7 @@ const AnuaChatContent: React.FC<{
   dailyTransmission: string | null
   isAnuaSpeaking: boolean
   scrollViewRef: React.RefObject<ScrollView | null>
+  stickToBottomRef: React.MutableRefObject<boolean>
   handleSend: () => void
   formatTime: (date: Date) => string
   isRecording: boolean
@@ -945,15 +990,15 @@ const AnuaChatContent: React.FC<{
   dailyTransmission,
   isAnuaSpeaking,
   scrollViewRef,
+  stickToBottomRef,
   handleSend,
-  formatTime,
+  formatTime: _formatTime,
   isRecording,
   onStartRecording,
   onStopRecordingAndSend,
-  androidModalHeight,
+  androidModalHeight: _androidModalHeight,
   chakraDay,
 }) => {
-  const { height: windowHeight } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const addResonatedMessage = useAnuaMemoryStore((s) => s.addResonatedMessage)
   const removeResonatedMessage = useAnuaMemoryStore(
@@ -965,6 +1010,9 @@ const AnuaChatContent: React.FC<{
   const hasSeenResonateTooltip = useAnuaMemoryStore(
     (s) => s.hasSeenResonateTooltip,
   )
+  const latestAnuaMessageId = [...messages]
+    .reverse()
+    .find((message) => !message.isUser)?.id
   const setHasSeenResonateTooltip = useAnuaMemoryStore(
     (s) => s.setHasSeenResonateTooltip,
   )
@@ -978,25 +1026,6 @@ const AnuaChatContent: React.FC<{
     const t = setTimeout(() => setNoteSentForMessageId(null), 2000)
     return () => clearTimeout(t)
   }, [noteSentForMessageId])
-
-  // On Android inside Modal, use known-good height from onShow when available; else Dimensions.get("window") so scroll area has valid height.
-  const effectiveHeight =
-    Platform.OS === "android"
-      ? (androidModalHeight ?? Dimensions.get("window").height)
-      : (windowHeight ?? Dimensions.get("window").height)
-  // Min height so scroll content fills the viewport and messages anchor at bottom (like Tribe Chat)
-  const headerH = 88
-  const voiceToggleH = isElevenLabsAvailable() ? 52 : 0
-  const inputRowH = 100
-  const scrollMinHeight = Math.max(
-    200,
-    (effectiveHeight ?? 0) -
-      insets.top -
-      insets.bottom -
-      headerH -
-      voiceToggleH -
-      inputRowH,
-  )
 
   return (
     <SafeAreaView
@@ -1068,16 +1097,16 @@ const AnuaChatContent: React.FC<{
             </View>
             <View style={{ flex: 1 }}>
               <AppText
-                font="instrument-bold"
+                font="cormorant-italic"
                 size="xl"
-                style={{ color: "#ffffff" }}
+                style={{ color: "rgba(255, 248, 235, 0.92)" }}
               >
                 Talk to Anua
               </AppText>
               <AppText
-                font="instrument-regular"
+                font="cormorant-regular"
                 size="sm"
-                style={{ color: "#9ca3af", marginTop: 4 }}
+                style={{ color: "rgba(232, 213, 183, 0.55)", marginTop: 4 }}
               >
                 Your guide for the journey
                 {__DEV__ && Platform.OS === "android" ? " · Android" : ""}
@@ -1195,7 +1224,7 @@ const AnuaChatContent: React.FC<{
           </View>
         )}
 
-        {/* Messages: Chat starts at bottom above input (like Tribe Chat); quote at top; scroll up for older. Android: zIndex/elevation 0 so header stays on top for touch. */}
+        {/* Chronological feed: oldest at top, Anua streams downward, newest at bottom. */}
         <ScrollView
           ref={scrollViewRef as React.RefObject<ScrollView>}
           style={{
@@ -1203,71 +1232,50 @@ const AnuaChatContent: React.FC<{
             ...(Platform.OS === "android" && { zIndex: 0, elevation: 0 }),
           }}
           contentContainerStyle={{
-            flexGrow: 1,
-            minHeight: scrollMinHeight,
-            paddingHorizontal: 8,
-            paddingBottom: 20,
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: 28,
           }}
-          onContentSizeChange={() =>
-            scrollViewRef.current?.scrollToEnd({ animated: true })
-          }
+          keyboardShouldPersistTaps="handled"
+          onScroll={(event) => {
+            const { contentOffset, contentSize, layoutMeasurement } =
+              event.nativeEvent
+            stickToBottomRef.current =
+              contentOffset.y + layoutMeasurement.height >=
+              contentSize.height - 80
+          }}
+          scrollEventThrottle={16}
+          onContentSizeChange={() => {
+            if (stickToBottomRef.current) {
+              scrollViewRef.current?.scrollToEnd({ animated: false })
+            }
+          }}
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ flex: 1, minHeight: scrollMinHeight }}>
-            {/* Anua's post of the day — same bubble as her messages, a little larger; chakra-focused, her voice */}
             {dailyTransmission && (
               <View
                 style={[
                   chatStyles.messageRow,
                   chatStyles.messageRowLeft,
-                  { marginBottom: 24, paddingTop: 8 },
+                  { marginBottom: 8, paddingTop: 4 },
                 ]}
               >
-                <View
-                  style={[
-                    chatStyles.messageBubble,
-                    chatStyles.messageBubbleLeft,
-                    {
-                      maxWidth: "92%",
-                      paddingVertical: 16,
-                      paddingHorizontal: 18,
-                    },
-                  ]}
-                >
-                  <LinearGradient
-                    colors={[
-                      "rgba(212, 165, 116, 0.95)",
-                      "rgba(180, 140, 100, 0.9)",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={chatStyles.senderNameWrap}
-                  >
-                    <AppText
-                      font="instrument-semibold"
-                      size="xs"
-                      style={chatStyles.senderText}
-                    >
-                      Anua · Post of the day
-                    </AppText>
-                  </LinearGradient>
+                <View style={chatStyles.anuaColumn}>
                   <AppText
-                    font="instrument-regular"
-                    size="base"
-                    style={{
-                      color: "rgba(255, 255, 255, 0.98)",
-                      lineHeight: 26,
-                      marginTop: 2,
-                    }}
+                    font="cormorant-italic"
+                    size="sm"
+                    style={chatStyles.senderText}
                   >
-                    {dailyTransmission}
+                    Anua · a note for today
                   </AppText>
+                  <AnuaMessageText
+                    text={dailyTransmission}
+                    style={chatStyles.anuaBody}
+                    tone="anua"
+                  />
                 </View>
               </View>
             )}
-
-            {/* Spacer: pushes messages to bottom so first/newest is right above input */}
-            <View style={{ flex: 1, minHeight: 24 }} />
 
             {messages.map((message) => (
               <View
@@ -1279,59 +1287,40 @@ const AnuaChatContent: React.FC<{
                     : chatStyles.messageRowLeft,
                 ]}
               >
-                <View
-                  style={[
-                    chatStyles.messageBubble,
-                    message.isUser
-                      ? chatStyles.messageBubbleRight
-                      : chatStyles.messageBubbleLeft,
-                  ]}
-                >
-                  <LinearGradient
-                    colors={
-                      message.isUser
-                        ? [
-                            "rgba(135, 174, 115, 0.95)",
-                            "rgba(107, 142, 90, 0.9)",
-                          ]
-                        : [
-                            "rgba(212, 165, 116, 0.95)",
-                            "rgba(180, 140, 100, 0.9)",
-                          ]
-                    }
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={chatStyles.senderNameWrap}
-                  >
+                {message.isUser ? (
+                  <View style={chatStyles.messageBubbleRight}>
                     <AppText
-                      font="instrument-semibold"
-                      size="xs"
+                      font="instrument-regular"
+                      size="sm"
+                      style={chatStyles.userBody}
+                    >
+                      {message.text}
+                    </AppText>
+                  </View>
+                ) : (
+                  <View style={chatStyles.anuaColumn}>
+                    <AppText
+                      font="cormorant-italic"
+                      size="sm"
                       style={chatStyles.senderText}
                     >
-                      {message.isUser ? "You" : "Anua"}
+                      Anua
+                      {message.isStreaming ? "  ·" : ""}
+                      {isAnuaSpeaking &&
+                      !message.isStreaming &&
+                      message.id === latestAnuaMessageId
+                        ? "  · speaking"
+                        : ""}
                     </AppText>
-                  </LinearGradient>
-                  <AppText
-                    font="instrument-regular"
-                    size="sm"
-                    style={chatStyles.messageText}
-                  >
-                    {message.text}
-                  </AppText>
-                  <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={{
-                      marginTop: 6,
-                      fontSize: 10,
-                      color: message.isUser
-                        ? "rgba(168, 201, 154, 0.9)"
-                        : "rgba(212, 197, 169, 0.8)",
-                    }}
-                  >
-                    {formatTime(message.timestamp)}
-                  </AppText>
-                  {!message.isUser && (
+                    {(message.text.length > 0 || message.isStreaming) && (
+                      <AnuaMessageText
+                        text={message.text}
+                        style={chatStyles.anuaBody}
+                        isStreaming={message.isStreaming}
+                        tone="anua"
+                      />
+                    )}
+                    {!message.isStreaming && message.text.length > 0 && (
                     <View
                       style={{
                         flexDirection: "row",
@@ -1378,18 +1367,17 @@ const AnuaChatContent: React.FC<{
                             size={20}
                             color={
                               hasResonatedWithMessage(message.id)
-                                ? "rgba(212, 165, 116, 0.95)"
-                                : "rgba(212, 197, 169, 0.8)"
+                                ? "rgba(212, 165, 116, 0.85)"
+                                : "rgba(212, 197, 169, 0.55)"
                             }
                           />
                         </Pressable>
                         {hasResonatedWithMessage(message.id) && (
                           <AppText
-                            font="instrument-regular"
+                            font="cormorant-italic"
                             size="xs"
                             style={{
-                              color: "rgba(212, 197, 169, 0.95)",
-                              fontStyle: "italic",
+                              color: "rgba(212, 197, 169, 0.8)",
                             }}
                           >
                             This resonates
@@ -1417,11 +1405,10 @@ const AnuaChatContent: React.FC<{
                           style={{ paddingVertical: 4, paddingHorizontal: 2 }}
                         >
                           <AppText
-                            font="instrument-regular"
+                            font="cormorant-italic"
                             size="xs"
                             style={{
-                              color: "rgba(168, 201, 154, 0.9)",
-                              textDecorationLine: "underline",
+                              color: "rgba(212, 197, 169, 0.7)",
                             }}
                           >
                             Send to notes
@@ -1429,112 +1416,45 @@ const AnuaChatContent: React.FC<{
                         </Pressable>
                         {noteSentForMessageId === message.id && (
                           <AppText
-                            font="instrument-regular"
+                            font="cormorant-italic"
                             size="xs"
-                            style={{ color: "rgba(135, 174, 115, 0.95)" }}
+                            style={{ color: "rgba(168, 201, 154, 0.85)" }}
                           >
                             Added to Notes
                           </AppText>
                         )}
                       </View>
                     </View>
-                  )}
-                </View>
+                    )}
+                  </View>
+                )}
               </View>
             ))}
 
-            {isAnuaSpeaking && (
-              <View style={[chatStyles.messageRow, chatStyles.messageRowLeft]}>
-                <View
-                  style={[
-                    chatStyles.messageBubble,
-                    chatStyles.messageBubbleLeft,
-                  ]}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                  >
-                    <ActivityIndicator
-                      size="small"
-                      color="rgba(212, 165, 116, 0.9)"
-                    />
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={chatStyles.messageText}
-                    >
-                      Anua is speaking...
-                    </AppText>
-                  </View>
+            {isLoading &&
+              !messages.some((message) => message.isStreaming) && (
+                <View style={[chatStyles.messageRow, chatStyles.messageRowLeft]}>
                   <AppText
-                    font="instrument-regular"
-                    size="xs"
-                    style={{ marginTop: 6, color: "rgba(212, 197, 169, 0.8)" }}
+                    font="cormorant-italic"
+                    size="sm"
+                    style={{ color: "rgba(232, 213, 183, 0.55)" }}
                   >
-                    Listen with your heart
+                    Anua is gathering presence…
                   </AppText>
                 </View>
-              </View>
-            )}
-
-            {isLoading && !isAnuaSpeaking && (
-              <View style={[chatStyles.messageRow, chatStyles.messageRowLeft]}>
-                <View
-                  style={[
-                    chatStyles.messageBubble,
-                    chatStyles.messageBubbleLeft,
-                  ]}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                  >
-                    <ActivityIndicator
-                      size="small"
-                      color="rgba(212, 165, 116, 0.9)"
-                    />
-                    <AppText
-                      font="instrument-regular"
-                      size="sm"
-                      style={chatStyles.messageText}
-                    >
-                      Anua is gathering presence...
-                    </AppText>
-                  </View>
-                </View>
-              </View>
-            )}
+              )}
 
             {error && (
               <View style={[chatStyles.messageRow, chatStyles.messageRowLeft]}>
-                <View
-                  style={[
-                    chatStyles.messageBubble,
-                    chatStyles.messageBubbleLeft,
-                    {
-                      borderColor: "rgba(220, 38, 38, 0.4)",
-                      backgroundColor: "rgba(127, 29, 29, 0.25)",
-                    },
-                  ]}
+                <AppText
+                  font="cormorant-italic"
+                  size="sm"
+                  style={{ color: "rgba(248, 180, 180, 0.9)" }}
                 >
-                  <AppText
-                    font="instrument-regular"
-                    size="sm"
-                    style={{ color: "rgba(248, 113, 113, 0.98)" }}
-                  >
-                    {error}
-                  </AppText>
-                </View>
+                  {error}
+                </AppText>
               </View>
             )}
-          </View>
         </ScrollView>
 
         {/* Input Section - Tribe-style for consistent chat UX */}

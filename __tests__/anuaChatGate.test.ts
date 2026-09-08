@@ -12,7 +12,8 @@ describe('Anua chat gate', () => {
         )
         expect(gemini).toContain('GoogleGenerativeAI')
         expect(gemini).toContain('gemini-3.6-flash')
-        expect(gemini).not.toContain('GEMINI_MODEL = "gemini-2.5-pro"')
+        expect(gemini).toContain('generateContentStream')
+        expect(gemini).toContain('canUseGeminiStreaming')
         expect(gemini).toContain('permission')
         const menu = fs.readFileSync(
             path.join(

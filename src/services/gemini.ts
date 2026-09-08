@@ -24,6 +24,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 import Constants from "expo-constants"
 import * as FileSystem from "expo-file-system"
 import { speakAsAnua, isElevenLabsAvailable } from "./elevenlabs"
+import { normalizeAnuaEmphasis } from "@/utils/anuaMessageMarkup"
 import {
   checkRateLimit,
   waitForRateLimit,
@@ -31,6 +32,7 @@ import {
 } from "@/src/utils/rateLimiter"
 import {
   robustApiCall,
+  withTimeout,
   API_TIMEOUTS,
   requestDeduplicator,
 } from "@/src/utils/apiHelpers"
@@ -222,6 +224,13 @@ YOUR VOICE - REGULATION:
 - Speak from a grounded, measured place; never rush or sound over-excited
 - You are a steady, heart-minded guide—your tone should reflect that
 - Even when content is uplifting, stay regulated and clear, not heightened or frantic
+
+HOW YOU WRITE ON SCREEN (CRITICAL — the human reads this in chat):
+- Never use asterisks as decoration or shouting. Do not write ***word***, wrap a sentence in stars, or use *** as a divider.
+- Do not use markdown headings or star-bullet lists.
+- For a gentle lift, wrap a short phrase in single asterisks so it can display as italics: *this way*.
+- For a rare, true key phrase, wrap in double asterisks so it can display as bold: **this way**. Use bold at most once or twice in a reply.
+- Prefer the music of the sentence over typographic shouting. Stay conversational, intimate, and easy to read.
 
 CONVERSATION OVER QUESTIONS (CRITICAL):
 - You are a master of engaging conversation. Your power is listening and meeting them where they are—in the now, in the mind and ego, in the outward—then gently leading toward energetic awareness and chakras when the moment serves.
@@ -640,12 +649,78 @@ Remember: You are not just providing information—you are facilitating a transf
  * @param currentChakraContext - Optional context about the current day/chakra the student is on
  * @returns The generated response from Anua
  */
+function chunkText(chunk: { text?: () => string }): string {
+  try {
+    return chunk.text?.() ?? ""
+  } catch {
+    return ""
+  }
+}
+
+function canUseGeminiStreaming(): boolean {
+  return (
+    typeof ReadableStream !== "undefined" &&
+    typeof TextDecoderStream !== "undefined"
+  )
+}
+
+async function streamAnuaPrompt(
+  request: string | Array<string | { inlineData?: { data: string; mimeType: string } }>,
+  options?: {
+    temperature?: number
+    maxTokens?: number
+    onChunk?: (partialText: string) => void
+    isCancelled?: () => boolean
+  },
+): Promise<string> {
+  return tryWithApiKeys(async (apiKey: string) => {
+    const genAIInstance = new GoogleGenerativeAI(apiKey)
+    const modelInstance = genAIInstance.getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: getAnuaSystemInstruction(),
+      generationConfig: {
+        temperature: options?.temperature ?? 0.9,
+        maxOutputTokens: options?.maxTokens ?? 500,
+      },
+    })
+
+    const result = await withTimeout(
+      modelInstance.generateContentStream(
+        request as Parameters<typeof modelInstance.generateContentStream>[0],
+      ),
+      API_TIMEOUTS.gemini,
+      "Anua stream timeout",
+    )
+
+    let accumulated = ""
+    let lastEmit = 0
+    const deadline = Date.now() + API_TIMEOUTS.gemini * 2
+    for await (const chunk of result.stream) {
+      if (options?.isCancelled?.() || Date.now() > deadline) break
+      const piece = chunkText(chunk)
+      if (!piece) continue
+      accumulated += piece
+      const now = Date.now()
+      if (now - lastEmit >= 32) {
+        lastEmit = now
+        options?.onChunk?.(accumulated)
+      }
+    }
+    if (!options?.isCancelled?.()) {
+      options?.onChunk?.(accumulated)
+    }
+    return accumulated
+  })
+}
+
 export const askAnua = async (
   prompt: string,
   options?: {
     temperature?: number
     maxTokens?: number
     enableVoice?: boolean
+    onChunk?: (partialText: string) => void
+    isCancelled?: () => boolean
   },
   currentChakraContext?: {
     currentDay?: number // 0-6 (Monday-Sunday)
@@ -764,45 +839,73 @@ Mention these when they serve the teaching - not every response.`
     }
 
     // Generate response with multiple API keys (rotation/fallback)
-    const response = await tryWithApiKeys(async (apiKey: string) => {
-      // Create new model instance with this API key
-      const genAIInstance = new GoogleGenerativeAI(apiKey)
-      const modelInstance = genAIInstance.getGenerativeModel({
-        model: GEMINI_MODEL,
-        systemInstruction: getAnuaSystemInstruction(),
-      })
-
-      // Make API call with timeout and retry protection
-      return await robustApiCall(
-        async () => {
-          const result = await modelInstance.generateContent(contextualPrompt)
-          return await result.response
-        },
-        API_TIMEOUTS.gemini,
-        {
-          maxRetries: 2,
-          retryDelay: 1000,
-          retryableErrors: ["Network error", "timeout", "ECONNRESET"],
-        },
-        {
-          service: "gemini",
-          operation: "askAnua",
-          promptLength: prompt.length,
-          hasContext: !!currentChakraContext,
-        },
-      )
-    })
-
-    // Check for blocked content or errors in response
-    if (!response) {
-      const error = new Error(
-        "Anua received an empty response from the AI service.",
-      )
-      captureException(error, { service: "gemini", operation: "askAnua" })
-      throw error
+    let rawText = ""
+    const streamingEnabled =
+      !!options?.onChunk &&
+      canUseGeminiStreaming() &&
+      !options.isCancelled?.()
+    if (streamingEnabled) {
+      try {
+        rawText = await streamAnuaPrompt(contextualPrompt, {
+          temperature: options.temperature,
+          maxTokens: options.maxTokens,
+          onChunk: options.onChunk,
+          isCancelled: options.isCancelled,
+        })
+      } catch (streamError) {
+        if (__DEV__) {
+          console.warn("[Anua] Stream failed, falling back to full response:", streamError)
+        }
+      }
     }
 
-    const text = response.text()
+    if (options?.isCancelled?.()) {
+      return rawText ? normalizeAnuaEmphasis(rawText) : ""
+    }
+
+    if (!rawText.trim()) {
+      const response = await tryWithApiKeys(async (apiKey: string) => {
+        // Create new model instance with this API key
+        const genAIInstance = new GoogleGenerativeAI(apiKey)
+        const modelInstance = genAIInstance.getGenerativeModel({
+          model: GEMINI_MODEL,
+          systemInstruction: getAnuaSystemInstruction(),
+        })
+
+        // Make API call with timeout and retry protection
+        return await robustApiCall(
+          async () => {
+            const result = await modelInstance.generateContent(contextualPrompt)
+            return await result.response
+          },
+          API_TIMEOUTS.gemini,
+          {
+            maxRetries: 2,
+            retryDelay: 1000,
+            retryableErrors: ["Network error", "timeout", "ECONNRESET"],
+          },
+          {
+            service: "gemini",
+            operation: "askAnua",
+            promptLength: prompt.length,
+            hasContext: !!currentChakraContext,
+          },
+        )
+      })
+
+      if (!response) {
+        const error = new Error(
+          "Anua received an empty response from the AI service.",
+        )
+        captureException(error, { service: "gemini", operation: "askAnua" })
+        throw error
+      }
+
+      rawText = response.text()
+      options?.onChunk?.(rawText)
+    }
+
+    const text = normalizeAnuaEmphasis(rawText)
 
     if (!text || text.trim().length === 0) {
       throw new Error("Anua generated an empty response. Please try again.")
@@ -836,7 +939,7 @@ Mention these when they serve the teaching - not every response.`
         if (__DEV__) {
           console.log("[Anua] Using community cached response due to API error")
         }
-        return communityResponse
+        return normalizeAnuaEmphasis(communityResponse)
       }
 
       // Then try built-in cache
@@ -849,7 +952,7 @@ Mention these when they serve the teaching - not every response.`
         if (__DEV__) {
           console.log("[Anua] Using cached response due to API error")
         }
-        return cachedResponse
+        return normalizeAnuaEmphasis(cachedResponse)
       }
 
       // If no cached response, use default for chakra day
@@ -934,6 +1037,10 @@ export const askAnuaWithAudio = async (
       dayNameSanskrit: string
     }
   },
+  stream?: {
+    onChunk?: (partialText: string) => void
+    isCancelled?: () => boolean
+  },
 ): Promise<string> => {
   try {
     if (GEMINI_API_KEYS.length === 0) {
@@ -1016,48 +1123,78 @@ COSMIC CONTEXT: Tropical Sun ${currentChakraContext.cosmicContext.tropicalSunSig
       }`
     }
 
-    const response = await tryWithApiKeys(async (apiKey: string) => {
-      const genAIInstance = new GoogleGenerativeAI(apiKey)
-      const modelInstance = genAIInstance.getGenerativeModel({
-        model: GEMINI_MODEL,
-        systemInstruction: getAnuaSystemInstruction(),
-      })
-
-      return await robustApiCall(
-        async () => {
-          const result = await modelInstance.generateContent([
-            contextualPrompt,
-            audioPart,
-          ])
-          return await result.response
-        },
-        API_TIMEOUTS.gemini,
-        {
-          maxRetries: 2,
-          retryDelay: 1000,
-          retryableErrors: ["Network error", "timeout", "ECONNRESET"],
-        },
-        {
-          service: "gemini",
-          operation: "askAnuaWithAudio",
-          promptLength: contextualPrompt.length,
-          hasContext: !!currentChakraContext,
-        },
-      )
-    })
-
-    if (!response) {
-      const error = new Error(
-        "Anua received an empty response from the AI service.",
-      )
-      captureException(error, {
-        service: "gemini",
-        operation: "askAnuaWithAudio",
-      })
-      throw error
+    let rawText = ""
+    const streamingEnabled =
+      !!stream?.onChunk &&
+      canUseGeminiStreaming() &&
+      !stream.isCancelled?.()
+    if (streamingEnabled) {
+      try {
+        rawText = await streamAnuaPrompt([contextualPrompt, audioPart], {
+          onChunk: stream.onChunk,
+          isCancelled: stream.isCancelled,
+        })
+      } catch (streamError) {
+        if (__DEV__) {
+          console.warn(
+            "[Anua] Audio stream failed, falling back to full response:",
+            streamError,
+          )
+        }
+      }
     }
 
-    const text = response.text()
+    if (stream?.isCancelled?.()) {
+      return rawText ? normalizeAnuaEmphasis(rawText) : ""
+    }
+
+    if (!rawText.trim()) {
+      const response = await tryWithApiKeys(async (apiKey: string) => {
+        const genAIInstance = new GoogleGenerativeAI(apiKey)
+        const modelInstance = genAIInstance.getGenerativeModel({
+          model: GEMINI_MODEL,
+          systemInstruction: getAnuaSystemInstruction(),
+        })
+
+        return await robustApiCall(
+          async () => {
+            const result = await modelInstance.generateContent([
+              contextualPrompt,
+              audioPart,
+            ])
+            return await result.response
+          },
+          API_TIMEOUTS.gemini,
+          {
+            maxRetries: 2,
+            retryDelay: 1000,
+            retryableErrors: ["Network error", "timeout", "ECONNRESET"],
+          },
+          {
+            service: "gemini",
+            operation: "askAnuaWithAudio",
+            promptLength: contextualPrompt.length,
+            hasContext: !!currentChakraContext,
+          },
+        )
+      })
+
+      if (!response) {
+        const error = new Error(
+          "Anua received an empty response from the AI service.",
+        )
+        captureException(error, {
+          service: "gemini",
+          operation: "askAnuaWithAudio",
+        })
+        throw error
+      }
+
+      rawText = response.text()
+      stream?.onChunk?.(rawText)
+    }
+
+    const text = normalizeAnuaEmphasis(rawText)
 
     if (!text || text.trim().length === 0) {
       throw new Error("Anua generated an empty response. Please try again.")
@@ -1152,7 +1289,7 @@ export const startChatWithAnua = (options?: {
 
             const result = await chatInstance.sendMessage(message)
             const response = await result.response
-            const text = response.text()
+            const text = normalizeAnuaEmphasis(response.text())
 
             // Update chat history
             chatHistory.push({ role: "user", parts: [{ text: message }] })

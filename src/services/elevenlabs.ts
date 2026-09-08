@@ -23,6 +23,7 @@ import {
   requestDeduplicator,
 } from "@/src/utils/apiHelpers"
 import { captureException } from "@/src/services/sentry"
+import { stripAnuaMarkup } from "@/utils/anuaMessageMarkup"
 
 /**
  * Get ElevenLabs API Key from environment variables via expo-constants
@@ -137,8 +138,8 @@ export const synthesizeAnuaVoice = async (
       }),
     }
 
-    // Ensure "Anua" is spoken as "Ah new uh" by normalizing before sending to TTS
-    const textForTTS = normalizeAnuaPronunciationForTTS(text)
+    // Speak clean words, not markdown stars; keep Anua as one spoken name.
+    const textForTTS = normalizeAnuaPronunciationForTTS(stripAnuaMarkup(text))
 
     // Use deduplication for identical text requests
     const requestKey = `elevenlabs_${textForTTS.substring(0, 50)}_${voiceSettings.stability}_${voiceSettings.similarity_boost}`

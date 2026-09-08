@@ -1,7 +1,7 @@
 # Android release position — 1.2.3 (43)
 
 **Saved:** 2026-09-08  
-**Status:** LOCAL AAB — Play production cut matching iOS 1.2.3 (45)
+**Status:** IN REVIEW — Play 1.2.3 (43). Next public cut is 1.2.4 (44).
 
 Marketing **1.2.3**. Native **versionCode 43**. Play consumed 36–41. **42** was reserved for the 1.2.1 Play cut that was never built; this train uses **43** so the Play number is unambiguously 1.2.3.
 

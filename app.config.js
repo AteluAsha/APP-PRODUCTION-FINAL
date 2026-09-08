@@ -34,7 +34,7 @@ module.exports = {
     // Android app_name via withLauncherDisplayName — both "Awakening Soul".
     name: "Awakening Soul",
     slug: "soul-school",
-    version: "1.2.3",
+    version: "1.2.4",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
     // Native shield: golden "7" load art (small, centered). JS splash uses SoulSchool_HERO_Logo. Run prebuild --clean after change.
@@ -82,9 +82,22 @@ module.exports = {
         AppStoreID: "6760920862",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // iOS 1.2.3 (45): paid restore after reinstall, scholarship same-phone restore,
-      // cancelled sub returns to soft paywall. Play cut is 1.2.3 / versionCode 43.
-      buildNumber: "45",
+      // iOS 1.2.4 (46): Anua streaming chat + Device ID privacy manifest.
+      // Follows 1.2.3 (45) already on App Store Connect.
+      buildNumber: "46",
+      privacyManifests: {
+        NSPrivacyTracking: false,
+        NSPrivacyCollectedDataTypes: [
+          {
+            NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypeDeviceID",
+            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality",
+            ],
+          },
+        ],
+      },
     },
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android
@@ -105,10 +118,8 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
-      // User-facing 1.2.3. Production AAB versionCode 43 (appVersionSource: local).
-      // Play consumed 36–41. 42 was reserved for 1.2.1 but that AAB was never
-      // produced; this 1.2.3 cut uses 43 so the Play number is unambiguous.
-      versionCode: 43,
+      // User-facing 1.2.4. Production AAB versionCode 44 (appVersionSource: local).
+      versionCode: 44,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
         "RECORD_AUDIO",
