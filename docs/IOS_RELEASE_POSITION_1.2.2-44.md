@@ -1,7 +1,7 @@
 # iOS release position — 1.2.2 (44)
 
 **Saved:** 2026-09-05  
-**Status:** BUILD + SUBMIT IN FLIGHT — 1.2.2 (44), Xcode 26.2
+**Status:** UPLOADED TO APP STORE CONNECT — 1.2.2 (44), Xcode 26.2
 
 Apple rejected **1.2.1 (43)** (errors 90062 / 90186): marketing version 1.2.1 is already approved and the train is closed. New train **1.2.2**, buildNumber **44**. Android Play stays **1.2.1 / versionCode 42**.
 

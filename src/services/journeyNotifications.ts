@@ -1,10 +1,15 @@
 /**
  * Soul Journey Nudges — local notifications (iOS + Android) via expo-notifications.
  *
- * Production schedule:
- *   • Sunday 20:00 — earth-cycle reminder (eligible users, even before journey start)
- *   • Wednesday 10:00 — energy-body check-in (only after journeyStarted)
- *   • Daily 09:00 Mon–Sun — optional alignment nudges (dailyAlignmentRemindersEnabled)
+ * Production schedule (local only — no server, safe at high traffic):
+ *   • Daily alignment ON: rolling 7-day DATE nudges. Noon = today's chakra.
+ *     20:00 = tomorrow's chakra (night before). Skipped for any day the app opens.
+ *     Max 14 pending. Sunday weekly / Wednesday weekly are not stacked on top.
+ *   • Daily alignment OFF: Sunday 20:00 course/Monday Root preview, and
+ *     Wednesday 10:00 solar check-in after journeyStarted.
+ *
+ * Permission: never required to use the app. Opt out in Profile / Root day /
+ * system settings. No marketing copy. No badges.
  *
  * Legacy ids are cancelled on every sync.
  */
@@ -12,12 +17,16 @@
 import { Platform } from 'react-native'
 import Constants, { ExecutionEnvironment } from 'expo-constants'
 import {
-  LOVE_BALMS,
   SUNDAY_EARTH_CYCLE_COPY,
   WEDNESDAY_ENERGY_BODY_COPY,
-  type LoveBalmDay,
+  copyForDailySlot,
 } from '@/constants/journeyNotificationCopy'
 import { useChakraJourneyStore } from '@/hooks/useChakraJourneyStore'
+import {
+  COURSE_DAILY_PREFIX,
+  WEEK1_ID_PREFIX,
+  buildWeek1ReminderSlots,
+} from '@/src/utils/week1JourneyReminders'
 
 /** Persisted user preference; missing / undefined treated as on (backward compatible). */
 export function areSoulJourneyNudgesEnabled(): boolean {
@@ -68,21 +77,8 @@ export const SOUL_JOURNEY_CHANNEL_ID = 'soul-journey-nudges'
 
 const SUNDAY_HEART_REMINDER_ID = 'heart-reminder-sunday'
 const WEDNESDAY_HEART_REMINDER_ID = 'heart-reminder-wednesday'
+/** Legacy repeating 9 AM ids from older builds. */
 const DAILY_ALIGN_PREFIX = 'daily-align-'
-
-const DAILY_ALIGN_SCHEDULE: {
-  idSuffix: string
-  loveBalmDay: LoveBalmDay
-  expoWeekday: number
-}[] = [
-  { idSuffix: 'mon', loveBalmDay: 1, expoWeekday: 2 },
-  { idSuffix: 'tue', loveBalmDay: 2, expoWeekday: 3 },
-  { idSuffix: 'wed', loveBalmDay: 3, expoWeekday: 4 },
-  { idSuffix: 'thu', loveBalmDay: 4, expoWeekday: 5 },
-  { idSuffix: 'fri', loveBalmDay: 5, expoWeekday: 6 },
-  { idSuffix: 'sat', loveBalmDay: 6, expoWeekday: 7 },
-  { idSuffix: 'sun', loveBalmDay: 7, expoWeekday: 1 },
-]
 
 /** Legacy ids — cancelled on sync so older builds stop firing extra nudges. */
 const LEGACY_PREFIXES = [
@@ -158,8 +154,9 @@ async function ensureAndroidChannel(): Promise<void> {
   if (!Notifications || Platform.OS !== 'android') return
   await Notifications.setNotificationChannelAsync(SOUL_JOURNEY_CHANNEL_ID, {
     name: 'Soul Journey Nudges',
-    description: 'Gentle, sparse reminders along your Awakening Soul path',
-    importance: Notifications.AndroidImportance.LOW,
+    description:
+      'Chakra check-ins when you have not opened the app. Turn off anytime in Profile.',
+    importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 220, 160, 220],
     lightColor: '#9D4EDD',
   })
@@ -219,25 +216,24 @@ async function scheduleDailyAlignmentReminders(): Promise<void> {
   if (!Notifications) return
   const x = androidExtras()
   const triggerExtras = Platform.OS === 'android' ? x : {}
-
-  for (const row of DAILY_ALIGN_SCHEDULE) {
-    const entry = LOVE_BALMS[row.loveBalmDay]
-    const title = entry.affirmations[0] ?? 'Align with today'
-    const body = entry.loveBalms[0] ?? 'A gentle nudge from the heart mind.'
-
+  const slots = buildWeek1ReminderSlots({ now: new Date() })
+  for (const slot of slots) {
+    const copy = copyForDailySlot(slot.kind, slot.fireAt)
     await Notifications.scheduleNotificationAsync({
-      identifier: `${DAILY_ALIGN_PREFIX}${row.idSuffix}`,
+      identifier: slot.id,
       content: {
-        title,
-        body,
-        data: { kind: 'daily-alignment', day: row.idSuffix },
+        title: copy.title,
+        body: copy.body,
+        data: {
+          kind: 'course-daily',
+          slot: slot.kind,
+          day: slot.dateKey,
+        },
         ...x,
       },
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday: row.expoWeekday,
-        hour: 9,
-        minute: 0,
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: slot.fireAt,
         ...triggerExtras,
       },
     })
@@ -278,21 +274,25 @@ export async function syncWeeklyHeartReminders(): Promise<void> {
   await cancelNotificationId(SUNDAY_HEART_REMINDER_ID)
   await cancelNotificationId(WEDNESDAY_HEART_REMINDER_ID)
   await cancelByPrefix(DAILY_ALIGN_PREFIX)
+  await cancelByPrefix(WEEK1_ID_PREFIX)
+  await cancelByPrefix(COURSE_DAILY_PREFIX)
 
   if (!areSoulJourneyNudgesEnabled()) return
   if (!(await hasNotificationPermission())) return
-  if (!shouldReceiveHeartReminders()) return
 
   await ensureAndroidChannel()
+
+  if (isDailyAlignmentEnabled()) {
+    await scheduleDailyAlignmentReminders()
+    return
+  }
+
+  if (!shouldReceiveHeartReminders()) return
   await scheduleWeeklySundayReminder()
 
   const { journeyStarted } = useChakraJourneyStore.getState()
   if (journeyStarted) {
     await scheduleWeeklyWednesdayReminder()
-  }
-
-  if (isDailyAlignmentEnabled()) {
-    await scheduleDailyAlignmentReminders()
   }
 }
 
@@ -312,6 +312,8 @@ export async function cancelAllSoulJourneyScheduled(): Promise<void> {
   await cancelNotificationId(SUNDAY_HEART_REMINDER_ID)
   await cancelNotificationId(WEDNESDAY_HEART_REMINDER_ID)
   await cancelByPrefix(DAILY_ALIGN_PREFIX)
+  await cancelByPrefix(WEEK1_ID_PREFIX)
+  await cancelByPrefix(COURSE_DAILY_PREFIX)
 }
 
 export async function onJourneyWeekStarted(): Promise<void> {

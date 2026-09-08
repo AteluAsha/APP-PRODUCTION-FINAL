@@ -113,6 +113,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Same-device scholarship restore after uninstall (new Soul ID, same phone)
+    match /scholarship_devices/{deviceId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasAll(['isScholarshipUser', 'scholarshipExpiryDate'])
+                             && request.resource.data.isScholarshipUser is bool
+                             && request.resource.data.scholarshipExpiryDate is string;
+      allow delete: if false;
+    }
+
     // 7 Chakras Community email list – Soul School updates and new offerings (from Account)
     match /soul_school_community_emails/{docId} {
       allow read: if false;

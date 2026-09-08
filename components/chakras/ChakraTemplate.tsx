@@ -50,6 +50,7 @@ import { storage } from "@/src/services/firebase"
 import { preloadFullFilesForChakra } from "@/src/utils/audioPreloadManifest"
 import { DropInButton } from "@/components/chakras/DropInButton"
 import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
+import { DailyAlignmentToggleRow } from "@/components/chakras/DailyAlignmentToggleRow"
 // Social Sanctuary and Anua access handled globally by PermanentMenuBar
 import { getChakraIndex } from "@/utils/chakraMapping"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
@@ -313,6 +314,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                 embodimentCacheKey={getEmbodimentAudioId(chakra)}
                 onPlayTriggered={triggerBackupCacheForDay}
               />
+              {chakra === Chakra.ROOT ? <DailyAlignmentToggleRow /> : null}
             </Animated.View>
             <Animated.View
               entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)

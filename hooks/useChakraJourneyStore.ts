@@ -132,7 +132,10 @@ interface ChakraJourneyState {
   soulJourneyNudgesEnabled: boolean
   setSoulJourneyNudgesEnabled: (value: boolean) => void
 
-  /** Optional daily 9 AM alignment nudges (Mon–Sun), layered on weekly heart reminders. */
+  /**
+   * Daily alignment: rolling noon + night-before DATE nudges, skipped if the app
+   * is opened that day. New installs default on. Existing persisted values are kept.
+   */
   dailyAlignmentRemindersEnabled: boolean
   setDailyAlignmentRemindersEnabled: (value: boolean) => void
 
@@ -160,6 +163,10 @@ interface ChakraJourneyState {
   checkAndSetCompletion: () => void
   completeTrialCourse: () => void
   grantLifetimeAccess: (method: "paid" | "scholarship") => void
+  /** Re-apply an existing scholarship expiry (uninstall restore). Does not reset the 30-day clock. */
+  restoreScholarshipAccess: (expiryIso: string) => boolean
+  /** When RevenueCat confirms the paid subscription is inactive, return to the soft paywall. */
+  clearPaidAccessIfSubscriptionInactive: () => void
   checkScholarshipExpiry: () => boolean
   getAccountabilityStats: () => {
     totalDaysParticipated: number
@@ -300,7 +307,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         setSoulJourneyNudgesEnabled: (value: boolean) =>
           set({ soulJourneyNudgesEnabled: value }),
 
-        dailyAlignmentRemindersEnabled: false,
+        dailyAlignmentRemindersEnabled: true,
         setDailyAlignmentRemindersEnabled: (value: boolean) =>
           set({ dailyAlignmentRemindersEnabled: value }),
 
@@ -647,7 +654,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
               paymentStatus: method,
               scholarshipExpiryDate: expiryIso,
             })
-            // Fire-and-forget: persist to Firestore for cross-device/session
+            // Fire-and-forget: persist to Firestore for same-device reinstall
             getUserId()
               .then((id) => updateUserScholarshipStatus(id, expiryIso))
               .catch(() => {})
@@ -659,6 +666,33 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
               scholarshipExpiryDate: null, // Clear any previous scholarship expiry
             })
           }
+        },
+
+        restoreScholarshipAccess: (expiryIso: string) => {
+          const expiry = new Date(expiryIso)
+          if (Number.isNaN(expiry.getTime()) || expiry <= new Date()) {
+            return false
+          }
+          const current = get()
+          if (current.hasLifetimeAccess && current.paymentStatus === "paid") {
+            return false
+          }
+          set({
+            hasLifetimeAccess: true,
+            paymentStatus: "scholarship",
+            scholarshipExpiryDate: expiryIso,
+          })
+          return true
+        },
+
+        clearPaidAccessIfSubscriptionInactive: () => {
+          const current = get()
+          if (current.paymentStatus !== "paid") return
+          set({
+            hasLifetimeAccess: false,
+            paymentStatus: "pending",
+            scholarshipExpiryDate: null,
+          })
         },
 
         // Check and revoke expired scholarships
@@ -865,6 +899,11 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
                 paymentStatus: "pending",
                 scholarshipExpiryDate: null,
               })
+            } else {
+              const expiryIso = state.scholarshipExpiryDate
+              getUserId()
+                .then((id) => updateUserScholarshipStatus(id, expiryIso))
+                .catch(() => {})
             }
           }
           // REMOVED: Migration that auto-set hasCompletedHeroOnboarding from courseStartDate.

@@ -921,8 +921,16 @@ const AudioPlayer = () => {
           lastPlaybackPositionMsRef.current = clamped
           setPosition(clamped)
           setPositionMs(clamped)
-          setPlaying(false)
-          setIsPlaying(false)
+          if (abandoned()) {
+            await silenceAllAudio()
+            return
+          }
+          await sound.playAsync()
+          if (Platform.OS === "android") {
+            await sound.setVolumeAsync(1)
+          }
+          setIsPlaying(true)
+          setPlaying(true)
           notifyVaultPlaying()
         } else {
           if (abandoned()) {

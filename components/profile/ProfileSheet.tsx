@@ -33,7 +33,7 @@ import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import { useShallow } from "zustand/react/shallow"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
 import { getUserId, requestNewUserId } from "@/src/services/userId"
-import { linkUserId, ENTITLEMENT_ID, KNOWN_PRODUCT_IDS_FOR_LABEL } from "@/src/services/revenuecat"
+import { linkUserId, ENTITLEMENT_ID, KNOWN_PRODUCT_IDS_FOR_LABEL, syncAccessFromStoreReceipts } from "@/src/services/revenuecat"
 import { uploadProfileImage } from "@/src/services/imageUpload"
 import { updateUserProfile, getUserProfile } from "@/src/services/profileService"
 import { deleteAccountAndClearLocalState } from "@/src/services/deleteAccount"
@@ -138,6 +138,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
   const [isSaving, setIsSaving] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [isRequestingNewId, setIsRequestingNewId] = useState(false)
+  const [isRestoringAccess, setIsRestoringAccess] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const [androidContentVisible, setAndroidContentVisible] = useState(false)
   const [communityEmail, setCommunityEmail] = useState("")
@@ -348,6 +349,34 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
     } finally {
       setIsSubmittingCommunityEmail(false)
     }
+  }
+
+  const handleRestoreAccess = () => {
+    addHapticFeedback(HapticStrength.Light)
+    void (async () => {
+      setIsRestoringAccess(true)
+      try {
+        const restored = await syncAccessFromStoreReceipts()
+        if (restored) {
+          showHealingToast("Your sanctuary access is restored.")
+        } else {
+          Alert.alert(
+            "No purchases found",
+            Platform.OS === "android"
+              ? "If you bought on another device, sign in with the same Google account and try again. Scholarships restore on the same phone."
+              : "If you bought on another device, sign in with the same Apple ID and try again. Scholarships restore on the same phone.",
+          )
+        }
+      } catch (e) {
+        if (__DEV__) console.warn("[ProfileSheet] restore access:", e)
+        Alert.alert(
+          "Restore failed",
+          "Please check your connection and try again.",
+        )
+      } finally {
+        setIsRestoringAccess(false)
+      }
+    })()
   }
 
   const handleRequestNewId = () => {
@@ -998,8 +1027,9 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                       size="xs"
                       style={styles.menuRowSubtextMuted}
                     >
-                      Optional 9 AM nudges to check in with your energy body.
-                      Requires journey reminders above.
+                      Noon and night-before check-ins when you have not opened
+                      the app that day. Requires journey reminders above. Also
+                      on Root day.
                     </AppText>
                   </View>
                   <Switch
@@ -1198,6 +1228,48 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                       </AppText>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+                  </Pressable>
+                ) : null}
+                {!hasLifetimeAccess ? (
+                  <Pressable
+                    onPress={handleRestoreAccess}
+                    disabled={isRestoringAccess}
+                    style={styles.upgradeRow}
+                    accessibilityLabel="Restore purchases"
+                  >
+                    <Ionicons
+                      name="refresh-outline"
+                      size={20}
+                      color="rgba(232, 201, 140, 0.95)"
+                    />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <AppText
+                        font="instrument-medium"
+                        size="sm"
+                        style={styles.upgradeRowText}
+                      >
+                        Restore Purchases
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={[styles.upgradeRowText, { opacity: 0.8, marginTop: 2 }]}
+                      >
+                        Paid access and same-phone scholarships
+                      </AppText>
+                    </View>
+                    {isRestoringAccess ? (
+                      <ActivityIndicator
+                        size="small"
+                        color="rgba(232, 201, 140, 0.95)"
+                      />
+                    ) : (
+                      <Ionicons
+                        name="chevron-forward"
+                        size={20}
+                        color="rgba(255,255,255,0.4)"
+                      />
+                    )}
                   </Pressable>
                 ) : null}
                 <View style={styles.idBlock}>

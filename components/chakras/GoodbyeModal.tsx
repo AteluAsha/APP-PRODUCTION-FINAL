@@ -16,8 +16,6 @@ import {
   Pressable,
   StyleSheet,
   Platform,
-  Alert,
-  Linking,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Animated, {
@@ -55,9 +53,6 @@ import {
   HERO_AFFIRMATION_LINE_HEIGHT,
   HERO_AFFIRMATION_MAX_LINES,
 } from "@/constants/heroAffirmation"
-import { DailyAlignmentReminderModal } from "@/components/chakras/DailyAlignmentReminderModal"
-import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { activateDailyAlignmentReminders } from "@/src/services/journeyNotifications"
 
 function hexToRgba(hex: string, alpha: number): string {
   const raw = hex.replace("#", "")
@@ -85,17 +80,8 @@ const GoodbyeModal = ({
   const topInset = Math.max(insets.top, 12)
   const bottomInset = Math.max(insets.bottom, 24)
   const [stage, setStage] = useState<"presence" | "goodbye">("presence")
-  const [dailyReminderModalVisible, setDailyReminderModalVisible] =
-    useState(false)
   const goodbyeOpacity = useSharedValue(0)
   const overlayOpacity = useSharedValue(0)
-  const dailyAlignmentEnabled = useChakraJourneyStore(
-    (s) => s.dailyAlignmentRemindersEnabled,
-  )
-  const isRootGoodbye = chakraDay === 0
-  const showDailyReminderOffer =
-    isRootGoodbye && !dailyAlignmentEnabled
-
   const currentChakra =
     chakraDay !== undefined ? getChakraFromDay(chakraDay) : Chakra.ROOT
 
@@ -135,26 +121,6 @@ const GoodbyeModal = ({
       setTimeout(() => {
         goToChakraHubRoot()
       }, 200)
-    })
-  }
-
-  const handleAllowDailyReminders = () => {
-    setDailyReminderModalVisible(false)
-    void activateDailyAlignmentReminders().then((granted) => {
-      if (granted) return
-      Alert.alert(
-        "Allow notifications",
-        "To receive daily alignment reminders, turn on notifications for Awakening Soul in Settings. You can also enable them later in Profile.",
-        [
-          { text: "Not now", style: "cancel" },
-          {
-            text: "Open Settings",
-            onPress: () => {
-              void Linking.openSettings()
-            },
-          },
-        ],
-      )
     })
   }
 
@@ -298,28 +264,6 @@ const GoodbyeModal = ({
               {closingMessage}
             </AppText>
 
-            {showDailyReminderOffer ? (
-              <Pressable
-                onPress={() => {
-                  addHapticFeedback(HapticStrength.Light)
-                  setDailyReminderModalVisible(true)
-                }}
-                style={({ pressed }) => [
-                  styles.dailyReminderLink,
-                  { opacity: pressed ? 0.82 : 1 },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Activate daily reminders to align"
-              >
-                <AppText
-                  font="cormorant-italic"
-                  style={styles.dailyReminderLinkText}
-                >
-                  Activate Daily Reminders to Align
-                </AppText>
-              </Pressable>
-            ) : null}
-
             <View style={styles.actions}>
               <Pressable
                 onPress={handleClaimCard}
@@ -404,11 +348,6 @@ const GoodbyeModal = ({
         />
       </View>
       {stageView}
-      <DailyAlignmentReminderModal
-        visible={dailyReminderModalVisible}
-        onAllow={handleAllowDailyReminders}
-        onNotNow={() => setDailyReminderModalVisible(false)}
-      />
     </Animated.View>
   )
 }
@@ -453,19 +392,6 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     marginBottom: 20,
     maxWidth: 360,
-  },
-  dailyReminderLink: {
-    marginBottom: 22,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  dailyReminderLinkText: {
-    textAlign: "center",
-    color: "rgba(232, 201, 140, 0.82)",
-    fontSize: 15,
-    lineHeight: 22,
-    letterSpacing: 0.3,
-    textDecorationLine: "underline",
   },
   actions: {
     width: "100%",

@@ -34,7 +34,7 @@ module.exports = {
     // Android app_name via withLauncherDisplayName — both "Awakening Soul".
     name: "Awakening Soul",
     slug: "soul-school",
-    version: "1.2.2",
+    version: "1.2.3",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
     // Native shield: golden "7" load art (small, centered). JS splash uses SoulSchool_HERO_Logo. Run prebuild --clean after change.
@@ -82,9 +82,9 @@ module.exports = {
         AppStoreID: "6760920862",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // iOS hotfix 1.2.2 (44): Wellness Gate enter CTA. 1.2.1 train is closed (approved).
-      // Android Play stays 1.2.1 / versionCode 42 until the next Play cut.
-      buildNumber: "44",
+      // iOS 1.2.3 (45): paid restore after reinstall, scholarship same-phone restore,
+      // cancelled sub returns to soft paywall. Android Play stays 1.2.1 / versionCode 42.
+      buildNumber: "45",
     },
     android: {
       jsEngine: "hermes", // Explicitly set Hermes for Android

@@ -2,22 +2,67 @@
 import fs from 'fs'
 import path from 'path'
 import {
+  COURSE_CHAKRA_NUDGES,
   SUNDAY_EARTH_CYCLE_COPY,
   WEDNESDAY_ENERGY_BODY_COPY,
+  copyForDailySlot,
 } from '@/constants/journeyNotificationCopy'
 
 describe('weekly heart reminders', () => {
-  it('uses Sunday earth-cycle copy about Monday renewal', () => {
-    expect(SUNDAY_EARTH_CYCLE_COPY.title).toMatch(/Earth/i)
+  it('uses Sunday night copy as the course / Monday Root preview', () => {
+    expect(SUNDAY_EARTH_CYCLE_COPY.title).toMatch(/Root/i)
     expect(SUNDAY_EARTH_CYCLE_COPY.body).toMatch(/Monday/i)
+    expect(SUNDAY_EARTH_CYCLE_COPY.body).toMatch(/seven days/i)
+    expect(SUNDAY_EARTH_CYCLE_COPY).toEqual({
+      title: COURSE_CHAKRA_NUDGES[1].nightBeforeTitle,
+      body: COURSE_CHAKRA_NUDGES[1].nightBeforeBody,
+    })
   })
 
-  it('uses Wednesday energy-body copy for started journeys', () => {
-    expect(WEDNESDAY_ENERGY_BODY_COPY.title).toMatch(/energy body/i)
+  it('uses Wednesday solar-plexus copy when daily alignment is off', () => {
+    expect(WEDNESDAY_ENERGY_BODY_COPY.title).toMatch(/fire/i)
+    expect(WEDNESDAY_ENERGY_BODY_COPY.body).toMatch(/Solar plexus/i)
     expect(WEDNESDAY_ENERGY_BODY_COPY.body.length).toBeGreaterThan(20)
   })
 
-  it('schedules only Sunday + conditional Wednesday + optional daily', () => {
+  it('aligns noon to today and evening to tomorrow, with Sunday night as the course', () => {
+    const sundayEve = copyForDailySlot(
+      'evening',
+      new Date('2026-09-13T20:00:00'),
+    )
+    expect(sundayEve.title).toBe(COURSE_CHAKRA_NUDGES[1].nightBeforeTitle)
+    expect(sundayEve.body).toMatch(/seven days/i)
+
+    const mondayNoon = copyForDailySlot(
+      'noon',
+      new Date('2026-09-14T12:00:00'),
+    )
+    expect(mondayNoon.title).toBe(COURSE_CHAKRA_NUDGES[1].todayTitle)
+    expect(mondayNoon.body).toMatch(/Root/i)
+
+    const mondayEve = copyForDailySlot(
+      'evening',
+      new Date('2026-09-14T20:00:00'),
+    )
+    expect(mondayEve.title).toBe(COURSE_CHAKRA_NUDGES[2].nightBeforeTitle)
+    expect(mondayEve.body).toMatch(/Sacral/i)
+
+    const wednesdayNoon = copyForDailySlot(
+      'noon',
+      new Date('2026-09-16T12:00:00'),
+    )
+    expect(wednesdayNoon.title).toBe(COURSE_CHAKRA_NUDGES[3].todayTitle)
+    expect(wednesdayNoon.body).toMatch(/Solar plexus/i)
+
+    const saturdayEve = copyForDailySlot(
+      'evening',
+      new Date('2026-09-12T20:00:00'),
+    )
+    expect(saturdayEve.title).toBe(COURSE_CHAKRA_NUDGES[7].nightBeforeTitle)
+    expect(saturdayEve.body).toMatch(/Sunday/i)
+  })
+
+  it('schedules DATE dailies without stacking Sunday/Wednesday weekly when daily is on', () => {
     const src = fs.readFileSync(
       path.join(__dirname, '..', 'src/services/journeyNotifications.ts'),
       'utf8',
@@ -26,11 +71,15 @@ describe('weekly heart reminders', () => {
     expect(src).toContain('SUNDAY_HEART_REMINDER_ID')
     expect(src).toContain('WEDNESDAY_HEART_REMINDER_ID')
     expect(src).toContain('DAILY_ALIGN_PREFIX')
+    expect(src).toContain('COURSE_DAILY_PREFIX')
     expect(src).toContain('scheduleDailyAlignmentReminders')
     expect(src).toContain('activateDailyAlignmentReminders')
     expect(src).toContain('dailyAlignmentRemindersEnabled')
     expect(src).toContain('journeyStarted')
-    expect(src).toContain('cancelAllLegacySoulJourneyNotifications')
+    expect(src).toContain('WEEK1_ID_PREFIX')
+    expect(src).toContain('buildWeek1ReminderSlots')
+    expect(src).toContain('copyForDailySlot')
+    expect(src).toMatch(/if \(isDailyAlignmentEnabled\(\)\) \{[\s\S]*return/)
   })
 
   it('modal tells users they can turn daily reminders off in Profile', () => {

@@ -12,9 +12,9 @@ import {
   ThemeProvider,
 } from "@react-navigation/native"
 import { useFonts } from "expo-font"
-import { Stack, usePathname } from "expo-router"
+import { Stack, usePathname, useRouter } from "expo-router"
 import { StatusBar } from "expo-status-bar"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useColorScheme } from "@/hooks/useColorScheme"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
@@ -36,7 +36,6 @@ import {
   SOMATIC_SCREEN_TRANSITION_MS_IOS,
   SPLASH_MIN_DISPLAY_MS,
 } from "@/constants/layout"
-import { useState } from "react"
 import { AppCrashRecoveryOverlay } from "@/components/AppCrashRecoveryOverlay"
 import { AnimatedSplashScreen } from "@/components/AnimatedSplashScreen"
 import { PermanentMenuBar } from "@/components/navigation/PermanentMenuBar"
@@ -48,11 +47,12 @@ import { ChakraHubHeader } from "@/components/navigation/ChakraHubHeader"
 import { ProfileSheet } from "@/components/profile/ProfileSheet"
 import { HealingToastHost } from "@/components/HealingToastHost"
 import { StoreUpdateNoticeHost } from "@/components/store/StoreUpdateNoticeHost"
+import { Week1JourneyNoticeHost } from "@/components/store/Week1JourneyNoticeHost"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import * as Linking from "expo-linking"
 import "@/src/services/firebase"
 import { initializeSentry } from "@/src/services/sentry"
-import { initializeRevenueCat } from "@/src/services/revenuecat"
+import { initializeRevenueCat, syncAccessFromStoreReceipts } from "@/src/services/revenuecat"
 import { getUserId } from "@/src/services/userId"
 import {
   syncWeeklyHeartReminders,
@@ -79,6 +79,7 @@ export default function RootLayout() {
   const [showSplashOverlay, setShowSplashOverlay] = useState(true)
   const [minSplashElapsed, setMinSplashElapsed] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
 
   // Defer Reanimated/BottomSheet until native module is initialized (fixes iOS crash).
   // Android: one frame only so JS splash mounts quickly while native "7" still holds (see ./splash-prevent).
@@ -106,6 +107,17 @@ export default function RootLayout() {
       clearTimeout(safety)
     }
   }, [])
+
+  useEffect(() => {
+    if (!useSplashOverlayStore.getState().splashOverlayActive) return
+    if (!pathname) return
+    if (
+      pathname.includes("AudioPlayer") ||
+      pathname.includes("AudioLibrary")
+    ) {
+      router.replace("/(chakras)/")
+    }
+  }, [pathname, router])
 
   useEffect(() => {
     const t = setTimeout(() => setMinSplashElapsed(true), SPLASH_MIN_DISPLAY_MS)
@@ -174,6 +186,7 @@ export default function RootLayout() {
       if (next === "active") {
         useChakraJourneyStore.getState().touchLastAppActive()
         void syncWeeklyHeartReminders()
+        void syncAccessFromStoreReceipts()
       }
     }
     const sub = AppState.addEventListener("change", onChange)
@@ -434,6 +447,7 @@ export default function RootLayout() {
               <ProfileSheet />
               <HealingToastHost />
               <StoreUpdateNoticeHost />
+              <Week1JourneyNoticeHost />
               <ChakraHubHeader />
             </View>
             {showSplashOverlay && (

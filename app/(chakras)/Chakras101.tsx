@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { ImageBackground, Image, View, useWindowDimensions } from "react-native"
 import { AppText } from "../../components/AppText"
 import ResponsiveImage from "@/components/ResponsiveImage"
@@ -6,6 +7,9 @@ import { ActionBarAnimated } from "@/components/ActionBarAnimated"
 import Animated, { useAnimatedRef } from "react-native-reanimated"
 import { useRouter } from "expo-router"
 import { FLOATING_NAV_SCROLL_BOTTOM_PADDING, SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
+import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import { shouldOfferWeek1JourneyNotice } from "@/src/utils/week1JourneyReminders"
 
 const Chakras101 = () => {
   const { width } = useWindowDimensions()
@@ -13,10 +17,29 @@ const Chakras101 = () => {
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
   const router = useRouter()
 
+  const markPendingWeek1Notice = () => {
+    const firstLaunch = useFirstLaunchStore.getState()
+    if (
+      shouldOfferWeek1JourneyNotice({
+        hasSeen: firstLaunch.hasSeenWeek1JourneyNotice,
+        initialOpenDate: useChakraJourneyStore.getState().initialOpenDate,
+      })
+    ) {
+      firstLaunch.setPendingWeek1JourneyNotice(true)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      markPendingWeek1Notice()
+    }
+  }, [])
+
   // Always use router.back() to return to the previous screen.
   // From pill (ChakraTemplate): back → chakra day page. From home/waiting: back → ChakraHome.
   // Replace was wrong UX: it always sent trial users to homepage, even when they came from a chakra page.
   const handleBack = () => {
+    markPendingWeek1Notice()
     if (router.canGoBack()) {
       router.back()
     } else {

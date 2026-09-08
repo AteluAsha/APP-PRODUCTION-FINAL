@@ -85,6 +85,9 @@ describe('store update notice', () => {
         expect(STORE_UPDATE_NOTICE_COPY.body.toLowerCase()).toContain(
             'shared',
         )
+        expect(STORE_UPDATE_NOTICE_COPY.note.toLowerCase()).toContain(
+            'uninstall and reinstall',
+        )
         const host = fs.readFileSync(
             path.join(
                 __dirname,
@@ -103,6 +106,7 @@ describe('store update notice', () => {
             'utf8',
         )
         expect(layout).toContain('StoreUpdateNoticeHost')
+        expect(layout).toContain('Week1JourneyNoticeHost')
         const availability = fs.readFileSync(
             path.join(
                 __dirname,
@@ -122,7 +126,7 @@ describe('store update notice', () => {
         )
         expect(config).toContain('AppStoreID: "6760920862"')
         expect(config).toContain('ITSAppUsesNonExemptEncryption: false')
-        expect(config).toContain('buildNumber: "44"')
-        expect(config).toContain('version: "1.2.2"')
+        expect(config).toContain('buildNumber: "45"')
+        expect(config).toContain('version: "1.2.3"')
     })
 })

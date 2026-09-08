@@ -23,6 +23,12 @@ interface FirstLaunchState {
   /** One-time welcome on the first Master Meditation tap (Root / Day 1). */
   hasSeenMasterMeditationWelcome: boolean
   markMasterMeditationWelcomeSeen: () => void
+  /** One-time notice after the first close of Chakras 101. */
+  hasSeenWeek1JourneyNotice: boolean
+  markWeek1JourneyNoticeSeen: () => void
+  /** Session-only: show the notice on the screen after leaving Chakras 101. */
+  pendingWeek1JourneyNotice: boolean
+  setPendingWeek1JourneyNotice: (value: boolean) => void
 }
 
 export const useFirstLaunchStore = create<FirstLaunchState>()(
@@ -37,6 +43,8 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
           groundedChakraDays: [],
           hasSeenChakras101Guide: false,
           hasSeenMasterMeditationWelcome: false,
+          hasSeenWeek1JourneyNotice: false,
+          pendingWeek1JourneyNotice: false,
         }),
       hasStartedMasterTeachings: false,
       startMasterTeachings: () =>
@@ -54,6 +62,15 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
       hasSeenMasterMeditationWelcome: false,
       markMasterMeditationWelcomeSeen: () =>
         set({ hasSeenMasterMeditationWelcome: true }),
+      hasSeenWeek1JourneyNotice: false,
+      markWeek1JourneyNoticeSeen: () =>
+        set({
+          hasSeenWeek1JourneyNotice: true,
+          pendingWeek1JourneyNotice: false,
+        }),
+      pendingWeek1JourneyNotice: false,
+      setPendingWeek1JourneyNotice: (value) =>
+        set({ pendingWeek1JourneyNotice: value }),
     }),
     {
       name: "first-launch-storage",
@@ -63,11 +80,13 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
         hasStartedMasterTeachings: state.hasStartedMasterTeachings,
         hasSeenChakras101Guide: state.hasSeenChakras101Guide,
         hasSeenMasterMeditationWelcome: state.hasSeenMasterMeditationWelcome,
+        hasSeenWeek1JourneyNotice: state.hasSeenWeek1JourneyNotice,
       }),
       merge: (persisted, current) => ({
         ...current,
         ...(persisted as object),
         groundedChakraDays: [],
+        pendingWeek1JourneyNotice: false,
       }),
       onRehydrateStorage: () => () => {
         useStoreRehydration.getState().setFirstLaunchRehydrated()

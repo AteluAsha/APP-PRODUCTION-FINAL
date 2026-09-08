@@ -67,10 +67,113 @@ export const HORIZON_COPY = {
   },
 } as const
 
-/** Sunday — align with the Earth; Monday renewal. Sent even before the journey starts. */
+/** Calendar day index: 1 = Monday (Root) … 7 = Sunday (Crown). */
+export type LoveBalmDay = 1 | 2 | 3 | 4 | 5 | 6 | 7
+
+export function chakraDayFromDate(d: Date): LoveBalmDay {
+  const js = d.getDay()
+  return (js === 0 ? 7 : js) as LoveBalmDay
+}
+
+export function nextLoveBalmDay(day: LoveBalmDay): LoveBalmDay {
+  return (day === 7 ? 1 : ((day + 1) as LoveBalmDay))
+}
+
+export type CourseChakraNudge = {
+  chakra: string
+  todayTitle: string
+  todayBody: string
+  nightBeforeTitle: string
+  nightBeforeBody: string
+}
+
+/**
+ * Lock-screen copy. Noon = today's chakra. Evening = tomorrow's chakra.
+ * Sunday evening is the course itself — Monday Root, the seven-day beginning.
+ */
+export const COURSE_CHAKRA_NUDGES: Record<LoveBalmDay, CourseChakraNudge> = {
+  1: {
+    chakra: 'Root',
+    todayTitle: 'I am. I belong.',
+    todayBody:
+      'The Root holds you to the Earth. One slow breath into the feet — safety is the soil every other chakra grows from.',
+    nightBeforeTitle: 'Tomorrow, the Root',
+    nightBeforeBody:
+      'The seven days begin at dawn. Rest tonight. Monday asks only this: can you feel that you already belong?',
+  },
+  2: {
+    chakra: 'Sacral',
+    todayTitle: 'I feel. I flow. I create.',
+    todayBody:
+      'Sacral is the waters of joy. Let one honest desire move — creation starts as sweetness, not strain.',
+    nightBeforeTitle: 'Tomorrow, the Sacral',
+    nightBeforeBody:
+      'A little gnosis for the night: pleasure is intelligence. Sacral waters wait on Tuesday — will you let yourself feel?',
+  },
+  3: {
+    chakra: 'Solar Plexus',
+    todayTitle: 'My truth is my fire.',
+    todayBody:
+      'Solar plexus heals the dimmed light. Speak one true thing to yourself — power returns when you stop shrinking.',
+    nightBeforeTitle: 'Tomorrow, the Solar Plexus',
+    nightBeforeBody:
+      'The sun in you is not arrogance. Solar plexus fire asks tomorrow: where have you dimmed to keep the peace?',
+  },
+  4: {
+    chakra: 'Heart',
+    todayTitle: 'My love is unconditional.',
+    todayBody:
+      'Heart is the bridge from head to We. One breath for you, one for another — this is how the chest actually opens.',
+    nightBeforeTitle: 'Tomorrow, the Heart',
+    nightBeforeBody:
+      'A secret of the path: the mind builds walls, the Heart is a window. Thursday is the crossing. Will you open it?',
+  },
+  5: {
+    chakra: 'Throat',
+    todayTitle: 'I speak with truth.',
+    todayBody:
+      'Throat heals the swallowed word. Let one clean sentence leave you — voice is how the soul takes up space.',
+    nightBeforeTitle: 'Tomorrow, the Throat',
+    nightBeforeBody:
+      'Silence can be wisdom or a cage. Throat day invites your voice. What have you been holding behind the teeth?',
+  },
+  6: {
+    chakra: 'Third Eye',
+    todayTitle: 'I see beyond the mind of self.',
+    todayBody:
+      'Ajna clears the dust of overthinking. Soften the forehead — seeing is not figuring. Let the universe look through you.',
+    nightBeforeTitle: 'Tomorrow, the Third Eye',
+    nightBeforeBody:
+      'Tonight, less story, more sky. Third Eye sight waits on Saturday. What if you are not the voice in your head?',
+  },
+  7: {
+    chakra: 'Crown',
+    todayTitle: 'I surround myself with light.',
+    todayBody:
+      'Crown completes the seven days. Rest in unity — you are not separate from the light you seek.',
+    nightBeforeTitle: 'Tomorrow, the Crown',
+    nightBeforeBody:
+      'The week climbs to the stars. Crown is Sunday oneness. Can you meet yourself as light, not as a problem to solve?',
+  },
+}
+
+export function copyForDailySlot(
+  kind: 'noon' | 'evening',
+  fireAt: Date,
+): { title: string; body: string } {
+  const today = chakraDayFromDate(fireAt)
+  if (kind === 'noon') {
+    const n = COURSE_CHAKRA_NUDGES[today]
+    return { title: n.todayTitle, body: n.todayBody }
+  }
+  const n = COURSE_CHAKRA_NUDGES[nextLoveBalmDay(today)]
+  return { title: n.nightBeforeTitle, body: n.nightBeforeBody }
+}
+
+/** Sunday night — course-aligned preview of Monday Root. */
 export const SUNDAY_EARTH_CYCLE_COPY = {
-  title: 'Align with the Earth',
-  body: 'Rest in the rhythm of the week. Awaken the soul — we begin again on Monday.',
+  title: COURSE_CHAKRA_NUDGES[1].nightBeforeTitle,
+  body: COURSE_CHAKRA_NUDGES[1].nightBeforeBody,
 } as const
 
 /** Modal copy when opting in to daily alignment reminders. */
@@ -78,15 +181,25 @@ export const DAILY_ALIGNMENT_MODAL_COPY = {
   title: 'Partner on the path',
   body:
     'Allow gentle daily reminders to align with the rhythm of your energy body. We walk beside you — heart-minded nudges toward soul alignment, never noise.',
-  profileNote: 'You can turn daily reminders off anytime in Profile.',
+  profileNote: 'You can turn daily reminders off anytime in Profile, and on Root day.',
   allowLabel: 'Activate daily reminders to align',
   notNowLabel: 'Not now',
 } as const
 
-/** Wednesday — loving mid-week nudge; only after journeyStarted. */
+/** Shown once after the first close of Chakras 101 (new seekers, first week). */
+export const WEEK1_JOURNEY_NOTICE_COPY = {
+  title: 'We will walk with you',
+  body:
+    'We will lovingly join you on your first journey, and remind the busy mind when it is time to check in with the heart and soul — only on days you have not opened the app.',
+  profileNote:
+    'You can turn these reminders on or off anytime in Profile, and on Root day.',
+  cta: 'I understand',
+} as const
+
+/** Wednesday — solar plexus, only when daily alignment is off. */
 export const WEDNESDAY_ENERGY_BODY_COPY = {
-  title: 'Your energy body',
-  body: 'A loving nudge from the heart mind — check in with what is alive in you today, and meet it with gentle presence.',
+  title: COURSE_CHAKRA_NUDGES[3].todayTitle,
+  body: COURSE_CHAKRA_NUDGES[3].todayBody,
 } as const
 
 export const SUSTENANCE_COPY = {
@@ -117,65 +230,40 @@ export const SUSTENANCE_COPY = {
   },
 } as const
 
-/** Calendar day index for Love Balms: 1 = Monday (Root) … 7 = Sunday (Crown). */
-export type LoveBalmDay = 1 | 2 | 3 | 4 | 5 | 6 | 7
-
-export function chakraDayFromDate(d: Date): LoveBalmDay {
-  const js = d.getDay()
-  return (js === 0 ? 7 : js) as LoveBalmDay
-}
-
 /**
- * Sporadic whisper layer — hero affirmations + curated love balm per weekday;
- * scheduler picks randomly among `affirmations` and `loveBalms` for that calendar day.
+ * Affirmations aligned to COURSE_CHAKRA_NUDGES — kept for any remaining readers.
  */
 export const LOVE_BALMS: Record<
   LoveBalmDay,
   { affirmations: string[]; loveBalms: string[] }
 > = {
   1: {
-    affirmations: ['I am, I exist, I belong.'],
-    loveBalms: [
-      'In the stillness of the Earth, find your grounding, your sanctuary, your belonging. Remember, you are home.',
-    ],
+    affirmations: [COURSE_CHAKRA_NUDGES[1].todayTitle],
+    loveBalms: [COURSE_CHAKRA_NUDGES[1].todayBody],
   },
   2: {
-    affirmations: ['I feel, I flow, I create.'],
-    loveBalms: [
-      'Embrace the freedom of the present moment, where your soul\'s desires ignite and your authentic self takes flight.',
-    ],
+    affirmations: [COURSE_CHAKRA_NUDGES[2].todayTitle],
+    loveBalms: [COURSE_CHAKRA_NUDGES[2].todayBody],
   },
   3: {
-    affirmations: ['Through my truth, I find my soul fire.'],
-    loveBalms: [
-      'Honesty fuels the fire within. Accountability unlocks the gates. Opening the solar plexus is how you become the master of your destiny.',
-    ],
+    affirmations: [COURSE_CHAKRA_NUDGES[3].todayTitle],
+    loveBalms: [COURSE_CHAKRA_NUDGES[3].todayBody],
   },
   4: {
-    affirmations: ['My heart is open; my love is unconditional.'],
-    loveBalms: [
-      'Love without limits, that\'s the power of the heart. Break free from the chains of conditions, and let your compassion flow like a river, nourishing all it touches.',
-    ],
+    affirmations: [COURSE_CHAKRA_NUDGES[4].todayTitle],
+    loveBalms: [COURSE_CHAKRA_NUDGES[4].todayBody],
   },
   5: {
-    affirmations: ['I speak with purity, compassion, and truth.'],
-    loveBalms: [
-      'Your truth is your power. Speak it with the unwavering authority of your heart, and let your voice rise above the noise, igniting a fearless symphony of authentic expression.',
-    ],
+    affirmations: [COURSE_CHAKRA_NUDGES[5].todayTitle],
+    loveBalms: [COURSE_CHAKRA_NUDGES[5].todayBody],
   },
   6: {
-    affirmations: [
-      'I release the mind of self,\nand open my eyes to the Universe.',
-    ],
-    loveBalms: [
-      'As you clear away the dust and awaken this powerful energy center, you\'ll begin to perceive the world with new clarity. It\'s a gateway to deeper understanding.',
-    ],
+    affirmations: [COURSE_CHAKRA_NUDGES[6].todayTitle],
+    loveBalms: [COURSE_CHAKRA_NUDGES[6].todayBody],
   },
   7: {
-    affirmations: ['I awaken my inner child - and surround myself with light.'],
-    loveBalms: [
-      'It\'s about perceiving yourself and the world through the lens of unity, recognizing the divine spark within all beings and experiencing boundless love.',
-    ],
+    affirmations: [COURSE_CHAKRA_NUDGES[7].todayTitle],
+    loveBalms: [COURSE_CHAKRA_NUDGES[7].todayBody],
   },
 }
 

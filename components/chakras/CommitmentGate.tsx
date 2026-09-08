@@ -17,13 +17,14 @@ import {
   ActivityIndicator,
   StyleSheet,
   Platform,
+  Modal,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { LinearGradient } from "expo-linear-gradient"
 import { AppText } from "@/components/AppText"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
-import { PACKAGE_IDENTIFIERS, ENTITLEMENT_ID } from "@/src/services/revenuecat"
+import { PACKAGE_IDENTIFIERS, syncAccessFromStoreReceipts } from "@/src/services/revenuecat"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { Ionicons } from "@expo/vector-icons"
 import { ScholarshipModal } from "./ScholarshipModal"
@@ -35,6 +36,7 @@ import { requestChakraHubRevealBreath } from "@/utils/homeSessionEntrance"
 import { getUserId } from "@/src/services/userId"
 import { logScholarshipRequest } from "@/src/services/scholarshipAudit"
 import { purchaseErrorForPaywallBanner } from "@/utils/purchaseUserFacingError"
+import { SUPPORT_EMAIL } from "@/constants/sharing"
 
 interface CommitmentGateProps {
   onComplete: () => void
@@ -68,9 +70,9 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [showScholarshipModal, setShowScholarshipModal] = useState(false)
   const [showAccessGranted, setShowAccessGranted] = useState(false)
+  const [showPathHelp, setShowPathHelp] = useState(false)
   const {
     purchase,
-    restore,
     getProductPackage,
     isLoading: revenueCatLoading,
   } = useRevenueCat()
@@ -153,10 +155,13 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
     setPurchaseError(null)
     setRestoreError(null)
     try {
-      const info = await restore()
-      const hasEntitlement = info?.entitlements?.active?.[ENTITLEMENT_ID]
-      if (hasEntitlement) {
-        setShowAccessGranted(true)
+      const restored = await syncAccessFromStoreReceipts()
+      if (restored) {
+        const paid =
+          useChakraJourneyStore.getState().paymentStatus === "paid"
+        if (paid) {
+          setShowAccessGranted(true)
+        }
       } else {
         setRestoreError(
           Platform.OS === "android"
@@ -174,6 +179,11 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  const openPathHelp = () => {
+    addHapticFeedback(HapticStrength.Light)
+    setShowPathHelp(true)
   }
 
   const handleScholarshipContinue = (reason: string) => {
@@ -617,6 +627,15 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
               >
                 {restoreError}
               </AppText>
+              <Pressable onPress={openPathHelp} style={{ marginTop: 8 }}>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{ color: "rgba(232, 201, 140, 0.92)", textAlign: "center" }}
+                >
+                  Already walked this path?
+                </AppText>
+              </Pressable>
             </View>
           )}
 
@@ -639,6 +658,15 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
               >
                 {purchaseError}
               </AppText>
+              <Pressable onPress={openPathHelp} style={{ marginTop: 8 }}>
+                <AppText
+                  font="instrument-regular"
+                  size="xs"
+                  style={{ color: "rgba(232, 201, 140, 0.92)", textAlign: "center" }}
+                >
+                  Already walked this path?
+                </AppText>
+              </Pressable>
             </View>
           )}
 
@@ -704,6 +732,20 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                 style={[styles.footerText, styles.linkText]}
               >
                 Restore Purchases
+              </AppText>
+            </Pressable>
+            <Pressable
+              onPress={openPathHelp}
+              disabled={isProcessing || revenueCatLoading}
+              style={{ marginTop: 8 }}
+              accessibilityLabel="Already walked this path"
+            >
+              <AppText
+                font="instrument-regular"
+                size="xs"
+                style={[styles.footerText, { opacity: 0.72 }]}
+              >
+                Already walked this path?
               </AppText>
             </Pressable>
 
@@ -869,6 +911,97 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
           </View>
         </ScrollView>
       </LinearGradient>
+
+      <Modal
+        visible={showPathHelp}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPathHelp(false)}
+      >
+        {showPathHelp ? (
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.72)",
+              justifyContent: "center",
+              paddingHorizontal: 28,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "#0c1418",
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: "rgba(232, 201, 140, 0.28)",
+                padding: 22,
+              }}
+            >
+              <AppText
+                font="instrument-medium"
+                size="base"
+                style={{ color: "rgba(255,248,236,0.95)", marginBottom: 10 }}
+              >
+                Already walked this path?
+              </AppText>
+              <AppText
+                font="instrument-regular"
+                size="sm"
+                style={{
+                  color: "rgba(255,255,255,0.72)",
+                  lineHeight: 20,
+                  marginBottom: 18,
+                }}
+              >
+                Restore honors a monthly or annual subscription through Apple or
+                Google, without charging again. A scholarship on this phone is
+                restored the same way. We cannot unlock a paid plan from a tap
+                alone — the stores must speak.
+              </AppText>
+              <Pressable
+                onPress={() => {
+                  setShowPathHelp(false)
+                  void handleRestore()
+                }}
+                style={{ marginBottom: 12 }}
+              >
+                <AppText
+                  font="instrument-medium"
+                  size="sm"
+                  style={{ color: "rgba(168, 201, 154, 0.98)" }}
+                >
+                  Restore my path
+                </AppText>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setShowPathHelp(false)
+                  Linking.openURL(
+                    `mailto:${SUPPORT_EMAIL}?subject=Energy%20exchange%20restore`,
+                  ).catch(() => {})
+                }}
+                style={{ marginBottom: 12 }}
+              >
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={{ color: "rgba(232, 201, 140, 0.92)" }}
+                >
+                  Write to us
+                </AppText>
+              </Pressable>
+              <Pressable onPress={() => setShowPathHelp(false)}>
+                <AppText
+                  font="instrument-regular"
+                  size="sm"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                >
+                  Close
+                </AppText>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+      </Modal>
 
       {/* Scholarship Modal */}
       <ScholarshipModal

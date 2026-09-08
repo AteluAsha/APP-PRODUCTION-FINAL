@@ -12,10 +12,6 @@
  * Build Your Tribe fixed strip above menu bar, and While You Wait button are finalized.
  * Do not change without explicit product request.
  *
- * App Store review (iOS trial waiting room only): small Apple icon (top-right) grants
- * paid lifetime in the journey store and replaces to ChakraHub so reviewers can test
- * the full app without a purchase.
- *
  * Friends invited list: Only on Tribe screen, not here. Build Your Tribe
  * button opens invite modal; invited list is not shown on waiting room.
  *
@@ -142,7 +138,6 @@ export const WaitingScreen = ({
     soulJourneyNudgesEnabled,
     dateSelectionEmbodimentHandoffComplete,
     lifetimeChosenTimegateJourney,
-    grantLifetimeAccess,
   } = useChakraJourneyStore(
     useShallow((state) => ({
       courseStartDate: state.courseStartDate,
@@ -153,7 +148,6 @@ export const WaitingScreen = ({
       dateSelectionEmbodimentHandoffComplete:
         state.dateSelectionEmbodimentHandoffComplete,
       lifetimeChosenTimegateJourney: state.lifetimeChosenTimegateJourney,
-      grantLifetimeAccess: state.grantLifetimeAccess,
     })),
   )
   const nudgesPreferenceOn = soulJourneyNudgesEnabled !== false
@@ -412,12 +406,6 @@ export const WaitingScreen = ({
     addHapticFeedback(HapticStrength.Light)
     // Navigate back to date selection to allow changing the date
     router.replace("/(chakras)/DateSelection")
-  }
-
-  const handleAppStoreReviewLifetimeAccess = () => {
-    addHapticFeedback(HapticStrength.Medium)
-    grantLifetimeAccess("paid")
-    router.replace("/(chakras)/ChakraHub")
   }
 
   // FORCE REBUILD MARKER v3.0 - Jan 25 22:00
@@ -1134,29 +1122,6 @@ export const WaitingScreen = ({
       >
         <Ionicons name="arrow-back" size={24} color="rgba(255, 255, 255, 1)" />
       </Pressable>
-
-      {Platform.OS === "ios" && !hasLifetimeAccess && (
-        <Pressable
-          onPress={handleAppStoreReviewLifetimeAccess}
-          style={{
-            position: "absolute",
-            top: Math.max(insets.top, 16) + 8,
-            right: 16,
-            zIndex: 10002,
-            padding: 8,
-            backgroundColor: "transparent",
-          }}
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          accessibilityLabel="App Store review access"
-          accessibilityHint="Grants full access for App Review and opens the lifetime home"
-        >
-          <Ionicons
-            name="logo-apple"
-            size={22}
-            color="rgba(255, 255, 255, 0.45)"
-          />
-        </Pressable>
-      )}
 
       {/* Build Your Tribe – fixed strip pinned just above menu bar (trial and lifetime) */}
       {courseStartDate && (

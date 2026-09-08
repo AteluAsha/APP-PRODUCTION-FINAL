@@ -36,6 +36,10 @@ import {
 } from "@/src/core/config/revenueCatConfig"
 import { getUserId } from "@/src/services/userId"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
+import {
+  readUnexpiredScholarshipFromDevice,
+  updateUserScholarshipStatus,
+} from "@/src/services/userScholarshipStatus"
 
 // EAS: REVENUECAT_API_KEY (iOS) + REVENUECAT_ANDROID_API_KEY (Android) → extra.revenuecat via app.config.js
 const getRevenueCatApiKey = (): string | null => {
@@ -114,6 +118,87 @@ export type ProductId = (typeof PRODUCT_IDS)[keyof typeof PRODUCT_IDS]
 
 // Initialize RevenueCat SDK
 let isInitialized = false
+let customerInfoListenerAttached = false
+
+function grantPaidIfEntitled(info: CustomerInfo | null | undefined): boolean {
+  const entitled = info?.entitlements?.active?.[ENTITLEMENT_ID] !== undefined
+  if (entitled) {
+    useChakraJourneyStore.getState().grantLifetimeAccess("paid")
+    return true
+  }
+  return false
+}
+
+async function restoreScholarshipIfStillUnpaid(): Promise<void> {
+  const store = useChakraJourneyStore.getState()
+  if (store.hasLifetimeAccess) return
+  const expiryIso = await readUnexpiredScholarshipFromDevice()
+  if (!expiryIso) return
+  if (!store.restoreScholarshipAccess(expiryIso)) return
+  try {
+    const userId = await getUserId()
+    void updateUserScholarshipStatus(userId, expiryIso)
+  } catch {
+    /* local grant already applied */
+  }
+}
+
+/**
+ * Paid access after uninstall: new Soul ID has no RC history until restore
+ * attaches the App Store / Play receipt. Restore before any revoke so a
+ * still-active subscription is never wiped on a empty first customer-info.
+ */
+export async function syncAccessFromStoreReceipts(): Promise<boolean> {
+  if (!isInitialized) {
+    if (!useChakraJourneyStore.getState().hasLifetimeAccess) {
+      await restoreScholarshipIfStillUnpaid()
+    }
+    return useChakraJourneyStore.getState().hasLifetimeAccess
+  }
+
+  try {
+    let entitled = grantPaidIfEntitled(await Purchases.getCustomerInfo())
+    if (!entitled) {
+      try {
+        entitled = grantPaidIfEntitled(await Purchases.restorePurchases())
+      } catch (restoreErr) {
+        if (__DEV__) {
+          console.warn("[RevenueCat] Auto-restore failed:", restoreErr)
+        }
+      }
+    }
+    if (!entitled) {
+      useChakraJourneyStore
+        .getState()
+        .clearPaidAccessIfSubscriptionInactive()
+      await restoreScholarshipIfStillUnpaid()
+    }
+    return useChakraJourneyStore.getState().hasLifetimeAccess
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[RevenueCat] Access sync failed:", error)
+    }
+    if (!useChakraJourneyStore.getState().hasLifetimeAccess) {
+      await restoreScholarshipIfStillUnpaid()
+    }
+    return useChakraJourneyStore.getState().hasLifetimeAccess
+  }
+}
+
+function attachCustomerInfoListener(): void {
+  if (customerInfoListenerAttached) return
+  customerInfoListenerAttached = true
+  try {
+    Purchases.addCustomerInfoUpdateListener((info) => {
+      grantPaidIfEntitled(info)
+    })
+  } catch (error) {
+    customerInfoListenerAttached = false
+    if (__DEV__) {
+      console.warn("[RevenueCat] CustomerInfo listener failed:", error)
+    }
+  }
+}
 
 /**
  * Initialize RevenueCat SDK with API key
@@ -128,6 +213,7 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
           "RevenueCat API key is not configured. Purchases will not be available.",
         )
       }
+      await syncAccessFromStoreReceipts()
       return // Gracefully exit if API key is missing
     }
 
@@ -135,14 +221,14 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
       if (__DEV__) {
         console.log("RevenueCat already initialized")
       }
-      // If already initialized but new userId provided, link it
       if (userId) {
-        // TypeScript: userId is string | undefined, but we check it above
         await Purchases.logIn(userId as string)
         if (__DEV__) {
           console.log("[RevenueCat] User ID linked:", userId)
         }
       }
+      attachCustomerInfoListener()
+      await syncAccessFromStoreReceipts()
       return
     }
 
@@ -153,6 +239,7 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
       if (__DEV__) {
         console.warn("[RevenueCat] API key not configured")
       }
+      await syncAccessFromStoreReceipts()
       return
     }
 
@@ -272,22 +359,13 @@ export const initializeRevenueCat = async (userId?: string): Promise<void> => {
       console.log("RevenueCat initialized successfully")
     }
 
-    // Sync purchase status to journey store – ensures hasLifetimeAccess matches RevenueCat
-    // (handles reinstall, device change, or store corruption)
-    try {
-      const hasEntitlement = await hasActiveEntitlement()
-      if (hasEntitlement) {
-        useChakraJourneyStore.getState().grantLifetimeAccess("paid")
-      }
-    } catch (syncErr) {
-      if (__DEV__) {
-        console.warn("[RevenueCat] Sync to store failed:", syncErr)
-      }
-    }
+    attachCustomerInfoListener()
+    await syncAccessFromStoreReceipts()
   } catch (error) {
     if (__DEV__) {
       console.error("Failed to initialize RevenueCat:", error)
     }
+    await syncAccessFromStoreReceipts()
     // Don't throw - allow app to continue without RevenueCat
   }
 }
@@ -321,6 +399,7 @@ export async function linkUserId(userId: string): Promise<void> {
     if (__DEV__) {
       console.log("[RevenueCat] User ID linked:", userId)
     }
+    await syncAccessFromStoreReceipts()
   } catch (error) {
     if (__DEV__) {
       console.warn("[RevenueCat] linkUserId failed:", error)
@@ -471,14 +550,24 @@ export const purchasePackage = async (
 
     return customerInfo
   } catch (error: any) {
-    // Handle user cancellation - this is not an error, user chose to cancel
     if (error.userCancelled) {
       if (__DEV__) {
         console.log("[RevenueCat] User cancelled purchase")
       }
       throw new Error("Purchase was cancelled")
     }
-    // Handle other errors
+    const code = String(error?.code ?? "")
+    const msg = String(error?.message ?? "").toLowerCase()
+    const alreadyOwned =
+      code.includes("PRODUCT_ALREADY_PURCHASED") ||
+      msg.includes("already purchased") ||
+      msg.includes("already subscribed") ||
+      msg.includes("already owned")
+    if (alreadyOwned) {
+      const restored = await Purchases.restorePurchases()
+      grantPaidIfEntitled(restored)
+      return restored
+    }
     if (__DEV__) {
       console.error("[RevenueCat] Purchase error:", error)
     }
