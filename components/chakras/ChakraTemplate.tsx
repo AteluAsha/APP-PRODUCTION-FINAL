@@ -4,6 +4,7 @@ import {
   useWindowDimensions,
   Pressable,
   RefreshControl,
+  Platform,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import Animated, {
@@ -30,11 +31,12 @@ import { HeaderBackground } from "@/components/chakras/HeaderBackground"
 import Part2Section from "@/components/chakras/Part2Section"
 import ElementsSection from "@/components/chakras/ElementsSection"
 import Part3Section from "@/components/chakras/Part3Section"
-import SectionHeader from "@/components/chakras/SectionHeader"
+import { Part4BridgeSection } from "@/components/chakras/Part4BridgeSection"
+import { BridgeCueModal } from "@/components/chakras/BridgeCueModal"
 import ResponsiveImage from "@/components/ResponsiveImage"
 import { AppText } from "@/components/AppText"
 import { Chakra } from "@/types/chakras/Chakra"
-import { useRouter } from "expo-router"
+import { usePathname, useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { goToChakraHubRoot } from "@/utils/navigationHelpers"
@@ -55,7 +57,9 @@ import { DailyAlignmentToggleRow } from "@/components/chakras/DailyAlignmentTogg
 import { getChakraIndex } from "@/utils/chakraMapping"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { usePillBottomSheetStore } from "@/hooks/usePillBottomSheetStore"
-import { RemembranceButton } from "@/components/chakras/RemembranceButton"
+import { useAncestralBridgeStore } from "@/hooks/useAncestralBridgeStore"
+import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
+import { openAshaSpeaks } from "@/utils/openAshaSpeaks"
 
 const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false)
@@ -63,6 +67,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   // Note: Social Sanctuary and Anua access handled globally by PermanentMenuBar
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
   const router = useRouter()
+  const pathname = usePathname()
 
   const { setCompletedChakra, clearCompletedChakra } = useCompletedChakraStore(
     useShallow((state) => ({
@@ -82,9 +87,11 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   )
 
   const [showGoodbyeModal, setShowGoodbyeModal] = useState(false)
+  const [bridgeCueVisible, setBridgeCueVisible] = useState(false)
   const [contentKey, setContentKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const isFirstFocusRef = useRef(true)
+  const openAshaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Android (and safe for iOS): When returning to this screen via back button, Reanimated entering
   // animations may not re-run and content can stay blank. Remount scroll content on focus so FadeIn runs again.
@@ -104,29 +111,40 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
     setTimeout(() => setRefreshing(false), 400)
   }, [])
 
-  const getChakraName = (chakraName: Chakra): string => {
-    switch (chakraName) {
-      case Chakra.ROOT:
-        return "Root Chakra"
-      case Chakra.SACRAL:
-        return "Sacral Chakra"
-      case Chakra.SOLAR_PLEXUS:
-        return "Solar Plexus Chakra"
-      case Chakra.HEART:
-        return "Heart Chakra"
-      case Chakra.THROAT:
-        return "Throat Chakra"
-      case Chakra.THIRD_EYE:
-        return "Third Eye Chakra"
-      case Chakra.CROWN:
-        return "Crown Chakra"
-      default:
-        return "Chakra"
-    }
-  }
-
   const chakraDay = getChakraIndex(chakra)
-  const chakraName = getChakraName(chakra)
+  const pendingBridgeCue = useAncestralBridgeStore((s) => s.pendingBridgeCue)
+
+  useEffect(() => {
+    const offer = pendingBridgeCue === chakra && !showGoodbyeModal
+    if (!offer) {
+      setBridgeCueVisible(false)
+      return
+    }
+    const t = setTimeout(() => setBridgeCueVisible(true), 640)
+    return () => clearTimeout(t)
+  }, [pendingBridgeCue, chakra, showGoodbyeModal])
+
+  const finishBridgeCue = useCallback(
+    (openAsha: boolean) => {
+      setBridgeCueVisible(false)
+      useFirstLaunchStore.getState().markBridgeCueOffered(chakraDay)
+      useAncestralBridgeStore.getState().setPendingBridgeCue(null)
+      if (!openAsha) return
+      if (openAshaTimerRef.current) clearTimeout(openAshaTimerRef.current)
+      const delay = Platform.OS === "android" ? 360 : 80
+      openAshaTimerRef.current = setTimeout(() => {
+        openAshaTimerRef.current = null
+        openAshaSpeaks(chakra, pathname)
+      }, delay)
+    },
+    [chakra, chakraDay, pathname],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (openAshaTimerRef.current) clearTimeout(openAshaTimerRef.current)
+    }
+  }, [])
 
   // CRITICAL: Do NOT mark completion on mount - only mark when user actually completes
   // Completion should only be marked in navigateBack when isCompleted is true,
@@ -176,7 +194,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   }, [chakra])
 
   // Master Embodiment: on-device pack / ODR only. Miss = local error.
-  const embodimentAudio = useEmbodimentAudio(chakra)
+  useEmbodimentAudio(chakra)
   const tuningForkAudio = useTuningForkAudio(chakra)
   const embodimentDurations = useEmbodimentDurationCacheStore((s) => s.durations)
 
@@ -280,14 +298,13 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               .delay(80)
               .easing(Easing.out(Easing.ease))}
           >
-            {/* Master meditation: baked layout so page and buttons appear in one paint (no "Preparing..." swap). */}
+            {/* Drop In above master meditation — tuning fork somatic entrance */}
             <Animated.View
               entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
                 .delay(40)
                 .easing(Easing.out(Easing.ease))}
               style={{ marginBottom: 8 }}
             >
-            {/* Drop In above master meditation — tuning fork somatic entrance */}
             {hasSanctuaryTuningFork(chakra) ? (
                 <View style={{ alignItems: "center", marginTop: 8, marginBottom: 14 }}>
                   <DropInButton
@@ -350,49 +367,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               <Part3Section chakra={chakra} />
             </Animated.View>
           </Animated.View>
-          {/* PART IV - Reflection of Remembrance */}
-          <Animated.View
-            entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
-              .delay(320)
-              .easing(Easing.out(Easing.ease))}
-            style={{
-              marginTop: 48,
-              marginHorizontal: 12,
-              marginBottom: 32,
-              paddingTop: 28,
-              paddingBottom: 32,
-              paddingHorizontal: 16,
-              borderRadius: 24,
-              borderWidth: 1,
-              borderColor: "rgba(232, 201, 140, 0.14)",
-              backgroundColor: "rgba(8, 6, 5, 0.42)",
-              alignItems: "center",
-              width: undefined,
-              alignSelf: "stretch",
-            }}
-          >
-            <SectionHeader
-              variant="healing"
-              subtitle="— PART IV —"
-              title="Reflection of Remembrance"
-            />
-            <View
-              style={{
-                height: 1,
-                width: 64,
-                backgroundColor: "rgba(142, 142, 142, 0.65)",
-                alignSelf: "center",
-                marginBottom: 24,
-              }}
-            />
-            <RemembranceButton
-              chakra={chakra}
-              onPress={() => {
-                addHapticFeedback(HapticStrength.Medium)
-                router.push(`/(chakras)/QuizScreen?day=${chakraDay + 1}`)
-              }}
-            />
-          </Animated.View>
+          <Part4BridgeSection chakra={chakra} />
           {/* Completion Ceremony - whole section tappable; checkbox fills when completed; resets Monday midnight via week transition */}
           <Animated.View
             entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
@@ -481,6 +456,12 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
         }}
         chakraDay={chakraDay}
         onNavigateHome={handleGoodbyeNavigateHome}
+      />
+
+      <BridgeCueModal
+        visible={bridgeCueVisible}
+        onContinue={() => finishBridgeCue(true)}
+        onDismiss={() => finishBridgeCue(false)}
       />
 
       {/* Note: Social Sanctuary and Anua access is handled globally by PermanentMenuBar */}

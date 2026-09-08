@@ -128,7 +128,7 @@ const ChakrasLayout = () => {
             <Stack.Screen name="SoundBath" />
             <Stack.Screen name="IntegrationPractice" />
             <Stack.Screen name="AudioLibrary" />
-            <Stack.Screen name="HeadToHeart" />
+            <Stack.Screen name="HeadToHeart" options={homeSomaticStackOptions} />
             <Stack.Screen name="Chakras101" />
             <Stack.Screen name="EnergyExchange" />
             <Stack.Screen name="AccountabilityOfAwakening" />

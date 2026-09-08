@@ -29,6 +29,13 @@ interface FirstLaunchState {
   /** Session-only: show the notice on the screen after leaving Chakras 101. */
   pendingWeek1JourneyNotice: boolean
   setPendingWeek1JourneyNotice: (value: boolean) => void
+  /**
+   * Day indexes (0–2) that already received the post-meditation Bridge cue.
+   * Persisted so the teaching only fires once per early day.
+   */
+  bridgeCueOfferedDays: number[]
+  hasOfferedBridgeCue: (day: number) => boolean
+  markBridgeCueOffered: (day: number) => void
 }
 
 export const useFirstLaunchStore = create<FirstLaunchState>()(
@@ -45,6 +52,7 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
           hasSeenMasterMeditationWelcome: false,
           hasSeenWeek1JourneyNotice: false,
           pendingWeek1JourneyNotice: false,
+          bridgeCueOfferedDays: [],
         }),
       hasStartedMasterTeachings: false,
       startMasterTeachings: () =>
@@ -71,6 +79,14 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
       pendingWeek1JourneyNotice: false,
       setPendingWeek1JourneyNotice: (value) =>
         set({ pendingWeek1JourneyNotice: value }),
+      bridgeCueOfferedDays: [],
+      hasOfferedBridgeCue: (day) =>
+        (get().bridgeCueOfferedDays ?? []).includes(day),
+      markBridgeCueOffered: (day) => {
+        const current = get().bridgeCueOfferedDays ?? []
+        if (current.includes(day)) return
+        set({ bridgeCueOfferedDays: [...current, day] })
+      },
     }),
     {
       name: "first-launch-storage",
@@ -81,12 +97,16 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
         hasSeenChakras101Guide: state.hasSeenChakras101Guide,
         hasSeenMasterMeditationWelcome: state.hasSeenMasterMeditationWelcome,
         hasSeenWeek1JourneyNotice: state.hasSeenWeek1JourneyNotice,
+        bridgeCueOfferedDays: state.bridgeCueOfferedDays,
       }),
       merge: (persisted, current) => ({
         ...current,
         ...(persisted as object),
         groundedChakraDays: [],
         pendingWeek1JourneyNotice: false,
+        bridgeCueOfferedDays:
+          (persisted as { bridgeCueOfferedDays?: number[] })
+            .bridgeCueOfferedDays ?? [],
       }),
       onRehydrateStorage: () => () => {
         useStoreRehydration.getState().setFirstLaunchRehydrated()

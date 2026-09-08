@@ -9,10 +9,13 @@ import {
     hasSanctuaryCrystalBowl,
     hasSanctuaryTuningFork,
 } from '@/constants/sanctuaryAudioManifest'
+import { FREQUENCY_HEALING_COPY } from '@/constants/chakras/ancestralBridgeContent'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
 
 const Part2Section = ({ chakra }: { chakra: Chakra }) => {
     const router = useRouter()
+    const copy = FREQUENCY_HEALING_COPY[chakra]
+
     return (
         <View
             style={{
@@ -51,7 +54,7 @@ const Part2Section = ({ chakra }: { chakra: Chakra }) => {
                 />
                 <LinearGradient
                     colors={[
-                        'rgba(232, 201, 140, 0.12)',
+                        'rgba(168, 201, 154, 0.14)',
                         'transparent',
                         'rgba(168, 201, 154, 0.08)',
                     ]}
@@ -71,35 +74,25 @@ const Part2Section = ({ chakra }: { chakra: Chakra }) => {
                     <SectionHeader
                         variant="healing"
                         subtitle="— PART II —"
-                        title="Going Within"
+                        title="Frequency Healing"
                     />
 
                     {hasSanctuaryCrystalBowl(chakra) ||
                     hasSanctuaryTuningFork(chakra) ? (
                         <TextButtonSection
                             tone="frequency"
-                            heading="Sound Healing"
-                            description="Specific frequencies vibrate the chakras into alignment for energetic equilibrium, well-being, and emotional healing."
-                            buttonText="Path 1"
-                            buttonSubText="Frequency"
+                            heading={copy.heading}
+                            description={copy.description}
+                            buttonText="Enter"
+                            buttonSubText="Sound Bath"
                             onPress={() => {
                                 addHapticFeedback(HapticStrength.Medium)
-                                router.push(`/(chakras)/SoundBath?chakra=${chakra}`)
+                                router.push(
+                                    `/(chakras)/SoundBath?chakra=${chakra}`,
+                                )
                             }}
                         />
                     ) : null}
-
-                    <TextButtonSection
-                        tone="ancestral"
-                        heading="Head to Heart"
-                        description="Each chakra holds one of the 7 Divine Laws of the Universe. This ancestral knowledge acts as a roadmap for identifying your authentic self."
-                        buttonText="Path 2"
-                        buttonSubText="Ancestral Gnosis"
-                        onPress={() => {
-                            addHapticFeedback(HapticStrength.Medium)
-                            router.push(`/(chakras)/HeadToHeart?chakra=${chakra}`)
-                        }}
-                    />
                 </View>
             </ImageBackground>
         </View>

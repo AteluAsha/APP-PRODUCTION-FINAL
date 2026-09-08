@@ -4,6 +4,7 @@ import { silenceAllAudio } from '@/src/utils/singleActiveSound'
 import { saveAudioBookmark } from '@/utils/audioBookmark'
 import { bookmarkPositionToPersist } from '@/src/utils/playerControls'
 import { clearVaultAutoPlayback } from '@/src/services/vaultAutoPlayback'
+import { queueBridgeCueIfNeeded } from '@/utils/bridgeCue'
 
 export type { VaultPlaybackRequest } from '@/src/services/vaultAutoPlayback'
 
@@ -67,6 +68,13 @@ export async function closeFullPlayerAndLeave(opts?: {
             seekTargetMs: opts?.seekTargetMs,
         })
         await saveAudioBookmark(store.fullPlayerTrackId, pos)
+        queueBridgeCueIfNeeded({
+            isIntroAudio: store.prefs?.isIntroAudio === true,
+            audioId: store.fullPlayerTrackId,
+            positionMs: pos,
+            durationMs: store.metadata?.durationMs ?? 0,
+            returnPath,
+        })
         latestFullPlayerPositionMs = 0
         clearVaultAutoPlayback(store.fullPlayerTrackId ?? undefined)
         await silenceAllAudio()
