@@ -37,6 +37,12 @@ describe('entitlement restore after uninstall', () => {
         expect(store).toContain('restoreScholarshipAccess')
         expect(store).toContain('Does not reset the 30-day clock')
         expect(store).toContain('clearPaidAccessIfSubscriptionInactive')
+        expect(store).toContain('checkScholarshipExpiry')
+        const paywall = fs.readFileSync(
+            path.join(__dirname, '..', 'app/(chakras)/Paywall.tsx'),
+            'utf8',
+        )
+        expect(paywall).toContain('onBack')
     })
 
     it('exposes Restore Purchases in Profile and on the paywall', () => {

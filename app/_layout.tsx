@@ -156,24 +156,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     const checkExpiry = () => {
-      try {
-        const store = useChakraJourneyStore.getState()
-        if (
-          store.paymentStatus === "scholarship" &&
-          store.scholarshipExpiryDate
-        ) {
-          const expiryDate = new Date(store.scholarshipExpiryDate)
-          if (new Date() > expiryDate) {
-            useChakraJourneyStore.setState({
-              hasLifetimeAccess: false,
-              paymentStatus: "pending",
-              scholarshipExpiryDate: null,
-            })
-          }
-        }
-      } catch (error) {
-        if (__DEV__) console.error("Error checking scholarship expiry:", error)
-      }
+      useChakraJourneyStore.getState().checkScholarshipExpiry()
     }
     checkExpiry()
     const interval = setInterval(checkExpiry, 5 * 60 * 1000)
@@ -185,6 +168,7 @@ export default function RootLayout() {
     const onChange = (next: AppStateStatus) => {
       if (next === "active") {
         useChakraJourneyStore.getState().touchLastAppActive()
+        useChakraJourneyStore.getState().checkScholarshipExpiry()
         void syncWeeklyHeartReminders()
         void syncAccessFromStoreReceipts()
       }

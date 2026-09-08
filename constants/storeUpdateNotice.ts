@@ -1,7 +1,7 @@
 export const STORE_UPDATE_NOTICE_COPY = {
-    title: 'Fresh things are happening.',
-    body: 'A quieter offering is waiting in your store — new sound, the same path. Receiving it is a small way this work keeps being shared.',
-    note: 'If anything feels unsettled after an update, uninstall and reinstall from the store. That clears the old and readies the new.',
+    title: "We're listening.",
+    body: 'Little updates — for massive transformation. We love you all.',
+    note: 'This is the final formation of this path. If anything feels unsettled after the update, uninstall and reinstall from the store. That clears the old and readies the new.',
     receive: 'Receive this offering',
     notNow: 'Not now',
 } as const

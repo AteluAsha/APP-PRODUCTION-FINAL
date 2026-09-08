@@ -79,11 +79,9 @@ describe('store update notice', () => {
     })
 
     it('uses heart-minded copy and only mounts on home after splash', () => {
-        expect(STORE_UPDATE_NOTICE_COPY.title).toBe(
-            'Fresh things are happening.',
-        )
+        expect(STORE_UPDATE_NOTICE_COPY.title).toBe("We're listening.")
         expect(STORE_UPDATE_NOTICE_COPY.body.toLowerCase()).toContain(
-            'shared',
+            'transformation',
         )
         expect(STORE_UPDATE_NOTICE_COPY.note.toLowerCase()).toContain(
             'uninstall and reinstall',
