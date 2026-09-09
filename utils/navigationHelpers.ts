@@ -103,6 +103,20 @@ export function navigateBackWithCleanup(onBackPress?: () => void): void {
   goToChakraHubRoot()
 }
 
+/** Close a stack screen (Anua, Profile). Never leave the user with a no-op back. */
+export function closeStackToHub(beforeLeave?: () => void): void {
+  beforeLeave?.()
+  try {
+    if (router.canGoBack()) {
+      router.back()
+      return
+    }
+  } catch {
+    // Fall through to hub
+  }
+  goToChakraHubRoot()
+}
+
 /**
  * Navigate to a route with haptic feedback
  */

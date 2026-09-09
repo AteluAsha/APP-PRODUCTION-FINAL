@@ -20,6 +20,9 @@ describe('shared inline tuning fork chime', () => {
         expect(dropIn).toContain('useInlineTuningFork')
         expect(soundBath).toContain('useInlineTuningFork')
         expect(soundBath).toContain('stopOnBlur: true')
+        expect(soundBath).toContain('flexDirection: "row"')
+        expect(soundBath).toContain('{tuningForkHertz}')
+        expect(soundBath).toContain('Hz')
     })
 
     it('restarts from 0, rushes the vault, and keeps lock-screen play', () => {
@@ -31,6 +34,7 @@ describe('shared inline tuning fork chime', () => {
         expect(hook).toContain('keepPlayingInBackground: true')
         expect(hook).not.toContain('keepPlayingInBackground: false')
         expect(hook).toContain('registerAndroidBackCleanup')
+        expect(hook).toContain('saveAudioBookmark')
         expect(hook).toContain('AppState.currentState')
         expect(hook).toContain('void stop()')
         expect(hook).not.toContain('ensureSanctuaryTrack')

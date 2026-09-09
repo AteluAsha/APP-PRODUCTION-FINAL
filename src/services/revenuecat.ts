@@ -568,6 +568,13 @@ export const purchasePackage = async (
       grantPaidIfEntitled(restored)
       return restored
     }
+    const billingUnavailable =
+      code.includes("BILLING_UNAVAILABLE") ||
+      msg.includes("billing unavailable") ||
+      msg.includes("billing is not available")
+    if (billingUnavailable) {
+      throw new Error("BILLING_UNAVAILABLE")
+    }
     if (__DEV__) {
       console.error("[RevenueCat] Purchase error:", error)
     }

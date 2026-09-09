@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from "react"
+import React from "react"
 import { View, Platform } from "react-native"
-import { Stack, usePathname, useRouter } from "expo-router"
+import { Stack } from "expo-router"
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
@@ -32,20 +32,6 @@ const somaticFadeOptions = {
 }
 
 const ChakrasLayout = () => {
-  const pathname = usePathname()
-  const router = useRouter()
-  const coldStartCheckDone = useRef(false)
-
-  // If the app reopens with a restored route of Audio Library (stale bundle risk), send user to index so index.tsx runs and replaces to ChakraHub/home.
-  useEffect(() => {
-    if (coldStartCheckDone.current) return
-    if (pathname == null || pathname === "") return
-    coldStartCheckDone.current = true
-    if (pathname.includes("AudioLibrary")) {
-      router.replace("/(chakras)/")
-    }
-  }, [pathname, router])
-
   return (
     <SafeAreaProvider>
       <ScreenCrashBoundary>
@@ -66,18 +52,7 @@ const ChakrasLayout = () => {
             <Stack.Screen name="DayPresence" options={homeSomaticStackOptions} />
             <Stack.Screen name="WelcomeScreen" />
             <Stack.Screen name="ChakraHome" />
-            <Stack.Screen
-              name="TribeChat"
-              options={{
-                presentation: "card",
-                animation: "fade",
-                animationDuration:
-                  Platform.OS === "ios"
-                    ? SOMATIC_SCREEN_TRANSITION_MS_IOS
-                    : SOMATIC_SCREEN_TRANSITION_MS,
-                gestureEnabled: true,
-              }}
-            />
+            <Stack.Screen name="TribeChat" />
             <Stack.Screen
               name="AnuaChat"
               options={{

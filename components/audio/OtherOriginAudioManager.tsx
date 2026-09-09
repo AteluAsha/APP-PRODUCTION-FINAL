@@ -121,14 +121,11 @@ export function OtherOriginAudioManager() {
 
   // Create track when not on AudioPlayer and source is set for "other" origin
   useEffect(() => {
-    if (
-      isGoodbyeVisible ||
-      playerOwnsAudio ||
-      audioOrigin !== "other" ||
-      !source ||
-      !prefs
-    ) {
-      if (isGoodbyeVisible) unloadTrack()
+    if (playerOwnsAudio) {
+      return
+    }
+    if (isGoodbyeVisible || audioOrigin !== "other" || !source || !prefs) {
+      void unloadTrack()
       return
     }
 

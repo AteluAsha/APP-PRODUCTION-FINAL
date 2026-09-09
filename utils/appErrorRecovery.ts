@@ -8,13 +8,11 @@
 
 import { InteractionManager } from 'react-native'
 import { router } from 'expo-router'
-import { useChakraJourneyStore } from '@/hooks/useChakraJourneyStore'
 import { useCurrentAudioStore } from '@/hooks/useCurrentAudioStore'
 import { clearVaultAutoPlayback } from '@/src/services/vaultAutoPlayback'
 import { silenceAllAudio } from '@/src/utils/singleActiveSound'
 
 const CHAKRA_HUB = '/(chakras)/ChakraHub'
-const CHAKRA_HOME = '/(chakras)/ChakraHome'
 const AUDIO_LIBRARY = '/(chakras)/AudioLibrary'
 
 let recoveryActive = false
@@ -39,15 +37,15 @@ export function clearPinnedRecoveryRoute(): void {
 function isSafeRecoveryRoute(path: string | null | undefined): path is string {
     if (!path) return false
     if (path.includes('AudioPlayer')) return false
+    if (path.includes('ChakraHome')) return false
     return (
         path.startsWith('/(chakras)/') ||
         path === AUDIO_LIBRARY ||
-        path === CHAKRA_HUB ||
-        path === CHAKRA_HOME
+        path === CHAKRA_HUB
     )
 }
 
-/** Pick course day, Audio Library, ChakraHub, or trial home — never AudioPlayer. */
+/** Pick course day, Audio Library, or ChakraHub — never AudioPlayer or retired trial home. */
 export function getSafeRecoveryRoute(): string {
     if (pinnedRecoveryRoute && isSafeRecoveryRoute(pinnedRecoveryRoute)) {
         return pinnedRecoveryRoute
@@ -60,22 +58,16 @@ export function getSafeRecoveryRoute(): string {
         return returnPath
     }
 
-    const origin = audioStore.audioOrigin
-    if (origin === 'music-room') {
+    if (audioStore.audioOrigin === 'music-room') {
         return AUDIO_LIBRARY
     }
 
-    if (useChakraJourneyStore.getState().hasLifetimeAccess) {
-        return CHAKRA_HUB
-    }
-
-    return CHAKRA_HOME
+    return CHAKRA_HUB
 }
 
 export function getRecoveryDestinationLabel(route: string): string {
     if (route.includes('AudioLibrary')) return 'Return to Audio Library'
     if (route.includes('ChakraHub')) return 'Return to Sanctuary'
-    if (route.includes('ChakraHome')) return 'Return to course'
     if (route.startsWith('/(chakras)/')) return 'Return to course day'
     return 'Return home'
 }

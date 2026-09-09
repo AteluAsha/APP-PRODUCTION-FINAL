@@ -5,11 +5,9 @@ import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { runAndroidBackCleanup } from "@/utils/androidBackCleanup"
-import { ICON } from "@/constants/layout"
+import { ICON, safeOverlayTop } from "@/constants/layout"
 
 /** Same row as GlobalHomeButton (chakra icon): top offset and 40px height */
-const HEADER_ROW_TOP = (insets: { top: number }) =>
-  Math.max(insets.top, 8) + 8
 const HEADER_ROW_HEIGHT = ICON.homeButton
 
 interface ActionBarProps {
@@ -66,7 +64,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
     elevation: 4,
   }
 
-  const top = HEADER_ROW_TOP(insets)
+  const top = safeOverlayTop(insets.top)
   const xTop = xButtonTop ?? top
   if (useXButton) {
     const isLeft = xButtonPosition === "left"

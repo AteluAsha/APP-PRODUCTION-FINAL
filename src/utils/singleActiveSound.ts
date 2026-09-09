@@ -174,8 +174,9 @@ async function unloadQuietly(sound: HealingSound | null): Promise<void> {
 }
 
 /**
- * Stop every healing player we know about and mute leftover expo-av
- * Sounds (Anua) so stacked players cannot keep speaking.
+ * Stop every healing player we know about. Close of AudioPlayer must
+ * always reach here: persist the bookmark first, then this, then reset.
+ * Never time out and leave ExoPlayer / the Android FGS running.
  */
 export async function silenceAllAudio(): Promise<void> {
     invalidatePlayback()
@@ -184,39 +185,47 @@ export async function silenceAllAudio(): Promise<void> {
     activeSound = null
     activePlayer = null
     try {
+        const { otherOriginTrackRef } = require('@/src/services/otherOriginTrackRef') as {
+            otherOriginTrackRef: { current: { sound: HealingSound } | null }
+        }
+        otherOriginTrackRef.current = null
+    } catch {
+        // ignore
+    }
+    stopMeditationPlaybackService()
+    try {
         player?.pause()
     } catch {
         // already paused / released
     }
-    stopMeditationPlaybackService()
-    await Promise.race([
-        (async () => {
-            try {
-                const expoAudio = getExpoAudio()
-                await expoAudio?.setIsAudioActiveAsync(false)
-            } catch {
-                // ignore
-            }
-            await unloadQuietly(sound)
-            try {
-                const expoAudio = getExpoAudio()
-                await expoAudio?.setIsAudioActiveAsync(true)
-            } catch {
-                // ignore
-            }
-            try {
-                await Audio.setIsEnabledAsync(false)
-            } catch {
-                // ignore
-            }
-            try {
-                await Audio.setIsEnabledAsync(true)
-            } catch {
-                // ignore
-            }
-        })(),
-        sleep(400),
-    ])
+    try {
+        player?.remove()
+    } catch {
+        // already released
+    }
+    try {
+        const expoAudio = getExpoAudio()
+        await expoAudio?.setIsAudioActiveAsync(false)
+    } catch {
+        // ignore
+    }
+    await unloadQuietly(sound)
+    try {
+        await Audio.setIsEnabledAsync(false)
+    } catch {
+        // ignore
+    }
+    try {
+        await Audio.setIsEnabledAsync(true)
+    } catch {
+        // ignore
+    }
+    try {
+        const expoAudio = getExpoAudio()
+        await expoAudio?.setIsAudioActiveAsync(true)
+    } catch {
+        // ignore
+    }
 }
 
 export async function createExclusiveSound(

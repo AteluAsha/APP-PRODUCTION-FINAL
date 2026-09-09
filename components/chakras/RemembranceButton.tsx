@@ -10,11 +10,9 @@ import { Ionicons } from "@expo/vector-icons"
 import React from "react"
 import { Chakra } from "@/types/chakras/Chakra"
 import { chakraContent } from "@/constants/chakras/content"
-import { getChakraColor } from "@/constants/chakras/chakraConstants"
-import { getChakraIndex } from "@/utils/chakraMapping"
 
-const HORIZONTAL_MARGIN = 24
-const CARD_HEIGHT = 148
+const HORIZONTAL_MARGIN = 40
+const CARD_HEIGHT = 88
 
 export function RemembranceButton({
   chakra,
@@ -26,7 +24,6 @@ export function RemembranceButton({
   const { width: screenWidth } = useWindowDimensions()
   const content = chakraContent[chakra]
   const boxWidth = screenWidth - HORIZONTAL_MARGIN * 2
-  const accent = getChakraColor(getChakraIndex(chakra))
 
   return (
     <Pressable
@@ -45,17 +42,17 @@ export function RemembranceButton({
         style={{
           width: boxWidth,
           height: CARD_HEIGHT,
-          borderRadius: 20,
+          borderRadius: 16,
           overflow: "hidden",
-          borderWidth: 1.5,
-          borderColor: accent,
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.22)",
           ...(Platform.OS === "android"
-            ? { elevation: 8 }
+            ? { elevation: 3 }
             : {
-                shadowColor: accent,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.45,
-                shadowRadius: 12,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.28,
+                shadowRadius: 6,
               }),
         }}
       >
@@ -71,14 +68,12 @@ export function RemembranceButton({
         >
           <View
             style={{
-              ...{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(0,0,0,0.46)",
-              },
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.52)",
             }}
           />
           <View
@@ -86,16 +81,16 @@ export function RemembranceButton({
               flex: 1,
               alignItems: "center",
               justifyContent: "center",
-              paddingHorizontal: 22,
-              paddingVertical: 16,
+              paddingHorizontal: 18,
+              paddingVertical: 10,
             }}
           >
             <AppText
               font="cormorant-italic"
               style={{
                 color: "#ffffff",
-                fontSize: 22,
-                lineHeight: 26,
+                fontSize: 18,
+                lineHeight: 22,
                 textAlign: "center",
                 textShadowColor: "rgba(0,0,0,0.7)",
                 textShadowOffset: { width: 0, height: 1 },
@@ -109,21 +104,21 @@ export function RemembranceButton({
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                marginTop: 8,
-                gap: 6,
+                marginTop: 4,
+                gap: 4,
               }}
             >
               <AppText
                 font="instrument-regular"
-                size="sm"
-                style={{ color: "rgba(255,255,255,0.9)" }}
+                size="xs"
+                style={{ color: "rgba(255,255,255,0.82)" }}
               >
                 Sit with this day's remembering
               </AppText>
               <Ionicons
                 name="chevron-forward"
-                size={16}
-                color="rgba(255,255,255,0.9)"
+                size={13}
+                color="rgba(255,255,255,0.82)"
               />
             </View>
           </View>

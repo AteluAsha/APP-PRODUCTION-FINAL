@@ -28,6 +28,15 @@ describe('hero affirmations', () => {
             'utf8',
         )
         expect(goodbye).toContain('HERO_AFFIRMATION_FONT_SIZE')
+
+        const identity = fs.readFileSync(
+            path.join(__dirname, '..', 'components/chakras/ChakraIdentityCard.tsx'),
+            'utf8',
+        )
+        expect(identity).toContain('HERO_AFFIRMATION_FONT_SIZE')
+        expect(identity).toContain('BODY_HEALING_HEADING')
+        expect(identity).not.toContain('AffirmationSection')
+        expect(identity).not.toContain('.affirmationText')
     })
 
     it('shows the full Day 4 heart affirmation on two lines', () => {

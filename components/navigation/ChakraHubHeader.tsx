@@ -12,11 +12,11 @@ import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { AppText } from "@/components/AppText"
+import { safeOverlayTop } from "@/constants/layout"
 
 const ICON_EDGE_INSET = 24
 const BUTTON_SIZE = 48
 const PROFILE_ICON_SIZE = 20
-const TOP_EXTRA = 8
 const PROFILE_TOP_OFFSET = 4
 
 export function ChakraHubHeader() {
@@ -34,7 +34,7 @@ export function ChakraHubHeader() {
 
   const isChakraHub =
     pathname?.includes("ChakraHub") || pathname?.startsWith("/(chakras)/ChakraHub")
-  const top = Math.max(insets.top, 8) + TOP_EXTRA
+  const top = safeOverlayTop(insets.top)
 
   useEffect(() => {
     if (!isChakraHub || isGoodbyeVisible || hasSeenChakras101Guide) {

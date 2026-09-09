@@ -7,6 +7,7 @@ import React from "react"
 import { TouchableOpacity } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { safeOverlayTop } from "@/constants/layout"
 
 interface BackArrowProps {
   onPress: () => void
@@ -28,7 +29,7 @@ export const BackArrow: React.FC<BackArrowProps> = ({
   accessibilityHint = "Tap to go back",
 }) => {
   const insets = useSafeAreaInsets()
-  const top = topOffset ?? Math.max(insets.top, 8) + 8
+  const top = topOffset ?? safeOverlayTop(insets.top)
 
   return (
     <TouchableOpacity

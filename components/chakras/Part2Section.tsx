@@ -19,7 +19,7 @@ const Part2Section = ({ chakra }: { chakra: Chakra }) => {
     return (
         <View
             style={{
-                marginTop: 32,
+                marginTop: 48,
                 borderRadius: 24,
                 overflow: 'hidden',
                 ...Platform.select({

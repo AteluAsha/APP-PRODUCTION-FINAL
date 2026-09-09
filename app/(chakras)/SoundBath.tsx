@@ -282,7 +282,7 @@ const SoundBath = () => {
               marginTop: 8,
               marginHorizontal: 28,
               marginBottom: 22,
-              paddingVertical: 30,
+              paddingVertical: 22,
               paddingHorizontal: 22,
               borderRadius: 22,
               borderWidth: 1,
@@ -308,8 +308,8 @@ const SoundBath = () => {
               style={{
                 width: 48,
                 height: StyleSheet.hairlineWidth,
-                marginTop: 14,
-                marginBottom: 16,
+                marginTop: 8,
+                marginBottom: 10,
                 backgroundColor: "rgba(232, 201, 140, 0.5)",
               }}
             />
@@ -329,8 +329,7 @@ const SoundBath = () => {
               font="cormorant-regular"
               style={{
                 textAlign: "center",
-                marginTop: 8,
-                color: "rgba(255, 255, 255, 0.5)",
+                marginTop: 4,
                 fontSize: 13,
                 lineHeight: 18,
                 letterSpacing: 2.2,
@@ -339,19 +338,37 @@ const SoundBath = () => {
             >
               {soundBathContent.subtitle}
             </AppText>
-            <AppText
-              font="cormorant-italic"
+            <View
               style={{
-                textAlign: "center",
-                marginTop: 18,
-                color: "rgba(232, 201, 140, 0.95)",
-                fontSize: Platform.OS === "android" ? 44 : 42,
-                lineHeight: Platform.OS === "android" ? 52 : 50,
-                letterSpacing: 1.4,
+                flexDirection: "row",
+                alignItems: "baseline",
+                marginTop: 10,
               }}
             >
-              {tuningForkHertz} Hz
-            </AppText>
+              <AppText
+                font="cormorant-italic"
+                style={{
+                  color: "rgba(232, 201, 140, 0.95)",
+                  fontSize: Platform.OS === "android" ? 44 : 42,
+                  lineHeight: Platform.OS === "android" ? 52 : 50,
+                  letterSpacing: 1.4,
+                }}
+              >
+                {tuningForkHertz}
+              </AppText>
+              <AppText
+                font="cormorant-italic"
+                style={{
+                  color: "rgba(232, 201, 140, 0.95)",
+                  fontSize: Platform.OS === "android" ? 22 : 20,
+                  lineHeight: Platform.OS === "android" ? 28 : 26,
+                  letterSpacing: 1.2,
+                  marginLeft: 8,
+                }}
+              >
+                Hz
+              </AppText>
+            </View>
           </LinearGradient>
           <View
             style={{

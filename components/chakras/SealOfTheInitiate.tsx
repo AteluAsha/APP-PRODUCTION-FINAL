@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { LinearGradient } from "expo-linear-gradient"
+import { ICON, safeOverlayTop } from "@/constants/layout"
 
 const SOFT_BG = "#0f1210"
 
@@ -46,11 +47,15 @@ export function SealOfTheInitiate({
             }}
             style={{
               position: "absolute",
-              left: 20,
-              top: Math.max(insets.top, 12),
-              zIndex: 10,
-              padding: 8,
+              left: 16,
+              top: safeOverlayTop(insets.top),
+              zIndex: 1000,
+              width: ICON.homeButton,
+              height: ICON.homeButton,
+              justifyContent: "center",
+              alignItems: "center",
             }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >

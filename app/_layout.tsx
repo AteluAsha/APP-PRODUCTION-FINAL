@@ -48,6 +48,7 @@ import { ProfileSheet } from "@/components/profile/ProfileSheet"
 import { HealingToastHost } from "@/components/HealingToastHost"
 import { StoreUpdateNoticeHost } from "@/components/store/StoreUpdateNoticeHost"
 import { Week1JourneyNoticeHost } from "@/components/store/Week1JourneyNoticeHost"
+import { CrownReminderNoticeHost } from "@/components/store/CrownReminderNoticeHost"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import * as Linking from "expo-linking"
 import "@/src/services/firebase"
@@ -432,6 +433,7 @@ export default function RootLayout() {
               <HealingToastHost />
               <StoreUpdateNoticeHost />
               <Week1JourneyNoticeHost />
+              <CrownReminderNoticeHost />
               <ChakraHubHeader />
             </View>
             {showSplashOverlay && (

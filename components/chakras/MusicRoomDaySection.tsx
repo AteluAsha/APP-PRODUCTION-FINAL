@@ -26,7 +26,7 @@ type DaySectionProps = {
     trackRows: MusicRoomRowProps[]
 }
 
-export function MusicRoomDaySection({
+function MusicRoomDaySectionComponent({
     chakra,
     chakraName,
     dayIndex,
@@ -162,3 +162,5 @@ export function MusicRoomDaySection({
         </View>
     )
 }
+
+export const MusicRoomDaySection = React.memo(MusicRoomDaySectionComponent)

@@ -38,27 +38,24 @@ describe('music-room playback (Audio Library only)', () => {
         expect(src).toContain('if (!showProgressLine')
     })
 
-    it('AudioPlayer music-room swipes are serialized and scoped to center', () => {
+    it('AudioPlayer library mode has no swipe queue and resets on leave', () => {
         const src = fs.readFileSync(
             path.join(__dirname, '..', 'app/AudioPlayer.tsx'),
             'utf8',
         )
-        expect(src).toContain('musicRoomSwipeBusyRef')
         expect(src).toContain('initGenerationRef')
         expect(src).toContain('getMusicRoomActiveAudioId')
         expect(src).toContain('trackContentOpacity')
         expect(src).toContain('trackBarTranslateY')
         expect(src).not.toContain('Swipe to journey')
-        const hooksMarker = src.indexOf('// NOW we can check for missing data')
-        expect(hooksMarker).toBeGreaterThan(-1)
-        expect(src.indexOf('handleMusicRoomSwipeNext')).toBeLessThan(hooksMarker)
-        expect(src.indexOf('musicRoomSwipeGesture')).toBeLessThan(hooksMarker)
+        expect(src).not.toContain('handleMusicRoomSwipeNext')
+        expect(src).not.toContain('musicRoomSwipeGesture')
         expect(src).not.toContain('closeMusicRoomPlayer({ navigate: false })')
         const close = fs.readFileSync(
             path.join(__dirname, '..', 'utils/musicRoomPlayback.ts'),
             'utf8',
         )
-        expect(close).toContain('saveAudioBookmark')
+        expect(close).toContain('allowsTrackQueue')
         expect(src).toContain('isMusicRoom')
         expect(src).toContain('applyMusicRoomTrack')
     })

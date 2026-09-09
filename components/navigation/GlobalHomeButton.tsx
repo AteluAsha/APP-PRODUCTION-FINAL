@@ -17,7 +17,7 @@ import { useShallow } from "zustand/react/shallow"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { isCourseFocusScreen } from "@/utils/courseFocusScreen"
-import { ICON, ANDROID_PRESS_DELAY_MS } from "@/constants/layout"
+import { ICON, ANDROID_PRESS_DELAY_MS, safeOverlayTop } from "@/constants/layout"
 
 export const GlobalHomeButton: React.FC = () => {
   const router = useRouter()
@@ -106,7 +106,7 @@ export const GlobalHomeButton: React.FC = () => {
       style={[
         styles.homeButtonWrap,
         {
-          top: Math.max(insets.top, 8) + 8,
+          top: safeOverlayTop(insets.top),
           right: 16,
         },
       ]}

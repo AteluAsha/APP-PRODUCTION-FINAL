@@ -181,7 +181,7 @@ export const DAILY_ALIGNMENT_MODAL_COPY = {
   title: 'Partner on the path',
   body:
     'Allow gentle daily reminders to align with the rhythm of your energy body. We walk beside you — heart-minded nudges toward soul alignment, never noise.',
-  profileNote: 'You can turn daily reminders off anytime in Profile, and on Root day.',
+  profileNote: 'You can turn daily reminders off anytime in Profile.',
   allowLabel: 'Activate daily reminders to align',
   notNowLabel: 'Not now',
 } as const
@@ -192,7 +192,16 @@ export const WEEK1_JOURNEY_NOTICE_COPY = {
   body:
     'We will lovingly join you on your first journey, and remind the busy mind when it is time to check in with the heart and soul — only on days you have not opened the app.',
   profileNote:
-    'You can turn these reminders on or off anytime in Profile, and on Root day.',
+    'You can turn these reminders on or off anytime in Profile.',
+  cta: 'I understand',
+} as const
+
+/** Shown once after leaving the Crown / final goodbye screen. */
+export const CROWN_GOODBYE_PROFILE_REMINDER_COPY = {
+  title: 'Reminders live in Profile',
+  body:
+    'This first week, we walked with you automatically. From here, daily alignment reminders live in Profile — on or off, whenever you need them.',
+  profileNote: 'Open Profile anytime to change this.',
   cta: 'I understand',
 } as const
 

@@ -53,6 +53,8 @@ import {
   HERO_AFFIRMATION_LINE_HEIGHT,
   HERO_AFFIRMATION_MAX_LINES,
 } from "@/constants/heroAffirmation"
+import { ICON, safeOverlayTop } from "@/constants/layout"
+import { DailyAlignmentToggleRow } from "@/components/chakras/DailyAlignmentToggleRow"
 
 function hexToRgba(hex: string, alpha: number): string {
   const raw = hex.replace("#", "")
@@ -77,7 +79,7 @@ const GoodbyeModal = ({
 }) => {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const topInset = Math.max(insets.top, 12)
+  const overlayTop = safeOverlayTop(insets.top)
   const bottomInset = Math.max(insets.bottom, 24)
   const [stage, setStage] = useState<"presence" | "goodbye">("presence")
   const goodbyeOpacity = useSharedValue(0)
@@ -112,6 +114,7 @@ const GoodbyeModal = ({
   const handleNavigateHome = () => {
     addHapticFeedback(HapticStrength.Light)
     queueTomorrow()
+    useCompletedChakraStore.getState().clearCompletedChakra()
     if (onNavigateHome) {
       onNavigateHome()
       return
@@ -215,10 +218,13 @@ const GoodbyeModal = ({
             }}
             style={{
               position: "absolute",
-              top: topInset,
+              top: overlayTop,
               left: 16,
               zIndex: 10003,
-              padding: 8,
+              width: ICON.homeButton,
+              height: ICON.homeButton,
+              justifyContent: "center",
+              alignItems: "center",
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel="Back"
@@ -235,7 +241,7 @@ const GoodbyeModal = ({
             style={[
               styles.goodbyeInner,
               {
-                paddingTop: topInset + 48,
+                paddingTop: overlayTop + 48,
                 paddingBottom: bottomInset + 24,
               },
             ]}
@@ -263,6 +269,8 @@ const GoodbyeModal = ({
             <AppText font="cormorant-italic" style={styles.closing}>
               {closingMessage}
             </AppText>
+
+            {chakraDay === 0 ? <DailyAlignmentToggleRow /> : null}
 
             <View style={styles.actions}>
               <Pressable

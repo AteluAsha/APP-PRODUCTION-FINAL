@@ -9,19 +9,17 @@
 
 import React, { useCallback, useEffect } from "react"
 import { View, StyleSheet } from "react-native"
-import { useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
 import { useProfileSheetStore } from "@/hooks/useProfileSheetStore"
 import { ProfileSheet } from "@/components/profile/ProfileSheet"
 import { registerAndroidBackCleanup } from "@/utils/androidBackCleanup"
+import { closeStackToHub } from "@/utils/navigationHelpers"
 
 export default function ProfileMenuScreen() {
-  const router = useRouter()
   const close = useProfileSheetStore((s) => s.close)
 
   const handleClose = () => {
-    close()
-    router.back()
+    closeStackToHub(() => close())
   }
 
   useEffect(() => {

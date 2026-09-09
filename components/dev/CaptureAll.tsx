@@ -179,12 +179,6 @@ export const CaptureAll: React.FC<CaptureAllProps> = ({ onComplete }) => {
       }
 
       if (currentScreen.type === "threshold") {
-        if (currentScreen.id === "threshold-waiting") {
-          const {
-            WaitingScreen,
-          } = require("@/components/chakras/WaitingScreen")
-          return <WaitingScreen {...currentScreen.props} />
-        }
         if (currentScreen.id === "threshold-goodbye") {
           const GoodbyeModal =
             require("@/components/chakras/GoodbyeModal").default
@@ -214,44 +208,6 @@ export const CaptureAll: React.FC<CaptureAllProps> = ({ onComplete }) => {
               </GestureHandlerRootView>
             </SafeAreaProvider>
           )
-        }
-        if (currentScreen.id === "sanctuary-community") {
-          const CommunityHalls = require("@/app/CommunityHalls").default
-          return (
-            <SafeAreaProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <BottomSheetModalProvider>
-                  <CommunityHalls />
-                </BottomSheetModalProvider>
-              </GestureHandlerRootView>
-            </SafeAreaProvider>
-          )
-        }
-      }
-
-      if (currentScreen.type === "entry") {
-        const wrap = (C: React.ComponentType<any>) => (
-          <ErrorBoundary>
-            <SafeAreaProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <BottomSheetModalProvider>
-                  <C {...currentScreen.props} />
-                </BottomSheetModalProvider>
-              </GestureHandlerRootView>
-            </SafeAreaProvider>
-          </ErrorBoundary>
-        )
-        if (currentScreen.id === "entry-welcome") {
-          const WelcomeScreen = require("@/app/(chakras)/WelcomeScreen").default
-          return wrap(WelcomeScreen)
-        }
-        if (currentScreen.id === "entry-date-selection") {
-          const DateSelection = require("@/app/(chakras)/DateSelection").default
-          return wrap(DateSelection)
-        }
-        if (currentScreen.id === "entry-chakra-home") {
-          const ChakraHome = require("@/app/(chakras)/ChakraHome").default
-          return wrap(ChakraHome)
         }
       }
 

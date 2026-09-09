@@ -31,7 +31,7 @@ import { ScholarshipModal } from "./ScholarshipModal"
 import { useRouter } from "expo-router"
 import { AccessGrantedModal } from "./AccessGrantedModal"
 import * as Linking from "expo-linking"
-import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
+import { SCROLL_BREATHING_BOTTOM_PADDING, safeOverlayTop } from "@/constants/layout"
 import { requestChakraHubRevealBreath } from "@/utils/homeSessionEntrance"
 import { getUserId } from "@/src/services/userId"
 import { logScholarshipRequest } from "@/src/services/scholarshipAudit"
@@ -219,7 +219,7 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
             addHapticFeedback(HapticStrength.Light)
             onBack()
           }}
-          style={[styles.backButton, { top: Math.max(insets.top, 16) + 8 }]}
+          style={[styles.backButton, { top: safeOverlayTop(insets.top) }]}
           hitSlop={12}
           accessibilityLabel="Go back"
           accessibilityRole="button"
@@ -886,28 +886,6 @@ export const CommitmentGate: React.FC<CommitmentGateProps> = ({
                 Contact Support
               </AppText>
             </Pressable>
-
-            {/* Subtle Donation Footer Link - Ready but not activated */}
-            {false && ( // Feature flag - set to true when ready to activate
-              <Pressable
-                onPress={() => {
-                  router.push("/(chakras)/Contribute")
-                  addHapticFeedback(HapticStrength.Light)
-                }}
-                style={{ marginTop: 8 }}
-              >
-                <AppText
-                  font="instrument-regular"
-                  size="xs"
-                  style={[
-                    styles.footerText,
-                    { color: "#A8C99A", opacity: 0.7 },
-                  ]}
-                >
-                  Support our mission
-                </AppText>
-              </Pressable>
-            )}
           </View>
         </ScrollView>
       </LinearGradient>

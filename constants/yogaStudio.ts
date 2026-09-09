@@ -10,6 +10,16 @@ export type YogaStudioPage = {
 
 export const YOGA_STUDIO_KICKER = 'Body Healing'
 
+export const BODY_HEALING_HEADING: Record<Chakra, string> = {
+    [Chakra.ROOT]: 'Grounding Into the Earth Body',
+    [Chakra.SACRAL]: 'Flowing Into Expression',
+    [Chakra.SOLAR_PLEXUS]: 'Channeling The Sun Fire',
+    [Chakra.HEART]: 'Opening The Heart Body',
+    [Chakra.THROAT]: 'Releasing Control',
+    [Chakra.THIRD_EYE]: 'Witness Our Duality',
+    [Chakra.CROWN]: 'Opening to All That Is',
+}
+
 export const YOGA_STUDIO: Record<Chakra, YogaStudioPage> = {
     [Chakra.ROOT]: {
         poseName: 'Mountain Pose',

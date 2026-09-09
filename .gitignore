@@ -59,3 +59,6 @@ assets/dev-gallery/snapshots/
 # expo export build artifacts (regenerated; never committed or shipped)
 .tmp-export-android/
 .tmp-export-ios/
+
+# Local Expo module Gradle output
+modules/meditation-playback/android/build/

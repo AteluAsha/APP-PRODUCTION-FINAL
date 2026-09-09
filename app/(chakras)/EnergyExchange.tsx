@@ -17,7 +17,7 @@ import { useEnergyExchangeStore } from "@/hooks/useEnergyExchangeStore"
 import { VideoRecorderModal } from "@/components/chakras/VideoRecorderModal"
 import { WriteToUsModal } from "@/components/chakras/WriteToUsModal"
 import { LeaveReviewModal } from "@/components/chakras/LeaveReviewModal"
-import { SCROLL_ANDROID_SMOOTH_PROPS } from "@/constants/layout"
+import { SCROLL_ANDROID_SMOOTH_PROPS, safeOverlayTop } from "@/constants/layout"
 import { requestChakraHubRevealBreath } from "@/utils/homeSessionEntrance"
 
 /**
@@ -82,7 +82,7 @@ export default function EnergyExchange() {
             contentContainerStyle={[
               styles.scrollContent,
               {
-                paddingTop: Math.max(insets.top, 16) + 8,
+                paddingTop: safeOverlayTop(insets.top),
                 paddingBottom: Math.max(insets.bottom, 16) + 12,
               },
             ]}

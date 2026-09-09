@@ -29,6 +29,11 @@ interface FirstLaunchState {
   /** Session-only: show the notice on the screen after leaving Chakras 101. */
   pendingWeek1JourneyNotice: boolean
   setPendingWeek1JourneyNotice: (value: boolean) => void
+  /** One-time notice after leaving the Crown goodbye screen. */
+  hasSeenCrownReminderNotice: boolean
+  markCrownReminderNoticeSeen: () => void
+  pendingCrownReminderNotice: boolean
+  setPendingCrownReminderNotice: (value: boolean) => void
   /**
    * Day indexes (0–2) that already received the post-meditation Bridge cue.
    * Persisted so the teaching only fires once per early day.
@@ -52,6 +57,8 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
           hasSeenMasterMeditationWelcome: false,
           hasSeenWeek1JourneyNotice: false,
           pendingWeek1JourneyNotice: false,
+          hasSeenCrownReminderNotice: false,
+          pendingCrownReminderNotice: false,
           bridgeCueOfferedDays: [],
         }),
       hasStartedMasterTeachings: false,
@@ -79,6 +86,15 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
       pendingWeek1JourneyNotice: false,
       setPendingWeek1JourneyNotice: (value) =>
         set({ pendingWeek1JourneyNotice: value }),
+      hasSeenCrownReminderNotice: false,
+      markCrownReminderNoticeSeen: () =>
+        set({
+          hasSeenCrownReminderNotice: true,
+          pendingCrownReminderNotice: false,
+        }),
+      pendingCrownReminderNotice: false,
+      setPendingCrownReminderNotice: (value) =>
+        set({ pendingCrownReminderNotice: value }),
       bridgeCueOfferedDays: [],
       hasOfferedBridgeCue: (day) =>
         (get().bridgeCueOfferedDays ?? []).includes(day),
@@ -97,6 +113,7 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
         hasSeenChakras101Guide: state.hasSeenChakras101Guide,
         hasSeenMasterMeditationWelcome: state.hasSeenMasterMeditationWelcome,
         hasSeenWeek1JourneyNotice: state.hasSeenWeek1JourneyNotice,
+        hasSeenCrownReminderNotice: state.hasSeenCrownReminderNotice,
         bridgeCueOfferedDays: state.bridgeCueOfferedDays,
       }),
       merge: (persisted, current) => ({
@@ -104,6 +121,7 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
         ...(persisted as object),
         groundedChakraDays: [],
         pendingWeek1JourneyNotice: false,
+        pendingCrownReminderNotice: false,
         bridgeCueOfferedDays:
           (persisted as { bridgeCueOfferedDays?: number[] })
             .bridgeCueOfferedDays ?? [],

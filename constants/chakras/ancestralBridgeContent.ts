@@ -1,5 +1,11 @@
 import { Chakra } from '@/types/chakras/Chakra'
 import { chakraContent } from '@/constants/chakras/content'
+import { getGoodbyeField } from '@/constants/sanctuaryFields'
+import { getDayFromChakra } from '@/utils/chakraMapping'
+
+export function getAncestralChamberField(chakra: Chakra) {
+    return getGoodbyeField(getDayFromChakra(chakra))
+}
 
 export const BRIDGE_EXPLAINER =
     'Learning to embody the soul is all about integration — bringing that knowing into your reality. Here we bridge the gap between your self and your soul, and come back into the now moment.'

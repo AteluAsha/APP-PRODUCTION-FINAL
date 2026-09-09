@@ -7,6 +7,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { usePathname } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AppText } from '@/components/AppText'
 import { useHealingToastStore } from '@/hooks/useHealingToastStore'
@@ -14,6 +15,8 @@ import { useHealingToastStore } from '@/hooks/useHealingToastStore'
 /** Root-level gentle toast — sage glass pill, auto-dismiss. */
 export function HealingToastHost() {
     const insets = useSafeAreaInsets()
+    const pathname = usePathname() ?? ''
+    const isAudioPlayer = pathname.includes('AudioPlayer')
     const message = useHealingToastStore((s) => s.message)
     const visible = useHealingToastStore((s) => s.visible)
     const opacity = useSharedValue(0)
@@ -56,7 +59,11 @@ export function HealingToastHost() {
                         position: 'absolute',
                         left: 20,
                         right: 20,
-                        bottom: Math.max(insets.bottom, 16) + 72,
+                        // Audio Player chrome (seek + transport) sits near the
+                        // bottom; lift the pill so it never covers the scrubber.
+                        bottom: isAudioPlayer
+                            ? Math.max(insets.bottom, 16) + 196
+                            : Math.max(insets.bottom, 16) + 88,
                         alignItems: 'center',
                     },
                     animatedStyle,

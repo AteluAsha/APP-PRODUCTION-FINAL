@@ -1,6 +1,7 @@
 import { AVPlaybackSource } from "expo-av"
 import { create } from "zustand"
 import type { MusicRoomTrackKind } from "@/constants/musicRoomLibrary"
+import type { AudioPlayMode } from "@/utils/audioPlayMode"
 
 /** Delay (ms) after reset before setting new source. Ensures MusicRoomAudioManager
  * and OtherOriginAudioManager have time to unload their tracks before new playback starts.
@@ -68,9 +69,14 @@ interface CurrentAudioStore {
   metadata: AudioMetadata | null
   prefs: AudioPlayerPrefs | null
   playlist: PlaylistItem[] | null
-  /** Full 28-track Frequency of Gnosis queue (indexed). */
+  /** Catalog for the open library track (index only — not a play queue). */
   musicRoomPlaylist: PlaylistItem[] | null
   musicRoomIndex: number
+  /**
+   * 'single' = play this track only (Audio Library + course).
+   * 'queue' = reserved for a future continuous playlist. Never set today.
+   */
+  playMode: AudioPlayMode
   audioOrigin: AudioOrigin | null
   /** When set, AudioPlayer uses this for the gradient instead of parsing Hz from metadata (e.g. embodiment from chakra day) */
   chakraColor: string | null
@@ -130,6 +136,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
   playlist: null,
   musicRoomPlaylist: null,
   musicRoomIndex: 0,
+  playMode: "single",
   audioOrigin: null,
   chakraColor: null,
   isPlaying: false,
@@ -197,6 +204,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
         playlist: null,
         musicRoomPlaylist: null,
         musicRoomIndex: 0,
+        playMode: "single",
         audioOrigin: origin,
         currentTrackKey: null,
         pendingTrackKey: null,
@@ -218,6 +226,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
     get().reset({ keepPending: true })
     set({
       audioOrigin: "music-room",
+      playMode: "single",
       currentTrackKey: trackKey ?? null,
       isPlaying: true,
       musicRoomPlaylist: null,
@@ -241,6 +250,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
         prefs: { ...item.prefs, shouldLoop: false },
         playlist: rest.length > 0 ? rest : null,
         audioOrigin: "music-room",
+        playMode: "single",
         currentTrackKey: trackKey ?? null,
         pendingTrackKey: null,
         fullPlayerTrackId: null,
@@ -258,6 +268,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
     }
     set({
       audioOrigin: "music-room",
+      playMode: "single",
       pendingTrackKey: item.trackKey ?? `library_${startIndex}`,
       isPlaying: true,
     })
@@ -271,6 +282,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
         musicRoomPlaylist: items,
         musicRoomIndex: startIndex,
         audioOrigin: "music-room",
+        playMode: "single",
         currentTrackKey: item.trackKey ?? `library_${startIndex}`,
         pendingTrackKey: null,
         fullPlayerTrackId: item.audioId ?? null,
@@ -330,6 +342,7 @@ export const useCurrentAudioStore = create<CurrentAudioStore>((set, get) => ({
       musicRoomPlaylist: null,
       musicRoomIndex: 0,
       seekToMs: null,
+      playMode: keep ? current.playMode : "single",
       ...(keep
         ? {
             audioOrigin: current.audioOrigin ?? "full-player",

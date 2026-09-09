@@ -87,7 +87,8 @@ function LightSwirl({
     )
 }
 
-/** Full-bleed Music Room player field — variant per track kind and day. */
+/** Full-bleed Music Room player field — variant per track kind and day.
+ *  Course Asha reuses this layer visually; playback origin stays separate. */
 export function MusicRoomPlayerFieldLayer({
     dayIndex,
     trackKind,

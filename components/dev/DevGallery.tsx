@@ -16,11 +16,11 @@
  * Structure:
  * - Trial 1 Gallery: All 7 chakra day screens
  * - Trial 2 Gallery: All 7 chakra day screens
- * - Thresholds: Splash, Welcome, Waiting, Goodbye, CommitmentGate
- * - Post-paywall: ChakraHub, CommunityHalls
+ * - Thresholds: Splash, Goodbye, CommitmentGate
+ * - Post-paywall: ChakraHub
  */
 
-import React, { useState } from "react"
+import React from "react"
 import { View, Modal, Pressable, ScrollView, StyleSheet } from "react-native"
 import { useRouter } from "expo-router"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
@@ -28,8 +28,6 @@ import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { Chakra } from "@/types/chakras/Chakra"
-import { getCurrentWeekStartDateISO } from "@/utils/date"
-import { onJourneyWeekStarted } from "@/src/services/journeyNotifications"
 
 const CHAKRA_NAMES = [
   "Root",
@@ -72,7 +70,6 @@ export const DevGallery: React.FC<DevGalleryProps> = ({ visible, onClose }) => {
 
   const handleNavigateToChakra = (chakra: Chakra, trialNumber: 1 | 2) => {
     addHapticFeedback(HapticStrength.Light)
-    const store = useChakraJourneyStore.getState()
 
     // Set trial context
     resetJourney()
@@ -89,18 +86,10 @@ export const DevGallery: React.FC<DevGalleryProps> = ({ visible, onClose }) => {
 
   const handleNavigateToThreshold = (route: string) => {
     addHapticFeedback(HapticStrength.Light)
-    const store = useChakraJourneyStore.getState()
 
     if (route === "welcome") {
       // Reset to show welcome (first launch state)
       resetJourney()
-      router.replace("/(chakras)")
-    } else if (route === "waiting") {
-      // Set journey started but before Monday (waiting room state)
-      resetJourney()
-      const weekStartDate = getCurrentWeekStartDateISO()
-      store.startJourney(weekStartDate)
-      void onJourneyWeekStarted()
       router.replace("/(chakras)")
     } else if (route === "goodbye") {
       // Navigate to a chakra day - user completes it to see goodbye modal
@@ -120,8 +109,6 @@ export const DevGallery: React.FC<DevGalleryProps> = ({ visible, onClose }) => {
     grantLifetimeAccess("paid")
     if (route === "chakra-hub") {
       router.push("/(chakras)/ChakraHub")
-    } else if (route === "community") {
-      router.push("/CommunityHalls")
     }
     onClose()
   }
@@ -207,10 +194,6 @@ export const DevGallery: React.FC<DevGalleryProps> = ({ visible, onClose }) => {
                   onPress: () => handleNavigateToThreshold("welcome"),
                 },
                 {
-                  label: "Waiting Room",
-                  onPress: () => handleNavigateToThreshold("waiting"),
-                },
-                {
                   label: "Goodbye Modal",
                   onPress: () => handleNavigateToThreshold("goodbye"),
                 },
@@ -225,10 +208,6 @@ export const DevGallery: React.FC<DevGalleryProps> = ({ visible, onClose }) => {
                 {
                   label: "ChakraHub (Home)",
                   onPress: () => handleNavigateToPostPaywall("chakra-hub"),
-                },
-                {
-                  label: "Community Halls",
-                  onPress: () => handleNavigateToPostPaywall("community"),
                 },
               ])}
             </ScrollView>

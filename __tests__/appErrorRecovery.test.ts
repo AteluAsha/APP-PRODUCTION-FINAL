@@ -11,7 +11,7 @@ describe('appErrorRecovery', () => {
         expect(src).toContain('recoverFromAppError')
         expect(src).toContain('playerReturnPath')
         expect(src).toContain('ChakraHub')
-        expect(src).toContain('ChakraHome')
+        expect(src).not.toContain("const CHAKRA_HOME")
         expect(src).toContain('AudioLibrary')
         expect(src).toContain('silenceAllAudio')
         expect(src).toContain('pinRecoveryRoute')

@@ -1,16 +1,6 @@
 /**
- * Extra route retired. The course lives on ChakraHub.
+ * Tribe chat is retired. Stale deep links land on ChakraHub.
  */
-import React, { useEffect } from 'react'
-import { View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { RetiredToHub } from "@/components/navigation/RetiredToHub"
 
-export default function TribeChatScreen() {
-    const router = useRouter()
-
-    useEffect(() => {
-        router.replace('/(chakras)/ChakraHub')
-    }, [router])
-
-    return <View style={{ flex: 1, backgroundColor: '#000000' }} />
-}
+export default RetiredToHub

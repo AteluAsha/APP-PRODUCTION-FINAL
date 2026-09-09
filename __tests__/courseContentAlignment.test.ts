@@ -147,6 +147,14 @@ describe('course content alignment (chakra, day, frequency, gnosis)', () => {
         expect(throat.subtitle).toBe('vishuddha')
     })
 
+    it('uses one integration invitation for every day', () => {
+        const copy =
+            'Today, we bring our divine energy out into the world by releasing it through the body.'
+        for (const chakra of ALL_CHAKRAS) {
+            expect(chakraContent[chakra].integration).toBe(copy)
+        }
+    })
+
     it('each day has unique integration moment gnosis', () => {
         const titles = ALL_CHAKRAS.map(
             (c) => getIntegrationMomentContent(getDayFromChakra(c))?.title,

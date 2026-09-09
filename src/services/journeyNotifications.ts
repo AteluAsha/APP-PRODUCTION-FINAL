@@ -8,7 +8,7 @@
  *   • Daily alignment OFF: Sunday 20:00 course/Monday Root preview, and
  *     Wednesday 10:00 solar check-in after journeyStarted.
  *
- * Permission: never required to use the app. Opt out in Profile / Root day /
+ * Permission: never required to use the app. Opt out in Profile /
  * system settings. No marketing copy. No badges.
  *
  * Legacy ids are cancelled on every sync.

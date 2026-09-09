@@ -51,6 +51,7 @@ import Animated, {
 import {
   SOMATIC_SPINNER_FADE_OUT_MS,
   TOUCH,
+  safeOverlayTop,
 } from "@/constants/layout"
 import {
   generateDailyTransmission,
@@ -597,23 +598,10 @@ export const AnuaChatPage: React.FC<AnuaChatPageProps> = ({
 
     if (isWaitingRoom) {
       const waitingRoomGreetings = [
-        `Hello, beautiful soul. I'm Anua, your guide for this 7-day chakra journey. I'm here to help you prepare and explore before your journey begins.
-
-The 7 chakras are energy centers that run from your root to your crown, each holding unique wisdom and healing. As you wait, I'd love to understand where you are on this path.
-
-How are you feeling as you prepare for this journey? What do you already know about the chakras, and what draws you to explore them?`,
-
-        `Hello, beautiful soul. I'm Anua, your guide. You're about to embark on a profound 7-day journey through your energy body—from your root foundation to your crown connection.
-
-Before we begin, I'd love to learn about you. How familiar are you with meditation and breathing work? Have you explored your energy body before? What intentions are you bringing to this journey?`,
-
-        `Hello, beautiful soul. I'm Anua. You're preparing for a sacred journey through all 7 chakras—each one a gateway to deeper awareness and healing.
-
-I'm here to help you prepare. Tell me: What do you know about the relationship between ego and awareness? How do you experience your soul's presence in your daily life? What draws you to this work?`,
-
-        `Hello, beautiful soul. I'm Anua, your guide for this 7-day chakra journey. Each chakra holds ancient wisdom—from the grounding energy of your root to the divine connection of your crown.
-
-As you prepare, I'd love to understand your starting point. How do you currently connect with your body's energy? Have you worked with meditation, breathwork, or somatic practices? What are you hoping to discover about yourself?`,
+        "I'm Anua. You're at the threshold of this journey. How are you arriving?",
+        "I'm Anua. I'm here with you in the waiting. What would you like to know?",
+        "I'm Anua. Before we begin—what's alive in you right now?",
+        "I'm Anua. Sit with me a moment. What are you bringing to this path?",
       ]
       greetingText =
         waitingRoomGreetings[
@@ -632,7 +620,7 @@ As you prepare, I'd love to understand your starting point. How do you currently
       ]
       const randomQuestion =
         wiseQuestions[Math.floor(Math.random() * wiseQuestions.length)]
-      greetingText = `Hello, beautiful soul. I'm Anua, your guide on this journey. ${randomQuestion}`
+      greetingText = `I'm Anua. ${randomQuestion}`
     }
 
     const greeting: ChatMessage = {
@@ -1115,12 +1103,12 @@ const AnuaChatContent: React.FC<{
           </View>
         </View>
 
-        {/* Close button: dedicated top-most layer so it always receives touches (Android). Top of safe content; on Android align with header row (logo). */}
+        {/* Close button: dedicated top-most layer so it always receives touches (Android). */}
         <View
           pointerEvents="box-none"
           style={{
             position: "absolute",
-            top: Platform.OS === "android" ? 18 : insets.top,
+            top: safeOverlayTop(insets.top),
             right: 16,
             zIndex: 9999,
             ...(Platform.OS === "android" && { elevation: 9999 }),

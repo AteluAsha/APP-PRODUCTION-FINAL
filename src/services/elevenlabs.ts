@@ -29,30 +29,14 @@ import { stripAnuaMarkup } from "@/utils/anuaMessageMarkup"
  * Get ElevenLabs API Key from environment variables via expo-constants
  */
 const getElevenLabsApiKey = (): string => {
-  const apiKey = Constants.expoConfig?.extra?.elevenlabs?.apiKey
-
-  if (!apiKey || apiKey === "") {
-    throw new Error(
-      "ElevenLabs API key is not configured. Please add ELEVENLABS_API_KEY to your .env file and app.config.js",
-    )
-  }
-
-  return apiKey
+  return Constants.expoConfig?.extra?.elevenlabs?.apiKey || ""
 }
 
 /**
  * Get Anua's Voice ID from environment variables via expo-constants
  */
 const getAnuaVoiceId = (): string => {
-  const voiceId = Constants.expoConfig?.extra?.elevenlabs?.anuaVoiceId
-
-  if (!voiceId || voiceId === "") {
-    throw new Error(
-      "Anua Voice ID is not configured. Please add ANUA_VOICE_ID to your .env file and app.config.js",
-    )
-  }
-
-  return voiceId
+  return Constants.expoConfig?.extra?.elevenlabs?.anuaVoiceId || ""
 }
 
 const ELEVENLABS_API_KEY = getElevenLabsApiKey()
@@ -335,6 +319,9 @@ export const speakAsAnua = async (
   },
   isCancelled?: () => boolean,
 ): Promise<void> => {
+  if (!ELEVENLABS_API_KEY || !ANUA_VOICE_ID) {
+    return
+  }
   try {
     await stopAnuaAudio()
 

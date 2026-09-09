@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { goToChakraHubRoot } from "@/utils/navigationHelpers"
 import { runAndroidBackCleanup } from "@/utils/androidBackCleanup"
-import { ICON } from "@/constants/layout"
+import { ICON, safeOverlayTop } from "@/constants/layout"
 
 export const ActionBarAnimated = ({
   scrollViewRef,
@@ -86,7 +86,7 @@ export const ActionBarAnimated = ({
           accessibilityHint="Tap to go back"
           style={{
             position: "absolute",
-            top: Math.max(insets.top, 8) + 8,
+            top: safeOverlayTop(insets.top),
             left: 16,
             width: ICON.homeButton,
             height: ICON.homeButton,

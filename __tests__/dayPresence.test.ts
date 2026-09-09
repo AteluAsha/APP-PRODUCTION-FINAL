@@ -39,16 +39,11 @@ describe("first-click day presence", () => {
         expect(src).not.toContain("bottom: Platform.OS === 'ios' ? 72")
     })
 
-    it("hub and home intercept first taps through openChakraDay", () => {
+    it("hub intercepts first taps through openChakraDay", () => {
         const hub = fs.readFileSync(
             path.join(__dirname, "..", "app/(chakras)/ChakraHub.tsx"),
             "utf8",
         )
-        const home = fs.readFileSync(
-            path.join(__dirname, "..", "components/chakras/ChakraHome.tsx"),
-            "utf8",
-        )
         expect(hub).toContain("openChakraDay(item.day")
-        expect(home).toContain("openChakraDay(item.day")
     })
 })

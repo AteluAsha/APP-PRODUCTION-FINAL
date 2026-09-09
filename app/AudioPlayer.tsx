@@ -1,6 +1,6 @@
 import { ActionBar } from "@/components/ActionBar"
 import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   View,
   TouchableHighlight,
@@ -40,7 +40,7 @@ import Rewind10 from "@/assets/svg/rewind10.svg"
 import Forward10 from "@/assets/svg/forward10.svg"
 import { stopAnuaAudio } from "@/src/services/elevenlabs"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { ICON, TOUCH, ANDROID_PRESS_DELAY_MS } from "@/constants/layout"
+import { ICON, TOUCH, ANDROID_PRESS_DELAY_MS, safeOverlayTop } from "@/constants/layout"
 import { isEmulatorOrSimulator } from "@/constants/emulator"
 import {
   otherOriginTrackRef,
@@ -88,15 +88,16 @@ import {
 import { pinRecoveryRoute } from "@/utils/appErrorRecovery"
 import { clearVaultAutoPlayback } from "@/src/services/vaultAutoPlayback"
 import { registerAndroidHardwareBackOverride } from "@/utils/androidBackCleanup"
-import { Gesture, GestureDetector } from "react-native-gesture-handler"
-import { runOnJS } from "react-native-reanimated"
 import { MusicRoomPlayerFieldLayer } from "@/components/chakras/MusicRoomPlayerFieldLayer"
 import type { MusicRoomTrackKind } from "@/constants/musicRoomLibrary"
+import { getAshaPlayerField } from "@/utils/ashaPlayerField"
+import {
+  isLibrarySingleTrack,
+  shouldTreatAsTrackEnd,
+} from "@/utils/audioPlayMode"
 import {
   getActiveMusicRoomTrack,
   getMusicRoomActiveAudioId,
-  musicRoomAdvanceNext,
-  musicRoomAdvancePrevious,
 } from "@/utils/musicRoomPlayback"
 
 const FALLBACK_DAY_INDEX = 5 // Third Eye
@@ -271,6 +272,14 @@ const AudioPlayer = () => {
     audioOrigin === "music-room" &&
     !!musicRoomPlaylist &&
     musicRoomPlaylist.length > 0
+  const ashaPlayerField = isMusicRoomPlaylist
+    ? null
+    : getAshaPlayerField(fullPlayerTrackId)
+  const playerFieldDayIndex = isMusicRoomPlaylist
+    ? musicRoomDayIndex
+    : ashaPlayerField?.dayIndex
+  const playerFieldTrackKind: MusicRoomTrackKind | undefined =
+    isMusicRoomPlaylist ? musicRoomTrackKind : ashaPlayerField?.trackKind
   const dayIndex =
     audioOrigin === "music-room" && musicRoomPlaylist
       ? musicRoomDayIndex
@@ -288,9 +297,10 @@ const AudioPlayer = () => {
     return () => {
       setFullScreenPlayerMounted(false)
       const state = useCurrentAudioStore.getState()
-      if (state.audioOrigin === "music-room") {
+      if (state.source != null || state.audioOrigin != null) {
+        void closeFullPlayerAndLeave({ navigate: false })
+      } else {
         void silenceAllAudio()
-        state.reset()
       }
     }
   }, [setFullScreenPlayerMounted])
@@ -333,7 +343,6 @@ const AudioPlayer = () => {
   const allowLeaveRef = useRef(false)
   /** Cancels in-flight initializeTrack when source changes (music-room swipe). */
   const initGenerationRef = useRef(0)
-  const musicRoomSwipeBusyRef = useRef(false)
   const seekingUntilRef = useRef(0)
   const seekTargetMsRef = useRef(0)
   const fileDurationMsRef = useRef(0)
@@ -516,12 +525,15 @@ const AudioPlayer = () => {
         bookmarkMs: candidate,
         positionMs: candidate,
       })
-      const resumeAt = resumePositionMs(candidate, durationForResume)
+      const sameListenMs = lastPlaybackPositionMsRef.current
+      const resumeAt = isLibrarySingleTrack(st.audioOrigin, st.playMode)
+        ? Math.max(0, sameListenMs)
+        : resumePositionMs(candidate, durationForResume)
       if (st.audioOrigin === "music-room") {
         st.applyMusicRoomTrack(st.musicRoomIndex, {
           uri: toAbsoluteFileUri(finalUri),
         })
-        if (resumeAt > 0) st.setPositionMs(resumeAt)
+        st.setPositionMs(resumeAt)
         return
       }
       st.setSource(
@@ -697,7 +709,22 @@ const AudioPlayer = () => {
         }
 
         if (status.didJustFinish) {
-          setJustFinished(true)
+          const live = useCurrentAudioStore.getState()
+          const endedId = live.fullPlayerTrackId
+          const vaultReady =
+            !endedId ||
+            useSanctuaryVaultStore.getState().readyIds[endedId] === true
+          if (
+            !shouldTreatAsTrackEnd({
+              didJustFinish: true,
+              vaultReady,
+            })
+          ) {
+            if (endedId) rushSanctuaryTrack(endedId)
+            setIsLoading(true)
+          } else {
+            setJustFinished(true)
+          }
         }
 
         // 80% = dot only: auto-check complete box so chakra shows dot on homescreen. No setCompletedChakra, no navigation.
@@ -719,6 +746,7 @@ const AudioPlayer = () => {
         if (playing && status.positionMillis > 0) {
           const stStore = useCurrentAudioStore.getState()
           if (
+            !isLibrarySingleTrack(stStore.audioOrigin, stStore.playMode) &&
             stStore.fullPlayerTrackId != null &&
             stStore.fullPlayerTrackId.length > 0
           ) {
@@ -875,13 +903,18 @@ const AudioPlayer = () => {
           trackId != null
             ? useEmbodimentDurationCacheStore.getState().getDuration(trackId)
             : undefined
+        const skipResume = isLibrarySingleTrack(state.audioOrigin, state.playMode)
         const saved =
-          trackId != null ? await loadBookmarkPositionMs(trackId) : undefined
-        const candidate = bestResumeCandidateMs({
-          storeMs: state.positionMs,
-          bookmarkMs: saved,
-          lastPlaybackMs: lastPlaybackPositionMsRef.current,
-        })
+          !skipResume && trackId != null
+            ? await loadBookmarkPositionMs(trackId)
+            : undefined
+        const candidate = skipResume
+          ? lastPlaybackPositionMsRef.current
+          : bestResumeCandidateMs({
+              storeMs: state.positionMs,
+              bookmarkMs: saved,
+              lastPlaybackMs: lastPlaybackPositionMsRef.current,
+            })
         const usableDuration = resolvePlaybackDurationMs({
           fileDurationMs: fileMs || cachedDuration,
           catalogDurationMs: catalogMs,
@@ -1024,7 +1057,14 @@ const AudioPlayer = () => {
 
   /** Teardown audio before leaving; navigation is dispatched after cleanup in beforeRemove. */
   const teardownPlayerForLeave = useCallback(async () => {
-    if (closingRef.current || isClosingFullPlayer()) return
+    if (closingRef.current) {
+      await closeFullPlayerAndLeave({
+        positionMs: lastPlaybackPositionMsRef.current,
+        seekTargetMs: seekTargetMsRef.current,
+        navigate: false,
+      })
+      return
+    }
     closingRef.current = true
     initializingTrackRef.current = false
     initGenerationRef.current += 1
@@ -1044,8 +1084,8 @@ const AudioPlayer = () => {
         } catch {
           // best-effort before global silence
         }
+        trackRef.current = null
       }
-      await silenceAllAudio()
     } catch {
       // never block leave on teardown errors
     }
@@ -1053,21 +1093,6 @@ const AudioPlayer = () => {
     setIsPlaying(false)
     setIsLoading(false)
     isLoadedRef.current = false
-    if (storeSnapshot.audioOrigin === "music-room") {
-      const id =
-        storeSnapshot.fullPlayerTrackId ??
-        storeSnapshot.musicRoomPlaylist?.[storeSnapshot.musicRoomIndex]
-          ?.audioId
-      const pos = bookmarkPositionToPersist({
-        lastPlaybackMs: lastPlaybackPositionMsRef.current,
-        storeMs: storeSnapshot.positionMs,
-        seekTargetMs: seekTargetMsRef.current,
-      })
-      await saveAudioBookmark(id, pos)
-      storeSnapshot.setPlaying(false)
-      storeSnapshot.setFullScreenPlayerMounted(false)
-      return
-    }
     await closeFullPlayerAndLeave({
       positionMs: lastPlaybackPositionMsRef.current,
       seekTargetMs: seekTargetMsRef.current,
@@ -1077,7 +1102,7 @@ const AudioPlayer = () => {
 
   /** X button, hardware back, and stack pop all route through beforeRemove. */
   const requestLeavePlayer = useCallback(() => {
-    if (allowLeaveRef.current || closingRef.current || isClosingFullPlayer()) {
+    if (allowLeaveRef.current || closingRef.current) {
       return
     }
     const origin = useCurrentAudioStore.getState().audioOrigin
@@ -1137,10 +1162,12 @@ const AudioPlayer = () => {
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
       if (next === "background" || next === "inactive") {
-        const id = useCurrentAudioStore.getState().fullPlayerTrackId
+        const live = useCurrentAudioStore.getState()
+        if (isLibrarySingleTrack(live.audioOrigin, live.playMode)) return
+        const id = live.fullPlayerTrackId
         const pos = Math.max(
           lastPlaybackPositionMsRef.current,
-          useCurrentAudioStore.getState().positionMs,
+          live.positionMs,
           seekTargetMsRef.current,
         )
         void saveAudioBookmark(id, pos)
@@ -1148,7 +1175,9 @@ const AudioPlayer = () => {
       }
       if (next !== "active") return
       void (async () => {
-        const id = useCurrentAudioStore.getState().fullPlayerTrackId
+        const live = useCurrentAudioStore.getState()
+        if (isLibrarySingleTrack(live.audioOrigin, live.playMode)) return
+        const id = live.fullPlayerTrackId
         const active = trackRef.current
         if (!id || !active || closingRef.current) return
         const bookmark = await loadBookmarkPositionMs(id)
@@ -1209,47 +1238,18 @@ const AudioPlayer = () => {
 
     if (!prefs.shouldLoop && justFinished) {
       setJustFinished(false)
-      const finishedId = useCurrentAudioStore.getState().fullPlayerTrackId
-      void clearAudioBookmark(finishedId)
-      lastPlaybackPositionMsRef.current = 0
-      if (audioOrigin === "music-room") {
-        if (musicRoomPlaylist && musicRoomPlaylist.length > 0) {
-          void musicRoomAdvanceNext().then((advanced) => {
-            if (!advanced) {
-              seekToPosition(0)
-              track?.pauseAsync()
-              setIsPlaying(false)
-              setPlaying(false)
-            }
-          })
-          return
-        }
-        const advanced = useCurrentAudioStore.getState().advanceToNext()
-        if (!advanced) {
-          seekToPosition(0)
-          track?.pauseAsync()
-          setIsPlaying(false)
-          setPlaying(false)
-        }
-        return
+      const finished = useCurrentAudioStore.getState()
+      if (!isLibrarySingleTrack(finished.audioOrigin, finished.playMode)) {
+        void clearAudioBookmark(finished.fullPlayerTrackId)
       }
-      // Full-player / crystal-bowl-in-player: never auto-advance to Asha or any other track.
+      lastPlaybackPositionMsRef.current = 0
+      finished.setPositionMs(0)
       seekToPosition(0)
       track?.pauseAsync()
       setIsPlaying(false)
       setPlaying(false)
     }
-  }, [
-    justFinished,
-    seekToPosition,
-    track,
-    prefs,
-    audioOrigin,
-    hasLifetimeAccess,
-    dayIndex,
-    markChakraCompleted,
-    musicRoomPlaylist,
-  ])
+  }, [justFinished, seekToPosition, track, prefs])
 
   // Re-initialize only when the source URI changes. Do not re-init on focus
   // (Notes overlay) or prefs object identity — that snaps the slider to 0 and
@@ -1273,17 +1273,23 @@ const AudioPlayer = () => {
 
     const runInit = async () => {
       if (sourceChanged) {
-        const id = useCurrentAudioStore.getState().fullPlayerTrackId
-        const saved = id ? await loadBookmarkPositionMs(id) : undefined
-        const resumePos = bestResumeCandidateMs({
-          storeMs: useCurrentAudioStore.getState().positionMs,
-          bookmarkMs: saved,
-          lastPlaybackMs: lastPlaybackPositionMsRef.current,
-        })
-        if (resumePos > 0) {
-          lastPlaybackPositionMsRef.current = resumePos
-          setPosition(resumePos)
-          setPositionMs(resumePos)
+        const live = useCurrentAudioStore.getState()
+        const id = live.fullPlayerTrackId
+        if (!isLibrarySingleTrack(live.audioOrigin, live.playMode)) {
+          const saved = id ? await loadBookmarkPositionMs(id) : undefined
+          const resumePos = bestResumeCandidateMs({
+            storeMs: live.positionMs,
+            bookmarkMs: saved,
+            lastPlaybackMs: lastPlaybackPositionMsRef.current,
+          })
+          if (resumePos > 0) {
+            lastPlaybackPositionMsRef.current = resumePos
+            setPosition(resumePos)
+            setPositionMs(resumePos)
+          }
+        } else if (lastPlaybackPositionMsRef.current <= 0) {
+          setPosition(0)
+          setPositionMs(0)
         }
       }
 
@@ -1348,7 +1354,7 @@ const AudioPlayer = () => {
     if (!trackRef.current || sourceChanged) {
       void runInit()
     }
-  }, [source, audioOrigin, initializeTrack, prefs, musicRoomIndex])
+  }, [source, audioOrigin, initializeTrack, prefs])
 
   // When mini player toggles play/pause for "other", apply to our track (ignore initial/self updates)
   useEffect(() => {
@@ -1377,8 +1383,10 @@ const AudioPlayer = () => {
   const handleRestart = useCallback(() => {
     showControls()
     addHapticFeedback(HapticStrength.Light)
-    const id = useCurrentAudioStore.getState().fullPlayerTrackId
-    void clearAudioBookmark(id)
+    const live = useCurrentAudioStore.getState()
+    if (!isLibrarySingleTrack(live.audioOrigin, live.playMode)) {
+      void clearAudioBookmark(live.fullPlayerTrackId)
+    }
     lastPlaybackPositionMsRef.current = 0
     seekToPosition(0, isPlaying)
   }, [showControls, seekToPosition, isPlaying])
@@ -1414,42 +1422,6 @@ const AudioPlayer = () => {
     }
     pulseTrackTransition()
   }, [musicRoomIndex, fullPlayerTrackId, isMusicRoomPlaylist, pulseTrackTransition])
-
-  const handleMusicRoomSwipeNext = useCallback(async () => {
-    if (musicRoomSwipeBusyRef.current || closingRef.current) return
-    musicRoomSwipeBusyRef.current = true
-    pulseTrackTransition()
-    try {
-      await musicRoomAdvanceNext()
-    } finally {
-      musicRoomSwipeBusyRef.current = false
-    }
-  }, [pulseTrackTransition])
-
-  const handleMusicRoomSwipePrevious = useCallback(async () => {
-    if (musicRoomSwipeBusyRef.current || closingRef.current) return
-    musicRoomSwipeBusyRef.current = true
-    pulseTrackTransition()
-    try {
-      await musicRoomAdvancePrevious()
-    } finally {
-      musicRoomSwipeBusyRef.current = false
-    }
-  }, [pulseTrackTransition])
-
-  const musicRoomSwipeGesture = useMemo(() => {
-    if (!isMusicRoomPlaylist) return undefined
-    return Gesture.Pan()
-      .activeOffsetX([-32, 32])
-      .failOffsetY([-24, 24])
-      .onEnd((e) => {
-        if (e.translationX < -56) {
-          runOnJS(handleMusicRoomSwipeNext)()
-        } else if (e.translationX > 56) {
-          runOnJS(handleMusicRoomSwipePrevious)()
-        }
-      })
-  }, [isMusicRoomPlaylist, handleMusicRoomSwipeNext, handleMusicRoomSwipePrevious])
 
   const animatedBottomBarStyle = useAnimatedStyle(() => ({
     opacity: bottomBarOpacity.value,
@@ -1665,10 +1637,10 @@ const AudioPlayer = () => {
 
   const playerBody = (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
-      {isMusicRoomPlaylist && musicRoomTrackKind && musicRoomDayIndex != null ? (
+      {playerFieldTrackKind != null && playerFieldDayIndex != null ? (
         <MusicRoomPlayerFieldLayer
-          dayIndex={musicRoomDayIndex}
-          trackKind={musicRoomTrackKind}
+          dayIndex={playerFieldDayIndex}
+          trackKind={playerFieldTrackKind}
         />
       ) : null}
 
@@ -1679,64 +1651,32 @@ const AudioPlayer = () => {
       />
       <HeadsetListenReminder />
 
-      {/* Tap center to show controls; music-room swipes live here only (not the control bar). */}
-      {musicRoomSwipeGesture ? (
-        <GestureDetector gesture={musicRoomSwipeGesture}>
-          <Pressable
-            style={{ flex: 1 }}
-            onPress={handleBottomBarPress}
-            onPointerEnter={
-              Platform.OS === "web" ? handleBottomBarPress : undefined
-            }
-            onPointerLeave={
-              Platform.OS === "web"
-                ? () => {
-                    if (controlsHideTimerRef.current) {
-                      clearTimeout(controlsHideTimerRef.current)
-                    }
-                    setControlsVisible(false)
-                  }
-                : undefined
-            }
-          >
-            <PlayerTrackFace
-              dayIndex={dayIndex}
-              title={metadata.title}
-              author={metadata.author}
-              isLoading={isLoading}
-              embodimentPulse={prefs?.isIntroAudio === true && isPlaying}
-              animatedStyle={animatedTrackContentStyle}
-            />
-          </Pressable>
-        </GestureDetector>
-      ) : (
-        <Pressable
-          style={{ flex: 1 }}
-          onPress={handleBottomBarPress}
-          onPointerEnter={
-            Platform.OS === "web" ? handleBottomBarPress : undefined
-          }
-          onPointerLeave={
-            Platform.OS === "web"
-              ? () => {
-                  if (controlsHideTimerRef.current) {
-                    clearTimeout(controlsHideTimerRef.current)
-                  }
-                  setControlsVisible(false)
+      <Pressable
+        style={{ flex: 1 }}
+        onPress={handleBottomBarPress}
+        onPointerEnter={
+          Platform.OS === "web" ? handleBottomBarPress : undefined
+        }
+        onPointerLeave={
+          Platform.OS === "web"
+            ? () => {
+                if (controlsHideTimerRef.current) {
+                  clearTimeout(controlsHideTimerRef.current)
                 }
-              : undefined
-          }
-        >
-          <PlayerTrackFace
-            dayIndex={dayIndex}
-            title={metadata.title}
-            author={metadata.author}
-            isLoading={isLoading}
-            embodimentPulse={prefs?.isIntroAudio === true && isPlaying}
-            animatedStyle={animatedTrackContentStyle}
-          />
-        </Pressable>
-      )}
+                setControlsVisible(false)
+              }
+            : undefined
+        }
+      >
+        <PlayerTrackFace
+          dayIndex={dayIndex}
+          title={metadata.title}
+          author={metadata.author}
+          isLoading={isLoading}
+          embodimentPulse={prefs?.isIntroAudio === true && isPlaying}
+          animatedStyle={animatedTrackContentStyle}
+        />
+      </Pressable>
 
       {/* Bottom bar - play/pause, slider */}
       <View
@@ -1756,20 +1696,6 @@ const AudioPlayer = () => {
         }}
       >
         <Animated.View style={[{ width: "100%" }, animatedBottomBarStyle]}>
-          {isMusicRoomPlaylist && musicRoomPlaylist ? (
-            <AppText
-              font="instrument-regular"
-              size="xs"
-              style={{
-                alignSelf: "flex-end",
-                marginBottom: 6,
-                color: "rgba(255,255,255,0.38)",
-                letterSpacing: 0.4,
-              }}
-            >
-              {musicRoomIndex + 1} / {musicRoomPlaylist.length}
-            </AppText>
-          ) : null}
           <View
             style={{
               flexDirection: "row",
@@ -1871,7 +1797,7 @@ const AudioPlayer = () => {
         style={{
           position: "absolute",
           right: 12,
-          top: insets.top + 4,
+          top: safeOverlayTop(insets.top),
           width: 52,
           height: 52,
           alignItems: "center",

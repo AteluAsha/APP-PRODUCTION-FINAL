@@ -20,7 +20,7 @@ describe('ancestral bridge course move', () => {
         useAncestralBridgeStore.getState().resetForTesting()
     })
 
-    it('skips the law chamber only after the Master Key is received', () => {
+    it('always opens the Ancestral Gnosis chamber from The Bridge', () => {
         const api = useAncestralBridgeStore
         expect(api.getState().hasOpenedAshaPlayer(Chakra.ROOT)).toBe(false)
         api.getState().markAshaPlayerOpened(Chakra.ROOT)
@@ -29,8 +29,6 @@ describe('ancestral bridge course move', () => {
         api.getState().markMasterKeyReceived(Chakra.ROOT)
         expect(api.getState().hasReceivedMasterKey(Chakra.ROOT)).toBe(true)
         expect(api.getState().awaitingMasterKey).toBeNull()
-        expect(api.getState().hasOpenedAshaPlayer(Chakra.ROOT)).toBe(true)
-        expect(api.getState().hasOpenedAshaPlayer(Chakra.HEART)).toBe(false)
     })
 
     it('keeps every ancestral law on its own chamber path', () => {
@@ -84,30 +82,31 @@ describe('ancestral bridge course move', () => {
         expect(part4).toContain('BRIDGE_EXPLAINER')
     })
 
-    it('does not reuse course page imagery in the ancestral chamber', () => {
+    it('restores the Ancestral Gnosis opening page without course-day photos', () => {
         const chamber = read('app/(chakras)/HeadToHeart.tsx')
-        expect(chamber).toContain('AncestralFieldLayer')
-        expect(chamber).toContain('LISTEN_WITH_ASHA_LABEL')
+        expect(chamber).toContain('getAncestralChamberField')
         expect(chamber).toContain('MASTER_KEY_LABEL')
-        expect(chamber).toContain('playAshaTrack')
-        expect(chamber).toContain('markAwaitingMasterKey')
+        expect(chamber).toContain('AudioRow')
+        expect(chamber).toContain('ParallaxScrollView')
+        expect(chamber).toContain('HeaderSection')
         expect(chamber).not.toContain('HeaderBackground')
-        expect(chamber).not.toContain('ParallaxScrollView')
         expect(chamber).not.toContain('headerBackground')
         expect(chamber).not.toContain('part2bg')
-        expect(chamber).not.toContain('AudioRow')
+        expect(chamber).not.toContain('AncestralFieldLayer')
+        expect(chamber).not.toContain('markAwaitingMasterKey')
+        expect(chamber).not.toContain('LISTEN_WITH_ASHA_LABEL')
         expect(chamber).not.toContain('SanctuaryFieldLayer')
 
-        const field = read('components/chakras/AncestralFieldLayer.tsx')
-        expect(field).not.toContain('require(')
-        expect(field).toContain('rgba(232, 201, 140')
+        const fields = read('constants/chakras/ancestralBridgeContent.ts')
+        expect(fields).toContain('getGoodbyeField')
+        expect(fields).toContain('getAncestralChamberField')
     })
 
     it('opens Audio Player with router.push and never a transparent modal', () => {
         const open = read('utils/openAshaSpeaks.ts')
         expect(open).toContain("router.push")
-        expect(open).toContain('playSanctuaryTrack')
-        expect(open).toContain('hasReceivedMasterKey')
+        expect(open).toContain('ancestralChamberPath')
+        expect(open).not.toContain('hasReceivedMasterKey')
         expect(open).not.toContain(
             'if (store.hasOpenedAshaPlayer(chakra))',
         )
@@ -116,8 +115,16 @@ describe('ancestral bridge course move', () => {
         expect(asha).toContain('ASHA_SPEAKS_TITLE')
         expect(asha).toContain('#F3D59A')
         expect(asha).not.toContain('colorbar.png')
+        const chamber = read('app/(chakras)/HeadToHeart.tsx')
+        expect(chamber).toContain('AudioRow')
+        expect(chamber).toContain('getHeadToHeartAudioId')
         const player = read('utils/sanctuaryPlayback.ts')
         expect(player).toContain("router.push('/AudioPlayer')")
+        expect(open).not.toContain('openMusicRoomAtIndex')
+        expect(open).not.toContain('music-room')
+        const audioPlayer = read('app/AudioPlayer.tsx')
+        expect(audioPlayer).toContain('getAshaPlayerField')
+        expect(audioPlayer).toContain('MusicRoomPlayerFieldLayer')
         for (const chakra of ALL_CHAKRAS) {
             expect(chakraContent[chakra].headtoheart.masterKey.text.length).toBeGreaterThan(
                 40,

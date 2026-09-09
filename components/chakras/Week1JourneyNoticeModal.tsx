@@ -16,11 +16,18 @@ import { WEEK1_JOURNEY_NOTICE_COPY } from '@/constants/journeyNotificationCopy'
 interface Week1JourneyNoticeModalProps {
     visible: boolean
     onUnderstand: () => void
+    copy?: {
+        title: string
+        body: string
+        profileNote: string
+        cta: string
+    }
 }
 
 export function Week1JourneyNoticeModal({
     visible,
     onUnderstand,
+    copy = WEEK1_JOURNEY_NOTICE_COPY,
 }: Week1JourneyNoticeModalProps) {
     const handleUnderstand = () => {
         addHapticFeedback(HapticStrength.Medium)
@@ -84,7 +91,7 @@ export function Week1JourneyNoticeModal({
                                     font="cormorant-italic"
                                     style={styles.title}
                                 >
-                                    {WEEK1_JOURNEY_NOTICE_COPY.title}
+                                    {copy.title}
                                 </AppText>
                             </View>
 
@@ -92,14 +99,14 @@ export function Week1JourneyNoticeModal({
                                 font="cormorant-italic"
                                 style={styles.body}
                             >
-                                {WEEK1_JOURNEY_NOTICE_COPY.body}
+                                {copy.body}
                             </AppText>
 
                             <AppText
                                 font="cormorant-italic"
                                 style={styles.profileNote}
                             >
-                                {WEEK1_JOURNEY_NOTICE_COPY.profileNote}
+                                {copy.profileNote}
                             </AppText>
 
                             <Pressable
@@ -115,7 +122,7 @@ export function Week1JourneyNoticeModal({
                                 }}
                                 accessibilityRole="button"
                                 accessibilityLabel={
-                                    WEEK1_JOURNEY_NOTICE_COPY.cta
+                                    copy.cta
                                 }
                             >
                                 <LinearGradient
@@ -131,7 +138,7 @@ export function Week1JourneyNoticeModal({
                                         font="cormorant-italic"
                                         style={styles.ctaText}
                                     >
-                                        {WEEK1_JOURNEY_NOTICE_COPY.cta}
+                                        {copy.cta}
                                     </AppText>
                                 </LinearGradient>
                             </Pressable>

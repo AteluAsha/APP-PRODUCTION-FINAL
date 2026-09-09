@@ -1,16 +1,6 @@
 /**
- * Standalone contribute screen retired. Energy Exchange remains on Paywall.
+ * Standalone contribute screen is retired. Stale deep links land on ChakraHub.
  */
-import React, { useEffect } from 'react'
-import { View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { RetiredToHub } from "@/components/navigation/RetiredToHub"
 
-export default function Contribute() {
-    const router = useRouter()
-
-    useEffect(() => {
-        router.replace('/(chakras)/ChakraHub')
-    }, [router])
-
-    return <View style={{ flex: 1, backgroundColor: '#000000' }} />
-}
+export default RetiredToHub

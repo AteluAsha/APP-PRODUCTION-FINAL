@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
+import { ICON, safeOverlayTop } from "@/constants/layout"
 import { LinearGradient } from "expo-linear-gradient"
 import * as ImagePicker from "expo-image-picker"
 import * as Clipboard from "expo-clipboard"
@@ -573,7 +574,12 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={profileOnly ? styles.profileOnlyGradient : styles.gradient}
+            style={[
+              profileOnly ? styles.profileOnlyGradient : styles.gradient,
+              profileOnly && asScreen
+                ? { paddingTop: safeOverlayTop(insets.top) }
+                : null,
+            ]}
           >
             <View style={styles.header}>
               {profileOnly && asScreen ? (
@@ -1028,8 +1034,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                       style={styles.menuRowSubtextMuted}
                     >
                       Noon and night-before check-ins when you have not opened
-                      the app that day. Requires journey reminders above. Also
-                      on Root day.
+                      the app that day. Requires journey reminders above.
                     </AppText>
                   </View>
                   <Switch
@@ -1626,6 +1631,9 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
           styles.overlay,
           Platform.OS === "android" && styles.overlayAndroid,
           profileOnly && styles.profileOnlyScreenOverlay,
+          asScreen && !profileOnly
+            ? { paddingTop: Math.max(24, safeOverlayTop(insets.top)) }
+            : null,
         ]}
       >
         {innerContent}
@@ -1715,7 +1723,6 @@ const styles = StyleSheet.create({
   gradient: { padding: 24 },
   profileOnlyGradient: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? 8 : 4,
     paddingHorizontal: 20,
     paddingBottom: 32,
   },
@@ -1727,7 +1734,14 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 24,
   },
-  backBtn: { padding: 8, marginLeft: -8 },
+  backBtn: {
+    width: ICON.homeButton,
+    height: ICON.homeButton,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: -8,
+    zIndex: 1000,
+  },
   headerSpacer: { width: 40 },
   title: { color: "rgba(255,255,255,0.98)", flex: 1, textAlign: "center" },
   closeBtn: { padding: 8 },

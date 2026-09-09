@@ -76,7 +76,7 @@ export const chakraContent: Record<Chakra, Content> = {
       closingMessage: "Wonderful work, lovely soul. Your roots are stronger.",
       closingSubline: "Tomorrow, the Sacral invites you to feel and flow.",
     },
-    integration: "Today, we bring our authentic self into the outward world",
+    integration: "Today, we bring our divine energy out into the world by releasing it through the body.",
     yoga: {
       chakraDay: "Root Day",
       pose: "Mountain Pose (Tadasana)",
@@ -227,7 +227,7 @@ export const chakraContent: Record<Chakra, Content> = {
       closingSubline:
         "Tomorrow, the Solar Plexus invites you to claim your power.",
     },
-    integration: "Today, we bring our authentic self into the outward world",
+    integration: "Today, we bring our divine energy out into the world by releasing it through the body.",
     yoga: {
       chakraDay: "Sacral Day",
       pose: "Sufi Grind (Seated Pelvic Circles)",
@@ -377,7 +377,7 @@ export const chakraContent: Record<Chakra, Content> = {
         "Wonderful work, lovely soul. Your inner fire burns brighter.",
       closingSubline: "Tomorrow, the Heart invites you to open and receive.",
     },
-    integration: "Today, we bring our authentic self into the outward world",
+    integration: "Today, we bring our divine energy out into the world by releasing it through the body.",
     yoga: {
       chakraDay: "Solar Plexus Day",
       pose: "Seated Spinal Twist",
@@ -526,7 +526,7 @@ export const chakraContent: Record<Chakra, Content> = {
       closingMessage: "Wonderful work, lovely soul. Your heart is opening.",
       closingSubline: "Tomorrow, the Throat invites you to speak your truth.",
     },
-    integration: "Today, we bring our authentic self into the outward world",
+    integration: "Today, we bring our divine energy out into the world by releasing it through the body.",
     yoga: {
       chakraDay: "Heart Day",
       pose: "Supported Fish (Matsyasana)",
@@ -674,7 +674,7 @@ export const chakraContent: Record<Chakra, Content> = {
         "Wonderful work, lovely soul. Your voice is finding its way.",
       closingSubline: "Tomorrow, the Third Eye invites you to see clearly.",
     },
-    integration: "Today, we bring our authentic self into the outward world",
+    integration: "Today, we bring our divine energy out into the world by releasing it through the body.",
     yoga: {
       chakraDay: "Throat Day",
       pose: "Seated Neck Release (Sukhasana)",
@@ -826,7 +826,7 @@ export const chakraContent: Record<Chakra, Content> = {
         "Wonderful work, lovely soul. Your inner vision is clearing.",
       closingSubline: "Tomorrow, the Crown invites you to connect with spirit.",
     },
-    integration: "Today, we bring our authentic self into the outward world",
+    integration: "Today, we bring our divine energy out into the world by releasing it through the body.",
     yoga: {
       chakraDay: "Third Eye Day",
       pose: "Child's Pose (Balasana)",
@@ -978,7 +978,7 @@ export const chakraContent: Record<Chakra, Content> = {
       closingSubline:
         "All seven chakras are awake. Rest, integrate, and return whenever you need.",
     },
-    integration: "Today, we bring our authentic self into the outward world",
+    integration: "Today, we bring our divine energy out into the world by releasing it through the body.",
     yoga: {
       chakraDay: "Crown Day",
       pose: "Corpse Pose (Savasana)",

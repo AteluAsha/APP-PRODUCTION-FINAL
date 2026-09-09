@@ -16,6 +16,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated'
 import { Ionicons } from '@expo/vector-icons'
+import { ICON, safeOverlayTop } from '@/constants/layout'
 
 const SHOW_MS = 60_000
 const FADE_IN_MS = 700
@@ -44,7 +45,7 @@ export function HeadsetListenReminder() {
             pointerEvents="none"
             accessible={false}
             importantForAccessibility="no-hide-descendants"
-            style={[styles.wrap, { top: insets.top + 52 }, style]}
+            style={[styles.wrap, { top: safeOverlayTop(insets.top) + ICON.homeButton }, style]}
         >
             <Ionicons name="headset" size={30} color="#FFFFFF" />
         </Animated.View>

@@ -16,6 +16,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
+import { ActionBar } from "@/components/ActionBar"
 import { AppText } from "@/components/AppText"
 import { Ionicons } from "@expo/vector-icons"
 import Animated, { FadeIn, FadeOut, Easing } from "react-native-reanimated"
@@ -31,6 +32,9 @@ import {
 import { SanctuaryFieldLayer } from "@/components/chakras/SanctuaryFieldLayer"
 import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import {
+  ANDROID_PRESS_DELAY_MS,
+  ICON,
+  safeOverlayTop,
   SCROLL_BREATHING_BOTTOM_PADDING,
   SCROLL_ANDROID_SMOOTH_PROPS,
   SOMATIC_SPINNER_FADE_OUT_MS,
@@ -49,6 +53,49 @@ function shuffleOptions<T>(array: T[]): T[] {
     ;[out[i], out[j]] = [out[j], out[i]]
   }
   return out
+}
+
+function QuizNavChrome({
+  onBack,
+  onHome,
+}: {
+  onBack: () => void
+  onHome?: () => void
+}) {
+  const insets = useSafeAreaInsets()
+  return (
+    <>
+      <ActionBar onBackPress={onBack} />
+      {onHome ? (
+        <Pressable
+          onPress={onHome}
+          style={{
+            position: "absolute",
+            top: safeOverlayTop(insets.top),
+            right: 16,
+            width: ICON.homeButton,
+            height: ICON.homeButton,
+            zIndex: 1000,
+            justifyContent: "center",
+            alignItems: "center",
+            ...(Platform.OS === "android" && { elevation: 4 }),
+          }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          {...(Platform.OS === "android" && {
+            delayPressIn: ANDROID_PRESS_DELAY_MS,
+          })}
+          accessibilityLabel="Home"
+          accessibilityHint="Return to sanctuary home"
+        >
+          <Ionicons
+            name="home-outline"
+            size={ICON.homeIcon}
+            color="rgba(255,255,255,0.9)"
+          />
+        </Pressable>
+      ) : null}
+    </>
+  )
 }
 
 /** Three-tier remembrance blessings per chakra (awakening / deepening / embodied). */
@@ -220,22 +267,8 @@ export default function QuizScreen() {
 
   if (!quiz) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
-        {/* Always-visible back button during loading */}
-        <Pressable
-          onPress={handleBackToDay}
-          style={{
-            position: "absolute",
-            top: Math.max(insets.top, 8) + 8,
-            left: 16,
-            zIndex: 100,
-            padding: 8,
-            backgroundColor: "transparent",
-          }}
-        >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </Pressable>
-
+      <View style={{ flex: 1, backgroundColor: "#000000" }}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
         <Animated.View
           exiting={FadeOut.duration(SOMATIC_SPINNER_FADE_OUT_MS)}
           style={{
@@ -274,7 +307,9 @@ export default function QuizScreen() {
             </AppText>
           </Pressable>
         </Animated.View>
-      </SafeAreaView>
+        </SafeAreaView>
+        <QuizNavChrome onBack={handleBackToDay} />
+      </View>
     )
   }
 
@@ -461,6 +496,7 @@ export default function QuizScreen() {
           </Animated.View>
         </ScrollView>
         </SafeAreaView>
+        <QuizNavChrome onBack={handleBackToDay} />
       </View>
     )
   }
@@ -473,35 +509,6 @@ export default function QuizScreen() {
     <View style={{ flex: 1, backgroundColor: "#000000" }}>
       <SanctuaryFieldLayer dayIndex={Math.max(0, dayIndex)} />
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-      <Pressable
-        onPress={handleBackToDay}
-        style={{
-          position: "absolute",
-          top: 8,
-          left: 16,
-          zIndex: 100,
-          padding: 8,
-          backgroundColor: "transparent",
-        }}
-        accessibilityLabel="Back"
-      >
-        <Ionicons name="chevron-back" size={28} color="rgba(255,255,255,0.9)" />
-      </Pressable>
-
-      <Pressable
-        onPress={handleGoToHome}
-        style={{
-          position: "absolute",
-          top: 8,
-          right: 16,
-          zIndex: 100,
-          padding: 8,
-        }}
-        accessibilityLabel="Home"
-      >
-        <Ionicons name="home-outline" size={22} color="rgba(255,255,255,0.9)" />
-      </Pressable>
-
       <ScrollView
         ref={scrollViewRef}
         style={{ flex: 1 }}
@@ -945,6 +952,7 @@ export default function QuizScreen() {
         </Animated.View>
       </ScrollView>
       </SafeAreaView>
+      <QuizNavChrome onBack={handleBackToDay} onHome={handleGoToHome} />
     </View>
   )
 }

@@ -1,8 +1,10 @@
 import React from 'react'
 import { View, Pressable, Platform } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AppText } from '@/components/AppText'
 import { DownloadIconCell } from '@/components/chakras/DownloadIconCell'
 import { SANCTUARY_TRACK_COUNT } from '@/constants/sanctuaryAudioManifest'
+import { ICON, safeOverlayTop } from '@/constants/layout'
 
 type Props = {
     offlineCount: number
@@ -19,6 +21,7 @@ export function MusicRoomLibraryHeader({
     hideDownloads,
     onDownloadAll,
 }: Props) {
+    const insets = useSafeAreaInsets()
     const isFull = offlineCount >= SANCTUARY_TRACK_COUNT
     const counterLabel = isFull
         ? `${SANCTUARY_TRACK_COUNT}/${SANCTUARY_TRACK_COUNT} Available`
@@ -27,7 +30,7 @@ export function MusicRoomLibraryHeader({
     return (
         <View
             style={{
-                paddingTop: Platform.OS === 'android' ? 52 : 48,
+                paddingTop: safeOverlayTop(insets.top) + ICON.homeButton,
                 paddingBottom: 20,
                 paddingHorizontal: 20,
             }}

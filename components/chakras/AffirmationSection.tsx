@@ -20,7 +20,7 @@ export const AffirmationSection = ({
   const displayText = formatHeroAffirmationText(affirmationText)
 
   return (
-    <View style={{ marginTop: 28, marginBottom: 28 }}>
+    <View style={{ marginTop: 28, marginBottom: 8 }}>
       <View
         style={{
           height: 1,

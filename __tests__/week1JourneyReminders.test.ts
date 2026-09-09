@@ -119,6 +119,8 @@ describe('week 1 journey reminders', () => {
         )
         expect(goodbye).not.toContain('Activate Daily Reminders to Align')
         expect(goodbye).not.toContain('DailyAlignmentReminderModal')
+        expect(goodbye).toContain('DailyAlignmentToggleRow')
+        expect(goodbye).toContain('chakraDay === 0')
 
         const chakras101 = fs.readFileSync(
             path.join(__dirname, '..', 'app/(chakras)/Chakras101.tsx'),
@@ -141,7 +143,8 @@ describe('week 1 journey reminders', () => {
             path.join(__dirname, '..', 'components/chakras/ChakraTemplate.tsx'),
             'utf8',
         )
-        expect(root).toContain('DailyAlignmentToggleRow')
-        expect(root).toContain('Chakra.ROOT')
+        expect(root).not.toContain('DailyAlignmentToggleRow')
+        expect(root).toContain('setPendingCrownReminderNotice')
+        expect(layout).toContain('CrownReminderNoticeHost')
     })
 })

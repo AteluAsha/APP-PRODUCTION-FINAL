@@ -20,10 +20,11 @@ export function isAudioPlayerPath(pathname?: string | null): boolean {
 }
 
 let fullPlayerClosing = false
+let closeInFlight: Promise<void> | null = null
 let latestFullPlayerPositionMs = 0
 
 export function isClosingFullPlayer(): boolean {
-    return fullPlayerClosing
+    return fullPlayerClosing || closeInFlight != null
 }
 
 function leavePlayerScreen(returnPath: string | null): void {
@@ -45,18 +46,20 @@ export function reportFullPlayerPosition(positionMs: number): void {
 }
 
 /**
- * Stop healing audio, keep the last place, then leave the player.
- * Android hardware back must use this — popping the screen alone
- * leaves expo-audio running under the course day.
+ * Persist the last place, stop every healing player, then leave.
+ * Overlapping close calls wait for the same stop — they must not skip it.
  */
 export async function closeFullPlayerAndLeave(opts?: {
     positionMs?: number
     seekTargetMs?: number
     navigate?: boolean
 }): Promise<void> {
-    if (fullPlayerClosing) return
+    if (closeInFlight) {
+        await closeInFlight
+        return
+    }
     fullPlayerClosing = true
-    try {
+    closeInFlight = (async () => {
         const store = useCurrentAudioStore.getState()
         const returnPath = store.playerReturnPath
         const pos = bookmarkPositionToPersist({
@@ -67,23 +70,27 @@ export async function closeFullPlayerAndLeave(opts?: {
             storeMs: store.positionMs,
             seekTargetMs: opts?.seekTargetMs,
         })
-        await saveAudioBookmark(store.fullPlayerTrackId, pos)
+        const trackId =
+            store.fullPlayerTrackId ??
+            store.musicRoomPlaylist?.[store.musicRoomIndex]?.audioId
+        await saveAudioBookmark(trackId, pos)
         queueBridgeCueIfNeeded({
             isIntroAudio: store.prefs?.isIntroAudio === true,
-            audioId: store.fullPlayerTrackId,
+            audioId: trackId,
             positionMs: pos,
             durationMs: store.metadata?.durationMs ?? 0,
             returnPath,
         })
         latestFullPlayerPositionMs = 0
-        clearVaultAutoPlayback(store.fullPlayerTrackId ?? undefined)
+        clearVaultAutoPlayback(trackId ?? undefined)
         await silenceAllAudio()
-        store.reset()
+        useCurrentAudioStore.getState().reset()
+        useCurrentAudioStore.getState().setFullScreenPlayerMounted(false)
         if (opts?.navigate === false) return
         leavePlayerScreen(returnPath)
-    } finally {
-        setTimeout(() => {
-            fullPlayerClosing = false
-        }, 800)
-    }
+    })().finally(() => {
+        closeInFlight = null
+        fullPlayerClosing = false
+    })
+    await closeInFlight
 }

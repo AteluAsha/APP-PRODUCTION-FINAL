@@ -5,11 +5,9 @@
  * Today (Monday 2026-04-20) a dev phone opened to GraceOfThePresence the moment
  * Trial 2's Monday arrived, because the previous logic treated
  * `currentTrialNumber === 2` as "Trial 2 ended" the instant Trial 2 began.
- * The guardrail in components/chakras/ChakraHome.tsx now requires Trial 2's
- * 7-day window to have actually elapsed before Grace / Seal / the paywall can fire.
- *
- * These tests lock that behavior with a pure function that mirrors the in-component
- * logic (hasTrial2WindowElapsed) so a future refactor cannot silently revert it.
+ * The retired trial orchestrator required Trial 2's 7-day window to have actually
+ * elapsed before Grace / Seal / the paywall could fire. These tests lock that
+ * window-elapsed math so a future restore cannot silently revert it.
  */
 
 import { daysSince } from "../utils/date"

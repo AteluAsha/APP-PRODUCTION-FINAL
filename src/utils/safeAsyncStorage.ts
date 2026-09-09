@@ -25,9 +25,23 @@ export const safeAsyncStorage = {
     }
   },
   setItem: async (name: string, value: string) => {
-    await AsyncStorage.setItem(name, value)
+    try {
+      await AsyncStorage.setItem(name, value)
+    } catch (e) {
+      if (__DEV__) {
+        console.warn(`[SafeStorage] Failed to write ${name}:`, e)
+      }
+      captureException(e as Error, { extra: { storageKey: name, op: "setItem" } })
+    }
   },
   removeItem: async (name: string) => {
-    await AsyncStorage.removeItem(name)
+    try {
+      await AsyncStorage.removeItem(name)
+    } catch (e) {
+      if (__DEV__) {
+        console.warn(`[SafeStorage] Failed to remove ${name}:`, e)
+      }
+      captureException(e as Error, { extra: { storageKey: name, op: "removeItem" } })
+    }
   },
 }

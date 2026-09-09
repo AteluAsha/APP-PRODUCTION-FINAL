@@ -8,13 +8,11 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import {
   View,
   ScrollView,
-  Pressable,
   Platform,
 } from "react-native"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import { Ionicons } from "@expo/vector-icons"
-import { AppText } from "@/components/AppText"
+import { ActionBar } from "@/components/ActionBar"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
 import { Chakra } from "@/types/chakras/Chakra"
@@ -231,19 +229,28 @@ const AudioLibrary = () => {
   const router = useRouter()
 
   useEffect(() => {
-    if (!scrollToParam || !scrollRef.current) return
+    if (!scrollToParam) return
     const chakra = scrollToParam.split("_")[0]
     if (!chakra) return
-    const t = setTimeout(() => {
+    let tries = 0
+    let t: ReturnType<typeof setTimeout> | null = null
+    const tick = () => {
       const y = sectionYRef.current[chakra]
       if (typeof y === "number") {
         scrollRef.current?.scrollTo({
           y: Math.max(0, y - 80),
           animated: true,
         })
+        return
       }
-    }, 350)
-    return () => clearTimeout(t)
+      if (tries++ < 16) {
+        t = setTimeout(tick, 80)
+      }
+    }
+    t = setTimeout(tick, 80)
+    return () => {
+      if (t) clearTimeout(t)
+    }
   }, [scrollToParam])
 
   const crystalBowlRoot = useCrystalBowlAudio(Chakra.ROOT)
@@ -567,7 +574,7 @@ const AudioLibrary = () => {
   )
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["bottom"]}>
       <View style={{ flex: 1 }}>
         <View
           style={{
@@ -640,33 +647,7 @@ const AudioLibrary = () => {
             })}
           </ScrollView>
 
-          <View
-            style={{
-              position: "absolute",
-              top: 12,
-              left: 16,
-              zIndex: 50,
-              ...(Platform.OS === "android" && { elevation: 50 }),
-            }}
-            pointerEvents="box-none"
-          >
-            <Pressable
-              onPress={handleBack}
-              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-              style={({ pressed }) => ({
-                padding: 8,
-                opacity: pressed ? 0.85 : 1,
-              })}
-              accessibilityLabel="Back"
-              accessibilityHint="Go back to the previous screen"
-            >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color="rgba(255, 255, 255, 0.95)"
-              />
-            </Pressable>
-          </View>
+          <ActionBar onBackPress={handleBack} />
         </View>
       </View>
     </SafeAreaView>

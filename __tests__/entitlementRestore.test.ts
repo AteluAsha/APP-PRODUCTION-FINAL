@@ -25,6 +25,7 @@ describe('entitlement restore after uninstall', () => {
         expect(src).toContain('readUnexpiredScholarshipFromDevice')
         expect(src).toContain('clearPaidAccessIfSubscriptionInactive')
         expect(src).toContain('PRODUCT_ALREADY_PURCHASED')
+        expect(src).toContain('BILLING_UNAVAILABLE')
         expect(src).toContain('addCustomerInfoUpdateListener')
         expect(src).toContain('await syncAccessFromStoreReceipts()')
     })
@@ -80,15 +81,20 @@ describe('entitlement restore after uninstall', () => {
     })
 
     it('drops the review bypass and revokes cancelled paid access', () => {
-        const waiting = fs.readFileSync(
+        const hub = fs.readFileSync(
+            path.join(__dirname, '..', 'app/(chakras)/ChakraHub.tsx'),
+            'utf8',
+        )
+        const gate = fs.readFileSync(
             path.join(
                 __dirname,
                 '..',
-                'components/chakras/WaitingScreen.tsx',
+                'components/chakras/CommitmentGate.tsx',
             ),
             'utf8',
         )
-        expect(waiting).not.toContain('logo-apple')
-        expect(waiting).not.toContain('handleAppStoreReviewLifetimeAccess')
+        expect(hub).not.toContain('handleAppStoreReviewLifetimeAccess')
+        expect(gate).not.toContain('handleAppStoreReviewLifetimeAccess')
+        expect(gate).not.toContain('logo-apple')
     })
 })

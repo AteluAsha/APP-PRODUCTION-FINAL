@@ -191,6 +191,24 @@ export const TOUCH = {
  */
 export const ANDROID_PRESS_DELAY_MS = 0
 
+/**
+ * Overlay back/home chrome from the physical screen top.
+ * Trust the system inset when it is present. When it is 0 (older iPhones,
+ * first Modal frame, missing provider), use 44pt so the control sits below
+ * the classic 20pt status bar and typical notches. Same math on iOS and Android.
+ */
+export const SAFE_INSET_TOP_FALLBACK = 44
+export const SAFE_HEADER_GAP = 8
+
+export function safeOverlayTop(insetTop: number): number {
+    return (insetTop > 0 ? insetTop : SAFE_INSET_TOP_FALLBACK) + SAFE_HEADER_GAP
+}
+
+/** Extra padding inside a top-edged SafeAreaView so in-flow chrome matches overlay arrows. */
+export function safeChromePadTop(insetTop: number): number {
+    return safeOverlayTop(insetTop) - insetTop
+}
+
 /** Production-approved icon and control sizes (play screens, sound screens, global) */
 export const ICON = {
   /** Close (X) and back arrow – action bar */

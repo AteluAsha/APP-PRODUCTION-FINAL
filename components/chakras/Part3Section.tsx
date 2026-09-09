@@ -32,17 +32,8 @@ const Part3Section = ({ chakra }: { chakra: Chakra }) => {
                 title="Integration"
                 description={chakraContent[chakra].integration}
             />
-            <View
-                style={{
-                    height: 1,
-                    width: 64,
-                    backgroundColor: 'rgba(142, 142, 142, 0.65)',
-                    alignSelf: 'center',
-                    marginBottom: 24,
-                }}
-            />
-            <ChakraIdentityCard chakra={chakra} />
             <View style={{ width: '100%', alignItems: 'center' }}>
+                <ChakraIdentityCard chakra={chakra} />
                 <YogaPoseButton
                     chakra={chakra}
                     onPress={() => {

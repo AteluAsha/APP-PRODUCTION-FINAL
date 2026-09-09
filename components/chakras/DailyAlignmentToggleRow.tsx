@@ -11,7 +11,11 @@ import {
     syncWeeklyHeartReminders,
 } from '@/src/services/journeyNotifications'
 
-export function DailyAlignmentToggleRow() {
+export function DailyAlignmentToggleRow({
+    note,
+}: {
+    note?: string
+} = {}) {
     const soulJourneyNudgesEnabled = useChakraJourneyStore(
         (s) => s.soulJourneyNudgesEnabled,
     )
@@ -73,8 +77,8 @@ export function DailyAlignmentToggleRow() {
                     size="xs"
                     style={styles.sub}
                 >
-                    Noon and night-before, only if you have not opened the app
-                    that day. Also in Profile.
+                    {note ??
+                        'On for this week. Change anytime in Profile.'}
                 </AppText>
             </View>
             <Switch

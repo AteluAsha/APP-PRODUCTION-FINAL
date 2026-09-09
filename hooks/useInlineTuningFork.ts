@@ -3,8 +3,9 @@
  * unloads (does not resume mid-tone). Shared by Drop In and Sound Bath so
  * the two course chimes cannot drift.
  *
- * One-audio rule: resets the store before play so other managers unload;
- * stops when the full player / library takes the store.
+ * One-audio rule: persists the full-player bookmark, then resets the store
+ * before play so other managers unload; stops when the full player / library
+ * takes the store.
  * Sleep/lock keeps playing. Real navigation unloads.
  */
 
@@ -24,7 +25,7 @@ import {
 } from '@/src/services/sanctuaryVaultDownloader'
 import { showHealingToast } from '@/utils/healingToast'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
-import { registerAndroidBackCleanup } from '@/utils/androidBackCleanup'
+import { saveAudioBookmark } from '@/utils/audioBookmark'
 
 const DEFAULT_UNLOAD_WAIT_MS = 200
 const LEAVE_UNLOAD_DELAY_MS = 150
@@ -105,7 +106,14 @@ export function useInlineTuningFork(opts: {
 
         setIsPreparing(true)
         try {
-            useCurrentAudioStore.getState().reset()
+            const audioStore = useCurrentAudioStore.getState()
+            if (audioStore.fullPlayerTrackId) {
+                await saveAudioBookmark(
+                    audioStore.fullPlayerTrackId,
+                    audioStore.positionMs,
+                )
+            }
+            audioStore.reset()
             if (unloadWaitMs > 0) {
                 await new Promise((r) => setTimeout(r, unloadWaitMs))
             }

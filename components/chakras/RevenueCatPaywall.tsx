@@ -13,14 +13,13 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated"
-import { SOMATIC_SPINNER_FADE_OUT_MS } from "@/constants/layout"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SOMATIC_SPINNER_FADE_OUT_MS, safeOverlayTop } from "@/constants/layout"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { AppText } from "@/components/AppText"
 import { useRevenueCat } from "@/hooks/useRevenueCat"
 import { PACKAGE_IDENTIFIERS } from "@/src/services/revenuecat"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { Ionicons } from "@expo/vector-icons"
-import { useRouter } from "expo-router"
 import * as Linking from "expo-linking"
 import { purchaseErrorForPaywallBanner } from "@/utils/purchaseUserFacingError"
 
@@ -41,7 +40,7 @@ export const RevenueCatPaywall = ({
   onPurchaseComplete,
   showLifetimeOnly = false,
 }: RevenueCatPaywallProps) => {
-  const router = useRouter()
+  const insets = useSafeAreaInsets()
   const {
     isLoading,
     packages,
@@ -142,6 +141,22 @@ export const RevenueCatPaywall = ({
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
       <View style={{ flex: 1 }}>
+      {onDismiss ? (
+        <Pressable
+          onPress={onDismiss}
+          style={{
+            position: "absolute",
+            top: safeOverlayTop(insets.top),
+            right: 16,
+            padding: 8,
+            zIndex: 1000,
+          }}
+          accessibilityLabel="Close"
+          accessibilityRole="button"
+        >
+          <Ionicons name="close" size={24} color="#ffffff" />
+        </Pressable>
+      ) : null}
       {!isLoading && (
       <ScrollView
         className="flex-1 bg-black"
@@ -150,14 +165,6 @@ export const RevenueCatPaywall = ({
       >
         {/* Header with Awakening Soul logo */}
         <View className="items-center mb-6">
-          {onDismiss && (
-            <Pressable
-              onPress={onDismiss}
-              style={{ position: "absolute", top: 0, right: 0, padding: 8 }}
-            >
-              <Ionicons name="close" size={24} color="#ffffff" />
-            </Pressable>
-          )}
           <View style={{ alignItems: "center", marginBottom: 16 }}>
             <Image
               source={require("@/assets/images/SoulSchool_HERO_Logo.png")}
@@ -489,26 +496,6 @@ export const RevenueCatPaywall = ({
               Contact Support
             </AppText>
           </Pressable>
-
-          {/* Subtle Donation Footer Link - Ready but not activated */}
-          {false && ( // Feature flag - set to true when ready to activate
-            <Pressable
-              onPress={() => {
-                router.push("/(chakras)/Contribute")
-                addHapticFeedback(HapticStrength.Light)
-              }}
-              style={{ marginTop: 8 }}
-            >
-              <AppText
-                font="instrument-regular"
-                size="xs"
-                className="text-center text-[#A8C99A]/70"
-                style={{ textDecorationLine: "underline" }}
-              >
-                Support our mission
-              </AppText>
-            </Pressable>
-          )}
         </View>
       </ScrollView>
       )}

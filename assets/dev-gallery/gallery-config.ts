@@ -143,17 +143,7 @@ export const GALLERY_SCREENS: ScreenEntry[] = [
     expectedFileName: "trial2-crown-day7.png",
   },
 
-  // THRESHOLDS: Waiting, Goodbye, Commitment Gate (Welcome/path selection is entry-welcome / WelcomeScreen)
-  {
-    id: "threshold-waiting",
-    label: "Threshold: Waiting Screen",
-    type: "threshold",
-    componentPath: "@/components/chakras/WaitingScreen",
-    props: {
-      onPreviewPress: () => {},
-    },
-    expectedFileName: "threshold-waiting.png",
-  },
+  // THRESHOLDS: Goodbye, Commitment Gate
   {
     id: "threshold-goodbye",
     label: "Threshold: Goodbye Modal",
@@ -185,40 +175,6 @@ export const GALLERY_SCREENS: ScreenEntry[] = [
     componentPath: "@/app/(chakras)/ChakraHub",
     props: {},
     expectedFileName: "sanctuary-chakra-hub.png",
-  },
-  {
-    id: "sanctuary-community",
-    label: "Sanctuary: Community Halls",
-    type: "sanctuary",
-    componentPath: "@/app/CommunityHalls",
-    props: {},
-    expectedFileName: "sanctuary-community.png",
-  },
-
-  // ENTRY: Path selection, date selection, trial home
-  {
-    id: "entry-welcome",
-    label: "Entry: WelcomeScreen (Path Selection)",
-    type: "entry",
-    componentPath: "@/app/(chakras)/WelcomeScreen",
-    props: {},
-    expectedFileName: "entry-welcome-path-selection.png",
-  },
-  {
-    id: "entry-date-selection",
-    label: "Entry: DateSelection",
-    type: "entry",
-    componentPath: "@/app/(chakras)/DateSelection",
-    props: {},
-    expectedFileName: "entry-date-selection.png",
-  },
-  {
-    id: "entry-chakra-home",
-    label: "Entry: ChakraHome (Trial Home)",
-    type: "entry",
-    componentPath: "@/app/(chakras)/ChakraHome",
-    props: {},
-    expectedFileName: "entry-chakra-home-trial.png",
   },
 
   // LIFETIME: Additional screens

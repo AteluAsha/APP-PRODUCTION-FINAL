@@ -76,8 +76,16 @@ export function MusicRoomAudioManager() {
     initInProgressRef.current = true
     try {
       await configureHealingAudioMode({ background: true })
+      const live = useCurrentAudioStore.getState()
+      if (
+        !live.source ||
+        live.audioOrigin !== "music-room" ||
+        live.isFullScreenPlayerMounted
+      ) {
+        return
+      }
 
-      const sound = await createSoundAsyncOffUiThread(src, {
+      const sound = await createSoundAsyncOffUiThread(live.source, {
         initialStatus: {
           shouldPlay: true,
           isLooping: false,
@@ -86,10 +94,19 @@ export function MusicRoomAudioManager() {
         androidPreCreateDelayMs: isEmulatorOrSimulator() ? 100 : 50,
         keepPlayingInBackground: true,
         lockScreen: {
-          title: state.metadata?.title ?? "Frequency of Gnosis",
-          artist: state.metadata?.author ?? "Awakening Soul",
+          title: live.metadata?.title ?? "Frequency of Gnosis",
+          artist: live.metadata?.author ?? "Awakening Soul",
         },
       })
+      const afterCreate = useCurrentAudioStore.getState()
+      if (
+        afterCreate.source !== live.source ||
+        afterCreate.audioOrigin !== "music-room" ||
+        afterCreate.isFullScreenPlayerMounted
+      ) {
+        await sound.unloadAsync()
+        return
+      }
       trackRef.current = sound
       await sound.setProgressUpdateIntervalAsync(
         isEmulatorOrSimulator() ? 1000 : 500,

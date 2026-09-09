@@ -86,12 +86,6 @@ const buildScreenList = (): ScreenDef[] => {
       thresholdName: "welcome",
     },
     {
-      id: "threshold-waiting",
-      label: "Waiting Room",
-      type: "threshold",
-      thresholdName: "waiting",
-    },
-    {
       id: "threshold-goodbye",
       label: "Goodbye Modal",
       type: "threshold",
@@ -112,12 +106,6 @@ const buildScreenList = (): ScreenDef[] => {
       label: "ChakraHub",
       type: "sanctuary",
       sanctuaryName: "chakra-hub",
-    },
-    {
-      id: "sanctuary-community",
-      label: "Community Halls",
-      type: "sanctuary",
-      sanctuaryName: "community",
     },
   )
 
@@ -223,12 +211,6 @@ export const StorybookShell: React.FC<StorybookShellProps> = ({
             </View>
           )
         }
-        if (currentScreen.thresholdName === "waiting") {
-          const {
-            WaitingScreen,
-          } = require("@/components/chakras/WaitingScreen")
-          return <WaitingScreen onPreviewPress={() => {}} />
-        }
         if (currentScreen.thresholdName === "goodbye") {
           const GoodbyeModal =
             require("@/components/chakras/GoodbyeModal").default
@@ -252,14 +234,6 @@ export const StorybookShell: React.FC<StorybookShellProps> = ({
           return (
             <SafeRoomWrapper>
               <ChakraHub />
-            </SafeRoomWrapper>
-          )
-        }
-        if (currentScreen.sanctuaryName === "community") {
-          const CommunityHalls = require("@/app/CommunityHalls").default
-          return (
-            <SafeRoomWrapper>
-              <CommunityHalls />
             </SafeRoomWrapper>
           )
         }

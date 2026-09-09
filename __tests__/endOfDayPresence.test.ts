@@ -89,6 +89,8 @@ describe("end of day presence and goodbye", () => {
         expect(src).not.toContain("PART IV")
         expect(src).not.toContain("content.goodbye.chakraImage")
         expect(src).not.toContain('width: 72, height: 72')
+        expect(src).toContain("CARD_HEIGHT = 88")
+        expect(src).toContain("rgba(255,255,255,0.22)")
     })
 
     it("gives morning master meditation the Asha Speaks colorbar button", () => {
@@ -116,6 +118,10 @@ describe("end of day presence and goodbye", () => {
         expect(src).toContain("router.back()")
         expect(src).toContain("Return to this day")
         expect(src).toContain("goToChakraHubRoot")
+        expect(src).toContain("ActionBar")
+        expect(src).toContain("QuizNavChrome")
+        expect(src).toContain("zIndex: 1000")
+        expect(src).not.toContain("top: 8")
     })
 
     it("wires Home to ChakraHub with the next-day blessing", () => {
@@ -125,11 +131,13 @@ describe("end of day presence and goodbye", () => {
         )
         expect(goodbye).toContain("queueTomorrowAwakening")
         expect(goodbye).toContain("goToChakraHubRoot")
+        expect(goodbye).toContain("clearCompletedChakra")
         const template = fs.readFileSync(
             path.join(__dirname, "..", "components/chakras/ChakraTemplate.tsx"),
             "utf8",
         )
         expect(template).toContain("handleGoodbyeNavigateHome")
+        expect(template).toContain("clearCompletedChakra")
         expect(template).toContain("<AudioRow")
         expect(template).toContain("goToChakraHubRoot")
     })

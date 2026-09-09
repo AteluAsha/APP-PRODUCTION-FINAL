@@ -2,7 +2,7 @@
  * Presence Store – display name, profile image, location, first-Monday onboarding
  *
  * Persisted so name/photo/location and "has completed first Monday presence" survive restarts.
- * Used by FirstMondayPresenceModal, ProfileSheet, Tribe, and Social Sanctuary.
+ * Used by ProfileSheet and presence-backed identity.
  */
 
 import { create } from "zustand"

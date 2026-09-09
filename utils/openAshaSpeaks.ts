@@ -2,7 +2,6 @@ import { router } from 'expo-router'
 import { Chakra } from '@/types/chakras/Chakra'
 import { chakraContent } from '@/constants/chakras/content'
 import { getHeadToHeartAudioId } from '@/hooks/useAncestralWisdomAudio'
-import { useAncestralBridgeStore } from '@/hooks/useAncestralBridgeStore'
 import { getChakraColor } from '@/constants/chakras/chakraConstants'
 import { getDayFromChakra } from '@/utils/chakraMapping'
 import { playSanctuaryTrack } from '@/utils/sanctuaryPlayback'
@@ -30,15 +29,9 @@ export function playAshaTrack(
 }
 
 /**
- * First visit: law chamber. After the Master Key has been received,
- * later taps open Audio Player and return to the course.
- * If they heard Asha but have not received the Key yet, reopen the chamber.
+ * Always open the Ancestral Gnosis chamber. Audio lives on that page
+ * as the master-meditation row; the Master Key stays on the page.
  */
-export function openAshaSpeaks(chakra: Chakra, coursePath: string): void {
-    const store = useAncestralBridgeStore.getState()
-    if (store.hasReceivedMasterKey(chakra)) {
-        void playAshaTrack(chakra, coursePath)
-        return
-    }
+export function openAshaSpeaks(chakra: Chakra, _coursePath: string): void {
     router.push(ancestralChamberPath(chakra) as never)
 }

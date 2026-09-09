@@ -17,6 +17,7 @@ import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
+import { ICON, safeOverlayTop } from "@/constants/layout"
 
 const DUSK_AMBER_BG = "#1a1510"
 
@@ -56,11 +57,15 @@ export function RestingBlessing({
             }}
             style={{
               position: "absolute",
-              left: 20,
-              top: Math.max(insets.top, 12),
-              zIndex: 10,
-              padding: 8,
+              left: 16,
+              top: safeOverlayTop(insets.top),
+              zIndex: 1000,
+              width: ICON.homeButton,
+              height: ICON.homeButton,
+              justifyContent: "center",
+              alignItems: "center",
             }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >

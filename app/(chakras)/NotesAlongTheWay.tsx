@@ -162,18 +162,19 @@ export default function NotesAlongTheWay() {
     })
   }, [])
 
-  // Horizontal swipe on full diary: strict offsets so vertical scroll wins first (RNGH ScrollView).
+  // Horizontal swipe cycles days. A little diagonal still counts as a swipe;
+  // more vertical movement lets the note list scroll instead.
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetX(28)
-        .failOffsetY([-10, 10])
+        .activeOffsetX(20)
+        .failOffsetY([-18, 18])
         .onEnd((e) => {
           "worklet"
           const dx = e.translationX
           const vx = e.velocityX
-          const threshold = 28
-          const velocityThreshold = 60
+          const threshold = 24
+          const velocityThreshold = 50
           if (dx > threshold || vx > velocityThreshold) {
             runOnJS(goPrevChakraDay)()
           } else if (dx < -threshold || vx < -velocityThreshold) {

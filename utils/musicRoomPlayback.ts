@@ -20,6 +20,7 @@ import { toAbsoluteFileUri } from '@/src/utils/crystalBowlPlayback'
 import { silenceAllAudio } from '@/src/utils/singleActiveSound'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
 import { saveAudioBookmark } from '@/utils/audioBookmark'
+import { allowsTrackQueue } from '@/utils/audioPlayMode'
 
 export function musicRoomDefsToPlaylistItems(
     defs: MusicRoomTrackDef[] = MUSIC_ROOM_TRACK_DEFS,
@@ -101,10 +102,11 @@ export async function openMusicRoomAtIndex(startIndex: number): Promise<boolean>
     return true
 }
 
-/** Switch to another track in the 28-track library (swipe or auto-advance). */
+/** Switch catalog index. Used only if playMode is ever set to 'queue'. */
 export async function switchMusicRoomTrack(nextIndex: number): Promise<boolean> {
     return enqueueMusicRoomSwitch(async () => {
         const store = useCurrentAudioStore.getState()
+        if (!allowsTrackQueue(store.playMode)) return false
         const playlist = store.musicRoomPlaylist
         if (!playlist || nextIndex < 0 || nextIndex >= playlist.length) {
             return false
@@ -136,6 +138,7 @@ export async function switchMusicRoomTrack(nextIndex: number): Promise<boolean> 
 
 export async function musicRoomAdvanceNext(): Promise<boolean> {
     const store = useCurrentAudioStore.getState()
+    if (!allowsTrackQueue(store.playMode)) return false
     const next = store.musicRoomIndex + 1
     if (!store.musicRoomPlaylist || next >= store.musicRoomPlaylist.length) {
         return false
@@ -145,6 +148,7 @@ export async function musicRoomAdvanceNext(): Promise<boolean> {
 
 export async function musicRoomAdvancePrevious(): Promise<boolean> {
     const store = useCurrentAudioStore.getState()
+    if (!allowsTrackQueue(store.playMode)) return false
     const prev = store.musicRoomIndex - 1
     if (!store.musicRoomPlaylist || prev < 0) {
         return false
@@ -166,7 +170,9 @@ export async function closeMusicRoomPlayer(options?: {
         const id =
             store.fullPlayerTrackId ??
             store.musicRoomPlaylist?.[store.musicRoomIndex]?.audioId
-        await saveAudioBookmark(id, store.positionMs)
+        if (allowsTrackQueue(store.playMode)) {
+            await saveAudioBookmark(id, store.positionMs)
+        }
         await silenceAllAudio()
         useCurrentAudioStore.getState().reset()
         useCurrentAudioStore.getState().setFullScreenPlayerMounted(false)

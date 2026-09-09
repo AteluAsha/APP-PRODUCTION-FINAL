@@ -28,6 +28,7 @@ import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
 import { WELLNESS_GATE_FIELD } from '@/constants/sanctuaryFields'
 import { useFirstLaunchStore } from '@/hooks/useFirstLaunchStore'
 import { requestChakraHubRevealBreath } from '@/utils/homeSessionEntrance'
+import { safeOverlayTop } from '@/constants/layout'
 
 /** Portrait point-heights: SE 667, mini 812, standard 844–874, Plus/Max 926–956, iPad 1024+. */
 function gateMetrics(windowHeight: number, windowWidth: number) {
@@ -92,7 +93,7 @@ export default function WellnessGate() {
                 contentContainerStyle={[
                     styles.scroll,
                     {
-                        paddingTop: Math.max(insets.top, 12) + (metrics.isCompact ? 8 : 16),
+                        paddingTop: safeOverlayTop(insets.top) + (metrics.isCompact ? 8 : 16),
                         paddingBottom: 12,
                         justifyContent: 'center',
                     },
