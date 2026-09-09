@@ -3,17 +3,15 @@
  * First screen: a healing invitation into Awakening, Divine Gnosis,
  * Master Reiki Embodiment, and ancestral wisdom.
  *
- * Single-screen composition (all Apple sizes): splash already showed the
- * Soul School hero, so this gate is invitation + enter CTA only. The CTA
- * is pinned in the footer so it cannot fall below the fold. Content above
- * the footer is sized to fit SE through Pro Max without scrolling; ScrollView
- * stays enabled only as a fallback for Dynamic Type / odd viewports.
+ * Single-screen composition (all phone sizes): splash already showed the
+ * Soul School hero, so this gate is invitation + enter CTA as one centered
+ * card. Android must not pin the CTA in a footer — that leaves empty space
+ * above the explainer. Scroll only if the block is taller than the screen.
  */
 
 import React from 'react'
 import {
     View,
-    ScrollView,
     Pressable,
     Image,
     StyleSheet,
@@ -29,6 +27,7 @@ import { WELLNESS_GATE_FIELD } from '@/constants/sanctuaryFields'
 import { useFirstLaunchStore } from '@/hooks/useFirstLaunchStore'
 import { requestChakraHubRevealBreath } from '@/utils/homeSessionEntrance'
 import { safeOverlayTop } from '@/constants/layout'
+import { CenteredInviteScroll } from '@/components/CenteredInviteScroll'
 
 /** Portrait point-heights: SE 667, mini 812, standard 844–874, Plus/Max 926–956, iPad 1024+. */
 function gateMetrics(windowHeight: number, windowWidth: number) {
@@ -88,19 +87,12 @@ export default function WellnessGate() {
                     style={StyleSheet.absoluteFill}
                 />
             </View>
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={[
-                    styles.scroll,
-                    {
-                        paddingTop: safeOverlayTop(insets.top) + (metrics.isCompact ? 8 : 16),
-                        paddingBottom: 12,
-                        justifyContent: 'center',
-                    },
-                ]}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                alwaysBounceVertical={false}
+            <CenteredInviteScroll
+                contentContainerStyle={{
+                    paddingTop: Math.max(safeOverlayTop(insets.top), 16),
+                    paddingBottom: Math.max(insets.bottom, 16) + 12,
+                    paddingHorizontal: 28,
+                }}
             >
                 <View
                     style={[
@@ -252,17 +244,13 @@ export default function WellnessGate() {
                         Awakening the Soul begins from within. We love you all.
                     </AppText>
                 </View>
-            </ScrollView>
 
-            <View
-                style={[
-                    styles.footer,
-                    { paddingBottom: Math.max(insets.bottom, 10) + 10 },
-                ]}
-            >
                 <Pressable
                     onPress={handleBegin}
-                    style={({ pressed }) => [pressed && { opacity: 0.9 }]}
+                    style={({ pressed }) => [
+                        styles.cta,
+                        pressed && { opacity: 0.9 },
+                    ]}
                     accessibilityLabel="Enter the Sanctuary"
                     accessibilityRole="button"
                     accessibilityHint="Enter the sanctuary and begin at the Root"
@@ -287,7 +275,7 @@ export default function WellnessGate() {
                         </AppText>
                     </LinearGradient>
                 </Pressable>
-            </View>
+            </CenteredInviteScroll>
         </View>
     )
 }
@@ -296,14 +284,6 @@ const styles = StyleSheet.create({
     safe: {
         flex: 1,
         backgroundColor: '#000000',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scroll: {
-        flexGrow: 1,
-        paddingHorizontal: 28,
-        alignItems: 'center',
     },
     veil: {
         width: '100%',
@@ -403,12 +383,9 @@ const styles = StyleSheet.create({
         lineHeight: 28,
         textAlign: 'center',
     },
-    footer: {
-        width: '100%',
+    cta: {
+        marginTop: 22,
         alignItems: 'center',
-        paddingHorizontal: 28,
-        paddingTop: 8,
-        backgroundColor: 'transparent',
     },
     button: {
         paddingVertical: Platform.OS === 'ios' ? 16 : 15,

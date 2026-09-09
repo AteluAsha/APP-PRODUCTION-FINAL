@@ -9,7 +9,7 @@
  */
 
 import React from "react"
-import { View, ScrollView, Pressable } from "react-native"
+import { View, Pressable } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import Animated, { FadeIn } from "react-native-reanimated"
 import { Ionicons } from "@expo/vector-icons"
@@ -17,6 +17,7 @@ import { AppText } from "@/components/AppText"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { LinearGradient } from "expo-linear-gradient"
 import { ICON, safeOverlayTop } from "@/constants/layout"
+import { CenteredInviteScroll } from "@/components/CenteredInviteScroll"
 
 const SOFT_BG = "#0f1210"
 
@@ -62,16 +63,12 @@ export function SealOfTheInitiate({
             <Ionicons name="arrow-back" size={28} color="rgba(255,255,255,0.9)" />
           </Pressable>
         ) : null}
-        <ScrollView
+        <CenteredInviteScroll
           contentContainerStyle={{
-            flexGrow: 1,
             paddingHorizontal: 28,
             paddingTop: Math.max(insets.top, 24),
             paddingBottom: Math.max(insets.bottom, 32),
-            justifyContent: "center",
-            alignItems: "center",
           }}
-          showsVerticalScrollIndicator={false}
         >
           {/* Header */}
           <AppText
@@ -243,7 +240,7 @@ export function SealOfTheInitiate({
               </LinearGradient>
             </Pressable>
           </View>
-        </ScrollView>
+        </CenteredInviteScroll>
       </SafeAreaView>
     </Animated.View>
   )

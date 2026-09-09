@@ -21,7 +21,9 @@ describe("sanctuary opening and goodbye fields", () => {
         expect(src).not.toMatch(/>\s*Awakening\s*</)
         expect(src).toContain("Enter the Sanctuary")
         expect(src).toContain("WELLNESS_GATE_FIELD")
-        expect(src).toContain("styles.footer")
+        expect(src).toContain("CenteredInviteScroll")
+        expect(src).toContain("styles.cta")
+        expect(src).not.toContain("styles.footer")
         expect(src).toContain("useWindowDimensions")
         expect(src).not.toContain("SoulSchool_HERO_Logo")
         expect(src).not.toContain("scrollEnabled={false}")
@@ -30,6 +32,26 @@ describe("sanctuary opening and goodbye fields", () => {
         expect(src).not.toContain("This is not an app")
         expect(src).not.toMatch(/play with/)
         expect(src).not.toContain("Start the Master Level Teachings")
+    })
+
+    it("centers invite cards when they fit, instead of pinning them low", () => {
+        const center = fs.readFileSync(
+            path.join(__dirname, "..", "components/CenteredInviteScroll.tsx"),
+            "utf8",
+        )
+        expect(center).toContain("fits ? 'center' : 'flex-start'")
+        expect(center).toContain("setBodyH")
+        const grace = [
+            "components/chakras/GraceOfThePresence.tsx",
+            "components/chakras/RestingBlessing.tsx",
+            "components/chakras/SealOfTheInitiate.tsx",
+            "components/chakras/JourneySummaryGift.tsx",
+        ]
+        for (const rel of grace) {
+            const src = fs.readFileSync(path.join(__dirname, "..", rel), "utf8")
+            expect(src).toContain("CenteredInviteScroll")
+            expect(src).not.toContain("<ScrollView")
+        }
     })
 
     it("maps goodbye days 1–7 from earth through cosmos", () => {
