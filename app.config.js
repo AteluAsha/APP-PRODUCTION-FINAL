@@ -82,7 +82,7 @@ module.exports = {
         AppStoreID: "6760920862",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // iOS 1.2.6 (48): same crash-recovery cut as Play 46. Next iOS ship.
+      // iOS 1.2.6 (48): App Store ship — crash recovery, centered gate, notifications.
       buildNumber: "48",
       privacyManifests: {
         NSPrivacyTracking: false,
