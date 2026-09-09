@@ -191,7 +191,7 @@ export const PermanentMenuBar: React.FC = () => {
     return pathname === route || pathname?.startsWith(route)
   }
 
-  // Notes, Audio Library, Gallery of Gnosis, Anua.
+  // Notes, Audio Library, Gallery of Alignment, Anua.
   const menuItems: MenuItem[] = useMemo(() => {
     const items: MenuItem[] = [
       {
@@ -292,7 +292,6 @@ export const PermanentMenuBar: React.FC = () => {
     pathname?.includes("NotesAlongTheWay") ||
     pathname?.includes("ProfileMenu") ||
     pathname?.includes("Profile") ||
-    pathname?.includes("GiftChakra") ||
     pathname?.includes("GalleryOfGnosis") ||
     pathname?.includes("Contribute")
 

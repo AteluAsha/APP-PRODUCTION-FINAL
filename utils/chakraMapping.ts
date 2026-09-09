@@ -62,6 +62,16 @@ export function parseChakraSlug(
   return slug as Chakra
 }
 
+export const CHAKRA_ORDER: Chakra[] = [
+  Chakra.ROOT,
+  Chakra.SACRAL,
+  Chakra.SOLAR_PLEXUS,
+  Chakra.HEART,
+  Chakra.THROAT,
+  Chakra.THIRD_EYE,
+  Chakra.CROWN,
+]
+
 /** Index of a gifted card in the unlocked gallery list; last card if unknown. */
 export function galleryFocusIndex(
   unlocked: readonly Chakra[],
@@ -73,4 +83,14 @@ export function galleryFocusIndex(
     if (index >= 0) return index
   }
   return unlocked.length - 1
+}
+
+/** Chamber page among all seven days (0–6). */
+export function galleryChamberIndex(
+  focus: Chakra | null,
+  fallbackDay: number,
+): number {
+  if (focus) return CHAKRA_TO_DAY[focus]
+  if (!Number.isFinite(fallbackDay)) return 0
+  return Math.max(0, Math.min(6, Math.floor(fallbackDay)))
 }

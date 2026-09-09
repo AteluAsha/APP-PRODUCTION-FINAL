@@ -55,5 +55,6 @@ describe("first-click day presence", () => {
         )
         expect(open).toContain("InteractionManager.runAfterInteractions")
         expect(open).toContain("nav.replace(path as never)")
+        expect(open).toContain("PRESENCE_ENTER_FALLBACK_MS")
     })
 })

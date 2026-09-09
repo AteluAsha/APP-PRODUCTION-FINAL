@@ -151,6 +151,7 @@ describe('week 1 journey reminders', () => {
         )
         expect(prompt).toContain('CommunicationReminderModal')
         expect(prompt).toContain('activateDailyAlignmentReminders')
+        expect(prompt).not.toContain('syncWeeklyHeartReminders')
         const reminder = fs.readFileSync(
             path.join(
                 __dirname,

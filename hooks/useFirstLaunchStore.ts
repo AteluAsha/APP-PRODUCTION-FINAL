@@ -47,6 +47,9 @@ interface FirstLaunchState {
   /** One-time Sanctuary prompt before the system notification dialog. */
   hasSeenNotificationPermissionPrompt: boolean
   markNotificationPermissionPromptSeen: () => void
+  /** One-time orientation for the seven Gallery chambers. */
+  hasSeenGalleryChambersNotice: boolean
+  markGalleryChambersNoticeSeen: () => void
 }
 
 export const useFirstLaunchStore = create<FirstLaunchState>()(
@@ -68,6 +71,7 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
           pendingCrownReminderNotice: false,
           bridgeCueOfferedDays: [],
           hasSeenNotificationPermissionPrompt: false,
+          hasSeenGalleryChambersNotice: false,
         }),
       hasStartedMasterTeachings: false,
       startMasterTeachings: () =>
@@ -116,6 +120,9 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
       hasSeenNotificationPermissionPrompt: false,
       markNotificationPermissionPromptSeen: () =>
         set({ hasSeenNotificationPermissionPrompt: true }),
+      hasSeenGalleryChambersNotice: false,
+      markGalleryChambersNoticeSeen: () =>
+        set({ hasSeenGalleryChambersNotice: true }),
     }),
     {
       name: "first-launch-storage",
@@ -131,6 +138,7 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
         bridgeCueOfferedDays: state.bridgeCueOfferedDays,
         hasSeenNotificationPermissionPrompt:
           state.hasSeenNotificationPermissionPrompt,
+        hasSeenGalleryChambersNotice: state.hasSeenGalleryChambersNotice,
       }),
       merge: (persisted, current) => {
         const saved =

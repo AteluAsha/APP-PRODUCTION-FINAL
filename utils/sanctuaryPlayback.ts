@@ -24,6 +24,7 @@ import {
     clearVaultAutoPlayback,
     registerVaultAutoPlayback,
 } from '@/src/services/vaultAutoPlayback'
+import { useDayAudioOpenedStore } from '@/hooks/useDayAudioOpenedStore'
 
 export type SanctuaryPlaybackRequest =
     import('@/src/services/vaultAutoPlayback').VaultPlaybackRequest & {
@@ -61,6 +62,7 @@ export async function playSanctuaryTrack(
     opts: SanctuaryPlaybackRequest,
 ): Promise<void> {
     const { returnPath, ...vaultOpts } = opts
+    useDayAudioOpenedStore.getState().markOpenedFromAudioId(vaultOpts.audioId)
     if (returnPath) {
         useCurrentAudioStore.getState().setPlayerReturnPath(returnPath)
     }

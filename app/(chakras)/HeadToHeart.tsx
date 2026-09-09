@@ -19,6 +19,7 @@ import {
 } from "@/hooks/useAncestralWisdomAudio"
 import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { getDayFromChakra } from "@/utils/chakraMapping"
+import { useDayAudioOpenedStore } from "@/hooks/useDayAudioOpenedStore"
 import ParallaxScrollView from "@/components/ParallaxScrollView"
 import { HeaderSection } from "@/components/chakras/HeaderSection"
 import { isValidChakra } from "@/utils/validation"
@@ -123,6 +124,9 @@ const HeadToHeart = () => {
             chakraColor={getChakraColor(getDayFromChakra(chakra))}
             disabled={false}
             embodimentCacheKey={getHeadToHeartAudioId(chakra)}
+            onPlayTriggered={() => {
+              useDayAudioOpenedStore.getState().markOpened(chakra, "bridge")
+            }}
           />
 
           <View style={{ marginHorizontal: 20, marginTop: 8 }}>

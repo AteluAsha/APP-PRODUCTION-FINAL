@@ -1,7 +1,7 @@
 /**
  * Once after entering Sanctuary: pre-prompt, then the system notification dialog.
  * Hub-first never showed this, so Android never got POST_NOTIFICATIONS and
- * syncWeeklyHeartReminders no-op'd. Fresh install / reinstall prompts again.
+ * weekly heart reminders no-op'd. Fresh install / reinstall prompts again.
  */
 
 import React, { useCallback, useEffect, useState } from 'react'
@@ -12,7 +12,6 @@ import { useSplashOverlayStore } from '@/hooks/useSplashOverlayStore'
 import {
     activateDailyAlignmentReminders,
     hasNotificationPermission,
-    syncWeeklyHeartReminders,
 } from '@/src/services/journeyNotifications'
 
 const SETTLE_MS = 900
@@ -56,7 +55,7 @@ export function NotificationPermissionHost() {
                 if (cancelled) return
                 if (await hasNotificationPermission()) {
                     markSeen()
-                    await syncWeeklyHeartReminders()
+                    await activateDailyAlignmentReminders()
                     return
                 }
                 if (!cancelled) setVisible(true)

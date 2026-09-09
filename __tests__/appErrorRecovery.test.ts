@@ -10,6 +10,7 @@ describe('appErrorRecovery', () => {
         expect(src).toContain('getSafeRecoveryRoute')
         expect(src).toContain('getScreenCrashRecoveryRoute')
         expect(src).toContain('recoverFromAppError')
+        expect(src).toContain('const destination = getScreenCrashRecoveryRoute()')
         expect(src).toContain('playerReturnPath')
         expect(src).toContain('ChakraHub')
         expect(src).not.toContain("const CHAKRA_HOME")

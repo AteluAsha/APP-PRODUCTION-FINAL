@@ -11,6 +11,8 @@ import Animated, {
   useAnimatedRef,
   FadeIn,
   Easing,
+  scrollTo,
+  runOnUI,
 } from "react-native-reanimated"
 import { ActionBarAnimated } from "@/components/ActionBarAnimated"
 import { HeaderSection } from "@/components/chakras/HeaderSection"
@@ -33,6 +35,11 @@ import ElementsSection from "@/components/chakras/ElementsSection"
 import Part3Section from "@/components/chakras/Part3Section"
 import { Part4BridgeSection } from "@/components/chakras/Part4BridgeSection"
 import { BridgeCueModal } from "@/components/chakras/BridgeCueModal"
+import { DayEmbodimentGateModal } from "@/components/chakras/DayEmbodimentGateModal"
+import { openAshaSpeaks } from "@/utils/openAshaSpeaks"
+import { useDayAudioOpenedStore, waitForDayAudioOpenedHydration } from "@/hooks/useDayAudioOpenedStore"
+import { type DayAudioKind } from "@/src/utils/dayAudioEmbodiment"
+import { DAY_EMBODIED_CHECKBOX_LABEL } from "@/constants/dayEmbodimentCopy"
 import ResponsiveImage from "@/components/ResponsiveImage"
 import { AppText } from "@/components/AppText"
 import { Chakra } from "@/types/chakras/Chakra"
@@ -57,13 +64,14 @@ import { getChakraColor } from "@/constants/chakras/chakraConstants"
 import { usePillBottomSheetStore } from "@/hooks/usePillBottomSheetStore"
 import { useAncestralBridgeStore } from "@/hooks/useAncestralBridgeStore"
 import { useFirstLaunchStore } from "@/hooks/useFirstLaunchStore"
-import { openAshaSpeaks } from "@/utils/openAshaSpeaks"
+import { Ionicons } from "@expo/vector-icons"
 
 const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false)
   const [currentPill, setCurrentPill] = useState<PillType | null>(null)
   // Note: Social Sanctuary and Anua access handled globally by PermanentMenuBar
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
+  const { width: screenWidth } = useWindowDimensions()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -74,22 +82,24 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
     })),
   )
 
-  const {
-    markChakraCompleted,
-    completedChakras,
-  } = useChakraJourneyStore(
-    useShallow((state) => ({
-      markChakraCompleted: state.markChakraCompleted,
-      completedChakras: state.completedChakras,
-    })),
+  const markChakraCompleted = useChakraJourneyStore(
+    (state) => state.markChakraCompleted,
+  )
+  const hasEmbodiedToday = useDayAudioOpenedStore((s) =>
+    s.hasCeremonyClosed(chakra),
   )
 
   const [showGoodbyeModal, setShowGoodbyeModal] = useState(false)
   const [bridgeCueVisible, setBridgeCueVisible] = useState(false)
+  const [embodimentGateVisible, setEmbodimentGateVisible] = useState(false)
+  const [embodimentRemaining, setEmbodimentRemaining] = useState<
+    DayAudioKind[]
+  >([])
   const [contentKey, setContentKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const isFirstFocusRef = useRef(true)
   const openAshaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const embodimentClosingRef = useRef(false)
 
   // Android (and safe for iOS): When returning to this screen via back button, Reanimated entering
   // animations may not re-run and content can stay blank. Remount scroll content on focus so FadeIn runs again.
@@ -151,6 +161,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   const navigateBack = (isCompleted: boolean) => {
     if (isCompleted) {
       const chakraIndex = getChakraIndex(chakra)
+      useDayAudioOpenedStore.getState().markCeremonyClosed(chakra)
       markChakraCompleted(chakraIndex)
       setCompletedChakra(chakra)
       setShowGoodbyeModal(true)
@@ -159,6 +170,50 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
     } else {
       router.replace("/(chakras)/ChakraHub")
     }
+  }
+
+  const handleEmbodimentCompletePress = () => {
+    addHapticFeedback(HapticStrength.Medium)
+    if (embodimentClosingRef.current) return
+    embodimentClosingRef.current = true
+    void (async () => {
+      try {
+        await waitForDayAudioOpenedHydration()
+        const audioOpened = useDayAudioOpenedStore.getState()
+        if (audioOpened.hasCeremonyClosed(chakra)) {
+          navigateBack(true)
+          return
+        }
+        const missing = audioOpened.missingKinds(chakra)
+        if (missing.length > 0) {
+          setEmbodimentRemaining(missing)
+          setEmbodimentGateVisible(true)
+          return
+        }
+        navigateBack(true)
+      } finally {
+        embodimentClosingRef.current = false
+      }
+    })()
+  }
+
+  const handleTakeMeToRemainingAudio = () => {
+    const next = embodimentRemaining[0]
+    setEmbodimentGateVisible(false)
+    if (next === "bridge") {
+      openAshaSpeaks(chakra, pathname)
+      return
+    }
+    const y = Math.max(0, screenWidth - 24)
+    runOnUI(() => {
+      "worklet"
+      scrollTo(scrollRef, 0, y, true)
+    })()
+  }
+
+  const handleCloseDayInMyTiming = () => {
+    setEmbodimentGateVisible(false)
+    navigateBack(true)
   }
 
   const handleBackToHub = () => {
@@ -184,8 +239,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
 
   const content = chakraContent[chakra]
 
-  const { width: screenWidth } = useWindowDimensions()
-
   // Backup cache: when day opens, trigger full-file download of all this day's audio one at a time (in case waiting room was bypassed).
   useEffect(() => {
     if (!storage) return
@@ -194,6 +247,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
 
   // Backup cache: when user presses any audio on this day, trigger same so rest of day's audio is cached after that track loads.
   const triggerBackupCacheForDay = useCallback(() => {
+    useDayAudioOpenedStore.getState().markOpened(chakra, "meditation")
     if (!storage) return
     preloadFullFilesForChakra(storage, chakra).catch(() => {})
   }, [chakra])
@@ -378,13 +432,10 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
             style={{ marginTop: 48, marginBottom: 24, alignItems: "center" }}
           >
             <Pressable
-              onPress={() => {
-                addHapticFeedback(HapticStrength.Medium)
-                navigateBack(true)
-              }}
+              onPress={handleEmbodimentCompletePress}
               style={{ alignItems: "center" }}
-              accessibilityLabel="Mark day complete"
-              accessibilityHint="Tap to complete today's journey"
+              accessibilityLabel={DAY_EMBODIED_CHECKBOX_LABEL}
+              accessibilityHint="Opens the close when this day's sounds have been opened"
             >
               <SoftChakraBall
                 source={content.goodbye.chakraImage}
@@ -401,17 +452,35 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               >
                 <View
                   style={{
-                    width: 22,
-                    height: 22,
-                    marginRight: 10,
-                    borderRadius: 3,
+                    width: 28,
+                    height: 28,
+                    marginRight: 12,
+                    borderRadius: 14,
                     borderWidth: 1.5,
-                    borderColor: "rgba(255,255,255,0.75)",
-                    backgroundColor: (completedChakras ?? []).includes(chakraDay)
-                      ? "#ffffff"
+                    borderColor: hasEmbodiedToday
+                      ? "rgba(232, 201, 140, 0.9)"
+                      : "rgba(255, 248, 236, 0.55)",
+                    backgroundColor: hasEmbodiedToday
+                      ? "rgba(232, 201, 140, 0.22)"
                       : "transparent",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
-                />
+                >
+                  {hasEmbodiedToday ? (
+                    <Ionicons
+                      name="heart"
+                      size={14}
+                      color="rgba(232, 201, 140, 0.95)"
+                    />
+                  ) : (
+                    <Ionicons
+                      name="heart-outline"
+                      size={14}
+                      color="rgba(255, 248, 236, 0.55)"
+                    />
+                  )}
+                </View>
                 <AppText
                   font="koh-santepheap"
                   size="xl"
@@ -424,17 +493,17 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                 </AppText>
               </View>
               <AppText
-                font="instrument-regular"
-                size="sm"
+                font="cormorant-italic"
                 style={{
                   textAlign: "center",
-                  color: "rgba(255,255,255,0.7)",
-                  fontStyle: "italic",
+                  color: "rgba(255, 248, 236, 0.78)",
+                  fontSize: 17,
+                  lineHeight: 24,
                   paddingVertical: 8,
                   paddingHorizontal: 16,
                 }}
               >
-                I have completed today's journey
+                {DAY_EMBODIED_CHECKBOX_LABEL}
               </AppText>
             </Pressable>
           </Animated.View>
@@ -464,6 +533,14 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
         visible={bridgeCueVisible}
         onContinue={() => finishBridgeCue(true)}
         onDismiss={() => finishBridgeCue(false)}
+      />
+
+      <DayEmbodimentGateModal
+        visible={embodimentGateVisible}
+        remaining={embodimentRemaining}
+        onTakeMeThere={handleTakeMeToRemainingAudio}
+        onCloseInMyTiming={handleCloseDayInMyTiming}
+        onStay={() => setEmbodimentGateVisible(false)}
       />
 
       {/* Note: Social Sanctuary and Anua access is handled globally by PermanentMenuBar */}

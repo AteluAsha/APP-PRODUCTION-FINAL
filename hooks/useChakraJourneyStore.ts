@@ -29,7 +29,7 @@ interface ChakraJourneyState {
   completedChakras: number[]
 
   /**
-   * Cards collected in Gallery of Gnosis. Grows only. Monday midnight
+   * Cards collected in Gallery of Alignment. Grows only. Monday midnight
    * never clears this — only completedChakras (checkboxes / gold circles).
    */
   everCompletedChakras: number[]

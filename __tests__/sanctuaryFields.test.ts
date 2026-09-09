@@ -39,7 +39,9 @@ describe("sanctuary opening and goodbye fields", () => {
             path.join(__dirname, "..", "components/CenteredInviteScroll.tsx"),
             "utf8",
         )
-        expect(center).toContain("fits ? 'center' : 'flex-start'")
+        expect(center).toContain("minHeight: viewportH")
+        expect(center).toContain("justifyContent: 'center'")
+        expect(center).not.toContain("fits ? 'center' : 'flex-start'")
         expect(center).toContain("setBodyH")
         const grace = [
             "components/chakras/GraceOfThePresence.tsx",
@@ -137,6 +139,6 @@ describe("sanctuary opening and goodbye fields", () => {
         )
         expect(src).toContain("getGoodbyeField")
         expect(src).toContain("StyleSheet.absoluteFill")
-        expect(src).toContain("Claim Your Chakra Card")
+        expect(src).toContain("GALLERY_GOODBYE_DOOR")
     })
 })

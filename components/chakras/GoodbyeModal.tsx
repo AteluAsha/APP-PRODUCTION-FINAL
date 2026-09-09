@@ -1,9 +1,8 @@
 /**
  * Goodbye – End-of-Day Completion Screen
  *
- * Sequential: word-on-screen presence, then goodbye. The closing transition
- * already showed the chakra and affirmation, so goodbye opens on the blessing
- * and buttons. After 7s the ball and mantra fade in as a quiet gift.
+ * Sequential: word-on-screen presence, then goodbye. The closing holds the
+ * blessing, mantra, and ball together. Home rests. The Gallery is a quiet door.
  */
 import { AppText } from "@/components/AppText"
 import React, { useCallback, useEffect, useRef, useState } from "react"
@@ -54,9 +53,7 @@ import {
 } from "@/constants/heroAffirmation"
 import { ICON, safeOverlayTop } from "@/constants/layout"
 import { DailyAlignmentToggleRow } from "@/components/chakras/DailyAlignmentToggleRow"
-
-const GIFT_REVEAL_DELAY_MS = 7000
-const GIFT_REVEAL_FADE_MS = 1600
+import { GALLERY_GOODBYE_DOOR } from "@/constants/galleryChambersCopy"
 
 function hexToRgba(hex: string, alpha: number): string {
   const raw = hex.replace("#", "")
@@ -86,7 +83,6 @@ const GoodbyeModal = ({
   const [stage, setStage] = useState<"presence" | "goodbye">("presence")
   const goodbyeOpacity = useSharedValue(0)
   const overlayOpacity = useSharedValue(0)
-  const giftOpacity = useSharedValue(0)
   const currentChakra =
     chakraDay !== undefined ? getChakraFromDay(chakraDay) : Chakra.ROOT
 
@@ -100,7 +96,7 @@ const GoodbyeModal = ({
       .queueTomorrowAwakening(chakraDay ?? 0)
   }
 
-  const handleClaimCard = () => {
+  const handleEnterGallery = () => {
     addHapticFeedback(HapticStrength.Light)
     queueTomorrow()
     useCompletedChakraStore.getState().clearCompletedChakra()
@@ -138,10 +134,6 @@ const GoodbyeModal = ({
     opacity: goodbyeOpacity.value,
   }))
 
-  const giftStyle = useAnimatedStyle(() => ({
-    opacity: giftOpacity.value,
-  }))
-
   const isVisibleRef = useRef(isVisible)
   isVisibleRef.current = isVisible
 
@@ -154,13 +146,11 @@ const GoodbyeModal = ({
     if (!isVisible) {
       overlayOpacity.value = withTiming(0, { duration: 280 })
       goodbyeOpacity.value = 0
-      giftOpacity.value = 0
       setStage("presence")
       return
     }
     setStage("presence")
     goodbyeOpacity.value = 0
-    giftOpacity.value = 0
     overlayOpacity.value = withTiming(1, {
       duration: 900,
       easing: Easing.out(Easing.ease),
@@ -184,7 +174,7 @@ const GoodbyeModal = ({
       setStage((current) => (current === "presence" ? "goodbye" : current))
     }, 40000)
     return () => clearTimeout(safety)
-  }, [isVisible, goodbyeOpacity, overlayOpacity, giftOpacity])
+  }, [isVisible, goodbyeOpacity, overlayOpacity])
 
   useEffect(() => {
     if (!isVisible || stage !== "goodbye") return
@@ -193,16 +183,7 @@ const GoodbyeModal = ({
       duration: 900,
       easing: Easing.out(Easing.ease),
     })
-    giftOpacity.value = 0
-    const reveal = setTimeout(() => {
-      if (!isVisibleRef.current) return
-      giftOpacity.value = withTiming(1, {
-        duration: GIFT_REVEAL_FADE_MS,
-        easing: Easing.out(Easing.ease),
-      })
-    }, GIFT_REVEAL_DELAY_MS)
-    return () => clearTimeout(reveal)
-  }, [isVisible, stage, goodbyeOpacity, giftOpacity])
+  }, [isVisible, stage, goodbyeOpacity])
 
   const setGoodbyeVisible = useGoodbyeModalStore((s) => s.setGoodbyeVisible)
   useEffect(() => {
@@ -274,10 +255,7 @@ const GoodbyeModal = ({
               },
             ]}
           >
-            <Animated.View
-              style={[styles.giftReveal, giftStyle]}
-              pointerEvents="none"
-            >
+            <View style={styles.giftReveal}>
               {content?.goodbye?.chakraImage ? (
                 <View style={styles.ballWrap}>
                   <SoftChakraBall
@@ -295,7 +273,7 @@ const GoodbyeModal = ({
               >
                 {heroMantra}
               </AppText>
-            </Animated.View>
+            </View>
 
             <View style={styles.goldLine} />
 
@@ -307,29 +285,17 @@ const GoodbyeModal = ({
 
             <View style={styles.actions}>
               <Pressable
-                onPress={handleClaimCard}
-                style={({ pressed }) => [pressed && { opacity: 0.9 }]}
-                accessibilityLabel="Claim your chakra card"
+                onPress={handleEnterGallery}
+                style={({ pressed }) => [
+                  styles.galleryDoor,
+                  { opacity: pressed ? 0.88 : 1 },
+                ]}
+                accessibilityLabel={GALLERY_GOODBYE_DOOR}
                 accessibilityRole="button"
               >
-                <LinearGradient
-                  colors={[
-                    "rgba(168, 201, 154, 0.9)",
-                    "rgba(107, 142, 90, 0.94)",
-                    "rgba(212, 165, 116, 0.55)",
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.claimButton}
-                >
-                  <AppText
-                    font="instrument-semibold"
-                    size="sm"
-                    style={styles.claimLabel}
-                  >
-                    Claim Your Chakra Card
-                  </AppText>
-                </LinearGradient>
+                <AppText font="cormorant-italic" style={styles.galleryDoorLabel}>
+                  {GALLERY_GOODBYE_DOOR}
+                </AppText>
               </Pressable>
 
               <Pressable
@@ -443,21 +409,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 18,
   },
-  claimButton: {
-    paddingVertical: Platform.OS === "ios" ? 16 : 15,
-    paddingHorizontal: 28,
-    borderRadius: 16,
-    minHeight: 52,
-    minWidth: 240,
-    alignItems: "center",
-    justifyContent: "center",
+  galleryDoor: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    maxWidth: 360,
   },
-  claimLabel: {
-    color: "#ffffff",
+  galleryDoorLabel: {
+    color: "rgba(232, 201, 140, 0.92)",
+    fontSize: 18,
+    lineHeight: 26,
     textAlign: "center",
-    textShadowColor: "rgba(0, 0, 0, 0.45)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
   },
   homeButton: {
     paddingVertical: 14,

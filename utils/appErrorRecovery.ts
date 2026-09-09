@@ -84,9 +84,16 @@ export function getRecoveryDestinationLabel(route: string): string {
 
 function waitForNavigationSettle(): Promise<void> {
     return new Promise((resolve) => {
+        let settled = false
+        const done = () => {
+            if (settled) return
+            settled = true
+            resolve()
+        }
         InteractionManager.runAfterInteractions(() => {
-            setTimeout(resolve, 320)
+            setTimeout(done, 320)
         })
+        setTimeout(done, 1800)
     })
 }
 
@@ -97,7 +104,7 @@ function waitForNavigationSettle(): Promise<void> {
 export async function recoverFromAppError(): Promise<string> {
     const generation = ++recoveryGeneration
     recoveryActive = true
-    const destination = getSafeRecoveryRoute()
+    const destination = getScreenCrashRecoveryRoute()
 
     try {
         clearVaultAutoPlayback()

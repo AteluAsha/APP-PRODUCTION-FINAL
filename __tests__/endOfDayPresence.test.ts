@@ -6,6 +6,7 @@ import {
     mantraForDay,
 } from "../constants/endOfDayPresenceCopy"
 import { getTomorrowAwakeningCopy } from "../constants/tomorrowAwakeningCopy"
+import { GALLERY_GOODBYE_DOOR } from "../constants/galleryChambersCopy"
 
 describe("end of day presence and goodbye", () => {
     it("gives every day the same five-beat breath flow", () => {
@@ -52,7 +53,7 @@ describe("end of day presence and goodbye", () => {
             path.join(__dirname, "..", "components/chakras/GoodbyeModal.tsx"),
             "utf8",
         )
-        expect(goodbye).toContain("Claim Your Chakra Card")
+        expect(goodbye).toContain("GALLERY_GOODBYE_DOOR")
         expect(goodbye).toContain("GalleryOfGnosis?chakra=")
         expect(goodbye).not.toContain("GiftChakra")
         expect(goodbye).not.toContain("Open Your Gift")
@@ -60,8 +61,12 @@ describe("end of day presence and goodbye", () => {
         expect(goodbye).toContain("isVisible && stage === \"presence\"")
         expect(goodbye).not.toContain(": isVisible ?")
         expect(goodbye).toContain("if (!isVisibleRef.current) return")
-        expect(goodbye).toContain("GIFT_REVEAL_DELAY_MS")
-        expect(goodbye).toContain("giftOpacity")
+        expect(GALLERY_GOODBYE_DOOR.toLowerCase()).toContain(
+            "gallery of alignment",
+        )
+        expect(goodbye).not.toContain("Claim Your Chakra Card")
+        expect(goodbye).not.toContain("GIFT_REVEAL_DELAY_MS")
+        expect(goodbye).not.toContain("giftOpacity")
     })
 
     it("teases tomorrow's chakra on the hub after each day", () => {

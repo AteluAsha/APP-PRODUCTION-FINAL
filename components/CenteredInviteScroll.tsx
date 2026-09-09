@@ -2,9 +2,8 @@
  * Centers invitation / explainer content when it fits the screen.
  *
  * Android ScrollView with flexGrow + justifyContent: 'center' shoves the
- * block to the bottom (empty space above). Measure the real body and only
- * center when it is shorter than the viewport; otherwise start at the top
- * so the card can scroll.
+ * block to the bottom (empty space above). Center on the inner body with
+ * minHeight instead, and wait until measured so the first paint is not shoved.
  */
 
 import React, { useState, type ReactNode } from 'react'
@@ -31,7 +30,7 @@ export function CenteredInviteScroll({
     const [viewportH, setViewportH] = useState(0)
     const [bodyH, setBodyH] = useState(0)
     const measured = viewportH > 0 && bodyH > 0
-    const fits = !measured || bodyH <= viewportH
+    const fits = measured && bodyH <= viewportH
 
     return (
         <ScrollView
@@ -41,10 +40,7 @@ export function CenteredInviteScroll({
                 setViewportH(e.nativeEvent.layout.height)
                 onLayout?.(e)
             }}
-            contentContainerStyle={{
-                flexGrow: 1,
-                justifyContent: fits ? 'center' : 'flex-start',
-            }}
+            contentContainerStyle={{ flexGrow: 1 }}
             showsVerticalScrollIndicator={
                 rest.showsVerticalScrollIndicator ?? false
             }
@@ -55,7 +51,16 @@ export function CenteredInviteScroll({
         >
             <View
                 onLayout={(e) => setBodyH(e.nativeEvent.layout.height)}
-                style={[{ width: '100%', alignItems: 'center' }, contentContainerStyle]}
+                style={[
+                    { width: '100%', alignItems: 'center' },
+                    fits
+                        ? {
+                              minHeight: viewportH,
+                              justifyContent: 'center',
+                          }
+                        : null,
+                    contentContainerStyle,
+                ]}
             >
                 {children}
             </View>

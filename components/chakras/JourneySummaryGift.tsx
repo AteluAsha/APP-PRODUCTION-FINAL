@@ -121,7 +121,7 @@ export function JourneySummaryGift({
             Carry it forward.
           </AppText>
 
-          {/* Gallery of Gnosis - if they have cards */}
+          {/* Gallery of Alignment - if they have cards */}
           {hasUnlockedCards && (
             <Pressable
               onPress={handleGallery}
@@ -162,7 +162,7 @@ export function JourneySummaryGift({
                   size="sm"
                   style={{ color: "rgba(255,255,255,0.95)" }}
                 >
-                  View Your Chakra Cards
+                  Open the Gallery of Alignment
                 </AppText>
               </LinearGradient>
             </Pressable>

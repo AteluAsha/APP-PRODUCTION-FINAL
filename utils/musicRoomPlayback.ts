@@ -23,6 +23,7 @@ import { persistResumeBookmark } from '@/utils/audioBookmark'
 import { allowsTrackQueue } from '@/utils/audioPlayMode'
 import { sliderDurationMs } from '@/src/utils/playerControls'
 import { useEmbodimentDurationCacheStore } from '@/hooks/useEmbodimentDurationCacheStore'
+import { useDayAudioOpenedStore } from '@/hooks/useDayAudioOpenedStore'
 
 export function musicRoomDefsToPlaylistItems(
     defs: MusicRoomTrackDef[] = MUSIC_ROOM_TRACK_DEFS,
@@ -88,6 +89,7 @@ export async function openMusicRoomAtIndex(startIndex: number): Promise<boolean>
     if (startIndex < 0 || startIndex >= defs.length) return false
     const def = defs[startIndex]
     addHapticFeedback(HapticStrength.Light)
+    useDayAudioOpenedStore.getState().markOpenedFromAudioId(def.audioId)
     const source = await resolveMusicRoomSource(def.audioId, def.durationMs)
 
     const items = musicRoomDefsToPlaylistItems(defs)
@@ -116,6 +118,7 @@ export async function switchMusicRoomTrack(nextIndex: number): Promise<boolean> 
         const item = playlist[nextIndex]
         const audioId = item.audioId
         if (!audioId) return false
+        useDayAudioOpenedStore.getState().markOpenedFromAudioId(audioId)
 
         const source = await resolveMusicRoomSource(
             audioId,

@@ -236,17 +236,18 @@ describe("progressive vault playback", () => {
         expect(src).not.toContain("LightSwirl")
     })
 
-    it("goodbye reveals as a second stage, then claims the card in gallery", () => {
+    it("goodbye reveals as a second stage, then opens the gallery chamber", () => {
         const src = fs.readFileSync(
             path.join(__dirname, "..", "components/chakras/GoodbyeModal.tsx"),
             "utf8",
         )
         expect(src).toContain("BreathIntegrationScreen")
         expect(src).toContain("getGoodbyeField")
-        expect(src).toContain("Claim Your Chakra Card")
+        expect(src).toContain("GALLERY_GOODBYE_DOOR")
         expect(src).toContain("GalleryOfGnosis?chakra=")
         expect(src).toContain('setStage("goodbye")')
         expect(src).not.toContain("Open Your Gift")
+        expect(src).not.toContain("Claim Your Chakra Card")
         expect(src).not.toContain("GiftChakra")
         expect(src).not.toContain("breathLayerOpacity")
         expect(src).not.toContain("withDelay")

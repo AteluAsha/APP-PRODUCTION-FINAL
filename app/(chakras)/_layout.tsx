@@ -106,7 +106,6 @@ const ChakrasLayout = () => {
             <Stack.Screen name="EnergyExchange" />
             <Stack.Screen name="AccountabilityOfAwakening" />
             <Stack.Screen name="GalleryOfGnosis" />
-            <Stack.Screen name="GiftChakra" />
             <Stack.Screen name="NotesAlongTheWay" />
             <Stack.Screen name="Contribute" />
           </Stack>
