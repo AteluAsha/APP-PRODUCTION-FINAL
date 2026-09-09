@@ -9,6 +9,9 @@ export function preferPlayerDurationMs(
     catalogMs: number,
 ): number {
     if (playerMs != null && Number.isFinite(playerMs) && playerMs > 0) {
+        if (catalogMs > 30_000 && playerMs < catalogMs * 0.75) {
+            return catalogMs
+        }
         return playerMs
     }
     if (Number.isFinite(catalogMs) && catalogMs > 0) return catalogMs

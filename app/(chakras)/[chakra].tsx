@@ -1,29 +1,38 @@
+import { useState, useEffect } from "react"
+import { View } from "react-native"
 import ChakraTemplate from "@/components/chakras/ChakraTemplate"
 import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
-import { Chakra } from "@/types/chakras/Chakra"
-import { useEffect } from "react"
-import { isValidChakra } from "@/utils/validation"
-import { useLocalSearchParams, useRouter } from "expo-router"
+import { resolveCourseDayChakra } from "@/utils/chakraDayRoute"
+import { useLocalSearchParams, useSegments } from "expo-router"
 
 const ChakraScreen = () => {
-  const params = useLocalSearchParams<{ chakra?: string | string[] }>()
+  const params = useLocalSearchParams<{
+    chakra?: string | string[]
+    day?: string | string[]
+  }>()
+  const segments = useSegments()
   const raw = params.chakra
   const chakraParam = Array.isArray(raw) ? raw[0] : raw
-  const router = useRouter()
+  const chakra = resolveCourseDayChakra(chakraParam, segments, params.day)
+  const [dayReady, setDayReady] = useState(false)
 
-  // If the chakra value is invalid, return to the hub
   useEffect(() => {
-    if (!isValidChakra(chakraParam)) {
-      router.replace("/(chakras)/ChakraHub")
+    if (!chakra) {
+      setDayReady(false)
+      return
     }
-  }, [chakraParam, router])
+    const t = setTimeout(() => setDayReady(true), 50)
+    return () => clearTimeout(t)
+  }, [chakra])
 
-  // Only render the component if we have a valid chakra value
-  if (!isValidChakra(chakraParam)) return null
+  // No Hub bounce. A missing slug is still settling — for every day.
+  if (!chakra || !dayReady) {
+    return <View style={{ flex: 1, backgroundColor: "#000000" }} />
+  }
 
   return (
     <ScreenCrashBoundary>
-      <ChakraTemplate chakra={chakraParam as Chakra} />
+      <ChakraTemplate chakra={chakra} />
     </ScreenCrashBoundary>
   )
 }

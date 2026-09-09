@@ -1,10 +1,10 @@
 /**
  * AudioPlayer seek / duration helpers.
  *
- * Catalog duration is used when native AAC duration is 0 or a stub, so the
- * soldier can jump. A remaster longer than catalog always wins once native
- * (or a cached native) length lands. Never shrink a known-good bar back to
- * a short catalog on the same track.
+ * Catalog is the total until a complete file reports a trusted length.
+ * Growing .part downloads report a short native duration that keeps
+ * increasing as bytes land — that is not the track length.
+ * A remaster longer than catalog wins only once native is trusted.
  */
 
 export function isStubNativeDuration(
@@ -16,6 +16,28 @@ export function isStubNativeDuration(
     return fileDurationMs < catalogDurationMs * 0.25
 }
 
+/** Partial vault files report a short native length that grows while playing. */
+export function isIncompleteNativeDuration(
+    fileDurationMs: number,
+    catalogDurationMs: number,
+): boolean {
+    if (!(catalogDurationMs > 30_000)) return false
+    if (!(fileDurationMs > 0)) return false
+    return fileDurationMs < catalogDurationMs * 0.75
+}
+
+export function shouldTrustNativeDuration(
+    fileDurationMs: number,
+    catalogDurationMs: number,
+): boolean {
+    if (!(fileDurationMs > 0)) return false
+    if (isStubNativeDuration(fileDurationMs, catalogDurationMs)) return false
+    if (isIncompleteNativeDuration(fileDurationMs, catalogDurationMs)) {
+        return false
+    }
+    return true
+}
+
 export function sliderDurationMs(
     fileDurationMs: number,
     catalogDurationMs: number,
@@ -23,16 +45,14 @@ export function sliderDurationMs(
     const fileOk = Number.isFinite(fileDurationMs) && fileDurationMs > 0
     const catalogOk =
         Number.isFinite(catalogDurationMs) && catalogDurationMs > 0
-    // AAC on Android often reports 0 or a stub few seconds. Prefer catalog
-    // so the soldier can jump; native seek still clamps if the file is short.
-    if (fileOk && catalogOk && isStubNativeDuration(fileDurationMs, catalogDurationMs)) {
+    if (
+        catalogOk &&
+        (!fileOk ||
+            !shouldTrustNativeDuration(fileDurationMs, catalogDurationMs))
+    ) {
         return catalogDurationMs
     }
-    // Credible native length wins — remaster longer than catalog, or
-    // catalog overstated vs the real file. Do not pick max(catalog, file)
-    // here: that would stretch the bar past a shorter real file.
     if (fileOk) return fileDurationMs
-    if (catalogOk) return catalogDurationMs
     return 0
 }
 
@@ -54,8 +74,8 @@ export function preferLongerDurationMs(
 
 /**
  * Commit a duration update for the open track.
- * Credible native length replaces the bar (remaster or shorter real file).
- * Stub / unknown native never shrinks a known-good or cached length.
+ * Trusted native (complete remaster) may replace the bar.
+ * Partial / stub native never becomes the total, and never grows it.
  */
 export function commitPlaybackDurationMs(opts: {
     currentMs: number
@@ -64,12 +84,17 @@ export function commitPlaybackDurationMs(opts: {
     catalogDurationMs: number
 }): number {
     if (
-        opts.fileDurationMs > 0 &&
-        !isStubNativeDuration(opts.fileDurationMs, opts.catalogDurationMs)
+        shouldTrustNativeDuration(
+            opts.fileDurationMs,
+            opts.catalogDurationMs,
+        )
     ) {
         return opts.nextMs > 0 ? opts.nextMs : opts.fileDurationMs
     }
-    return preferLongerDurationMs(opts.currentMs, opts.nextMs)
+    return preferLongerDurationMs(
+        opts.currentMs,
+        opts.catalogDurationMs,
+    )
 }
 
 export function clampSeekMs(requestedMs: number, durationMs: number): number {
@@ -92,9 +117,11 @@ export function resolvePlaybackDurationMs(opts: {
     const file = opts.fileDurationMs ?? 0
     const catalog = opts.catalogDurationMs ?? 0
     const fromSlider = sliderDurationMs(file, catalog)
-    const observed = Math.max(opts.bookmarkMs ?? 0, opts.positionMs ?? 0)
-    if (observed > fromSlider + 1000) {
-        return observed + 5000
+    // Resume only: a remaster bookmark past catalog. Never grow the
+    // displayed total from live position — that added minutes while playing.
+    const bookmark = opts.bookmarkMs ?? 0
+    if (bookmark > fromSlider + 1000) {
+        return bookmark + 5000
     }
     return fromSlider
 }

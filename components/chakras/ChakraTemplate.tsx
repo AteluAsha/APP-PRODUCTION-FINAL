@@ -9,18 +9,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import Animated, {
   useAnimatedRef,
-  FadeIn,
-  Easing,
   scrollTo,
   runOnUI,
 } from "react-native-reanimated"
-import { ActionBarAnimated } from "@/components/ActionBarAnimated"
+import { ActionBar } from "@/components/ActionBar"
 import { HeaderSection } from "@/components/chakras/HeaderSection"
 import { chakraContent } from "@/constants/chakras/content"
-import {
-  SCROLL_BREATHING_BOTTOM_PADDING,
-  SOMATIC_CONTENT_FADE_MS,
-} from "@/constants/layout"
+import { SCROLL_BREATHING_BOTTOM_PADDING } from "@/constants/layout"
 import { PillBottomSheet } from "@/components/chakras/PillBottomSheet"
 import { PillSection } from "@/components/chakras/PillSection"
 import { Divider } from "@/components/chakras/Divider"
@@ -97,6 +92,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   >([])
   const [contentKey, setContentKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
+  const [courseSurfaceReady, setCourseSurfaceReady] = useState(false)
   const isFirstFocusRef = useRef(true)
   const openAshaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const embodimentClosingRef = useRef(false)
@@ -152,6 +148,14 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
     return () => {
       if (openAshaTimerRef.current) clearTimeout(openAshaTimerRef.current)
     }
+  }, [])
+
+  useEffect(() => {
+    const t = setTimeout(
+      () => setCourseSurfaceReady(true),
+      Platform.OS === "android" ? 480 : 240,
+    )
+    return () => clearTimeout(t)
   }, [])
 
   // CRITICAL: Do NOT mark completion on mount - only mark when user actually completes
@@ -218,11 +222,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
 
   const handleBackToHub = () => {
     addHapticFeedback(HapticStrength.Light)
-    if (router.canGoBack()) {
-      router.back()
-    } else {
-      router.replace("/(chakras)/ChakraHub")
-    }
+    router.replace("/(chakras)/ChakraHub")
   }
 
   const handleGoodbyeNavigateHome = () => {
@@ -296,11 +296,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-      <ActionBarAnimated
-        scrollViewRef={scrollRef}
-        headerImageSource={content.chakraHeaderImage}
-        onBackPress={handleBackToHub}
-      />
+      <ActionBar onBackPress={handleBackToHub} />
 
       <ParallaxScrollView
         scrollRef={scrollRef}
@@ -352,19 +348,9 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
           key={contentKey}
           style={{ paddingBottom: 80 + SCROLL_BREATHING_BOTTOM_PADDING, paddingTop: 8 }}
         >
-          <Animated.View
-            style={{ backgroundColor: "#000000" }}
-            entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
-              .delay(80)
-              .easing(Easing.out(Easing.ease))}
-          >
+          <View style={{ backgroundColor: "#000000" }}>
             {/* Drop In above master meditation — tuning fork somatic entrance */}
-            <Animated.View
-              entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
-                .delay(40)
-                .easing(Easing.out(Easing.ease))}
-              style={{ marginBottom: 8 }}
-            >
+            <View style={{ marginBottom: 8 }}>
             {hasSanctuaryTuningFork(chakra) ? (
                 <View style={{ alignItems: "center", marginTop: 8, marginBottom: 14 }}>
                   <DropInButton
@@ -388,31 +374,19 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                 embodimentCacheKey={getEmbodimentAudioId(chakra)}
                 onPlayTriggered={triggerBackupCacheForDay}
               />
-            </Animated.View>
-            <Animated.View
-              entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
-                .delay(120)
-                .easing(Easing.out(Easing.ease))}
-            >
+            </View>
+            <View>
               <PillSection chakra={chakra} onPress={handlePillPress} />
-            </Animated.View>
-            <Animated.View
-              entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
-                .delay(180)
-                .easing(Easing.out(Easing.ease))}
-            >
+            </View>
+            <View>
               <Divider style={{ marginHorizontal: 32, marginBottom: 16 }} />
               <WisdomOverviewSection
                 overview={content.overview}
                 sanskrit={content.sanskrit}
               />
               <AffirmationSection affirmationText={content.affirmationText} />
-            </Animated.View>
-            <Animated.View
-              entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
-                .delay(220)
-                .easing(Easing.out(Easing.ease))}
-            >
+            </View>
+            <View>
               <ResponsiveImage
                 source={content.locationImage}
                 width={screenWidth}
@@ -421,14 +395,11 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               <Part2Section chakra={chakra} />
               <ElementsSection chakra={chakra} />
               <Part3Section chakra={chakra} />
-            </Animated.View>
-          </Animated.View>
+            </View>
+          </View>
           <Part4BridgeSection chakra={chakra} />
           {/* Completion Ceremony - whole section tappable; checkbox fills when completed; resets Monday midnight via week transition */}
-          <Animated.View
-            entering={FadeIn.duration(SOMATIC_CONTENT_FADE_MS)
-              .delay(360)
-              .easing(Easing.out(Easing.ease))}
+          <View
             style={{ marginTop: 48, marginBottom: 24, alignItems: "center" }}
           >
             <Pressable
@@ -506,7 +477,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                 {DAY_EMBODIED_CHECKBOX_LABEL}
               </AppText>
             </Pressable>
-          </Animated.View>
+          </View>
         </View>
       </ParallaxScrollView>
 
@@ -519,29 +490,33 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
         />
       )}
 
-      <GoodbyeModal
-        isVisible={showGoodbyeModal}
-        onClose={() => {
-          setShowGoodbyeModal(false)
-          clearCompletedChakra()
-        }}
-        chakraDay={chakraDay}
-        onNavigateHome={handleGoodbyeNavigateHome}
-      />
+      {courseSurfaceReady ? (
+        <>
+          <GoodbyeModal
+            isVisible={showGoodbyeModal}
+            onClose={() => {
+              setShowGoodbyeModal(false)
+              clearCompletedChakra()
+            }}
+            chakraDay={chakraDay}
+            onNavigateHome={handleGoodbyeNavigateHome}
+          />
 
-      <BridgeCueModal
-        visible={bridgeCueVisible}
-        onContinue={() => finishBridgeCue(true)}
-        onDismiss={() => finishBridgeCue(false)}
-      />
+          <BridgeCueModal
+            visible={bridgeCueVisible}
+            onContinue={() => finishBridgeCue(true)}
+            onDismiss={() => finishBridgeCue(false)}
+          />
 
-      <DayEmbodimentGateModal
-        visible={embodimentGateVisible}
-        remaining={embodimentRemaining}
-        onTakeMeThere={handleTakeMeToRemainingAudio}
-        onCloseInMyTiming={handleCloseDayInMyTiming}
-        onStay={() => setEmbodimentGateVisible(false)}
-      />
+          <DayEmbodimentGateModal
+            visible={embodimentGateVisible}
+            remaining={embodimentRemaining}
+            onTakeMeThere={handleTakeMeToRemainingAudio}
+            onCloseInMyTiming={handleCloseDayInMyTiming}
+            onStay={() => setEmbodimentGateVisible(false)}
+          />
+        </>
+      ) : null}
 
       {/* Note: Social Sanctuary and Anua access is handled globally by PermanentMenuBar */}
     </SafeAreaView>

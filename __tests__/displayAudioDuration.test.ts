@@ -15,6 +15,7 @@ describe('audio button duration labels', () => {
         expect(preferPlayerDurationMs(3_304_000, 2_684_000)).toBe(3_304_000)
         expect(preferPlayerDurationMs(undefined, 2_684_000)).toBe(2_684_000)
         expect(preferPlayerDurationMs(0, 2_684_000)).toBe(2_684_000)
+        expect(preferPlayerDurationMs(1_440_000, 2_684_000)).toBe(2_684_000)
     })
 
     it('shows whole minutes only, never seconds', () => {

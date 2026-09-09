@@ -26,6 +26,7 @@ import {
 import { showHealingToast } from '@/utils/healingToast'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
 import { saveAudioBookmark } from '@/utils/audioBookmark'
+import { registerAndroidBackCleanup } from '@/utils/androidBackCleanup'
 
 const DEFAULT_UNLOAD_WAIT_MS = 200
 const LEAVE_UNLOAD_DELAY_MS = 150

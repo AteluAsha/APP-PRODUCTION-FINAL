@@ -29,7 +29,10 @@ export const useEmbodimentDurationCacheStore =
         setDuration: (audioId: string, durationMs: number) => {
           if (!Number.isFinite(durationMs) || durationMs <= 0) return
           const current = get().durations?.[audioId]
-          // Same file can report a few ms of jitter. Rest unless a new audio.
+          // Growing .part files report a shorter length each tick. Never shrink.
+          if (current != null && durationMs + 60_000 < current) {
+            return
+          }
           if (
             current != null &&
             Math.abs(current - durationMs) < 60_000

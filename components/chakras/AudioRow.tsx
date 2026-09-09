@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import {
   Pressable,
   View,
@@ -63,6 +63,9 @@ export const AudioRow = ({
   const [isPreparing, setIsPreparing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [welcomeVisible, setWelcomeVisible] = useState(false)
+  const [welcomeSurfaceReady, setWelcomeSurfaceReady] = useState(
+    Platform.OS !== "android",
+  )
   const openingAfterWelcomeRef = useRef(false)
   const isReady = useSanctuaryTrackReady(embodimentCacheKey)
   const hasSeenMasterMeditationWelcome = useFirstLaunchStore(
@@ -78,6 +81,11 @@ export const AudioRow = ({
   const mountWelcomeModal =
     embodimentCacheKey != null &&
     shouldShowMasterMeditationWelcome(embodimentCacheKey, false)
+  useEffect(() => {
+    if (Platform.OS !== "android" || !mountWelcomeModal) return
+    const t = setTimeout(() => setWelcomeSurfaceReady(true), 480)
+    return () => clearTimeout(t)
+  }, [mountWelcomeModal])
   const pathname = usePathname()
   const durationForUi = useResolvedTrackDurationMs(
     embodimentCacheKey,
@@ -251,7 +259,7 @@ export const AudioRow = ({
         </View>
       </ImageBackground>
     </Pressable>
-    {mountWelcomeModal ? (
+    {mountWelcomeModal && welcomeSurfaceReady ? (
       <MasterMeditationWelcomeModal
         visible={welcomeVisible}
         onBegin={finishWelcome}

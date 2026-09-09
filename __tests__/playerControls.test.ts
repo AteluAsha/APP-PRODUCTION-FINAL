@@ -23,6 +23,34 @@ describe("player seek / duration", () => {
         expect(sliderDurationMs(3_000, 1_800_000)).toBe(1_800_000)
     })
 
+    it("does not treat a growing partial download as the track length", () => {
+        const catalog = 2_684_000
+        expect(sliderDurationMs(1_440_000, catalog)).toBe(catalog)
+        expect(
+            resolvePlaybackDurationMs({
+                fileDurationMs: 1_440_000,
+                catalogDurationMs: catalog,
+                positionMs: 600_000,
+            }),
+        ).toBe(catalog)
+        expect(
+            commitPlaybackDurationMs({
+                currentMs: catalog,
+                nextMs: 1_500_000,
+                fileDurationMs: 1_500_000,
+                catalogDurationMs: catalog,
+            }),
+        ).toBe(catalog)
+        expect(
+            commitPlaybackDurationMs({
+                currentMs: catalog,
+                nextMs: 1_620_000,
+                fileDurationMs: 1_620_000,
+                catalogDurationMs: catalog,
+            }),
+        ).toBe(catalog)
+    })
+
     it("uses the remaster file length when it is longer than catalog", () => {
         expect(sliderDurationMs(960_000, 720_000)).toBe(960_000)
         expect(

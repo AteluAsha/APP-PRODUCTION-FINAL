@@ -97,7 +97,17 @@ const ChakrasLayout = () => {
             <Stack.Screen name="ChakraHub" options={chakraHubStackOptions} />
             <Stack.Screen name="CoursePreview" />
             <Stack.Screen name="Preview" />
-            <Stack.Screen name="[chakra]" />
+            <Stack.Screen
+              name="[chakra]"
+              options={
+                Platform.OS === "android"
+                  ? {
+                      animation: "none",
+                      contentStyle: { backgroundColor: "#000000" },
+                    }
+                  : undefined
+              }
+            />
             <Stack.Screen name="SoundBath" />
             <Stack.Screen name="IntegrationPractice" />
             <Stack.Screen name="AudioLibrary" />

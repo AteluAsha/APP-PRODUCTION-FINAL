@@ -33,6 +33,9 @@ describe('shared inline tuning fork chime', () => {
         expect(hook).toContain('rushSanctuaryTrack')
         expect(hook).toContain('keepPlayingInBackground: true')
         expect(hook).not.toContain('keepPlayingInBackground: false')
+        expect(hook).toContain(
+            "import { registerAndroidBackCleanup } from '@/utils/androidBackCleanup'",
+        )
         expect(hook).toContain('registerAndroidBackCleanup')
         expect(hook).toContain('saveAudioBookmark')
         expect(hook).toContain('AppState.currentState')

@@ -6,7 +6,6 @@
  * The navigator must stay mounted during recovery — never unmount Stack.
  */
 
-import { InteractionManager } from 'react-native'
 import { router } from 'expo-router'
 import { useCurrentAudioStore } from '@/hooks/useCurrentAudioStore'
 import { clearVaultAutoPlayback } from '@/src/services/vaultAutoPlayback'
@@ -84,16 +83,7 @@ export function getRecoveryDestinationLabel(route: string): string {
 
 function waitForNavigationSettle(): Promise<void> {
     return new Promise((resolve) => {
-        let settled = false
-        const done = () => {
-            if (settled) return
-            settled = true
-            resolve()
-        }
-        InteractionManager.runAfterInteractions(() => {
-            setTimeout(done, 320)
-        })
-        setTimeout(done, 1800)
+        setTimeout(resolve, 400)
     })
 }
 

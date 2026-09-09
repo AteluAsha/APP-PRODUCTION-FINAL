@@ -75,11 +75,11 @@ import {
   commitPlaybackDurationMs,
   isPlaybackComplete,
   isPlaybackPositionRegression,
-  isStubNativeDuration,
   nativeSeekLanded,
   resolvePlaybackDurationMs,
   resumePositionMs,
   shouldHoldSeekTarget,
+  shouldTrustNativeDuration,
   sliderDurationMs,
 } from "@/src/utils/playerControls"
 import { silenceAllAudio, configureHealingAudioMode, type HealingSound } from "@/src/utils/singleActiveSound"
@@ -364,11 +364,12 @@ const AudioPlayer = () => {
         trackId != null
           ? useEmbodimentDurationCacheStore.getState().getDuration(trackId)
           : undefined
+      const catalog =
+        useCurrentAudioStore.getState().metadata?.durationMs ?? durationMs
       return resolvePlaybackDurationMs({
         fileDurationMs: fileDurationMsRef.current || cached,
-        catalogDurationMs: durationMs,
+        catalogDurationMs: catalog,
         bookmarkMs: opts?.bookmarkMs,
-        positionMs: opts?.positionMs ?? lastPlaybackPositionMsRef.current,
       })
     },
     [durationMs],
@@ -648,7 +649,6 @@ const AudioPlayer = () => {
         const duration = resolvePlaybackDurationMs({
           fileDurationMs: fileMs,
           catalogDurationMs: metaMs,
-          positionMs: status.positionMillis,
         })
         const playing = !!status.isPlaying
         const live = useCurrentAudioStore.getState()
@@ -665,8 +665,7 @@ const AudioPlayer = () => {
           live.prefs?.shouldLoop !== true
         const fileEndedWithoutFinish =
           !playing &&
-          fileMs > 0 &&
-          !isStubNativeDuration(fileMs, metaMs) &&
+          shouldTrustNativeDuration(fileMs, metaMs) &&
           isPlaybackComplete(status.positionMillis, fileMs) &&
           live.prefs?.shouldLoop !== true
 
@@ -714,17 +713,13 @@ const AudioPlayer = () => {
           if (isFirstStatus) {
             hasAppliedFirstStatusRef.current = true
           }
-          if (
-            fileMs > 0 &&
-            !isStubNativeDuration(fileMs, metaMs) &&
-            endedId
-          ) {
+          if (shouldTrustNativeDuration(fileMs, metaMs) && endedId) {
             useEmbodimentDurationCacheStore.getState().setDuration(endedId, fileMs)
           }
           const cacheKey =
             useEmbodimentDurationCacheStore.getState()
               .embodimentDurationCacheKey
-          if (cacheKey && fileMs > 0 && !isStubNativeDuration(fileMs, metaMs)) {
+          if (cacheKey && shouldTrustNativeDuration(fileMs, metaMs)) {
             useEmbodimentDurationCacheStore.getState().setDuration(cacheKey, fileMs)
             useEmbodimentDurationCacheStore.getState().clearEmbodimentDurationCacheKey()
           }
@@ -774,17 +769,13 @@ const AudioPlayer = () => {
             hasAppliedFirstStatusRef.current = true
           }
           const trackId = useCurrentAudioStore.getState().fullPlayerTrackId
-          if (
-            fileMs > 0 &&
-            !isStubNativeDuration(fileMs, metaMs) &&
-            trackId
-          ) {
+          if (shouldTrustNativeDuration(fileMs, metaMs) && trackId) {
             useEmbodimentDurationCacheStore.getState().setDuration(trackId, fileMs)
           }
           const cacheKey =
             useEmbodimentDurationCacheStore.getState()
               .embodimentDurationCacheKey
-          if (cacheKey && fileMs > 0 && !isStubNativeDuration(fileMs, metaMs)) {
+          if (cacheKey && shouldTrustNativeDuration(fileMs, metaMs)) {
             useEmbodimentDurationCacheStore.getState().setDuration(cacheKey, fileMs)
             useEmbodimentDurationCacheStore.getState().clearEmbodimentDurationCacheKey()
           }
@@ -998,11 +989,10 @@ const AudioPlayer = () => {
         const usableDuration = resolvePlaybackDurationMs({
           fileDurationMs: fileMs || cachedDuration,
           catalogDurationMs: catalogMs,
-          bookmarkMs: candidate,
-          positionMs: candidate,
+          bookmarkMs: skipResume ? undefined : candidate,
         })
         if (usableDuration > 0) {
-          if (fileMs > 0 && !isStubNativeDuration(fileMs, catalogMs) && trackId) {
+          if (shouldTrustNativeDuration(fileMs, catalogMs) && trackId) {
             useEmbodimentDurationCacheStore.getState().setDuration(trackId, fileMs)
           }
           setDuration((prev) =>

@@ -1,7 +1,7 @@
 # Android release position — 1.2.7 (47)
 
 **Saved:** 2026-09-09  
-**Status:** READY — local Play AAB
+**Status:** READY — local Play AAB (course-day open verified on emulator)
 
 Marketing **1.2.7**. Native **versionCode 47**. Play **1.2.6 / 46** is live. Do not reuse 46.
 
@@ -11,6 +11,7 @@ Same product as iOS config 1.2.7 (49). Do not submit this AAB as 1.2.6.
 
 ## This cut
 
+- Course days open again: Drop In imports `registerAndroidBackCleanup`; I Am Present pushes the day route.
 - Gallery of Alignment: seven chambers (not a gift/loot loop). Goodbye is a quiet close.
 - Day close invites Master Meditation and Asha Speaks, with a sovereignty override. Tuning fork and Sound Bath stay optional.
 - Crash recovery returns to Sanctuary or Audio Library, not the screen that threw.
@@ -31,7 +32,7 @@ If anything feels unsettled after this update, uninstall and reinstall from the 
 Artifact: `build-artifacts/SoulSchool-1.2.7-47.aab`
 
 ```bash
-eas build -p android --profile production-local --local --non-interactive --output build-artifacts/SoulSchool-1.2.7-47.aab --message "release(android): 1.2.7 (47) — Alignment gallery, embodiment close"
+eas build -p android --profile production-local --local --non-interactive --output build-artifacts/SoulSchool-1.2.7-47.aab --message "release(android): 1.2.7 (47) — course days open, Alignment gallery"
 ```
 
 Upload **this** file. Do not submit until versionName is 1.2.7 and versionCode is 47.
