@@ -21,7 +21,8 @@ import {
 } from "@/constants/audioUi"
 import type { MusicRoomTrackDef } from '@/constants/musicRoomLibrary'
 import { getTuningForkHertz } from '@/hooks/useTuningForkAudio'
-import { getMinutesString } from '@/utils/format'
+import { getAudioButtonDurationLabel } from '@/utils/displayAudioDuration'
+import { useResolvedTrackDurationMs } from '@/hooks/useEmbodimentDurationCacheStore'
 
 export type MusicRoomTrackButtonProps = {
     def: MusicRoomTrackDef
@@ -40,16 +41,16 @@ export type MusicRoomTrackButtonProps = {
     onDownload: () => void
 }
 
-function trackSubtitle(def: MusicRoomTrackDef): string {
+function trackSubtitle(def: MusicRoomTrackDef, durationMs: number): string {
     switch (def.trackKind) {
         case 'embodiment':
-            return `with ${def.author} · ${getMinutesString(def.durationMs)}`
+            return `with ${def.author} · ${getAudioButtonDurationLabel(durationMs)}`
         case 'tuning_fork':
             return 'Pure frequency · Sound Healing'
         case 'head_to_heart':
-            return `with ${def.author} · ${getMinutesString(def.durationMs)}`
+            return `with ${def.author} · ${getAudioButtonDurationLabel(durationMs)}`
         case 'crystal_bowl':
-            return `${def.author} · ${getMinutesString(def.durationMs)}`
+            return `${def.author} · ${getAudioButtonDurationLabel(durationMs)}`
         default:
             return def.author
     }
@@ -85,8 +86,9 @@ export function MusicRoomTrackButton({
     onPlay,
     onDownload,
 }: MusicRoomTrackButtonProps) {
+    const durationMs = useResolvedTrackDurationMs(def.audioId, def.durationMs)
     const label = sectionLabel(def)
-    const subtitle = trackSubtitle(def)
+    const subtitle = trackSubtitle(def, durationMs)
     const hertz =
         def.trackKind === 'tuning_fork'
             ? getTuningForkHertz(def.chakra)

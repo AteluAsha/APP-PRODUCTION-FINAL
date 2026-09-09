@@ -7,16 +7,20 @@ import {
     ASHA_SPEAKS_SUBLINE,
     ASHA_SPEAKS_TITLE,
 } from '@/constants/chakras/ancestralBridgeContent'
-import { getMinutesString } from '@/utils/format'
+import { getAudioButtonDurationLabel } from '@/utils/displayAudioDuration'
+import { useResolvedTrackDurationMs } from '@/hooks/useEmbodimentDurationCacheStore'
 import { TOUCH } from '@/constants/layout'
 
 export function AshaSpeaksButton({
+    audioId,
     durationMs,
     onPress,
 }: {
+    audioId: string
     durationMs: number
     onPress: () => void
 }) {
+    const durationForUi = useResolvedTrackDurationMs(audioId, durationMs)
     return (
         <TouchableOpacity
             onPress={onPress}
@@ -60,7 +64,7 @@ export function AshaSpeaksButton({
                 {ASHA_SPEAKS_SUBLINE}
             </AppText>
             <AppText font="cormorant-regular" style={styles.duration}>
-                {getMinutesString(durationMs)}
+                {getAudioButtonDurationLabel(durationForUi)}
             </AppText>
         </TouchableOpacity>
     )

@@ -1,12 +1,12 @@
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { safeAsyncStorage } from "@/src/utils/safeAsyncStorage"
+import { preferPlayerDurationMs } from "@/utils/displayAudioDuration"
 
 /**
- * Cache of actual loaded duration (ms) per full-player track.
- * Survives app restart so a remaster longer than catalog does not shrink
- * the slider on the next open while native duration is still 0.
- * AudioPlayer writes when it gets a credible status.durationMillis.
+ * Button minute labels. AudioPlayer writes the real file length once per
+ * audioId. Same file: rest. A new file whose length differs by a minute
+ * or more replaces the number, then rest.
  */
 interface EmbodimentDurationCacheStore {
   /** audioId -> durationMs from loaded file */
@@ -29,7 +29,13 @@ export const useEmbodimentDurationCacheStore =
         setDuration: (audioId: string, durationMs: number) => {
           if (!Number.isFinite(durationMs) || durationMs <= 0) return
           const current = get().durations[audioId]
-          if (current != null && current >= durationMs) return
+          // Same file can report a few ms of jitter. Rest unless a new audio.
+          if (
+            current != null &&
+            Math.abs(current - durationMs) < 60_000
+          ) {
+            return
+          }
           set((state) => ({
             durations: { ...state.durations, [audioId]: durationMs },
           }))
@@ -46,3 +52,14 @@ export const useEmbodimentDurationCacheStore =
       },
     ),
   )
+
+/** Course / library / Asha labels: player minutes once logged, else catalog. */
+export function useResolvedTrackDurationMs(
+  audioId: string | undefined,
+  catalogMs: number,
+): number {
+  const cached = useEmbodimentDurationCacheStore((s) =>
+    audioId ? s.durations[audioId] : undefined,
+  )
+  return preferPlayerDurationMs(cached, catalogMs)
+}

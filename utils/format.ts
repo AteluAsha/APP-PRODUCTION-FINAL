@@ -5,6 +5,7 @@ export const formatTime = (millis: number) => {
   return `${minutes}:${String(seconds).padStart(2, "0")}`
 }
 
+/** Whole minutes for audio buttons. Never mm:ss — that belongs on AudioPlayer. */
 export const getMinutesString = (millis: number) => {
   const totalSeconds = Math.floor(millis / 1000)
   const minutes = Math.floor(totalSeconds / 60)

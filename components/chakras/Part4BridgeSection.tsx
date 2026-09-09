@@ -13,6 +13,7 @@ import {
 } from '@/constants/chakras/ancestralBridgeContent'
 import { openAshaSpeaks } from '@/utils/openAshaSpeaks'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
+import { getHeadToHeartAudioId } from '@/hooks/useAncestralWisdomAudio'
 import { getChakraIndex } from '@/utils/chakraMapping'
 
 const FRAME = {
@@ -68,6 +69,7 @@ export function Part4BridgeSection({ chakra }: { chakra: Chakra }) {
                 {getBridgeLawLabel(chakra)}
             </AppText>
             <AshaSpeaksButton
+                audioId={getHeadToHeartAudioId(chakra)}
                 durationMs={durationMs}
                 onPress={() => {
                     addHapticFeedback(HapticStrength.Medium)

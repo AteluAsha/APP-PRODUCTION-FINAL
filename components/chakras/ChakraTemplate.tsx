@@ -45,7 +45,6 @@ import { useShallow } from "zustand/react/shallow"
 import GoodbyeModal from "@/components/chakras/GoodbyeModal"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useEmbodimentAudio, getEmbodimentAudioId } from "@/hooks/useEmbodimentAudio"
-import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import { useTuningForkAudio, getTuningForkFileName } from "@/hooks/useTuningForkAudio"
 import { hasSanctuaryTuningFork } from "@/constants/sanctuaryAudioManifest"
 import { storage } from "@/src/services/firebase"
@@ -202,7 +201,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   // Master Embodiment: on-device pack / ODR only. Miss = local error.
   useEmbodimentAudio(chakra)
   const tuningForkAudio = useTuningForkAudio(chakra)
-  const embodimentDurations = useEmbodimentDurationCacheStore((s) => s.durations)
 
   // Track pill bottom sheet visibility globally
   const setIsPillBottomSheetVisible = usePillBottomSheetStore(
@@ -326,10 +324,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
               <AudioRow
                 title={content.audioIntro.title}
                 author="Mother JJ"
-                durationMs={
-                  embodimentDurations[getEmbodimentAudioId(chakra)] ??
-                  content.audioIntro.durationMs
-                }
+                durationMs={content.audioIntro.durationMs}
                 authorColor="#FFFFFF"
                 isIntroAudio={true}
                 chakraColor={getChakraColor(chakraDay)}

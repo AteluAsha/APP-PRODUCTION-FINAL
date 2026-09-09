@@ -9,10 +9,13 @@ import {
 import { usePathname } from "expo-router"
 import { FontAwesome } from "@expo/vector-icons"
 import { AppText } from "@/components/AppText"
-import { getMinutesString } from "@/utils/format"
+import { getAudioButtonDurationLabel } from "@/utils/displayAudioDuration"
+import {
+  useEmbodimentDurationCacheStore,
+  useResolvedTrackDurationMs,
+} from "@/hooks/useEmbodimentDurationCacheStore"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import BackgroundOpacity from "../BackgroundOpacity"
-import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
 import { VaultDownloadLine } from "@/components/chakras/VaultDownloadLine"
 import {
@@ -76,6 +79,10 @@ export const AudioRow = ({
     embodimentCacheKey != null &&
     shouldShowMasterMeditationWelcome(embodimentCacheKey, false)
   const pathname = usePathname()
+  const durationForUi = useResolvedTrackDurationMs(
+    embodimentCacheKey,
+    durationMs,
+  )
 
   const buildPlaybackRequest = (): SanctuaryPlaybackRequest | null => {
     if (!embodimentCacheKey) return null
@@ -224,7 +231,7 @@ export const AudioRow = ({
               >
                 with {author}
               </AppText>{" "}
-              - {getMinutesString(durationMs)}
+              - {getAudioButtonDurationLabel(durationForUi)}
             </AppText>
             <VaultDownloadLine audioId={embodimentCacheKey} />
             {loadError ? (
