@@ -1,12 +1,9 @@
 /**
  * Goodbye – End-of-Day Completion Screen
  *
- * Sequential: word-on-screen presence (same flow as Root intro), then a
- * simple goodbye. No overlapping fade layers — that dual-opacity system
- * could freeze on Pixel with breath at 0 and goodbye never revealing.
- *
- * Layout (all 7 days): hero mantra, a closing blessing, Claim Your Chakra
- * Card (opens Gallery of Gnosis on that card), Home.
+ * Sequential: word-on-screen presence, then goodbye. The closing transition
+ * already showed the chakra and affirmation, so goodbye opens on the blessing
+ * and buttons. After 7s the ball and mantra fade in as a quiet gift.
  */
 import { AppText } from "@/components/AppText"
 import React, { useCallback, useEffect, useRef, useState } from "react"
@@ -56,6 +53,9 @@ import {
 import { ICON, safeOverlayTop } from "@/constants/layout"
 import { DailyAlignmentToggleRow } from "@/components/chakras/DailyAlignmentToggleRow"
 
+const GIFT_REVEAL_DELAY_MS = 7000
+const GIFT_REVEAL_FADE_MS = 1600
+
 function hexToRgba(hex: string, alpha: number): string {
   const raw = hex.replace("#", "")
   const n = parseInt(raw, 16)
@@ -84,6 +84,7 @@ const GoodbyeModal = ({
   const [stage, setStage] = useState<"presence" | "goodbye">("presence")
   const goodbyeOpacity = useSharedValue(0)
   const overlayOpacity = useSharedValue(0)
+  const giftOpacity = useSharedValue(0)
   const currentChakra =
     chakraDay !== undefined ? getChakraFromDay(chakraDay) : Chakra.ROOT
 
@@ -135,6 +136,10 @@ const GoodbyeModal = ({
     opacity: goodbyeOpacity.value,
   }))
 
+  const giftStyle = useAnimatedStyle(() => ({
+    opacity: giftOpacity.value,
+  }))
+
   const isVisibleRef = useRef(isVisible)
   isVisibleRef.current = isVisible
 
@@ -147,11 +152,13 @@ const GoodbyeModal = ({
     if (!isVisible) {
       overlayOpacity.value = withTiming(0, { duration: 280 })
       goodbyeOpacity.value = 0
+      giftOpacity.value = 0
       setStage("presence")
       return
     }
     setStage("presence")
     goodbyeOpacity.value = 0
+    giftOpacity.value = 0
     overlayOpacity.value = withTiming(1, {
       duration: 900,
       easing: Easing.out(Easing.ease),
@@ -165,7 +172,7 @@ const GoodbyeModal = ({
       setStage((current) => (current === "presence" ? "goodbye" : current))
     }, 40000)
     return () => clearTimeout(safety)
-  }, [isVisible, goodbyeOpacity, overlayOpacity])
+  }, [isVisible, goodbyeOpacity, overlayOpacity, giftOpacity])
 
   useEffect(() => {
     if (!isVisible || stage !== "goodbye") return
@@ -174,7 +181,16 @@ const GoodbyeModal = ({
       duration: 900,
       easing: Easing.out(Easing.ease),
     })
-  }, [isVisible, stage, goodbyeOpacity])
+    giftOpacity.value = 0
+    const reveal = setTimeout(() => {
+      if (!isVisibleRef.current) return
+      giftOpacity.value = withTiming(1, {
+        duration: GIFT_REVEAL_FADE_MS,
+        easing: Easing.out(Easing.ease),
+      })
+    }, GIFT_REVEAL_DELAY_MS)
+    return () => clearTimeout(reveal)
+  }, [isVisible, stage, goodbyeOpacity, giftOpacity])
 
   const setGoodbyeVisible = useGoodbyeModalStore((s) => s.setGoodbyeVisible)
   useEffect(() => {
@@ -246,23 +262,28 @@ const GoodbyeModal = ({
               },
             ]}
           >
-            {content?.goodbye?.chakraImage ? (
-              <View style={styles.ballWrap}>
-                <SoftChakraBall
-                  source={content.goodbye.chakraImage}
-                  size={148}
-                  glowColor={hexToRgba(chakraColor, 0.28)}
-                />
-              </View>
-            ) : null}
-
-            <AppText
-              font="cormorant-italic"
-              numberOfLines={HERO_AFFIRMATION_MAX_LINES}
-              style={styles.heroMantra}
+            <Animated.View
+              style={[styles.giftReveal, giftStyle]}
+              pointerEvents="none"
             >
-              {heroMantra}
-            </AppText>
+              {content?.goodbye?.chakraImage ? (
+                <View style={styles.ballWrap}>
+                  <SoftChakraBall
+                    source={content.goodbye.chakraImage}
+                    size={148}
+                    glowColor={hexToRgba(chakraColor, 0.28)}
+                  />
+                </View>
+              ) : null}
+
+              <AppText
+                font="cormorant-italic"
+                numberOfLines={HERO_AFFIRMATION_MAX_LINES}
+                style={styles.heroMantra}
+              >
+                {heroMantra}
+              </AppText>
+            </Animated.View>
 
             <View style={styles.goldLine} />
 
@@ -376,6 +397,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
+  },
+  giftReveal: {
+    alignItems: "center",
+    width: "100%",
   },
   heroMantra: {
     fontSize: HERO_AFFIRMATION_FONT_SIZE,

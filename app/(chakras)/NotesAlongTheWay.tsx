@@ -12,6 +12,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Modal,
+  Alert,
+  Image,
 } from "react-native"
 import { ScrollView } from "react-native-gesture-handler"
 import { useRouter, useLocalSearchParams } from "expo-router"
@@ -31,7 +34,11 @@ import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { ChakraDaySelector } from "@/components/chakras/ChakraDaySelector"
 import { JOURNEY_NOTES_EXPORT_COPY } from "@/constants/journeyNotesExportCopy"
-import { promptJourneyNotesExport } from "@/utils/journeyNotesExport"
+import {
+  promptJourneyNotesExport,
+  copyJourneyNotesToClipboard,
+  copyNoteText,
+} from "@/utils/journeyNotesExport"
 
 /** Android: KeyboardAvoidingView offset for status bar + ActionBar (both sit above KAV). */
 const ACTION_BAR_KEYBOARD_OFFSET = 56
@@ -76,9 +83,9 @@ export default function NotesAlongTheWay() {
 
   const [noteText, setNoteText] = useState("")
   const [isAddingNote, setIsAddingNote] = useState(false)
-  // Default to chakra of the day when opening; user can change via selector to post for another day.
+  const [anuaInfoVisible, setAnuaInfoVisible] = useState(false)
   const [selectedChakraDay, setSelectedChakraDay] = useState<number | "all">(
-    currentDay,
+    effectiveContext,
   )
 
   const handleAddNote = useCallback(async () => {
@@ -198,13 +205,47 @@ export default function NotesAlongTheWay() {
     }
   }, [router])
 
+  const openNoteWithAnua = useCallback((content: string, chakraDay: number) => {
+    useAnuaChatStore.getState().open({
+      initialMessage: content,
+      chakraDayOverride: chakraDay,
+    })
+  }, [])
+
+  const handleNoteLongPress = useCallback(
+    (note: { content: string; chakraDay: number }) => {
+      addHapticFeedback(HapticStrength.Medium)
+      const buttons: {
+        text: string
+        style?: "cancel" | "default"
+        onPress?: () => void
+      }[] = [
+        { text: JOURNEY_NOTES_EXPORT_COPY.cancel, style: "cancel" },
+        {
+          text: JOURNEY_NOTES_EXPORT_COPY.copyThisLabel,
+          onPress: () => {
+            void copyNoteText(note.content)
+          },
+        },
+      ]
+      if (ANUA_CHAT_ENABLED) {
+        buttons.push({
+          text: JOURNEY_NOTES_EXPORT_COPY.sitWithAnuaLabel,
+          onPress: () => openNoteWithAnua(note.content, note.chakraDay),
+        })
+      }
+      Alert.alert("This thought", undefined, buttons)
+    },
+    [openNoteWithAnua],
+  )
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <ActionBar onBackPress={handleBack} />
       <LinearGradient
         colors={[
-          "rgba(135, 174, 115, 0.08)",
-          "rgba(107, 142, 90, 0.05)",
+          "rgba(58, 42, 28, 0.45)",
+          "rgba(18, 14, 10, 0.92)",
           "rgba(0, 0, 0, 0.98)",
         ]}
         start={{ x: 0, y: 0 }}
@@ -219,26 +260,57 @@ export default function NotesAlongTheWay() {
             <View style={styles.header} collapsable={false}>
               <View style={styles.headerTitleCol}>
                 <AppText
-                  font="instrument-bold"
-                  size="2xl"
-                  style={[
-                    styles.headerText,
-                    { color: "#ffffff", marginBottom: 4 },
-                  ]}
+                  font="cormorant-italic"
+                  style={styles.headerTitle}
                 >
                   Notes Along the Way
                 </AppText>
                 <AppText
-                  font="instrument-regular"
-                  size="sm"
-                  style={{ color: "rgba(255,255,255,0.7)" }}
+                  font="cormorant-italic"
+                  style={styles.headerSub}
                 >
                   {notesCount === 0
-                    ? "Your reflections will appear here"
-                    : `${notesCount} reflection${notesCount !== 1 ? "s" : ""}`}
+                    ? "A quiet place for what lands."
+                    : `${notesCount} thought${notesCount !== 1 ? "s" : ""} kept here`}
                 </AppText>
               </View>
+              <View style={styles.headerActions}>
+              {ANUA_CHAT_ENABLED ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={JOURNEY_NOTES_EXPORT_COPY.anuaInfoTitle}
+                  hitSlop={12}
+                  onPress={() => {
+                    addHapticFeedback(HapticStrength.Light)
+                    setAnuaInfoVisible(true)
+                  }}
+                  style={styles.exportIconWrap}
+                >
+                  <Image
+                    source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
+                    style={styles.anuaMark}
+                    resizeMode="cover"
+                  />
+                </Pressable>
+              ) : null}
               {notesCount > 0 ? (
+                <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={JOURNEY_NOTES_EXPORT_COPY.copyHint}
+                  hitSlop={12}
+                  onPress={() => {
+                    addHapticFeedback(HapticStrength.Light)
+                    void copyJourneyNotesToClipboard("full")
+                  }}
+                  style={styles.exportIconWrap}
+                >
+                  <Ionicons
+                    name="copy-outline"
+                    size={20}
+                    color="rgba(244, 237, 224, 0.78)"
+                  />
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={JOURNEY_NOTES_EXPORT_COPY.exportHint}
@@ -250,12 +322,14 @@ export default function NotesAlongTheWay() {
                   style={styles.exportIconWrap}
                 >
                   <Ionicons
-                    name="download-outline"
+                    name="share-outline"
                     size={22}
-                    color="rgba(135, 174, 115, 0.85)"
+                    color="rgba(244, 237, 224, 0.78)"
                   />
                 </Pressable>
+                </>
               ) : null}
+              </View>
             </View>
             <ChakraDaySelector
               selectedDay={selectedChakraDay}
@@ -282,34 +356,22 @@ export default function NotesAlongTheWay() {
               <View style={styles.emptyState}>
                 <Ionicons
                   name="leaf-outline"
-                  size={56}
-                  color="rgba(135, 174, 115, 0.5)"
+                  size={40}
+                  color="rgba(244, 237, 224, 0.38)"
                 />
                 <AppText
-                  font="instrument-regular"
-                  size="base"
-                  style={{
-                    color: "rgba(255,255,255,0.8)",
-                    marginTop: 24,
-                    textAlign: "center",
-                    paddingHorizontal: 24,
-                  }}
+                  font="cormorant-italic"
+                  style={styles.emptyLead}
                 >
                   {selectedChakraDay === "all"
-                    ? "Your journey notes will appear here"
-                    : `No reflections yet for ${getDayName(selectedChakraDay)}. Share your first thought.`}
+                    ? "Nothing here yet. When something lands, it can rest here."
+                    : `Nothing yet for ${getDayName(selectedChakraDay)}. When something lands, it can rest here.`}
                 </AppText>
                 <AppText
-                  font="instrument-regular"
-                  size="sm"
-                  style={{
-                    color: "rgba(255,255,255,0.6)",
-                    marginTop: 12,
-                    textAlign: "center",
-                    paddingHorizontal: 24,
-                  }}
+                  font="cormorant-italic"
+                  style={styles.emptySub}
                 >
-                  Reflect on your journey as you progress through each chakra
+                  These stay on this device.
                 </AppText>
               </View>
             ) : (
@@ -327,77 +389,38 @@ export default function NotesAlongTheWay() {
                     <View key={day} style={styles.daySection}>
                       <View style={styles.dayHeader}>
                         <AppText
-                          font="instrument-bold"
-                          size="lg"
-                          style={{ color: "#A8C99A" }}
+                          font="cormorant-italic"
+                          style={styles.dayName}
                         >
-                          {getDayName(day)} - {getChakraName(day)}
+                          {getDayName(day)} · {getChakraName(day)}
                         </AppText>
                         <AppText
-                          font="instrument-regular"
-                          size="xs"
-                          style={{ color: "rgba(255,255,255,0.6)" }}
+                          font="cormorant-regular"
+                          style={styles.dayCount}
                         >
                           {dayNotes.length} note{dayNotes.length !== 1 ? "s" : ""}
                         </AppText>
                       </View>
                       {dayNotes.map((note) => (
-                        <View key={note.id} style={styles.noteCard}>
+                        <Pressable
+                          key={note.id}
+                          onLongPress={() => handleNoteLongPress(note)}
+                          delayLongPress={380}
+                          style={styles.noteCard}
+                        >
                           <AppText
-                            font="instrument-regular"
-                            size="xs"
-                            style={{
-                              color: "rgba(255,255,255,0.5)",
-                              marginBottom: 8,
-                            }}
+                            font="cormorant-italic"
+                            style={styles.noteDate}
                           >
                             {formatDate(note.createdAt)}
                           </AppText>
                           <AppText
-                            font="instrument-regular"
-                            size="base"
-                            style={{
-                              color: "rgba(255,255,255,0.9)",
-                              lineHeight: 24,
-                            }}
+                            font="cormorant-regular"
+                            style={styles.noteBody}
                           >
                             {note.content}
                           </AppText>
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              marginTop: 8,
-                              flexWrap: "wrap",
-                              gap: 8,
-                            }}
-                          >
-                          {ANUA_CHAT_ENABLED ? (
-                            <Pressable
-                              onPress={() => {
-                                addHapticFeedback(HapticStrength.Light)
-                                useAnuaChatStore
-                                  .getState()
-                                  .open({
-                                    initialMessage: note.content,
-                                    chakraDayOverride: note.chakraDay,
-                                  })
-                              }}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                              style={{ alignSelf: "flex-start" }}
-                            >
-                              <AppText
-                                font="instrument-regular"
-                                size="xs"
-                                style={{ color: "rgba(255,255,255,0.4)" }}
-                              >
-                                Send thought to Anua
-                              </AppText>
-                            </Pressable>
-                          ) : null}
-                          </View>
-                        </View>
+                        </Pressable>
                       ))}
                     </View>
                   )
@@ -414,9 +437,9 @@ export default function NotesAlongTheWay() {
             >
               <LinearGradient
                 colors={[
-                  "rgba(135, 174, 115, 0.12)",
-                  "rgba(107, 142, 90, 0.08)",
-                  "rgba(0, 0, 0, 0.4)",
+                  "rgba(58, 42, 28, 0.35)",
+                  "rgba(20, 16, 12, 0.55)",
+                  "rgba(0, 0, 0, 0.35)",
                 ]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -425,8 +448,8 @@ export default function NotesAlongTheWay() {
                 <TextInput
                   value={noteText}
                   onChangeText={handleTextChange}
-                  placeholder={`Share your reflections for ${displayDayName}...`}
-                  placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                  placeholder={`A thought for ${displayDayName}…`}
+                  placeholderTextColor="rgba(244, 237, 224, 0.42)"
                   multiline
                   maxLength={1000}
                   style={styles.textInput}
@@ -446,20 +469,20 @@ export default function NotesAlongTheWay() {
                 <LinearGradient
                   colors={
                     noteText.trim() && !isAddingNote
-                      ? ["rgba(135, 174, 115, 0.4)", "rgba(107, 142, 90, 0.3)"]
-                      : ["rgba(135, 174, 115, 0.15)", "rgba(107, 142, 90, 0.1)"]
+                      ? ["rgba(196, 168, 126, 0.38)", "rgba(90, 68, 42, 0.55)"]
+                      : ["rgba(196, 168, 126, 0.12)", "rgba(40, 32, 24, 0.4)"]
                   }
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.addButtonGradient}
                 >
                   <Ionicons
-                    name="send"
-                    size={20}
+                    name="checkmark"
+                    size={22}
                     color={
                       noteText.trim() && !isAddingNote
-                        ? "#A8C99A"
-                        : "rgba(135, 174, 115, 0.4)"
+                        ? "#F4EDE0"
+                        : "rgba(244, 237, 224, 0.28)"
                     }
                   />
                 </LinearGradient>
@@ -470,6 +493,45 @@ export default function NotesAlongTheWay() {
           </View>
         </GestureDetector>
       </View>
+      <Modal
+        visible={anuaInfoVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAnuaInfoVisible(false)}
+        statusBarTranslucent={Platform.OS === "android"}
+      >
+        {anuaInfoVisible ? (
+          <Pressable
+            style={styles.anuaOverlay}
+            onPress={() => setAnuaInfoVisible(false)}
+          >
+            <Pressable
+              style={styles.anuaCard}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Image
+                source={require("@/assets/images/Anua_Hero_Icon_Image.png")}
+                style={styles.anuaCardMark}
+                resizeMode="cover"
+              />
+              <AppText font="cormorant-italic" style={styles.anuaCardTitle}>
+                {JOURNEY_NOTES_EXPORT_COPY.anuaInfoTitle}
+              </AppText>
+              <AppText font="cormorant-italic" style={styles.anuaCardBody}>
+                {JOURNEY_NOTES_EXPORT_COPY.anuaInfoBody}
+              </AppText>
+              <Pressable
+                onPress={() => setAnuaInfoVisible(false)}
+                style={styles.anuaCardClose}
+              >
+                <AppText font="instrument-regular" style={styles.anuaCardCloseText}>
+                  {JOURNEY_NOTES_EXPORT_COPY.anuaInfoClose}
+                </AppText>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        ) : null}
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -508,12 +570,35 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  headerTitle: {
+    color: "rgba(244, 237, 224, 0.96)",
+    fontSize: 28,
+    lineHeight: 34,
+    marginBottom: 4,
+  },
+  headerSub: {
+    color: "rgba(244, 237, 224, 0.58)",
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 2,
+  },
   exportIconWrap: {
     paddingTop: 4,
-    paddingLeft: 4,
+    paddingLeft: 8,
+  },
+  anuaMark: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "rgba(232, 201, 140, 0.35)",
   },
   headerText: {
-    textShadowColor: "rgba(135, 174, 115, 0.4)",
+    textShadowColor: "rgba(196, 168, 126, 0.25)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
@@ -535,7 +620,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(135, 174, 115, 0.3)",
+    borderColor: "rgba(196, 168, 126, 0.22)",
     overflow: "hidden",
   },
   textInput: {
@@ -544,12 +629,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 20,
     paddingHorizontal: 16,
-    color: "#FFFFFF",
+    color: "#F4EDE0",
     minHeight: 112,
     maxHeight: 200,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: "InstrumentRegular",
+    fontSize: 16,
+    lineHeight: 24,
+    fontFamily: "CormorantGaramondItalic",
   },
   addButton: {
     width: 52,
@@ -563,7 +648,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: "rgba(135, 174, 115, 0.4)",
+    borderColor: "rgba(196, 168, 126, 0.35)",
     borderRadius: 26,
   },
   addButtonDisabled: {
@@ -591,12 +676,89 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
+  dayName: {
+    color: "rgba(232, 201, 140, 0.88)",
+    fontSize: 18,
+  },
+  dayCount: {
+    color: "rgba(244, 237, 224, 0.45)",
+    fontSize: 12,
+  },
   noteCard: {
-    backgroundColor: "rgba(135, 174, 115, 0.08)",
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: "rgba(42, 32, 22, 0.55)",
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: "rgba(135, 174, 115, 0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(196, 168, 126, 0.18)",
+  },
+  noteDate: {
+    color: "rgba(244, 237, 224, 0.42)",
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  noteBody: {
+    color: "rgba(244, 237, 224, 0.92)",
+    fontSize: 17,
+    lineHeight: 26,
+  },
+  emptyLead: {
+    color: "rgba(244, 237, 224, 0.82)",
+    marginTop: 20,
+    textAlign: "center",
+    paddingHorizontal: 28,
+    fontSize: 20,
+    lineHeight: 28,
+  },
+  emptySub: {
+    color: "rgba(244, 237, 224, 0.45)",
+    marginTop: 10,
+    textAlign: "center",
+    paddingHorizontal: 28,
+    fontSize: 15,
+  },
+  anuaOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.62)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 28,
+  },
+  anuaCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 20,
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    backgroundColor: "rgba(16, 12, 10, 0.98)",
+    borderWidth: 1,
+    borderColor: "rgba(232, 201, 140, 0.28)",
+    alignItems: "center",
+  },
+  anuaCardMark: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginBottom: 14,
+  },
+  anuaCardTitle: {
+    color: "rgba(244, 237, 224, 0.95)",
+    fontSize: 26,
+    marginBottom: 10,
+  },
+  anuaCardBody: {
+    color: "rgba(244, 237, 224, 0.78)",
+    fontSize: 17,
+    lineHeight: 24,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  anuaCardClose: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+  },
+  anuaCardCloseText: {
+    color: "rgba(232, 201, 140, 0.9)",
+    fontSize: 14,
   },
 })

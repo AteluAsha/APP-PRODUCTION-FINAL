@@ -23,6 +23,9 @@ interface FirstLaunchState {
   /** One-time welcome on the first Master Meditation tap (Root / Day 1). */
   hasSeenMasterMeditationWelcome: boolean
   markMasterMeditationWelcomeSeen: () => void
+  /** One-time leaf whisper on first Audio Player open. */
+  hasSeenNotesLeafWhisper: boolean
+  markNotesLeafWhisperSeen: () => void
   /** One-time notice after the first close of Chakras 101. */
   hasSeenWeek1JourneyNotice: boolean
   markWeek1JourneyNoticeSeen: () => void
@@ -55,6 +58,7 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
           groundedChakraDays: [],
           hasSeenChakras101Guide: false,
           hasSeenMasterMeditationWelcome: false,
+          hasSeenNotesLeafWhisper: false,
           hasSeenWeek1JourneyNotice: false,
           pendingWeek1JourneyNotice: false,
           hasSeenCrownReminderNotice: false,
@@ -77,6 +81,8 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
       hasSeenMasterMeditationWelcome: false,
       markMasterMeditationWelcomeSeen: () =>
         set({ hasSeenMasterMeditationWelcome: true }),
+      hasSeenNotesLeafWhisper: false,
+      markNotesLeafWhisperSeen: () => set({ hasSeenNotesLeafWhisper: true }),
       hasSeenWeek1JourneyNotice: false,
       markWeek1JourneyNoticeSeen: () =>
         set({
@@ -112,6 +118,7 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
         hasStartedMasterTeachings: state.hasStartedMasterTeachings,
         hasSeenChakras101Guide: state.hasSeenChakras101Guide,
         hasSeenMasterMeditationWelcome: state.hasSeenMasterMeditationWelcome,
+        hasSeenNotesLeafWhisper: state.hasSeenNotesLeafWhisper,
         hasSeenWeek1JourneyNotice: state.hasSeenWeek1JourneyNotice,
         hasSeenCrownReminderNotice: state.hasSeenCrownReminderNotice,
         bridgeCueOfferedDays: state.bridgeCueOfferedDays,

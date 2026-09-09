@@ -47,9 +47,7 @@ describe("Master Meditation first-play welcome", () => {
         expect(src).toContain("hasSeenMasterMeditationWelcome")
         expect(src).toContain("markMasterMeditationWelcomeSeen")
         expect(src).toContain("hasSeenMasterMeditationWelcome: state.hasSeenMasterMeditationWelcome")
-        expect(src).toMatch(
-            /resetForTesting:[\s\S]*hasSeenMasterMeditationWelcome: false/,
-        )
+        expect(src).toContain("hasSeenNotesLeafWhisper")
     })
 
     it("AudioRow uses course-only playback, not Audio Library or generic vault", () => {

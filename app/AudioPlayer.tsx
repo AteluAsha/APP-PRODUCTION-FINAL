@@ -32,6 +32,7 @@ import { PulsingChakraBall } from "@/components/chakras/PulsingChakraBall"
 import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import { VaultFirstLoadPanel } from "@/components/chakras/VaultFirstLoadPanel"
 import { HeadsetListenReminder } from "@/components/audio/HeadsetListenReminder"
+import { NotesLeafButton } from "@/components/notes/NotesLeafButton"
 import {
   getChakraImage,
   getChakraName,
@@ -40,7 +41,7 @@ import Rewind10 from "@/assets/svg/rewind10.svg"
 import Forward10 from "@/assets/svg/forward10.svg"
 import { stopAnuaAudio } from "@/src/services/elevenlabs"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { ICON, TOUCH, ANDROID_PRESS_DELAY_MS, safeOverlayTop } from "@/constants/layout"
+import { ICON, TOUCH, safeOverlayTop } from "@/constants/layout"
 import { isEmulatorOrSimulator } from "@/constants/emulator"
 import {
   otherOriginTrackRef,
@@ -1784,33 +1785,24 @@ const AudioPlayer = () => {
         </Animated.View>
       </View>
 
-      <Pressable
-        onPress={() => {
-          addHapticFeedback(HapticStrength.Light)
-          justReturnedFromNotesRef.current = true
-          router.push(`/(chakras)/NotesAlongTheWay?contextDay=${dayIndex}`)
-        }}
-        delayPressIn={
-          Platform.OS === "android" ? ANDROID_PRESS_DELAY_MS : undefined
-        }
-        hitSlop={TOUCH.hitSlop}
+      <View
+        pointerEvents="box-none"
         style={{
           position: "absolute",
           right: 12,
           top: safeOverlayTop(insets.top),
-          width: 52,
-          height: 52,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 26,
-          backgroundColor: "rgba(135, 174, 115, 0.14)",
           zIndex: 20,
         }}
-        accessibilityLabel="Notes Along the Way"
-        accessibilityHint="Tap to view and add your journey notes; playback continues"
       >
-        <Ionicons name="leaf" size={26} color="#87AE73" />
-      </Pressable>
+        <NotesLeafButton
+          whisperOnFirstOpen
+          whisperPlacement="below"
+          onPress={() => {
+            justReturnedFromNotesRef.current = true
+            router.push(`/(chakras)/NotesAlongTheWay?contextDay=${dayIndex}`)
+          }}
+        />
+      </View>
     </View>
   )
 

@@ -3,17 +3,15 @@
  * Hub uses the toggle menu for notes. AudioPlayer has its own leaf.
  */
 import React, { useMemo } from "react"
-import { Pressable, StyleSheet, Platform } from "react-native"
+import { StyleSheet, Platform, View } from "react-native"
 import { usePathname, useRouter, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { Ionicons } from "@expo/vector-icons"
 import { useGoodbyeModalStore } from "@/hooks/useGoodbyeModalStore"
 import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
 import { getContextChakraDayFromRoute } from "@/utils/notesContextChakra"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { isCourseFocusScreen } from "@/utils/courseFocusScreen"
-import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
-import { ANDROID_PRESS_DELAY_MS, TOUCH } from "@/constants/layout"
+import { NotesLeafButton } from "@/components/notes/NotesLeafButton"
 
 export function FloatingNotesButton() {
   const router = useRouter()
@@ -63,39 +61,29 @@ export function FloatingNotesButton() {
   if (!shouldShow) return null
 
   return (
-    <Pressable
-      onPress={() => {
-        addHapticFeedback(HapticStrength.Light)
-        router.push(`/(chakras)/NotesAlongTheWay?contextDay=${contextDay}`)
-      }}
-      delayPressIn={
-        Platform.OS === "android" ? ANDROID_PRESS_DELAY_MS : undefined
-      }
-      hitSlop={TOUCH.hitSlop}
+    <View
       style={[
-        styles.button,
+        styles.anchor,
         {
           left: 12,
           bottom: Math.max(insets.bottom, 12) + (Platform.OS === "android" ? 24 : 8),
         },
       ]}
-      accessibilityLabel="Notes Along the Way"
-      accessibilityHint="Tap to view and add your journey notes"
+      pointerEvents="box-none"
     >
-      <Ionicons name="leaf" size={26} color="#87AE73" />
-    </Pressable>
+      <NotesLeafButton
+        whisperPlacement="above"
+        onPress={() => {
+          router.push(`/(chakras)/NotesAlongTheWay?contextDay=${contextDay}`)
+        }}
+      />
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  button: {
+  anchor: {
     position: "absolute",
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(135, 174, 115, 0.14)",
     zIndex: 1003,
     ...(Platform.OS === "android" && { elevation: 1000 }),
   },

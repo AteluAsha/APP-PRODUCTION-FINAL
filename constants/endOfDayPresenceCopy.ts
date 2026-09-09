@@ -29,8 +29,8 @@ export function getEndOfDayBeats(dayIndex: number): EndOfDayBeat[] {
     const clamped = dayIndex < 0 || dayIndex > 6 ? 0 : dayIndex
     return [
         { text: 'Take a breath', holdMs: 3600 },
-        { text: 'And Exhale', holdMs: 3600 },
-        { text: AWAKEN_LINE[clamped], holdMs: 4200, hero: true },
+        { text: 'And exhale', holdMs: 3600 },
+        { text: AWAKEN_LINE[clamped], holdMs: 4200 },
         { text: 'Allow this space to resonate within you', holdMs: 4200 },
         {
             text: mantraForDay(clamped),

@@ -21,9 +21,9 @@ const getColor = (
   isActive: boolean,
   themeColor?: string,
 ) => {
-  if (isActive) return activeColor
-  if (themeColor) return `${themeColor}bb` // 73% opacity tint when inactive
-  return "rgba(255, 255, 255, 0.85)"
+  if (isActive) return "#F4EDE0"
+  if (themeColor) return "rgba(244, 237, 224, 0.88)"
+  return "rgba(244, 237, 224, 0.88)"
 }
 
 /**

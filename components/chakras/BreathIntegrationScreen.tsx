@@ -7,8 +7,6 @@ import { getEndOfDayBeats } from '@/constants/endOfDayPresenceCopy'
 import { chakraContent } from '@/constants/chakras/content'
 import { getChakraFromDay } from '@/utils/chakraMapping'
 import {
-    HERO_AFFIRMATION_FONT_SIZE,
-    HERO_AFFIRMATION_LINE_HEIGHT,
     HERO_AFFIRMATION_MAX_LINES,
 } from '@/constants/heroAffirmation'
 import Animated, {
@@ -200,18 +198,17 @@ const styles = StyleSheet.create({
         maxWidth: 400,
     },
     line: {
-        color: 'rgba(255, 248, 236, 0.96)',
-        fontSize: 26,
-        lineHeight: 36,
+        color: 'rgba(255, 248, 236, 0.88)',
+        fontSize: 24,
+        lineHeight: 34,
         textAlign: 'center',
+        fontWeight: '400',
     },
     hero: {
-        color: 'rgba(255, 248, 236, 0.98)',
-        fontSize: HERO_AFFIRMATION_FONT_SIZE,
-        lineHeight: HERO_AFFIRMATION_LINE_HEIGHT,
+        color: 'rgba(255, 248, 236, 0.92)',
+        fontSize: 28,
+        lineHeight: 36,
         textAlign: 'center',
-        textShadowColor: 'rgba(232, 201, 140, 0.35)',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 16,
+        fontWeight: '400',
     },
 })

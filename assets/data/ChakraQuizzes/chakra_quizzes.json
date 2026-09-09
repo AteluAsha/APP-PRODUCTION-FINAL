@@ -271,12 +271,12 @@
         "question": "When you say the Root affirmation aloud, which phrase claims your right to exist?",
         "options": [
           {
-            "text": "I am, I exist, I belong.",
+            "text": "I Am. I Exist. I Belong.",
             "isCorrect": true,
             "rationale": "This affirmation claims your right to take up space and be safe."
           },
           {
-            "text": "I feel, I flow, I create.",
+            "text": "I Feel. I Flow. I Create.",
             "isCorrect": false,
             "rationale": "A beautiful affirmation that belongs to another day; each center has its own voice."
           },
@@ -566,12 +566,12 @@
         "question": "The Affirmation for Day 2 is:",
         "options": [
           {
-            "text": "I feel, I flow, I create.",
+            "text": "I Feel. I Flow. I Create.",
             "isCorrect": true,
             "rationale": "This affirms the permission to feel emotions and use that energy for creation."
           },
           {
-            "text": "I am, I exist, I belong.",
+            "text": "I Am. I Exist. I Belong.",
             "isCorrect": false,
             "rationale": "A grounding affirmation that belongs to another day; each center has its own voice."
           },
@@ -840,12 +840,12 @@
             "rationale": "Authenticity is the fuel for the inner fire."
           },
           {
-            "text": "I am, I exist, I belong.",
+            "text": "I Am. I Exist. I Belong.",
             "isCorrect": false,
             "rationale": "A grounding affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I feel, I flow, I create.",
+            "text": "I Feel. I Flow. I Create.",
             "isCorrect": false,
             "rationale": "A beautiful affirmation that belongs to another day; each center has its own voice."
           },
@@ -1162,12 +1162,12 @@
             "rationale": "A clear affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I am, I exist, I belong.",
+            "text": "I Am. I Exist. I Belong.",
             "isCorrect": false,
             "rationale": "A grounding affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I feel, I flow, I create.",
+            "text": "I Feel. I Flow. I Create.",
             "isCorrect": false,
             "rationale": "A beautiful affirmation that belongs to another day; each center has its own voice."
           }
@@ -2012,7 +2012,7 @@
             "rationale": "It affirms the Crown's connection to innocence and light."
           },
           {
-            "text": "I am, I exist, I belong.",
+            "text": "I Am. I Exist. I Belong.",
             "isCorrect": false,
             "rationale": "A grounding affirmation that belongs to another day; each center has its own voice."
           },
@@ -2022,7 +2022,7 @@
             "rationale": "A clear affirmation that belongs to another day; each center has its own voice."
           },
           {
-            "text": "I feel, I flow, I create.",
+            "text": "I Feel. I Flow. I Create.",
             "isCorrect": false,
             "rationale": "A beautiful affirmation that belongs to another day; each center has its own voice."
           }

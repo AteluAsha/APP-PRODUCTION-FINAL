@@ -3,15 +3,19 @@
  */
 
 export const JOURNEY_NOTES_EXPORT_COPY = {
-  exportHint: "Export reflections",
+  exportHint: "Download or send your notes",
+  copyHint: "Copy all notes",
   alertTitle: "Take your notes with you",
   alertMessage:
-    "Your notes stay on this device until you send them.\n\nPresent thoughts — reflections since your last export.\n\nFull download — your whole diary in one file.",
+    "Dark, quiet, on this device until you send them.\n\nPresent thoughts — since your last export.\n\nFull download — the whole diary. Email, Files, or anywhere you keep what matters.",
   presentLabel: "Present thoughts",
   fullLabel: "Full download",
+  copyLabel: "Copy all",
+  copyThisLabel: "Copy this thought",
+  sitWithAnuaLabel: "Sit with Anua and go deeper",
   cancel: "Cancel",
-  emptyTitle: "Nothing to export yet",
-  emptyMessage: "When you have reflections here, you can send them wherever you keep what matters.",
+  emptyTitle: "Nothing to take with you yet",
+  emptyMessage: "When a thought lands here, you can copy it or send the file to yourself.",
   nothingNewTitle: "All caught up",
   nothingNewMessage:
     "There are no new reflections since your last export. Try Full download if you want everything in one file.",
@@ -20,4 +24,8 @@ export const JOURNEY_NOTES_EXPORT_COPY = {
     "This device cannot open the share sheet right now. Try again later.",
   exportErrorTitle: "Could not export",
   exportErrorMessage: "Something went wrong preparing your file. Please try again.",
+  anuaInfoTitle: "Anua",
+  anuaInfoBody:
+    "Long-press any thought to sit with Anua and go deeper. She only joins when you ask.",
+  anuaInfoClose: "I understand",
 } as const

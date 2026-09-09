@@ -12,7 +12,6 @@ const ROOT_BEATS: PresenceBeat[] = [
     {
         text: 'Today is about letting your body listen.',
         holdMs: 4200,
-        hero: true,
     },
     {
         text: 'Breathe in and exhale.',
@@ -28,7 +27,6 @@ const SHARED_CLOSING_BEATS: PresenceBeat[] = [
     {
         text: 'Today is about letting your body listen.',
         holdMs: 4200,
-        hero: true,
     },
     {
         text: 'Breathe in and exhale.',

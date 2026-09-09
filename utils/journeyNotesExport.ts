@@ -4,10 +4,12 @@
  */
 
 import { Alert, Platform } from "react-native"
+import * as Clipboard from "expo-clipboard"
 import * as FileSystem from "expo-file-system"
 import * as Sharing from "expo-sharing"
 import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
 import { JOURNEY_NOTES_EXPORT_COPY } from "@/constants/journeyNotesExportCopy"
+import { showHealingToast } from "@/utils/healingToast"
 import {
   useJourneyNotesStore,
   type JourneyNote,
@@ -183,6 +185,12 @@ export function promptJourneyNotesExport(): void {
     [
       { text: JOURNEY_NOTES_EXPORT_COPY.cancel, style: "cancel" },
       {
+        text: JOURNEY_NOTES_EXPORT_COPY.copyLabel,
+        onPress: () => {
+          void copyJourneyNotesToClipboard("full")
+        },
+      },
+      {
         text: JOURNEY_NOTES_EXPORT_COPY.presentLabel,
         onPress: () => {
           void runJourneyNotesExport("incremental")
@@ -196,4 +204,35 @@ export function promptJourneyNotesExport(): void {
       },
     ],
   )
+}
+
+export async function copyJourneyNotesToClipboard(
+  mode: JourneyNotesExportMode = "full",
+): Promise<void> {
+  const { getAllNotes, lastJourneyNotesExportAt } =
+    useJourneyNotesStore.getState()
+  const notes = getAllNotes("journey")
+  const selected = selectJourneyNotesForExport(
+    mode,
+    notes,
+    lastJourneyNotesExportAt ?? null,
+  )
+  if (selected.length === 0) {
+    Alert.alert(
+      JOURNEY_NOTES_EXPORT_COPY.emptyTitle,
+      JOURNEY_NOTES_EXPORT_COPY.emptyMessage,
+    )
+    return
+  }
+  await Clipboard.setStringAsync(
+    formatJourneyNotesPlainText(selected, mode),
+  )
+  showHealingToast("notesCopied")
+}
+
+export async function copyNoteText(content: string): Promise<void> {
+  const trimmed = content.trim()
+  if (!trimmed) return
+  await Clipboard.setStringAsync(trimmed)
+  showHealingToast("thoughtCopied")
 }

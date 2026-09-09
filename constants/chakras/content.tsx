@@ -13,7 +13,7 @@ export const chakraContent: Record<Chakra, Content> = {
       'Walking meditation: Step slowly and mindfully in nature, saying "I am" with one foot and "Earth" with the other.',
     wordsOfWisdom:
       '"In the stillness of the Earth, find your grounding, your sanctuary, your belonging. Remember, you are home."',
-    affirmationText: "I am, I exist, I belong.",
+    affirmationText: "I Am. I Exist. I Belong.",
     elements: {
       background: require("@/assets/images/elementsroot.png"),
       sanskrit: "Muladhara",
@@ -162,7 +162,7 @@ export const chakraContent: Record<Chakra, Content> = {
       "Dance meditation: Put on your favorite music and allow your body to move freely, expressing your emotions and creativity through movement.",
     wordsOfWisdom:
       '"Embrace the dance of life, the ebb and flow of emotions, the light and shadow within. Ride the waves of your life, cultivate your joy, express your passion, and let your creativity burst from within."',
-    affirmationText: "I feel, I flow, I create.",
+    affirmationText: "I Feel. I Flow. I Create.",
     elements: {
       background: require("@/assets/images/elementssacral.png"),
       sanskrit: "Svadhisthana",

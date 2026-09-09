@@ -20,7 +20,7 @@ describe("first-click day presence", () => {
         const root = getDayPresenceBeats(0)
         expect(root).toHaveLength(4)
         expect(root[0].text).toContain("be with nature")
-        expect(root[1].hero).toBe(true)
+        expect(root[1].hero).toBeUndefined()
         expect(root[3].text).toContain("earphones")
         expect(getDayPresenceBeats(1)).toHaveLength(4)
         expect(getDayPresenceBeats(6)).toHaveLength(4)

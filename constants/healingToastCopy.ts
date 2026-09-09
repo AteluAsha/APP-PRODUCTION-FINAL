@@ -7,7 +7,8 @@ export const HEALING_TOAST = {
     downloadQueued: 'Saving for offline healing…',
     downloadAll: 'Downloading missing tracks for you.',
     alreadyDownloaded: 'Already on your device.',
-    idCopied: 'Awakening Soul ID copied.',
+    notesCopied: 'Copied. These stay yours.',
+    thoughtCopied: 'Thought copied.',
     profileSaved: 'Your presence is saved.',
     oneAtATime: 'One healing track at a time.',
 } as const

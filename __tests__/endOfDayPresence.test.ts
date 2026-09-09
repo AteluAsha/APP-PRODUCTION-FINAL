@@ -13,19 +13,23 @@ describe("end of day presence and goodbye", () => {
             const beats = getEndOfDayBeats(day)
             expect(beats).toHaveLength(5)
             expect(beats[0].text).toBe("Take a breath")
-            expect(beats[1].text).toBe("And Exhale")
+            expect(beats[1].text).toBe("And exhale")
             expect(beats[2].text.toLowerCase()).toContain("awaken")
             expect(beats[3].text).toBe(
                 "Allow this space to resonate within you",
             )
+            expect(beats[2].hero).toBeUndefined()
+            expect(beats[4].hero).toBe(true)
             expect(beats[4].showChakra).toBe(true)
             expect(beats[4].text).toBe(mantraForDay(day))
         }
         expect(getEndOfDayBeats(0)[2].text).toBe("Feel your root awaken")
         expect(getEndOfDayBeats(1)[2].text).toBe("Feel your sacral awaken")
         expect(getEndOfDayBeats(6)[2].text).toBe("Feel your crown awaken")
-        expect(mantraForDay(0).toLowerCase()).toContain("i belong")
-        expect(mantraForDay(1).toLowerCase()).toContain("i create")
+        expect(mantraForDay(0)).toBe("I Am. I Exist. I Belong.")
+        expect(mantraForDay(1)).toBe("I Feel. I Flow. I Create.")
+        expect(mantraForDay(0)).not.toMatch(/,/)
+        expect(mantraForDay(1)).not.toMatch(/,/)
         expect(mantraForDay(3).toLowerCase()).toContain("unconditional")
         expect(mantraForDay(3)).toContain("\n")
     })
@@ -55,6 +59,8 @@ describe("end of day presence and goodbye", () => {
         expect(goodbye).toContain("isVisible && stage === \"presence\"")
         expect(goodbye).not.toContain(": isVisible ?")
         expect(goodbye).toContain("if (!isVisibleRef.current) return")
+        expect(goodbye).toContain("GIFT_REVEAL_DELAY_MS")
+        expect(goodbye).toContain("giftOpacity")
     })
 
     it("teases tomorrow's chakra on the hub after each day", () => {

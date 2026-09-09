@@ -476,30 +476,33 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
           style={[
             styles.iconContainer,
             {
-              borderWidth: 1,
               borderColor: item.isActive
-                ? item.gradient[0]
-                : `${item.gradient[0]}40`,
-              backgroundColor: item.isActive
-                ? `${item.gradient[0]}18`
-                : `${item.gradient[0]}0a`,
+                ? `${item.gradient[0]}99`
+                : `${item.gradient[0]}55`,
               shadowColor: item.gradient[0],
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: item.isActive ? 0.35 : 0.15,
-              shadowRadius: item.isActive ? 6 : 4,
-              elevation: item.isActive ? 4 : 2,
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: item.isActive ? 0.45 : 0.22,
+              shadowRadius: item.isActive ? 8 : 5,
+              elevation: item.isActive ? 6 : 3,
             },
           ]}
         >
-          {/* Gradient glow for active state */}
-          {item.isActive && (
-            <LinearGradient
-              colors={item.gradient as [string, string, ...string[]]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.iconGradient}
-            />
-          )}
+          <LinearGradient
+            colors={[
+              `${item.gradient[0]}66`,
+              `${item.gradient[1]}44`,
+              `${item.gradient[2] ?? item.gradient[1]}22`,
+            ]}
+            start={{ x: 0.2, y: 0 }}
+            end={{ x: 0.85, y: 1 }}
+            style={styles.iconGradientFill}
+          />
+          <LinearGradient
+            colors={["rgba(255,255,255,0.38)", "rgba(255,255,255,0.04)", "transparent"]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 0.55 }}
+            style={styles.iconSheen}
+          />
 
           {/* Sacred Geometry Icon - Only on Hover/Press with Illumination */}
           {item.geometryIcon && (
@@ -580,9 +583,7 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
               <Ionicons
                 name="chatbubble-ellipses"
                 size={20}
-                color={
-                  item.isActive ? item.gradient[0] : "rgba(135, 174, 115, 0.9)"
-                }
+                color="#F4EDE0"
               />
             ) : item.iconComponent === "tree" ? (
               <TreeIcon
@@ -610,7 +611,7 @@ const MenuBarItem: React.FC<MenuBarItemProps> = ({
               <Ionicons
                 name="sparkles"
                 size={20}
-                color={item.isActive ? item.gradient[0] : "rgba(252, 211, 77, 0.9)"}
+                color="#F4EDE0"
               />
             ) : item.iconComponent === "chakraCard" ? (
               <ChakraCardIcon
@@ -773,18 +774,30 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "rgba(12, 10, 8, 0.9)",
     marginBottom: 4,
     position: "relative",
-    overflow: "visible", // Changed to visible so geometry icons show properly
-    zIndex: 0, // Base layer
-    // Ensure container doesn't clip geometry
-    padding: 4, // Add padding so geometry can extend beyond
+    overflow: "hidden",
+    zIndex: 0,
+    borderWidth: 1,
+  },
+  iconGradientFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 21,
+  },
+  iconSheen: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "55%",
+    borderTopLeftRadius: 21,
+    borderTopRightRadius: 21,
   },
   iconGradient: {
     position: "absolute",
