@@ -82,8 +82,8 @@ module.exports = {
         AppStoreID: "6760920862",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // iOS stays 1.2.4 (46) on the store until the next Apple cut (then 1.2.5 / 47).
-      buildNumber: "46",
+      // iOS 1.2.5 (47): hub-first hero, same product as Play 45.
+      buildNumber: "47",
       privacyManifests: {
         NSPrivacyTracking: false,
         NSPrivacyCollectedDataTypes: [

@@ -124,7 +124,7 @@ describe('store update notice', () => {
         )
         expect(config).toContain('AppStoreID: "6760920862"')
         expect(config).toContain('ITSAppUsesNonExemptEncryption: false')
-        expect(config).toContain('buildNumber: "46"')
+        expect(config).toContain('buildNumber: "47"')
         expect(config).toContain('version: "1.2.5"')
         expect(config).toContain('versionCode: 45')
         expect(config).toContain("NSPrivacyCollectedDataTypeDeviceID")
