@@ -865,7 +865,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
           }
           if (typeof state.dailyAlignmentRemindersEnabled !== "boolean") {
             useChakraJourneyStore.setState({
-              dailyAlignmentRemindersEnabled: false,
+              dailyAlignmentRemindersEnabled: true,
             })
           }
           if (!Array.isArray(state.awakenedHubChakras)) {

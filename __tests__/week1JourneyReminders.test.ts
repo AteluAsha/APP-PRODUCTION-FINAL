@@ -139,6 +139,27 @@ describe('week 1 journey reminders', () => {
             'utf8',
         )
         expect(layout).toContain('Week1JourneyNoticeHost')
+        expect(layout).toContain('NotificationPermissionHost')
+        expect(layout).toContain('getStoreRehydrationReady')
+        const prompt = fs.readFileSync(
+            path.join(
+                __dirname,
+                '..',
+                'components/store/NotificationPermissionHost.tsx',
+            ),
+            'utf8',
+        )
+        expect(prompt).toContain('CommunicationReminderModal')
+        expect(prompt).toContain('activateDailyAlignmentReminders')
+        const reminder = fs.readFileSync(
+            path.join(
+                __dirname,
+                '..',
+                'components/chakras/CommunicationReminderModal.tsx',
+            ),
+            'utf8',
+        )
+        expect(reminder).toContain('Sunday evenings')
         const root = fs.readFileSync(
             path.join(__dirname, '..', 'components/chakras/ChakraTemplate.tsx'),
             'utf8',

@@ -62,7 +62,7 @@ describe('weekly heart reminders', () => {
     expect(saturdayEve.body).toMatch(/Sunday/i)
   })
 
-  it('schedules DATE dailies without stacking Sunday/Wednesday weekly when daily is on', () => {
+  it('schedules DATE dailies and always keeps Sunday night weekly', () => {
     const src = fs.readFileSync(
       path.join(__dirname, '..', 'src/services/journeyNotifications.ts'),
       'utf8',
@@ -79,7 +79,12 @@ describe('weekly heart reminders', () => {
     expect(src).toContain('WEEK1_ID_PREFIX')
     expect(src).toContain('buildWeek1ReminderSlots')
     expect(src).toContain('copyForDailySlot')
-    expect(src).toMatch(/if \(isDailyAlignmentEnabled\(\)\) \{[\s\S]*return/)
+    expect(src).toContain('scheduleWeeklySundayReminder()')
+    expect(src).toContain("shouldShowList: true")
+    expect(src).toContain('AndroidImportance.HIGH')
+    expect(src).not.toMatch(
+      /if \(isDailyAlignmentEnabled\(\)\) \{[\s\S]*scheduleDailyAlignmentReminders\(\)[\s\S]*return\n  \}/,
+    )
   })
 
   it('modal tells users they can turn daily reminders off in Profile', () => {

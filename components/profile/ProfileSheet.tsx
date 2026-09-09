@@ -116,7 +116,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
     })),
   )
   const journeyNudgesSwitchValue = soulJourneyNudgesEnabled !== false
-  const dailyAlignmentSwitchValue = dailyAlignmentRemindersEnabled === true
+  const dailyAlignmentSwitchValue = dailyAlignmentRemindersEnabled !== false
   const { customerInfo } = useRevenueCat()
 
   const openEnergyExchange = useCallback(() => {

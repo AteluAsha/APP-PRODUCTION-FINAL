@@ -44,6 +44,9 @@ interface FirstLaunchState {
   bridgeCueOfferedDays: number[]
   hasOfferedBridgeCue: (day: number) => boolean
   markBridgeCueOffered: (day: number) => void
+  /** One-time Sanctuary prompt before the system notification dialog. */
+  hasSeenNotificationPermissionPrompt: boolean
+  markNotificationPermissionPromptSeen: () => void
 }
 
 export const useFirstLaunchStore = create<FirstLaunchState>()(
@@ -64,6 +67,7 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
           hasSeenCrownReminderNotice: false,
           pendingCrownReminderNotice: false,
           bridgeCueOfferedDays: [],
+          hasSeenNotificationPermissionPrompt: false,
         }),
       hasStartedMasterTeachings: false,
       startMasterTeachings: () =>
@@ -109,6 +113,9 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
         if (current.includes(day)) return
         set({ bridgeCueOfferedDays: [...current, day] })
       },
+      hasSeenNotificationPermissionPrompt: false,
+      markNotificationPermissionPromptSeen: () =>
+        set({ hasSeenNotificationPermissionPrompt: true }),
     }),
     {
       name: "first-launch-storage",
@@ -122,6 +129,8 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
         hasSeenWeek1JourneyNotice: state.hasSeenWeek1JourneyNotice,
         hasSeenCrownReminderNotice: state.hasSeenCrownReminderNotice,
         bridgeCueOfferedDays: state.bridgeCueOfferedDays,
+        hasSeenNotificationPermissionPrompt:
+          state.hasSeenNotificationPermissionPrompt,
       }),
       merge: (persisted, current) => {
         const saved =

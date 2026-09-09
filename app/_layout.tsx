@@ -48,6 +48,7 @@ import { ProfileSheet } from "@/components/profile/ProfileSheet"
 import { HealingToastHost } from "@/components/HealingToastHost"
 import { StoreUpdateNoticeHost } from "@/components/store/StoreUpdateNoticeHost"
 import { Week1JourneyNoticeHost } from "@/components/store/Week1JourneyNoticeHost"
+import { NotificationPermissionHost } from "@/components/store/NotificationPermissionHost"
 import { CrownReminderNoticeHost } from "@/components/store/CrownReminderNoticeHost"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
 import * as Linking from "expo-linking"
@@ -58,6 +59,10 @@ import { getUserId } from "@/src/services/userId"
 import {
   syncWeeklyHeartReminders,
 } from "@/src/services/journeyNotifications"
+import {
+  getStoreRehydrationReady,
+  useStoreRehydration,
+} from "@/hooks/useStoreRehydration"
 import { useSplashOverlayStore } from "@/hooks/useSplashOverlayStore"
 import { subscribeSanctuaryVaultSync } from "@/src/services/sanctuaryVaultDownloader"
 import { VaultSyncKeepAwake } from "@/components/audio/VaultSyncKeepAwake"
@@ -164,20 +169,35 @@ export default function RootLayout() {
     return () => clearInterval(interval)
   }, [])
 
-  // Soul Journey Nudges: heartbeat + rolling re-engagement / horizon refresh (iOS + Android).
+  // Soul Journey Nudges: wait for persist, then heartbeat + rolling refresh.
   useEffect(() => {
+    let cancelled = false
+    const syncWhenReady = () => {
+      if (cancelled) return
+      if (!getStoreRehydrationReady()) return
+      void syncWeeklyHeartReminders()
+    }
+
+    const unsub = useStoreRehydration.subscribe(syncWhenReady)
+    syncWhenReady()
+    const safety = setTimeout(syncWhenReady, 2600)
+
     const onChange = (next: AppStateStatus) => {
       if (next === "active") {
         useChakraJourneyStore.getState().touchLastAppActive()
         useChakraJourneyStore.getState().checkScholarshipExpiry()
-        void syncWeeklyHeartReminders()
+        syncWhenReady()
         void syncAccessFromStoreReceipts()
       }
     }
     const sub = AppState.addEventListener("change", onChange)
     useChakraJourneyStore.getState().touchLastAppActive()
-    void syncWeeklyHeartReminders()
-    return () => sub.remove()
+    return () => {
+      cancelled = true
+      unsub()
+      clearTimeout(safety)
+      sub.remove()
+    }
   }, [])
 
   const [fontsLoaded, fontsError] = useFonts({
@@ -433,6 +453,7 @@ export default function RootLayout() {
               <HealingToastHost />
               <StoreUpdateNoticeHost />
               <Week1JourneyNoticeHost />
+              <NotificationPermissionHost />
               <CrownReminderNoticeHost />
               <ChakraHubHeader />
             </View>

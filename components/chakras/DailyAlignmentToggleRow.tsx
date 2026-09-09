@@ -29,7 +29,7 @@ export function DailyAlignmentToggleRow({
         (s) => s.setDailyAlignmentRemindersEnabled,
     )
     const journeyOn = soulJourneyNudgesEnabled !== false
-    const dailyOn = dailyAlignmentRemindersEnabled === true
+    const dailyOn = dailyAlignmentRemindersEnabled !== false
 
     const onToggle = useCallback(
         async (next: boolean) => {

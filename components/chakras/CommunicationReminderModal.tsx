@@ -92,9 +92,10 @@ export function CommunicationReminderModal({
             </View>
 
             <AppText font="instrument-regular" size="sm" style={styles.body}>
-              We will remind you somatically as we get closer to the opening. We
-              don't send notifications—we communicate, and that is all. Allowing
-              also helps audio downloads finish when the app is in the background.
+              We will check in at noon and the night before each chakra day,
+              and always on Sunday evenings. We don't send marketing—we
+              communicate, and that is all. Allowing also helps audio finish
+              when the app is in the background.
             </AppText>
 
             <Pressable

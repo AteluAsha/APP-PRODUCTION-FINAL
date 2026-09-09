@@ -2,19 +2,20 @@
  * Soul Journey Nudges — local notifications (iOS + Android) via expo-notifications.
  *
  * Production schedule (local only — no server, safe at high traffic):
- *   • Daily alignment ON: rolling 7-day DATE nudges. Noon = today's chakra.
- *     20:00 = tomorrow's chakra (night before). Skipped for any day the app opens.
- *     Max 14 pending. Sunday weekly / Wednesday weekly are not stacked on top.
- *   • Daily alignment OFF: Sunday 20:00 course/Monday Root preview, and
- *     Wednesday 10:00 solar check-in after journeyStarted.
+ *   • Daily alignment ON (default): rolling 7-day DATE nudges. Noon = today's
+ *     chakra. 20:00 = tomorrow's chakra (night before). Opening the app drops
+ *     remaining slots for that calendar day.
+ *   • Sunday 20:00 weekly ALWAYS (course / Monday Root) when permission is on —
+ *     even if they opened the app that day, even after a fresh install.
+ *   • Daily alignment OFF: Wednesday 10:00 solar check-in after journeyStarted.
  *
- * Permission: never required to use the app. Opt out in Profile /
- * system settings. No marketing copy. No badges.
+ * Permission: never required to use the app. Prompted once after entering
+ * Sanctuary. Opt out in Profile / system settings. No marketing. No badges.
  *
  * Legacy ids are cancelled on every sync.
  */
 
-import { Platform } from 'react-native'
+import { AppState, Platform } from 'react-native'
 import Constants, { ExecutionEnvironment } from 'expo-constants'
 import {
   SUNDAY_EARTH_CYCLE_COPY,
@@ -44,13 +45,16 @@ if (!isExpoGo) {
     if (Notifications) {
       try {
         Notifications.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldShowAlert: false,
-            shouldShowBanner: false,
-            shouldShowList: false,
-            shouldPlaySound: false,
-            shouldSetBadge: false,
-          }),
+          handleNotification: async () => {
+            const inApp = AppState.currentState === 'active'
+            return {
+              shouldShowAlert: !inApp,
+              shouldShowBanner: !inApp,
+              shouldShowList: true,
+              shouldPlaySound: !inApp,
+              shouldSetBadge: false,
+            }
+          },
         })
       } catch (handlerErr) {
         if (__DEV__) {
@@ -96,11 +100,6 @@ const LEGACY_IDS = [
   'sporadic-wisdom',
   'trial-sunday-earth-cycle',
 ] as const
-
-function shouldReceiveHeartReminders(): boolean {
-  const s = useChakraJourneyStore.getState()
-  return s.hasLifetimeAccess || !!s.courseStartDate
-}
 
 async function cancelByPrefix(prefix: string): Promise<void> {
   if (!Notifications) return
@@ -156,7 +155,7 @@ async function ensureAndroidChannel(): Promise<void> {
     name: 'Soul Journey Nudges',
     description:
       'Chakra check-ins when you have not opened the app. Turn off anytime in Profile.',
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 220, 160, 220],
     lightColor: '#9D4EDD',
   })
@@ -168,11 +167,29 @@ function androidExtras() {
     : {}
 }
 
+async function scheduleOrSkip(
+  request: Parameters<
+    NonNullable<typeof Notifications>['scheduleNotificationAsync']
+  >[0],
+): Promise<void> {
+  if (!Notifications) return
+  try {
+    await Notifications.scheduleNotificationAsync(request)
+  } catch (e) {
+    if (__DEV__) {
+      console.warn(
+        '[JourneyNotifications] schedule failed:',
+        (e as Error)?.message,
+      )
+    }
+  }
+}
+
 async function scheduleWeeklySundayReminder(): Promise<void> {
   if (!Notifications) return
   const x = androidExtras()
   const triggerExtras = Platform.OS === 'android' ? x : {}
-  await Notifications.scheduleNotificationAsync({
+  await scheduleOrSkip({
     identifier: SUNDAY_HEART_REMINDER_ID,
     content: {
       title: SUNDAY_EARTH_CYCLE_COPY.title,
@@ -194,7 +211,7 @@ async function scheduleWeeklyWednesdayReminder(): Promise<void> {
   if (!Notifications) return
   const x = androidExtras()
   const triggerExtras = Platform.OS === 'android' ? x : {}
-  await Notifications.scheduleNotificationAsync({
+  await scheduleOrSkip({
     identifier: WEDNESDAY_HEART_REMINDER_ID,
     content: {
       title: WEDNESDAY_ENERGY_BODY_COPY.title,
@@ -219,7 +236,7 @@ async function scheduleDailyAlignmentReminders(): Promise<void> {
   const slots = buildWeek1ReminderSlots({ now: new Date() })
   for (const slot of slots) {
     const copy = copyForDailySlot(slot.kind, slot.fireAt)
-    await Notifications.scheduleNotificationAsync({
+    await scheduleOrSkip({
       identifier: slot.id,
       content: {
         title: copy.title,
@@ -241,7 +258,9 @@ async function scheduleDailyAlignmentReminders(): Promise<void> {
 }
 
 function isDailyAlignmentEnabled(): boolean {
-  return useChakraJourneyStore.getState().dailyAlignmentRemindersEnabled === true
+  return (
+    useChakraJourneyStore.getState().dailyAlignmentRemindersEnabled !== false
+  )
 }
 
 /**
@@ -284,16 +303,14 @@ export async function syncWeeklyHeartReminders(): Promise<void> {
 
   if (isDailyAlignmentEnabled()) {
     await scheduleDailyAlignmentReminders()
-    return
+  } else {
+    const { journeyStarted } = useChakraJourneyStore.getState()
+    if (journeyStarted) {
+      await scheduleWeeklyWednesdayReminder()
+    }
   }
 
-  if (!shouldReceiveHeartReminders()) return
   await scheduleWeeklySundayReminder()
-
-  const { journeyStarted } = useChakraJourneyStore.getState()
-  if (journeyStarted) {
-    await scheduleWeeklyWednesdayReminder()
-  }
 }
 
 export async function cancelPreCourseNudges(): Promise<void> {
