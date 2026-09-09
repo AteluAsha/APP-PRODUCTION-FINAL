@@ -1,4 +1,5 @@
 import ChakraTemplate from "@/components/chakras/ChakraTemplate"
+import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
 import { Chakra } from "@/types/chakras/Chakra"
 import { useEffect } from "react"
 import { isValidChakra } from "@/utils/validation"
@@ -20,7 +21,11 @@ const ChakraScreen = () => {
   // Only render the component if we have a valid chakra value
   if (!isValidChakra(chakraParam)) return null
 
-  return <ChakraTemplate chakra={chakraParam as Chakra} />
+  return (
+    <ScreenCrashBoundary>
+      <ChakraTemplate chakra={chakraParam as Chakra} />
+    </ScreenCrashBoundary>
+  )
 }
 
 export default ChakraScreen

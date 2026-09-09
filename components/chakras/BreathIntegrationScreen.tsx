@@ -62,13 +62,12 @@ export function BreathIntegrationScreen({
     const fadeOutAndComplete = useCallback(() => {
         if (leavingRef.current) return
         leavingRef.current = true
-        screenOpacity.value = withTiming(
-            0,
-            { duration: 900, easing: Easing.inOut(Easing.ease) },
-            (finished) => {
-                if (finished) runOnJS(finish)()
-            },
-        )
+        screenOpacity.value = withTiming(0, {
+            duration: 900,
+            easing: Easing.inOut(Easing.ease),
+        })
+        // JS timer only — runOnJS from the animation completion can crash
+        // the goodbye reveal on Android (same class as I Am Present).
         schedule(finish, 1100)
     }, [finish, screenOpacity])
 

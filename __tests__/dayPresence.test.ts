@@ -35,7 +35,8 @@ describe("first-click day presence", () => {
         )
         expect(src).toContain("useSafeAreaInsets")
         expect(src).toContain("insets.bottom")
-        expect(src).toContain("setTimeout(() => present(), 1100)")
+        expect(src).toContain("setTimeout(() => present(), 920)")
+        expect(src).not.toContain("if (finished) runOnJS(present)()")
         expect(src).not.toContain("bottom: Platform.OS === 'ios' ? 72")
     })
 
@@ -45,5 +46,14 @@ describe("first-click day presence", () => {
             "utf8",
         )
         expect(hub).toContain("openChakraDay(item.day")
+    })
+
+    it("enters the course day after interactions, not from a UI-thread worklet", () => {
+        const open = fs.readFileSync(
+            path.join(__dirname, "..", "utils/openChakraDay.ts"),
+            "utf8",
+        )
+        expect(open).toContain("InteractionManager.runAfterInteractions")
+        expect(open).toContain("nav.replace(path as never)")
     })
 })

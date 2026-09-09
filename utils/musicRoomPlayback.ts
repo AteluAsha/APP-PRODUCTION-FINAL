@@ -19,8 +19,10 @@ import { peekPlayableVaultUri } from '@/src/utils/sanctuaryAudioVault'
 import { toAbsoluteFileUri } from '@/src/utils/crystalBowlPlayback'
 import { silenceAllAudio } from '@/src/utils/singleActiveSound'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
-import { saveAudioBookmark } from '@/utils/audioBookmark'
+import { persistResumeBookmark } from '@/utils/audioBookmark'
 import { allowsTrackQueue } from '@/utils/audioPlayMode'
+import { sliderDurationMs } from '@/src/utils/playerControls'
+import { useEmbodimentDurationCacheStore } from '@/hooks/useEmbodimentDurationCacheStore'
 
 export function musicRoomDefsToPlaylistItems(
     defs: MusicRoomTrackDef[] = MUSIC_ROOM_TRACK_DEFS,
@@ -171,7 +173,17 @@ export async function closeMusicRoomPlayer(options?: {
             store.fullPlayerTrackId ??
             store.musicRoomPlaylist?.[store.musicRoomIndex]?.audioId
         if (allowsTrackQueue(store.playMode)) {
-            await saveAudioBookmark(id, store.positionMs)
+            const cached =
+                id != null
+                    ? (useEmbodimentDurationCacheStore
+                          .getState()
+                          .getDuration(id) ?? 0)
+                    : 0
+            await persistResumeBookmark(
+                id,
+                store.positionMs,
+                sliderDurationMs(cached, store.metadata?.durationMs ?? 0),
+            )
         }
         await silenceAllAudio()
         useCurrentAudioStore.getState().reset()

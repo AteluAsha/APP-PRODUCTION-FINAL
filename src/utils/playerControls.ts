@@ -100,26 +100,49 @@ export function resolvePlaybackDurationMs(opts: {
 }
 
 /**
+ * True when this listen reached the real end of a known length.
+ * Do not use a bookmark-inflated duration here — that made finished
+ * remasters look mid-track. Position far past a short catalog is
+ * remaster progress, not completion.
+ */
+export function isPlaybackComplete(
+    positionMs: number,
+    durationMs: number,
+): boolean {
+    if (!(positionMs > 0) || !(durationMs > 0)) return false
+    const nearEnd = Math.max(durationMs - 2500, durationMs * 0.98)
+    if (positionMs < nearEnd) return false
+    return positionMs <= durationMs + 8000
+}
+
+/**
  * Restore a bookmark only when it is a real in-progress place.
- * Treat as finished only within the last ~2.5s (or 98%), never a 90% wipe —
- * that was erasing real mid-track places when catalog duration was short.
+ * Treat as finished only within the last ~2.5s (or 98%) of the known
+ * file or catalog length — never a 90% wipe, and never by stretching
+ * duration from the bookmark itself.
  */
 export function resumePositionMs(
     bookmarkMs: number | undefined,
     durationMs: number,
+    fileDurationMs?: number,
 ): number {
     if (bookmarkMs == null || !Number.isFinite(bookmarkMs) || bookmarkMs <= 0) {
         return 0
     }
+    const file = fileDurationMs ?? 0
+    const known = sliderDurationMs(file, durationMs)
+    if (known > 0 && isPlaybackComplete(bookmarkMs, known)) {
+        return 0
+    }
     const effectiveDuration = resolvePlaybackDurationMs({
         catalogDurationMs: durationMs,
+        fileDurationMs: file,
         bookmarkMs,
     })
     if (!(effectiveDuration > 0)) {
         return bookmarkMs
     }
-    const nearEnd = Math.max(effectiveDuration - 2500, effectiveDuration * 0.98)
-    if (bookmarkMs >= nearEnd) {
+    if (isPlaybackComplete(bookmarkMs, effectiveDuration)) {
         return 0
     }
     return clampSeekMs(bookmarkMs, effectiveDuration)

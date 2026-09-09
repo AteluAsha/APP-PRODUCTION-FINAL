@@ -1,9 +1,6 @@
 import { loadBookmarkPositionMs } from '@/utils/audioBookmark'
-import {
-    resolvePlaybackDurationMs,
-    resumePositionMs,
-} from '@/src/utils/playerControls'
-import { toAbsoluteFileUri } from '@/src/utils/crystalBowlPlayback'
+import { resumePositionMs } from '@/src/utils/playerControls'
+import { toAbsoluteFileUri } from '@/src/utils/absoluteFileUri'
 import { useCurrentAudioStore } from '@/hooks/useCurrentAudioStore'
 import { useEmbodimentDurationCacheStore } from '@/hooks/useEmbodimentDurationCacheStore'
 
@@ -70,16 +67,15 @@ export async function applySanctuarySource(
     const cached = useEmbodimentDurationCacheStore.getState().getDuration(
         opts.audioId,
     )
-    const durationForResume = resolvePlaybackDurationMs({
-        catalogDurationMs: opts.durationMs,
-        fileDurationMs: cached,
-        bookmarkMs: bookmark,
-    })
     useCurrentAudioStore.getState().setSource(
         { uri: toAbsoluteFileUri(uri) },
         'full-player',
         {
-            resumePositionMs: resumePositionMs(bookmark, durationForResume),
+            resumePositionMs: resumePositionMs(
+                bookmark,
+                opts.durationMs,
+                cached,
+            ),
             fullPlayerTrackId: opts.audioId,
         },
     )

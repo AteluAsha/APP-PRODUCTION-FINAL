@@ -238,6 +238,8 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
     setIsPillBottomSheetVisible(false) // Update global store
   }, [setIsBottomSheetVisible, setCurrentPill, setIsPillBottomSheetVisible])
 
+  if (!content) return null
+
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
       <ActionBarAnimated
@@ -405,7 +407,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                     borderRadius: 3,
                     borderWidth: 1.5,
                     borderColor: "rgba(255,255,255,0.75)",
-                    backgroundColor: completedChakras.includes(chakraDay)
+                    backgroundColor: (completedChakras ?? []).includes(chakraDay)
                       ? "#ffffff"
                       : "transparent",
                   }}

@@ -8,6 +8,7 @@ describe('appErrorRecovery', () => {
             'utf8',
         )
         expect(src).toContain('getSafeRecoveryRoute')
+        expect(src).toContain('getScreenCrashRecoveryRoute')
         expect(src).toContain('recoverFromAppError')
         expect(src).toContain('playerReturnPath')
         expect(src).toContain('ChakraHub')
@@ -38,5 +39,35 @@ describe('appErrorRecovery', () => {
             'utf8',
         )
         expect(boundary).toContain('useAppCrashStore')
+        expect(boundary).toContain('never the Stack')
+        expect(boundary).toContain('getScreenCrashRecoveryRoute')
+
+        const chakrasLayout = fs.readFileSync(
+            path.join(__dirname, '..', 'app/(chakras)/_layout.tsx'),
+            'utf8',
+        )
+        expect(chakrasLayout).not.toContain('ScreenCrashBoundary')
+
+        const wrapped = [
+            'app/(chakras)/[chakra].tsx',
+            'app/(chakras)/DayPresence.tsx',
+            'app/(chakras)/AudioLibrary.tsx',
+            'app/(chakras)/SoundBath.tsx',
+            'app/(chakras)/HeadToHeart.tsx',
+            'app/(chakras)/GalleryOfGnosis.tsx',
+            'app/(chakras)/NotesAlongTheWay.tsx',
+            'app/(chakras)/QuizScreen.tsx',
+        ]
+        for (const rel of wrapped) {
+            const src = fs.readFileSync(path.join(__dirname, '..', rel), 'utf8')
+            expect(src).toContain('ScreenCrashBoundary')
+        }
+
+        const splash = fs.readFileSync(
+            path.join(__dirname, '..', 'components/AnimatedSplashScreen.tsx'),
+            'utf8',
+        )
+        expect(splash).toContain('setTimeout(finish, FADE_OUT_MS + 80)')
+        expect(splash).not.toContain('runOnJS(finish)')
     })
 })

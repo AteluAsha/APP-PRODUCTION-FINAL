@@ -22,6 +22,9 @@ import {
 } from "./audioDownload"
 import { isSanctuaryVaultAudioId } from "@/constants/sanctuaryVaultTracks"
 import { peekSanctuaryTrack } from "@/src/services/sanctuaryVaultDownloader"
+import { toAbsoluteFileUri } from "@/src/utils/absoluteFileUri"
+
+export { toAbsoluteFileUri } from "@/src/utils/absoluteFileUri"
 
 export interface CrystalBowlSourceInput {
   url: string | null
@@ -35,25 +38,6 @@ interface LongAudioOptions {
   allowStreamingFallback?: boolean
   /** When playing from head, start full download in background using resumable (for 1hr files) */
   useResumableForBackgroundFull?: boolean
-}
-
-/**
- * expo-av on Android and iOS needs file:/// (three slashes). Native File.toURI()
- * can emit file:/ (one slash). Normalize so createAsync always gets an absolute
- * file:/// URI for on-device playback.
- */
-export function toAbsoluteFileUri(uri: string): string {
-  const trimmed = uri.trim()
-  if (!trimmed) return trimmed
-  if (trimmed.startsWith("file:///")) return trimmed
-  if (trimmed.startsWith("content:")) return trimmed
-  if (trimmed.startsWith("file:/")) {
-    const afterScheme = trimmed.slice("file:".length)
-    const path = afterScheme.replace(/^\/+/, "/")
-    return `file://${path}`
-  }
-  if (trimmed.startsWith("/")) return `file://${trimmed}`
-  return trimmed
 }
 
 export function isLocalPlaybackUri(uri: string | null | undefined): boolean {

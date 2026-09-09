@@ -25,10 +25,10 @@ export const useEmbodimentDurationCacheStore =
       (set, get) => ({
         durations: {},
         embodimentDurationCacheKey: null,
-        getDuration: (audioId: string) => get().durations[audioId],
+        getDuration: (audioId: string) => get().durations?.[audioId],
         setDuration: (audioId: string, durationMs: number) => {
           if (!Number.isFinite(durationMs) || durationMs <= 0) return
-          const current = get().durations[audioId]
+          const current = get().durations?.[audioId]
           // Same file can report a few ms of jitter. Rest unless a new audio.
           if (
             current != null &&
@@ -37,7 +37,7 @@ export const useEmbodimentDurationCacheStore =
             return
           }
           set((state) => ({
-            durations: { ...state.durations, [audioId]: durationMs },
+            durations: { ...(state.durations ?? {}), [audioId]: durationMs },
           }))
         },
         setEmbodimentDurationCacheKey: (key: string | null) =>
@@ -48,7 +48,21 @@ export const useEmbodimentDurationCacheStore =
       {
         name: "full-player-duration-cache",
         storage: createJSONStorage(() => safeAsyncStorage),
-        partialize: (state) => ({ durations: state.durations }),
+        partialize: (state) => ({ durations: state.durations ?? {} }),
+        merge: (persistedState, currentState) => {
+          const persisted =
+            persistedState && typeof persistedState === "object"
+              ? (persistedState as Partial<EmbodimentDurationCacheStore>)
+              : {}
+          return {
+            ...currentState,
+            ...persisted,
+            durations: {
+              ...(currentState.durations ?? {}),
+              ...(persisted.durations ?? {}),
+            },
+          }
+        },
       },
     ),
   )
@@ -59,7 +73,7 @@ export function useResolvedTrackDurationMs(
   catalogMs: number,
 ): number {
   const cached = useEmbodimentDurationCacheStore((s) =>
-    audioId ? s.durations[audioId] : undefined,
+    audioId ? s.durations?.[audioId] : undefined,
   )
   return preferPlayerDurationMs(cached, catalogMs)
 }

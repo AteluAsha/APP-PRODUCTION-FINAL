@@ -44,7 +44,7 @@ describe('Audio Library single-track mode', () => {
         expect(close).toContain('.reset()')
         expect(close).toContain('setFullScreenPlayerMounted(false)')
         expect(close).toContain('await silenceAllAudio()')
-        expect(close).toContain('saveAudioBookmark')
+        expect(close).toContain('persistResumeBookmark')
         expect(close).not.toContain('if (fullPlayerClosing) return')
         const finish = player.slice(
             player.indexOf('if (!prefs.shouldLoop && justFinished)'),

@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { DayPresenceScreen } from '@/components/chakras/DayPresenceScreen'
+import { ScreenCrashBoundary } from '@/components/ScreenCrashBoundary'
 import { enterChakraDayAfterPresence } from '@/utils/openChakraDay'
 
 export default function DayPresenceRoute() {
@@ -10,9 +11,11 @@ export default function DayPresenceRoute() {
     const dayIndex = Number.isFinite(parsed) ? Math.min(6, Math.max(0, parsed)) : 0
 
     return (
-        <DayPresenceScreen
-            dayIndex={dayIndex}
-            onPresent={() => enterChakraDayAfterPresence(dayIndex, router)}
-        />
+        <ScreenCrashBoundary>
+            <DayPresenceScreen
+                dayIndex={dayIndex}
+                onPresent={() => enterChakraDayAfterPresence(dayIndex, router)}
+            />
+        </ScreenCrashBoundary>
     )
 }

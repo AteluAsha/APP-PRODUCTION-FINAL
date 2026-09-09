@@ -22,6 +22,7 @@ import { getDayFromChakra } from "@/utils/chakraMapping"
 import ParallaxScrollView from "@/components/ParallaxScrollView"
 import { HeaderSection } from "@/components/chakras/HeaderSection"
 import { isValidChakra } from "@/utils/validation"
+import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
 import {
   getAncestralChamberField,
   getAncestralNowLanding,
@@ -46,11 +47,12 @@ const HeadToHeart = () => {
   }, [chakraParam, hasChakraQuery, router])
 
   const chakra = isValidChakra(chakraParam) ? chakraParam : Chakra.ROOT
-  const content = chakraContent[chakra].headtoheart
+  const content = chakraContent[chakra]?.headtoheart
   const nowLanding = getAncestralNowLanding(chakra)
   useAncestralWisdomAudio(chakra)
 
   if (hasChakraQuery && !isValidChakra(chakraParam)) return null
+  if (!content) return null
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#050403" }} edges={["top", "left", "right"]}>
@@ -248,4 +250,10 @@ const HeadToHeart = () => {
   )
 }
 
-export default HeadToHeart
+export default function HeadToHeartScreen() {
+  return (
+    <ScreenCrashBoundary>
+      <HeadToHeart />
+    </ScreenCrashBoundary>
+  )
+}

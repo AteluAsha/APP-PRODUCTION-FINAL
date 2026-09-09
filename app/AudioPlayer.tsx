@@ -51,6 +51,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import {
   clearAudioBookmark,
   loadBookmarkPositionMs,
+  persistResumeBookmark,
   saveAudioBookmark,
 } from "@/utils/audioBookmark"
 import {
@@ -70,20 +71,22 @@ import { peekPlayableVaultUri } from "@/src/utils/sanctuaryAudioVault"
 import { toAbsoluteFileUri } from "@/src/utils/crystalBowlPlayback"
 import {
   bestResumeCandidateMs,
-  bookmarkPositionToPersist,
   clampSeekMs,
   commitPlaybackDurationMs,
+  isPlaybackComplete,
   isPlaybackPositionRegression,
   isStubNativeDuration,
   nativeSeekLanded,
   resolvePlaybackDurationMs,
   resumePositionMs,
   shouldHoldSeekTarget,
+  sliderDurationMs,
 } from "@/src/utils/playerControls"
 import { silenceAllAudio, configureHealingAudioMode, type HealingSound } from "@/src/utils/singleActiveSound"
 import {
   closeFullPlayerAndLeave,
   isClosingFullPlayer,
+  reportFullPlayerListenCompleted,
   reportFullPlayerPosition,
 } from "@/utils/openFullPlayer"
 import { pinRecoveryRoute } from "@/utils/appErrorRecovery"
@@ -338,6 +341,12 @@ const AudioPlayer = () => {
   const hasAppliedFirstStatusRef = useRef(false)
   /** Latest playback position from native status (capture-proof for bookmark save if React/store lags). */
   const lastPlaybackPositionMsRef = useRef(0)
+  /** True after a real end this session so leave/reopen starts at 0. */
+  const completedListenRef = useRef(false)
+  const setListenCompleted = useCallback((completed: boolean) => {
+    completedListenRef.current = completed
+    reportFullPlayerListenCompleted(completed)
+  }, [])
   const lastPeriodicBookmarkSaveAtRef = useRef(0)
   const closingRef = useRef(false)
   /** Set true after teardown so beforeRemove allows the pop without re-running cleanup. */
@@ -377,6 +386,7 @@ const AudioPlayer = () => {
     closingRef.current = false
     allowLeaveRef.current = false
     fileDurationMsRef.current = 0
+    setListenCompleted(false)
     const cached =
       useEmbodimentDurationCacheStore.getState().getDuration(fullPlayerTrackId)
     const catalog =
@@ -388,9 +398,12 @@ const AudioPlayer = () => {
       }),
     )
     const stored = useCurrentAudioStore.getState().positionMs
-    if (stored > 0) {
-      lastPlaybackPositionMsRef.current = stored
-      setPosition(stored)
+    const resumeAt = resumePositionMs(stored, catalog, cached)
+    lastPlaybackPositionMsRef.current = resumeAt
+    if (resumeAt > 0) {
+      setPosition(resumeAt)
+    } else {
+      setPosition(0)
     }
   }, [fullPlayerTrackId])
 
@@ -473,13 +486,9 @@ const AudioPlayer = () => {
           clearVaultAutoPlayback(id)
           const bookmark = await loadBookmarkPositionMs(id)
           const cached = useEmbodimentDurationCacheStore.getState().getDuration(id)
-          const durationForResume = resolvePlaybackDurationMs({
-            catalogDurationMs: live.metadata?.durationMs ?? 0,
-            fileDurationMs: cached,
-            bookmarkMs: bookmark,
-          })
+          const catalogMs = live.metadata?.durationMs ?? 0
           live.setSource({ uri: toAbsoluteFileUri(uri) }, "full-player", {
-            resumePositionMs: resumePositionMs(bookmark, durationForResume),
+            resumePositionMs: resumePositionMs(bookmark, catalogMs, cached),
             fullPlayerTrackId: id,
           })
           return
@@ -520,16 +529,14 @@ const AudioPlayer = () => {
         bookmarkMs: bookmark,
         lastPlaybackMs: lastPlaybackPositionMsRef.current,
       })
-      const durationForResume = resolvePlaybackDurationMs({
-        catalogDurationMs: st.metadata?.durationMs ?? 0,
-        fileDurationMs: cached,
-        bookmarkMs: candidate,
-        positionMs: candidate,
-      })
       const sameListenMs = lastPlaybackPositionMsRef.current
       const resumeAt = isLibrarySingleTrack(st.audioOrigin, st.playMode)
         ? Math.max(0, sameListenMs)
-        : resumePositionMs(candidate, durationForResume)
+        : resumePositionMs(
+            candidate,
+            st.metadata?.durationMs ?? 0,
+            cached,
+          )
       if (st.audioOrigin === "music-room") {
         st.applyMusicRoomTrack(st.musicRoomIndex, {
           uri: toAbsoluteFileUri(finalUri),
@@ -587,6 +594,12 @@ const AudioPlayer = () => {
       seekingUntilRef.current = Date.now() + 6000
       seekTargetMsRef.current = clamped
       lastPlaybackPositionMsRef.current = clamped
+      if (
+        clamped > 0 &&
+        !isPlaybackComplete(clamped, duration)
+      ) {
+        setListenCompleted(false)
+      }
       setPosition(clamped)
       setPositionMs(clamped)
       reportFullPlayerPosition(clamped)
@@ -614,7 +627,7 @@ const AudioPlayer = () => {
         setPosition(lastPlaybackPositionMsRef.current)
       }
     },
-    [track, setPlaying, setPositionMs, resolveActivePlaybackDurationMs],
+    [track, setPlaying, setPositionMs, resolveActivePlaybackDurationMs, setListenCompleted],
   )
 
   // Completion and navigation are driven only by track end (didJustFinish). No progress threshold
@@ -638,6 +651,31 @@ const AudioPlayer = () => {
           positionMs: status.positionMillis,
         })
         const playing = !!status.isPlaying
+        const live = useCurrentAudioStore.getState()
+        const endedId = live.fullPlayerTrackId
+        const vaultReady =
+          !endedId ||
+          useSanctuaryVaultStore.getState().readyIds[endedId] === true
+        const finishedThisListen =
+          !!status.didJustFinish &&
+          shouldTreatAsTrackEnd({
+            didJustFinish: true,
+            vaultReady,
+          }) &&
+          live.prefs?.shouldLoop !== true
+        const fileEndedWithoutFinish =
+          !playing &&
+          fileMs > 0 &&
+          !isStubNativeDuration(fileMs, metaMs) &&
+          isPlaybackComplete(status.positionMillis, fileMs) &&
+          live.prefs?.shouldLoop !== true
+
+        if (playing && status.positionMillis > 1500) {
+          setListenCompleted(false)
+        }
+        if (finishedThisListen || fileEndedWithoutFinish) {
+          setListenCompleted(true)
+        }
 
         if (
           shouldHoldSeekTarget({
@@ -650,6 +688,60 @@ const AudioPlayer = () => {
         }
         if (nativeSeekLanded(status.positionMillis, seekTargetMsRef.current)) {
           seekingUntilRef.current = 0
+        }
+
+        if (status.didJustFinish && !finishedThisListen) {
+          if (endedId) rushSanctuaryTrack(endedId)
+          setIsLoading(true)
+        }
+
+        if (finishedThisListen) {
+          setJustFinished(true)
+        }
+
+        if (
+          completedListenRef.current &&
+          seekTargetMsRef.current <= 0 &&
+          !isLibrarySingleTrack(live.audioOrigin, live.playMode)
+        ) {
+          lastPlaybackPositionMsRef.current = 0
+          reportFullPlayerPosition(0)
+          if (endedId) {
+            void clearAudioBookmark(endedId)
+          }
+          const now = Date.now()
+          const isFirstStatus = !hasAppliedFirstStatusRef.current
+          if (isFirstStatus) {
+            hasAppliedFirstStatusRef.current = true
+          }
+          if (
+            fileMs > 0 &&
+            !isStubNativeDuration(fileMs, metaMs) &&
+            endedId
+          ) {
+            useEmbodimentDurationCacheStore.getState().setDuration(endedId, fileMs)
+          }
+          const cacheKey =
+            useEmbodimentDurationCacheStore.getState()
+              .embodimentDurationCacheKey
+          if (cacheKey && fileMs > 0 && !isStubNativeDuration(fileMs, metaMs)) {
+            useEmbodimentDurationCacheStore.getState().setDuration(cacheKey, fileMs)
+            useEmbodimentDurationCacheStore.getState().clearEmbodimentDurationCacheKey()
+          }
+          lastStatusUpdateTimeRef.current = now
+          setPosition(0)
+          setPositionMs(0)
+          setDuration((prev) =>
+            commitPlaybackDurationMs({
+              currentMs: prev,
+              nextMs: duration,
+              fileDurationMs: fileMs,
+              catalogDurationMs: metaMs,
+            }),
+          )
+          setPlaying(false)
+          lastAppliedStorePlayingRef.current = false
+          return
         }
 
         if (
@@ -709,25 +801,6 @@ const AudioPlayer = () => {
           )
         }
 
-        if (status.didJustFinish) {
-          const live = useCurrentAudioStore.getState()
-          const endedId = live.fullPlayerTrackId
-          const vaultReady =
-            !endedId ||
-            useSanctuaryVaultStore.getState().readyIds[endedId] === true
-          if (
-            !shouldTreatAsTrackEnd({
-              didJustFinish: true,
-              vaultReady,
-            })
-          ) {
-            if (endedId) rushSanctuaryTrack(endedId)
-            setIsLoading(true)
-          } else {
-            setJustFinished(true)
-          }
-        }
-
         // 80% = dot only: auto-check complete box so chakra shows dot on homescreen. No setCompletedChakra, no navigation.
         if (
           !hasLifetimeAccess &&
@@ -744,7 +817,7 @@ const AudioPlayer = () => {
         setPlaying(playing)
         lastAppliedStorePlayingRef.current = playing
 
-        if (playing && status.positionMillis > 0) {
+        if (playing && status.positionMillis > 0 && !completedListenRef.current) {
           const stStore = useCurrentAudioStore.getState()
           if (
             !isLibrarySingleTrack(stStore.audioOrigin, stStore.playMode) &&
@@ -759,11 +832,16 @@ const AudioPlayer = () => {
               AUDIO_BOOKMARK_PERIODIC_SAVE_MS
             ) {
               lastPeriodicBookmarkSaveAtRef.current = nowSave
-              void saveAudioBookmark(
+              const persistMs = Math.max(
+                lastPlaybackPositionMsRef.current,
+                status.positionMillis,
+              )
+              void persistResumeBookmark(
                 stStore.fullPlayerTrackId,
-                Math.max(
-                  lastPlaybackPositionMsRef.current,
-                  status.positionMillis,
+                persistMs,
+                sliderDurationMs(
+                  fileDurationMsRef.current,
+                  stStore.metadata?.durationMs ?? 0,
                 ),
               )
             }
@@ -786,6 +864,7 @@ const AudioPlayer = () => {
       audioOrigin,
       dayIndex,
       markChakraCompleted,
+      setListenCompleted,
     ],
   )
 
@@ -937,7 +1016,8 @@ const AudioPlayer = () => {
         }
         const resumeAt = resumePositionMs(
           candidate > 0 ? candidate : undefined,
-          usableDuration > 0 ? usableDuration : catalogMs,
+          catalogMs,
+          fileMs || cachedDuration,
         )
         if (abandoned()) {
           await silenceAllAudio()
@@ -1062,6 +1142,8 @@ const AudioPlayer = () => {
       await closeFullPlayerAndLeave({
         positionMs: lastPlaybackPositionMsRef.current,
         seekTargetMs: seekTargetMsRef.current,
+        durationMs: fileDurationMsRef.current,
+        listenCompleted: completedListenRef.current,
         navigate: false,
       })
       return
@@ -1097,6 +1179,8 @@ const AudioPlayer = () => {
     await closeFullPlayerAndLeave({
       positionMs: lastPlaybackPositionMsRef.current,
       seekTargetMs: seekTargetMsRef.current,
+      durationMs: fileDurationMsRef.current,
+      listenCompleted: completedListenRef.current,
       navigate: false,
     })
   }, [])
@@ -1171,7 +1255,15 @@ const AudioPlayer = () => {
           live.positionMs,
           seekTargetMsRef.current,
         )
-        void saveAudioBookmark(id, pos)
+        void persistResumeBookmark(
+          id,
+          pos,
+          sliderDurationMs(
+            fileDurationMsRef.current,
+            live.metadata?.durationMs ?? 0,
+          ),
+          { listenCompleted: completedListenRef.current },
+        )
         return
       }
       if (next !== "active") return
@@ -1181,6 +1273,7 @@ const AudioPlayer = () => {
         const id = live.fullPlayerTrackId
         const active = trackRef.current
         if (!id || !active || closingRef.current) return
+        if (completedListenRef.current) return
         const bookmark = await loadBookmarkPositionMs(id)
         const known = Math.max(
           lastPlaybackPositionMsRef.current,
@@ -1240,17 +1333,19 @@ const AudioPlayer = () => {
     if (!prefs.shouldLoop && justFinished) {
       setJustFinished(false)
       const finished = useCurrentAudioStore.getState()
+      setListenCompleted(true)
       if (!isLibrarySingleTrack(finished.audioOrigin, finished.playMode)) {
         void clearAudioBookmark(finished.fullPlayerTrackId)
       }
       lastPlaybackPositionMsRef.current = 0
+      reportFullPlayerPosition(0)
       finished.setPositionMs(0)
       seekToPosition(0)
       track?.pauseAsync()
       setIsPlaying(false)
       setPlaying(false)
     }
-  }, [justFinished, seekToPosition, track, prefs])
+  }, [justFinished, seekToPosition, track, prefs, setListenCompleted])
 
   // Re-initialize only when the source URI changes. Do not re-init on focus
   // (Notes overlay) or prefs object identity — that snaps the slider to 0 and
@@ -1269,6 +1364,7 @@ const AudioPlayer = () => {
       hasAppliedFirstStatusRef.current = false
       lastPeriodicBookmarkSaveAtRef.current = 0
       fileDurationMsRef.current = 0
+      setListenCompleted(false)
       setLoadError(null)
     }
 
@@ -1278,15 +1374,26 @@ const AudioPlayer = () => {
         const id = live.fullPlayerTrackId
         if (!isLibrarySingleTrack(live.audioOrigin, live.playMode)) {
           const saved = id ? await loadBookmarkPositionMs(id) : undefined
-          const resumePos = bestResumeCandidateMs({
-            storeMs: live.positionMs,
-            bookmarkMs: saved,
-            lastPlaybackMs: lastPlaybackPositionMsRef.current,
-          })
+          const cached = id
+            ? useEmbodimentDurationCacheStore.getState().getDuration(id)
+            : undefined
+          const resumePos = resumePositionMs(
+            bestResumeCandidateMs({
+              storeMs: live.positionMs,
+              bookmarkMs: saved,
+              lastPlaybackMs: lastPlaybackPositionMsRef.current,
+            }),
+            live.metadata?.durationMs ?? 0,
+            cached,
+          )
           if (resumePos > 0) {
             lastPlaybackPositionMsRef.current = resumePos
             setPosition(resumePos)
             setPositionMs(resumePos)
+          } else {
+            lastPlaybackPositionMsRef.current = 0
+            setPosition(0)
+            setPositionMs(0)
           }
         } else if (lastPlaybackPositionMsRef.current <= 0) {
           setPosition(0)
@@ -1604,10 +1711,15 @@ const AudioPlayer = () => {
       await track.pauseAsync()
       setIsPlaying(false)
       setPlaying(false)
-      const id = useCurrentAudioStore.getState().fullPlayerTrackId
-      await saveAudioBookmark(
-        id,
+      const live = useCurrentAudioStore.getState()
+      await persistResumeBookmark(
+        live.fullPlayerTrackId,
         lastPlaybackPositionMsRef.current || positionMs,
+        sliderDurationMs(
+          fileDurationMsRef.current,
+          live.metadata?.durationMs ?? 0,
+        ),
+        { listenCompleted: completedListenRef.current },
       )
     } else {
       if (isLoadedRef.current) {

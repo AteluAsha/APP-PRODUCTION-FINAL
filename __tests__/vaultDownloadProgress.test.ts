@@ -394,7 +394,7 @@ describe("Android lock-screen playback is a media foreground service", () => {
         )
         expect(src).toContain("closeFullPlayerAndLeave")
         expect(src).toContain("await silenceAllAudio()")
-        expect(src).toContain("saveAudioBookmark")
+        expect(src).toContain("persistResumeBookmark")
         expect(src).toContain("isAudioPlayerPath")
     })
 

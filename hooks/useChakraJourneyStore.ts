@@ -315,8 +315,9 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         awakenHubChakra: (dayIndex: number) => {
           const day = Math.max(0, Math.min(6, Math.floor(dayIndex)))
           set((state) => {
-            if (state.awakenedHubChakras.includes(day)) return state
-            return { awakenedHubChakras: [...state.awakenedHubChakras, day] }
+            const lit = state.awakenedHubChakras ?? [0]
+            if (lit.includes(day)) return state
+            return { awakenedHubChakras: [...lit, day] }
           })
         },
         isHubChakraAwakened: (dayIndex: number) => {
@@ -398,7 +399,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
         },
 
         markChakraCompleted: (chakraIndex: number) => {
-          const currentCompleted = get().completedChakras
+          const currentCompleted = get().completedChakras ?? []
           const allCompleted = get().allChakrasCompleted
 
           // Only add if not already completed (prevent duplicates)
@@ -461,7 +462,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
           if (get().allChakrasCompleted) {
             return true
           }
-          return get().completedChakras.includes(chakraIndex)
+          return (get().completedChakras ?? []).includes(chakraIndex)
         },
 
         /**
@@ -475,14 +476,14 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
           }
 
           // Check current completed chakras
-          if (state.completedChakras.includes(chakraIndex)) {
+          if ((state.completedChakras ?? []).includes(chakraIndex)) {
             return true
           }
 
           // Check all trial history to see if this chakra was completed in any trial
           // A chakra is considered completed if its day was participated in any trial
-          for (const trial of state.trialHistory) {
-            if (trial.daysParticipated.includes(chakraIndex)) {
+          for (const trial of state.trialHistory ?? []) {
+            if ((trial.daysParticipated ?? []).includes(chakraIndex)) {
               return true
             }
           }
@@ -495,7 +496,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
           if (get().allChakrasCompleted) {
             return true
           }
-          return get().participatedDays.includes(dayIndex)
+          return (get().participatedDays ?? []).includes(dayIndex)
         },
 
         resetJourney: () => {
@@ -599,7 +600,7 @@ export const useChakraJourneyStore = create<ChakraJourneyState>()(
 
         checkAndSetCompletion: () => {
           // Called after marking a chakra complete to see if all 7 are now done.
-          const currentCompleted = get().completedChakras
+          const currentCompleted = get().completedChakras ?? []
           const alreadyAllCompleted = get().allChakrasCompleted
           const wasJustCompleted =
             !alreadyAllCompleted && currentCompleted.length === 7

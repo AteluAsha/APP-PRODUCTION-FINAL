@@ -1,8 +1,12 @@
 import { router } from 'expo-router'
 import { useCurrentAudioStore } from '@/hooks/useCurrentAudioStore'
+import { useEmbodimentDurationCacheStore } from '@/hooks/useEmbodimentDurationCacheStore'
 import { silenceAllAudio } from '@/src/utils/singleActiveSound'
-import { saveAudioBookmark } from '@/utils/audioBookmark'
-import { bookmarkPositionToPersist } from '@/src/utils/playerControls'
+import { persistResumeBookmark } from '@/utils/audioBookmark'
+import {
+    bookmarkPositionToPersist,
+    sliderDurationMs,
+} from '@/src/utils/playerControls'
 import { clearVaultAutoPlayback } from '@/src/services/vaultAutoPlayback'
 import { queueBridgeCueIfNeeded } from '@/utils/bridgeCue'
 
@@ -22,6 +26,7 @@ export function isAudioPlayerPath(pathname?: string | null): boolean {
 let fullPlayerClosing = false
 let closeInFlight: Promise<void> | null = null
 let latestFullPlayerPositionMs = 0
+let latestFullPlayerListenCompleted = false
 
 export function isClosingFullPlayer(): boolean {
     return fullPlayerClosing || closeInFlight != null
@@ -40,9 +45,12 @@ function leavePlayerScreen(returnPath: string | null): void {
 }
 
 export function reportFullPlayerPosition(positionMs: number): void {
-    if (Number.isFinite(positionMs) && positionMs > 0) {
-        latestFullPlayerPositionMs = positionMs
-    }
+    if (!Number.isFinite(positionMs) || positionMs < 0) return
+    latestFullPlayerPositionMs = positionMs
+}
+
+export function reportFullPlayerListenCompleted(completed: boolean): void {
+    latestFullPlayerListenCompleted = completed
 }
 
 /**
@@ -52,6 +60,8 @@ export function reportFullPlayerPosition(positionMs: number): void {
 export async function closeFullPlayerAndLeave(opts?: {
     positionMs?: number
     seekTargetMs?: number
+    durationMs?: number
+    listenCompleted?: boolean
     navigate?: boolean
 }): Promise<void> {
     if (closeInFlight) {
@@ -73,15 +83,32 @@ export async function closeFullPlayerAndLeave(opts?: {
         const trackId =
             store.fullPlayerTrackId ??
             store.musicRoomPlaylist?.[store.musicRoomIndex]?.audioId
-        await saveAudioBookmark(trackId, pos)
+        const cached =
+            trackId != null
+                ? (useEmbodimentDurationCacheStore.getState().getDuration(
+                      trackId,
+                  ) ?? 0)
+                : 0
+        const catalog = store.metadata?.durationMs ?? 0
+        const duration = sliderDurationMs(
+            Math.max(opts?.durationMs ?? 0, cached),
+            catalog,
+        )
+        const listenCompleted =
+            opts?.listenCompleted === true || latestFullPlayerListenCompleted
+        await persistResumeBookmark(trackId, pos, duration, {
+            listenCompleted,
+        })
         queueBridgeCueIfNeeded({
             isIntroAudio: store.prefs?.isIntroAudio === true,
             audioId: trackId,
-            positionMs: pos,
-            durationMs: store.metadata?.durationMs ?? 0,
+            positionMs:
+                listenCompleted && duration > 0 ? duration : pos,
+            durationMs: duration > 0 ? duration : catalog,
             returnPath,
         })
         latestFullPlayerPositionMs = 0
+        latestFullPlayerListenCompleted = false
         clearVaultAutoPlayback(trackId ?? undefined)
         await silenceAllAudio()
         useCurrentAudioStore.getState().reset()

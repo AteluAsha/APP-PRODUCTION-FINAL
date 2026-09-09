@@ -123,16 +123,20 @@ export const useFirstLaunchStore = create<FirstLaunchState>()(
         hasSeenCrownReminderNotice: state.hasSeenCrownReminderNotice,
         bridgeCueOfferedDays: state.bridgeCueOfferedDays,
       }),
-      merge: (persisted, current) => ({
-        ...current,
-        ...(persisted as object),
-        groundedChakraDays: [],
-        pendingWeek1JourneyNotice: false,
-        pendingCrownReminderNotice: false,
-        bridgeCueOfferedDays:
-          (persisted as { bridgeCueOfferedDays?: number[] })
-            .bridgeCueOfferedDays ?? [],
-      }),
+      merge: (persisted, current) => {
+        const saved =
+          persisted && typeof persisted === "object"
+            ? (persisted as Partial<FirstLaunchState>)
+            : {}
+        return {
+          ...current,
+          ...saved,
+          groundedChakraDays: [],
+          pendingWeek1JourneyNotice: false,
+          pendingCrownReminderNotice: false,
+          bridgeCueOfferedDays: saved.bridgeCueOfferedDays ?? [],
+        }
+      },
       onRehydrateStorage: () => () => {
         useStoreRehydration.getState().setFirstLaunchRehydrated()
         useFirstLaunchStore.setState({ groundedChakraDays: [] })

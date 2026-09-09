@@ -1,4 +1,5 @@
 import { ActionBar } from "@/components/ActionBar"
+import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
 import { MusicRoomTrackButton } from "@/components/chakras/MusicRoomTrackButton"
 import { SoundBathClosingSection } from "@/components/chakras/SoundBathClosingSection"
 import { SanctuaryFieldLayer } from "@/components/chakras/SanctuaryFieldLayer"
@@ -528,4 +529,10 @@ const SoundBath = () => {
   )
 }
 
-export default SoundBath
+export default function SoundBathScreen() {
+  return (
+    <ScreenCrashBoundary>
+      <SoundBath />
+    </ScreenCrashBoundary>
+  )
+}

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { isPlaybackComplete } from "@/src/utils/playerControls"
 
 /**
  * Full-player bookmark key (must match AudioPlayer.closePlayerAndNavigate and entry points).
@@ -65,4 +66,25 @@ export async function clearAudioBookmark(
   } catch {
     // ignore
   }
+}
+
+/**
+ * Save an in-progress place, or clear so the next open starts at 0.
+ * A finished listen must not be stored as a resume point.
+ */
+export async function persistResumeBookmark(
+  trackId: string | null | undefined,
+  positionMs: number,
+  durationMs: number,
+  opts?: { listenCompleted?: boolean },
+): Promise<void> {
+  if (!trackId || trackId.length === 0) return
+  if (
+    opts?.listenCompleted === true ||
+    isPlaybackComplete(positionMs, durationMs)
+  ) {
+    await clearAudioBookmark(trackId)
+    return
+  }
+  await saveAudioBookmark(trackId, positionMs)
 }

@@ -46,6 +46,7 @@ describe("end of day presence and goodbye", () => {
         expect(src).toContain("SanctuaryFieldLayer")
         expect(src).toContain("fadeOutAndComplete")
         expect(src).toContain("schedule(finish, 1100)")
+        expect(src).not.toContain("runOnJS(finish)")
         expect(src).toContain("timeoutsRef.current.forEach(clearTimeout)")
         const goodbye = fs.readFileSync(
             path.join(__dirname, "..", "components/chakras/GoodbyeModal.tsx"),

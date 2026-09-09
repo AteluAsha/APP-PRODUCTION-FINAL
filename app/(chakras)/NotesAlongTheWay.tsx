@@ -30,6 +30,7 @@ import { SCROLL_BREATHING_BOTTOM_PADDING, SCROLL_ANDROID_SMOOTH_PROPS } from "@/
 import { useAnuaChatStore } from "@/hooks/useAnuaChatStore"
 import { ANUA_CHAT_ENABLED } from "@/constants/anuaAccess"
 import { ActionBar } from "@/components/ActionBar"
+import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
 import { getDayName, getChakraName } from "@/constants/chakras/chakraConstants"
 import { getCurrentDayOfWeek } from "@/utils/date"
 import { ChakraDaySelector } from "@/components/chakras/ChakraDaySelector"
@@ -66,7 +67,7 @@ const formatDate = (dateString: string): string => {
   }
 }
 
-export default function NotesAlongTheWay() {
+function NotesAlongTheWay() {
   const router = useRouter()
   const params = useLocalSearchParams<{ contextDay?: string }>()
   const { getAllNotes, getNotesCount, addNote } = useJourneyNotesStore()
@@ -533,6 +534,14 @@ export default function NotesAlongTheWay() {
         ) : null}
       </Modal>
     </SafeAreaView>
+  )
+}
+
+export default function NotesAlongTheWayScreen() {
+  return (
+    <ScreenCrashBoundary>
+      <NotesAlongTheWay />
+    </ScreenCrashBoundary>
   )
 }
 

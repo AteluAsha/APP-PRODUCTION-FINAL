@@ -3,7 +3,6 @@ import { View, Platform } from "react-native"
 import { Stack } from "expo-router"
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
 import { SafeAreaProvider } from "react-native-safe-area-context"
-import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
 import {
   SOMATIC_HOME_STACK_FADE_MS,
   SOMATIC_SCREEN_TRANSITION_MS,
@@ -34,10 +33,9 @@ const somaticFadeOptions = {
 const ChakrasLayout = () => {
   return (
     <SafeAreaProvider>
-      <ScreenCrashBoundary>
-        <View style={{ flex: 1, backgroundColor: "#000000" }} pointerEvents="box-none">
-          <BottomSheetModalProvider>
-            <Stack
+      <View style={{ flex: 1, backgroundColor: "#000000" }} pointerEvents="box-none">
+        <BottomSheetModalProvider>
+          <Stack
             screenOptions={{
               headerShown: false,
               animation: "fade",
@@ -114,7 +112,6 @@ const ChakrasLayout = () => {
           </Stack>
         </BottomSheetModalProvider>
       </View>
-      </ScreenCrashBoundary>
     </SafeAreaProvider>
   )
 }

@@ -1,4 +1,5 @@
 import { router, type Router } from 'expo-router'
+import { InteractionManager } from 'react-native'
 import { useFirstLaunchStore } from '@/hooks/useFirstLaunchStore'
 import { chakraDayRoute, nextChakraOpenPath } from '@/utils/chakraDayRoute'
 
@@ -10,5 +11,8 @@ export function openChakraDay(day: number, nav: Router = router): void {
 
 export function enterChakraDayAfterPresence(day: number, nav: Router = router): void {
     useFirstLaunchStore.getState().markChakraGrounded(day)
-    nav.replace(chakraDayRoute(day) as never)
+    const path = chakraDayRoute(day)
+    InteractionManager.runAfterInteractions(() => {
+        nav.replace(path as never)
+    })
 }

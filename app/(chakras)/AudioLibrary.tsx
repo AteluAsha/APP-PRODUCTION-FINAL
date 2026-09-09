@@ -13,6 +13,7 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { ActionBar } from "@/components/ActionBar"
+import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
 import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
 import { Chakra } from "@/types/chakras/Chakra"
@@ -654,4 +655,10 @@ const AudioLibrary = () => {
   )
 }
 
-export default AudioLibrary
+export default function AudioLibraryScreen() {
+  return (
+    <ScreenCrashBoundary>
+      <AudioLibrary />
+    </ScreenCrashBoundary>
+  )
+}

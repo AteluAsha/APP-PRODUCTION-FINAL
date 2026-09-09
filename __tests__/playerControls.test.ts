@@ -4,6 +4,7 @@ import {
     clampSeekMs,
     commitPlaybackDurationMs,
     isPlaybackPositionRegression,
+    isPlaybackComplete,
     preferLongerDurationMs,
     resolvePlaybackDurationMs,
     resumePositionMs,
@@ -87,6 +88,16 @@ describe("player seek / duration", () => {
         expect(resumePositionMs(120_000, 549_000)).toBe(120_000)
         expect(resumePositionMs(500_000, 549_000)).toBe(500_000)
         expect(resumePositionMs(undefined, 549_000)).toBe(0)
+        expect(isPlaybackComplete(549_000, 549_000)).toBe(true)
+        expect(isPlaybackComplete(500_000, 549_000)).toBe(false)
+    })
+
+    it("restarts a finished remaster and keeps a mid-remaster place", () => {
+        expect(resumePositionMs(960_000, 720_000, 960_000)).toBe(0)
+        expect(resumePositionMs(800_000, 720_000, 960_000)).toBe(800_000)
+        expect(isPlaybackComplete(960_000, 960_000)).toBe(true)
+        expect(isPlaybackComplete(800_000, 960_000)).toBe(false)
+        expect(isPlaybackComplete(960_000, 720_000)).toBe(false)
     })
 
     it("holds the slider on the jump if native reports 0 after the seek window", () => {

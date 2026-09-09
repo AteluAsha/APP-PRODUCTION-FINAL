@@ -11,7 +11,6 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withRepeat,
-  runOnJS,
   Easing,
   cancelAnimation,
 } from "react-native-reanimated"
@@ -46,6 +45,7 @@ export function AnimatedSplashScreen({
   const scale = useSharedValue(1)
   const completedRef = useRef(false)
   const fadeOutStartedRef = useRef(false)
+  const fadeSafetyRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nativeHiddenRef = useRef(false)
   const pulseStartedRef = useRef(false)
 
@@ -105,6 +105,10 @@ export function AnimatedSplashScreen({
       const finish = () => {
         if (completedRef.current) return
         completedRef.current = true
+        if (fadeSafetyRef.current) {
+          clearTimeout(fadeSafetyRef.current)
+          fadeSafetyRef.current = null
+        }
         onFadeOutComplete()
         useSplashOverlayStore.getState().setSplashOverlayActive(false)
         useSplashOverlayStore.getState().setJsSplashFadeComplete(true)
@@ -112,20 +116,23 @@ export function AnimatedSplashScreen({
 
       cancelAnimation(scale)
       scale.value = withTiming(1, { duration: 280 })
-      opacity.value = withTiming(
-        0,
-        {
-          duration: FADE_OUT_MS,
-          easing: Easing.in(Easing.ease),
-        },
-        (finished) => {
-          if (finished) runOnJS(finish)()
-        },
-      )
+      opacity.value = withTiming(0, {
+        duration: FADE_OUT_MS,
+        easing: Easing.in(Easing.ease),
+      })
+      // JS timer only — completing from the UI thread can crash the
+      // opening overlay on Android (same class as I Am Present).
+      fadeSafetyRef.current = setTimeout(finish, FADE_OUT_MS + 80)
     }
 
     const hold = setTimeout(startFade, SPLASH_BREATH_HOLD_BEFORE_FADE_MS)
-    return () => clearTimeout(hold)
+    return () => {
+      clearTimeout(hold)
+      if (fadeSafetyRef.current) {
+        clearTimeout(fadeSafetyRef.current)
+        fadeSafetyRef.current = null
+      }
+    }
   }, [loadingComplete, opacity, scale, onFadeOutComplete])
 
   useEffect(() => {

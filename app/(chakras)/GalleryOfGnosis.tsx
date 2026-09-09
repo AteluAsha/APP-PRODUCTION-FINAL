@@ -3,6 +3,7 @@ import { View, ScrollView, Dimensions } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { ActionBar } from "@/components/ActionBar"
+import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
 import { AppText } from "@/components/AppText"
 import { ChakraCard } from "@/components/chakras/GalleryOfGnosis/ChakraCard"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
@@ -37,7 +38,7 @@ const CHAKRA_ORDER: Chakra[] = [
   Chakra.CROWN,
 ]
 
-export default function GalleryOfGnosis() {
+function GalleryOfGnosis() {
   const router = useRouter()
   const { chakra: chakraParam } = useLocalSearchParams<{
     chakra?: string | string[]
@@ -276,5 +277,13 @@ export default function GalleryOfGnosis() {
         </View>
       </View>
     </SafeAreaView>
+  )
+}
+
+export default function GalleryOfGnosisScreen() {
+  return (
+    <ScreenCrashBoundary>
+      <GalleryOfGnosis />
+    </ScreenCrashBoundary>
   )
 }

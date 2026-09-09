@@ -20,7 +20,7 @@ describe('close AudioPlayer stops all healing audio', () => {
         expect(src).toContain('if (closeInFlight)')
         expect(src).toContain('await closeInFlight')
         expect(src).toContain('await silenceAllAudio()')
-        expect(src).toContain('saveAudioBookmark')
+        expect(src).toContain('persistResumeBookmark')
         expect(src).not.toContain('if (fullPlayerClosing) return')
     })
 

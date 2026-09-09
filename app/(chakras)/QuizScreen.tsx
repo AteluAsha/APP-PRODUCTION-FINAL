@@ -41,6 +41,7 @@ import {
 } from "@/constants/layout"
 import { getLocalDateISO } from "@/utils/date"
 import { goToChakraHubRoot } from "@/utils/navigationHelpers"
+import { ScreenCrashBoundary } from "@/components/ScreenCrashBoundary"
 
 // Import quiz data
 const quizData = require("@/assets/data/ChakraQuizzes/chakra_quizzes.json")
@@ -175,7 +176,7 @@ interface QuizData {
   questions: QuizQuestion[]
 }
 
-export default function QuizScreen() {
+function QuizScreen() {
   const { day } = useLocalSearchParams<{ day: string }>()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -954,5 +955,13 @@ export default function QuizScreen() {
       </SafeAreaView>
       <QuizNavChrome onBack={handleBackToDay} onHome={handleGoToHome} />
     </View>
+  )
+}
+
+export default function QuizScreenRoute() {
+  return (
+    <ScreenCrashBoundary>
+      <QuizScreen />
+    </ScreenCrashBoundary>
   )
 }

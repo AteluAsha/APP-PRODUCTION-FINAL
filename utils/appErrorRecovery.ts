@@ -45,6 +45,16 @@ function isSafeRecoveryRoute(path: string | null | undefined): path is string {
     )
 }
 
+/**
+ * Screen-boundary recovery. Never return the screen that just threw
+ * (course day, presence, notes). Hub or Audio Library only.
+ */
+export function getScreenCrashRecoveryRoute(): string {
+    const suggested = getSafeRecoveryRoute()
+    if (suggested.includes('AudioLibrary')) return AUDIO_LIBRARY
+    return CHAKRA_HUB
+}
+
 /** Pick course day, Audio Library, or ChakraHub — never AudioPlayer or retired trial home. */
 export function getSafeRecoveryRoute(): string {
     if (pinnedRecoveryRoute && isSafeRecoveryRoute(pinnedRecoveryRoute)) {

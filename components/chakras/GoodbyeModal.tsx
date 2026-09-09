@@ -42,7 +42,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { getGoodbyeField } from "@/constants/sanctuaryFields"
 import { mantraForDay } from "@/constants/endOfDayPresenceCopy"
 import { silenceAllAudio } from "@/src/utils/singleActiveSound"
-import { saveAudioBookmark } from "@/utils/audioBookmark"
+import { persistResumeBookmark } from "@/utils/audioBookmark"
+import { sliderDurationMs } from "@/src/utils/playerControls"
+import { useEmbodimentDurationCacheStore } from "@/hooks/useEmbodimentDurationCacheStore"
 import { registerAndroidHardwareBackOverride } from "@/utils/androidBackCleanup"
 import {
   formatHeroAffirmationText,
@@ -164,7 +166,17 @@ const GoodbyeModal = ({
       easing: Easing.out(Easing.ease),
     })
     const audio = useCurrentAudioStore.getState()
-    void saveAudioBookmark(audio.fullPlayerTrackId, audio.positionMs)
+    const cached =
+      audio.fullPlayerTrackId != null
+        ? (useEmbodimentDurationCacheStore
+            .getState()
+            .getDuration(audio.fullPlayerTrackId) ?? 0)
+        : 0
+    void persistResumeBookmark(
+      audio.fullPlayerTrackId,
+      audio.positionMs,
+      sliderDurationMs(cached, audio.metadata?.durationMs ?? 0),
+    )
     void silenceAllAudio().then(() => {
       useCurrentAudioStore.getState().reset()
     })

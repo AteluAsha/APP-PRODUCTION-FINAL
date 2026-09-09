@@ -1,5 +1,6 @@
 /**
- * Per-screen error boundary — catches crashes without unmounting the navigator.
+ * Per-screen error boundary — wrap the screen that can throw, never the Stack.
+ * Unmounting the navigator on catch bricks Sanctuary until a process kill.
  * Triggers the global recovery overlay; renders a black placeholder locally.
  */
 
@@ -7,7 +8,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { View } from 'react-native'
 import { captureException } from '@/src/services/sentry'
 import { useAppCrashStore } from '@/hooks/useAppCrashStore'
-import { getSafeRecoveryRoute } from '@/utils/appErrorRecovery'
+import { getScreenCrashRecoveryRoute } from '@/utils/appErrorRecovery'
 
 interface Props {
     children: ReactNode
@@ -30,7 +31,7 @@ class ScreenCrashBoundaryInner extends Component<Props, State> {
             errorBoundary: true,
             screenCrashBoundary: true,
         })
-        useAppCrashStore.getState().show(getSafeRecoveryRoute())
+        useAppCrashStore.getState().show(getScreenCrashRecoveryRoute())
         if (__DEV__) {
             console.error('ScreenCrashBoundary caught an error:', error, errorInfo)
         }

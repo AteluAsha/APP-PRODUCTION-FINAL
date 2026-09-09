@@ -95,8 +95,8 @@ export function DayPresenceScreen({
             duration: 1100,
             easing: Easing.out(Easing.ease),
         })
-        const beat = beats[phase]
-        if (phase >= lastIndex) {
+        const beat = beats[phase] ?? beats[0]
+        if (!beat || phase >= lastIndex) {
             const t = setTimeout(showButton, 1100)
             return () => clearTimeout(t)
         }
@@ -125,17 +125,17 @@ export function DayPresenceScreen({
         if (leavingRef.current) return
         leavingRef.current = true
         addHapticFeedback(HapticStrength.Medium)
-        screenOpacity.value = withTiming(
-            0,
-            { duration: 900, easing: Easing.inOut(Easing.ease) },
-            (finished) => {
-                if (finished) runOnJS(present)()
-            },
-        )
-        setTimeout(() => present(), 1100)
+        screenOpacity.value = withTiming(0, {
+            duration: 900,
+            easing: Easing.inOut(Easing.ease),
+        })
+        // Navigate from the JS timer only — runOnJS from the animation
+        // completion runs on the UI thread and can crash the course-day
+        // mount on Android (same overlay as a hub-ball open).
+        setTimeout(() => present(), 920)
     }, [present, screenOpacity])
 
-    const beat = beats[phase]
+    const beat = beats[phase] ?? beats[0]
 
     return (
         <Animated.View style={[styles.root, screenStyle]}>
