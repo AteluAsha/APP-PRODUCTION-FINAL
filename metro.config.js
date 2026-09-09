@@ -26,11 +26,11 @@ config.resolver = {
 }
 
 config.resetCache = true
-config.cacheVersion = "soul-school-1.2.6-46-crash-recovery"
+config.cacheVersion = "soul-school-1.2.7-47-alignment-gallery"
 
 const withCss = withNativeWind(config, { input: "./globals.css" })
 withCss.resetCache = true
-withCss.cacheVersion = "soul-school-1.2.6-46-crash-recovery"
+withCss.cacheVersion = "soul-school-1.2.7-47-alignment-gallery"
 if (withCss.transformer) {
   withCss.transformer.asyncRequireModulePath = asyncRequireModulePath
 }
