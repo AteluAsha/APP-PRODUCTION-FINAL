@@ -117,8 +117,8 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
-      // User-facing 1.2.7. Production AAB versionCode 47 (appVersionSource: local).
-      versionCode: 47,
+      // User-facing 1.2.7. Production AAB versionCode 48 (Play already used 47).
+      versionCode: 48,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
         "RECORD_AUDIO",

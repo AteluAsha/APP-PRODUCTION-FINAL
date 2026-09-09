@@ -1,11 +1,11 @@
-# Android release position — 1.2.7 (47)
+# Android release position — 1.2.7 (48)
 
 **Saved:** 2026-09-09  
-**Status:** SUPERSEDED — Play rejected upload: version code 47 already used. Ship **1.2.7 / 48**.
+**Status:** READY — local Play AAB
 
-Marketing **1.2.7**. Native **versionCode 47** was consumed. Do not reuse 47.
+Marketing **1.2.7**. Native **versionCode 48**. Play already used **47**. Do not reuse 47.
 
-Same product as iOS config 1.2.7 (49). Do not submit this AAB as 1.2.6.
+Same product as iOS config 1.2.7 (49). Do not submit this AAB as 1.2.6 or 47.
 
 ---
 
@@ -29,10 +29,10 @@ If anything feels unsettled after this update, uninstall and reinstall from the 
 
 ## After this build
 
-Artifact: `build-artifacts/SoulSchool-1.2.7-47.aab`
+Artifact: `build-artifacts/SoulSchool-1.2.7-48.aab`
 
 ```bash
-eas build -p android --profile production-local --local --non-interactive --output build-artifacts/SoulSchool-1.2.7-47.aab --message "release(android): 1.2.7 (47) — course days open, Alignment gallery"
+eas build -p android --profile production-local --local --non-interactive --output build-artifacts/SoulSchool-1.2.7-48.aab --message "release(android): 1.2.7 (48) — course days open, Alignment gallery"
 ```
 
-Upload **this** file. Do not submit until versionName is 1.2.7 and versionCode is 47.
+Upload **this** file. versionName 1.2.7, versionCode 48.
