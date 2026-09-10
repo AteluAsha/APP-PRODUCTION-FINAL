@@ -82,8 +82,8 @@ module.exports = {
         AppStoreID: "6760920862",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // iOS 1.2.7 (49): App Store ship — Alignment gallery, embodiment close.
-      buildNumber: "49",
+      // iOS 1.2.8 (50): App Store ship — crystal bowl first-download play.
+      buildNumber: "50",
       privacyManifests: {
         NSPrivacyTracking: false,
         NSPrivacyCollectedDataTypes: [
