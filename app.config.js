@@ -34,7 +34,7 @@ module.exports = {
     // Android app_name via withLauncherDisplayName — both "Awakening Soul".
     name: "Awakening Soul",
     slug: "soul-school",
-    version: "1.2.7",
+    version: "1.2.8",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
     // Native shield: golden "7" load art (small, centered). JS splash uses SoulSchool_HERO_Logo. Run prebuild --clean after change.
@@ -117,7 +117,7 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
-      // User-facing 1.2.7. Production AAB versionCode 49 (Play already used 48).
+      // User-facing 1.2.8. Production AAB versionCode 49 (Play already used 48).
       versionCode: 49,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [

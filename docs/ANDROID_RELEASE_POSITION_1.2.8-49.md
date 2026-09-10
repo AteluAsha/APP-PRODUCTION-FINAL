@@ -1,9 +1,11 @@
-# Android release position — 1.2.7 (49)
+# Android release position — 1.2.8 (49)
 
 **Saved:** 2026-09-10  
-**Status:** SUPERSEDED — Play cut is **1.2.8 / 49**.
+**Status:** READY — local Play AAB
 
-Marketing **1.2.7** was wrong for this AAB. Do not upload a 1.2.7 (49) file.
+Marketing **1.2.8**. Native **versionCode 49**. Play already used **48**. Do not reuse 48.
+
+iOS App Store train remains **1.2.7 (49)** until a new iOS cut. Do not submit this AAB as 1.2.7.
 
 ---
 
@@ -28,10 +30,10 @@ If anything feels unsettled after this update, uninstall and reinstall from the 
 
 ## After this build
 
-Artifact: `build-artifacts/SoulSchool-1.2.7-49.aab`
+Artifact: `build-artifacts/SoulSchool-1.2.8-49.aab`
 
 ```bash
-eas build -p android --profile production-local --local --non-interactive --output build-artifacts/SoulSchool-1.2.7-49.aab --message "release(android): 1.2.7 (49) — gallery card, goodbye, embodiment gate"
+eas build -p android --profile production-local --local --non-interactive --output build-artifacts/SoulSchool-1.2.8-49.aab --message "release(android): 1.2.8 (49) — gallery card, goodbye, embodiment gate"
 ```
 
-Upload **this** file. versionName 1.2.7, versionCode 49.
+Upload **this** file. versionName 1.2.8, versionCode 49.
