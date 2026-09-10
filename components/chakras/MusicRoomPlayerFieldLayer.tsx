@@ -50,9 +50,9 @@ function LightSwirl({
             false,
         )
         pulse.value = withRepeat(
-            withTiming(1.08, {
-                duration: duration * 0.22,
-                easing: Easing.inOut(Easing.ease),
+            withTiming(1.035, {
+                duration: Math.max(duration * 0.5, 18000),
+                easing: Easing.inOut(Easing.quad),
             }),
             -1,
             true,

@@ -509,6 +509,224 @@ async function createExclusiveSoundViaAv(
     return sound
 }
 
+/**
+ * Open a longer local `.part` while the current snapshot is still playing,
+ * then switch. The outgoing player is detached only after the incoming
+ * one is playing at the same place — no stop / silence gap.
+ */
+export async function handoffExclusiveSound(
+    source: AVPlaybackSource,
+    opts: {
+        positionMs: number
+        minDurationMs: number
+        onPlaybackStatusUpdate?: (status: AVPlaybackStatus) => void
+        keepPlayingInBackground?: boolean
+        lockScreen?: HealingLockScreen
+        isLooping?: boolean
+    },
+): Promise<HealingSound | null> {
+    const keepPlayingInBackground = opts.keepPlayingInBackground !== false
+    const expoAudio = getExpoAudio()
+    const outgoingSound = activeSound
+    const outgoingPlayer = activePlayer
+    const updateIntervalMs = 250
+    const uri =
+        typeof source === 'object' && source !== null && 'uri' in source
+            ? String((source as { uri?: string }).uri ?? '')
+            : ''
+
+    let incoming: HealingSound | null = null
+    let incomingPlayer: AudioPlayer | null = null
+
+    if (expoAudio) {
+        try {
+            const player = expoAudio.createAudioPlayer(
+                toAudioSource(source),
+                updateIntervalMs,
+            )
+            incomingPlayer = player
+            player.loop = !!opts.isLooping
+            let statusCallback = opts.onPlaybackStatusUpdate
+            const subscription = player.addListener(
+                'playbackStatusUpdate',
+                (status: AudioStatus) => {
+                    statusCallback?.(toAvStatus(status, uri, updateIntervalMs))
+                },
+            )
+            let released = false
+            incoming = {
+                playAsync: async () => {
+                    if (keepPlayingInBackground) {
+                        await startMeditationPlaybackService(
+                            opts.lockScreen?.title ?? 'Awakening Soul',
+                            opts.lockScreen?.artist,
+                        )
+                    }
+                    player.play()
+                },
+                pauseAsync: async () => {
+                    player.pause()
+                    if (keepPlayingInBackground) {
+                        stopMeditationPlaybackService()
+                    }
+                },
+                stopAsync: async () => {
+                    player.pause()
+                },
+                unloadAsync: async () => {
+                    if (released) return
+                    released = true
+                    try {
+                        subscription.remove()
+                    } catch {
+                        // ignore
+                    }
+                    try {
+                        player.pause()
+                    } catch {
+                        // ignore
+                    }
+                    try {
+                        player.remove()
+                    } catch {
+                        // ignore
+                    }
+                    if (activePlayer === player) activePlayer = null
+                    if (activeSound === incoming) activeSound = null
+                    if (keepPlayingInBackground) {
+                        stopMeditationPlaybackService()
+                    }
+                },
+                setPositionAsync: async (positionMs: number) => {
+                    await player.seekTo(Math.max(0, positionMs) / 1000)
+                },
+                getStatusAsync: async () => {
+                    const current = player.currentStatus
+                    if (!current) return { isLoaded: false }
+                    return toAvStatus(current, uri, updateIntervalMs)
+                },
+                setOnPlaybackStatusUpdate: (cb) => {
+                    statusCallback = cb
+                },
+                setVolumeAsync: async (volume: number) => {
+                    player.volume = volume
+                },
+                setIsLoopingAsync: async (loop: boolean) => {
+                    player.loop = loop
+                },
+                setProgressUpdateIntervalAsync: async () => {},
+            }
+        } catch {
+            incoming = null
+            incomingPlayer = null
+        }
+    }
+
+    if (!incoming) {
+        const { sound: av } = await Audio.Sound.createAsync(
+            source,
+            { shouldPlay: false, isLooping: !!opts.isLooping },
+            opts.onPlaybackStatusUpdate,
+        )
+        incoming = await wrapAvSound(av, {
+            keepPlayingInBackground,
+            lockScreen: opts.lockScreen,
+        })
+    }
+
+    const deadline = Date.now() + 2500
+    let incomingDuration = 0
+    while (Date.now() < deadline) {
+        try {
+            const st = await incoming.getStatusAsync()
+            if (st.isLoaded) {
+                incomingDuration = st.durationMillis ?? 0
+                if (incomingDuration >= opts.minDurationMs) break
+            }
+        } catch {
+            incomingDuration = 0
+            break
+        }
+        await sleep(50)
+    }
+
+    if (incomingDuration < opts.minDurationMs) {
+        try {
+            incomingPlayer?.pause()
+            incomingPlayer?.remove()
+        } catch {
+            // ignore
+        }
+        if (!incomingPlayer) {
+            try {
+                await incoming.unloadAsync()
+            } catch {
+                // ignore
+            }
+            if (keepPlayingInBackground && outgoingSound) {
+                await startMeditationPlaybackService(
+                    opts.lockScreen?.title ?? 'Awakening Soul',
+                    opts.lockScreen?.artist,
+                )
+            }
+        }
+        return null
+    }
+
+    try {
+        await incoming.setPositionAsync(opts.positionMs)
+        await sleep(80)
+        await incoming.playAsync()
+    } catch {
+        try {
+            incomingPlayer?.pause()
+            incomingPlayer?.remove()
+        } catch {
+            // ignore
+        }
+        if (!incomingPlayer) {
+            try {
+                await incoming.unloadAsync()
+            } catch {
+                // ignore
+            }
+            if (keepPlayingInBackground && outgoingSound) {
+                await startMeditationPlaybackService(
+                    opts.lockScreen?.title ?? 'Awakening Soul',
+                    opts.lockScreen?.artist,
+                )
+            }
+        }
+        return null
+    }
+
+    activeSound = incoming
+    activePlayer = incomingPlayer
+
+    try {
+        outgoingPlayer?.pause()
+        outgoingPlayer?.remove()
+    } catch {
+        // ignore
+    }
+    if (!outgoingPlayer && outgoingSound && outgoingSound !== incoming) {
+        try {
+            await outgoingSound.stopAsync()
+            await outgoingSound.unloadAsync()
+        } catch {
+            // ignore
+        }
+        if (keepPlayingInBackground) {
+            await startMeditationPlaybackService(
+                opts.lockScreen?.title ?? 'Awakening Soul',
+                opts.lockScreen?.artist,
+            )
+        }
+    }
+
+    return incoming
+}
+
 export function isActiveSound(sound: HealingSound | null | undefined): boolean {
     return !!sound && sound === activeSound
 }

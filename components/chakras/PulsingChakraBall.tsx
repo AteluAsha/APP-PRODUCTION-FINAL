@@ -1,15 +1,16 @@
 /**
  * PulsingChakraBall
  *
- * Non-pressable chakra ball for the AudioPlayer. Gentle, slow pulse with opacity fade.
- * Matches the trial home screen chakra ball style but with slower animation for healing/meditation context.
- * When embodimentPulse is true (master embodiment playing): very slow scale pulse 70% larger (1 → 1.7), soft loop.
+ * Non-pressable chakra ball for the AudioPlayer. Slow scale pulse only — no opacity flicker.
+ * When embodimentPulse is true (Master Meditation or crystal bowl playing):
+ * very slow scale pulse 70% larger (1 → 1.7), no opacity flicker.
  */
 
 import React, { useEffect } from "react"
 import { View, ImageSourcePropType, StyleSheet, Platform } from "react-native"
 import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import Animated, {
+  cancelAnimation,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -18,13 +19,13 @@ import Animated, {
 } from "react-native-reanimated"
 
 const SIZE = 130
-const PULSE_DURATION = 4800
-const EASE = Easing.inOut(Easing.sin)
+const GENTLE_PULSE_DURATION = 14000
+const EASE = Easing.inOut(Easing.quad)
 
-/** Master embodiment: pulse up to 70% larger (scale 1.7), very slow, soft loop. iOS: 20% smaller at peak (1.36) for full audio player. */
+/** Master + crystal bowl: pulse up to 70% larger (scale 1.7), very slow, soft loop. iOS: 20% smaller at peak (1.36). */
 const EMBODIMENT_PULSE_SCALE_MAX = 1.7
-const EMBODIMENT_PULSE_SCALE_MAX_IOS = 1.36 // 20% smaller at peak for all days
-const EMBODIMENT_PULSE_HALF_DURATION_MS = 22000
+const EMBODIMENT_PULSE_SCALE_MAX_IOS = 1.36
+const EMBODIMENT_PULSE_HALF_DURATION_MS = 26000
 /** In-flow well so the pulse cannot grow over the title. */
 const PULSE_WELL = Math.ceil(SIZE * EMBODIMENT_PULSE_SCALE_MAX)
 
@@ -39,14 +40,17 @@ export const PulsingChakraBall = ({
   embodimentPulse = false,
 }: PulsingChakraBallProps) => {
   const scale = useSharedValue(1)
-  const opacity = useSharedValue(0.7)
+  const opacity = useSharedValue(1)
 
   useEffect(() => {
+    cancelAnimation(scale)
+    cancelAnimation(opacity)
     if (embodimentPulse) {
       const scaleMax =
         Platform.OS === "ios"
           ? EMBODIMENT_PULSE_SCALE_MAX_IOS
           : EMBODIMENT_PULSE_SCALE_MAX
+      opacity.value = withTiming(1, { duration: 800, easing: EASE })
       scale.value = withRepeat(
         withTiming(scaleMax, {
           duration: EMBODIMENT_PULSE_HALF_DURATION_MS,
@@ -55,15 +59,13 @@ export const PulsingChakraBall = ({
         -1,
         true,
       )
-      opacity.value = 1
     } else {
+      opacity.value = withTiming(1, { duration: 800, easing: EASE })
       scale.value = withRepeat(
-        withTiming(1.06, { duration: PULSE_DURATION, easing: EASE }),
-        -1,
-        true,
-      )
-      opacity.value = withRepeat(
-        withTiming(1, { duration: PULSE_DURATION, easing: EASE }),
+        withTiming(1.08, {
+          duration: GENTLE_PULSE_DURATION,
+          easing: EASE,
+        }),
         -1,
         true,
       )

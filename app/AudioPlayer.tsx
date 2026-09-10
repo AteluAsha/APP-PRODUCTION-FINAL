@@ -19,6 +19,7 @@ import {
   AVPlaybackStatus,
   AVPlaybackSource,
 } from "expo-av"
+import * as FileSystem from "expo-file-system"
 import { useRouter } from "expo-router"
 import { useFocusEffect, useNavigation } from "@react-navigation/native"
 import { useChakraJourneyStore } from "@/hooks/useChakraJourneyStore"
@@ -32,6 +33,7 @@ import { PulsingChakraBall } from "@/components/chakras/PulsingChakraBall"
 import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import { VaultFirstLoadPanel } from "@/components/chakras/VaultFirstLoadPanel"
 import { HeadsetListenReminder } from "@/components/audio/HeadsetListenReminder"
+import { PlayerVaultSaveCue } from "@/components/audio/PlayerVaultSaveCue"
 import { NotesLeafButton } from "@/components/notes/NotesLeafButton"
 import {
   getChakraImage,
@@ -82,7 +84,12 @@ import {
   shouldTrustNativeDuration,
   sliderDurationMs,
 } from "@/src/utils/playerControls"
-import { silenceAllAudio, configureHealingAudioMode, type HealingSound } from "@/src/utils/singleActiveSound"
+import {
+  silenceAllAudio,
+  configureHealingAudioMode,
+  handoffExclusiveSound,
+  type HealingSound,
+} from "@/src/utils/singleActiveSound"
 import {
   closeFullPlayerAndLeave,
   isClosingFullPlayer,
@@ -96,7 +103,11 @@ import { MusicRoomPlayerFieldLayer } from "@/components/chakras/MusicRoomPlayerF
 import type { MusicRoomTrackKind } from "@/constants/musicRoomLibrary"
 import { getSanctuarySoundField } from "@/utils/ashaPlayerField"
 import {
+  growingPartHandoffMinDurationMs,
+  growingPartHasEnoughNewBytes,
+  isGrowingVaultPartUri,
   isLibrarySingleTrack,
+  shouldReloadGrowingVaultPart,
   shouldTreatAsTrackEnd,
 } from "@/utils/audioPlayMode"
 import {
@@ -105,12 +116,27 @@ import {
 } from "@/utils/musicRoomPlayback"
 
 const FALLBACK_DAY_INDEX = 5 // Third Eye
+const GROWING_PART_RELOAD_DEBOUNCE_MS = 4000
+
+async function vaultPartFileBytes(uri: string): Promise<number> {
+  if (!isGrowingVaultPartUri(uri)) return 0
+  try {
+    const info = await FileSystem.getInfoAsync(toAbsoluteFileUri(uri))
+    if (info.exists && "size" in info && typeof info.size === "number") {
+      return info.size
+    }
+  } catch {
+    // best-effort — store progress is the fallback
+  }
+  return 0
+}
 
 function PlayerTrackFace({
   dayIndex,
   title,
   author,
   isLoading,
+  audioId,
   embodimentPulse,
   animatedStyle,
 }: {
@@ -118,6 +144,7 @@ function PlayerTrackFace({
   title: string
   author?: string
   isLoading: boolean
+  audioId?: string | null
   embodimentPulse: boolean
   animatedStyle: object
 }) {
@@ -184,6 +211,7 @@ function PlayerTrackFace({
           Preparing audio…
         </AppText>
       ) : null}
+      <PlayerVaultSaveCue audioId={audioId} visible />
     </Animated.View>
   )
 }
@@ -356,6 +384,11 @@ const AudioPlayer = () => {
   const seekingUntilRef = useRef(0)
   const seekTargetMsRef = useRef(0)
   const fileDurationMsRef = useRef(0)
+  const lastLoadedPartBytesRef = useRef(0)
+  const growingPartNeedsResumeRef = useRef(false)
+  const growingPartReloadingRef = useRef(false)
+  const growingPartReloadAtRef = useRef(0)
+  const tryReloadGrowingVaultPartRef = useRef<() => void>(() => {})
 
   const resolveActivePlaybackDurationMs = useCallback(
     (opts?: { bookmarkMs?: number; positionMs?: number }) => {
@@ -508,7 +541,7 @@ const AudioPlayer = () => {
     fullPlayerTrackId ? s.readyIds[fullPlayerTrackId] === true : false,
   )
 
-  // When download completes, swap `.part` → final file only while paused (avoids mid-play re-init crash).
+  // Finished vault file: leave the growing-`.part` path. Paused swap is safe via setSource.
   useEffect(() => {
     if (!fullPlayerTrackId || !vaultTrackComplete || !source) return
     if (isPlaying || isLoading) return
@@ -689,9 +722,25 @@ const AudioPlayer = () => {
           seekingUntilRef.current = 0
         }
 
-        if (status.didJustFinish && !finishedThisListen) {
+        const sourceUri =
+          typeof live.source === "object" &&
+          live.source != null &&
+          "uri" in live.source
+            ? String((live.source as { uri?: string }).uri ?? "")
+            : ""
+        if (
+          shouldReloadGrowingVaultPart({
+            vaultReady,
+            sourceUri,
+            didJustFinish: status.didJustFinish,
+            isPlaying: playing,
+            positionMs: status.positionMillis,
+            nativeDurationMs: fileMs,
+          })
+        ) {
+          growingPartNeedsResumeRef.current = true
           if (endedId) rushSanctuaryTrack(endedId)
-          setIsLoading(true)
+          tryReloadGrowingVaultPartRef.current()
         }
 
         if (finishedThisListen) {
@@ -749,8 +798,16 @@ const AudioPlayer = () => {
           return
         }
 
-        lastPlaybackPositionMsRef.current = status.positionMillis
-        reportFullPlayerPosition(status.positionMillis)
+        if (
+          status.didJustFinish &&
+          !vaultReady &&
+          lastPlaybackPositionMsRef.current > status.positionMillis
+        ) {
+          reportFullPlayerPosition(lastPlaybackPositionMsRef.current)
+        } else {
+          lastPlaybackPositionMsRef.current = status.positionMillis
+          reportFullPlayerPosition(status.positionMillis)
+        }
 
         if (!playing) {
           lastPeriodicBookmarkSaveAtRef.current = 0
@@ -943,6 +1000,18 @@ const AudioPlayer = () => {
         return
       }
 
+      if (isGrowingVaultPartUri(uriStr)) {
+        const disk = await vaultPartFileBytes(uriStr)
+        const storeBytes =
+          useSanctuaryVaultStore.getState().progressByAudioId[
+            useCurrentAudioStore.getState().fullPlayerTrackId ?? ""
+          ]?.bytesWritten ?? 0
+        lastLoadedPartBytesRef.current = Math.max(disk, storeBytes)
+      } else {
+        lastLoadedPartBytesRef.current = 0
+        growingPartNeedsResumeRef.current = false
+      }
+
       const progressIntervalMs = isEmulatorOrSimulator()
         ? 1000
         : PROGRESS_UPDATE_INTERVAL_MS
@@ -1085,6 +1154,158 @@ const AudioPlayer = () => {
       initializingTrackRef.current = false
     }
   }, [onPlaybackStatusUpdate, source, prefs, metadata])
+
+  const tryReloadGrowingVaultPart = useCallback(() => {
+    if (growingPartReloadingRef.current) return
+    if (Date.now() - growingPartReloadAtRef.current < GROWING_PART_RELOAD_DEBOUNCE_MS) {
+      return
+    }
+    const live = useCurrentAudioStore.getState()
+    const id = live.fullPlayerTrackId
+    if (!id) return
+    if (useSanctuaryVaultStore.getState().readyIds[id] === true) {
+      growingPartNeedsResumeRef.current = false
+      return
+    }
+    const uri =
+      typeof live.source === "object" &&
+      live.source != null &&
+      "uri" in live.source
+        ? String((live.source as { uri?: string }).uri ?? "")
+        : ""
+    if (!isGrowingVaultPartUri(uri)) return
+
+    growingPartReloadingRef.current = true
+    growingPartReloadAtRef.current = Date.now()
+    const pos = lastPlaybackPositionMsRef.current
+    void (async () => {
+      try {
+        const storeBytes =
+          useSanctuaryVaultStore.getState().progressByAudioId[id]
+            ?.bytesWritten ?? 0
+        const diskBytes = await vaultPartFileBytes(uri)
+        const currentBytes = Math.max(storeBytes, diskBytes)
+        if (
+          !growingPartHasEnoughNewBytes(
+            currentBytes,
+            lastLoadedPartBytesRef.current,
+          )
+        ) {
+          return
+        }
+        const resumeMs = Math.max(pos, lastPlaybackPositionMsRef.current)
+        live.setPositionMs(resumeMs)
+        void persistResumeBookmark(id, resumeMs, live.metadata?.durationMs ?? 0)
+        const next = await handoffExclusiveSound(
+          { uri: toAbsoluteFileUri(uri) },
+          {
+            positionMs: resumeMs,
+            minDurationMs: growingPartHandoffMinDurationMs(resumeMs),
+            onPlaybackStatusUpdate,
+            keepPlayingInBackground: true,
+            isLooping: live.prefs?.shouldLoop === true,
+            lockScreen: {
+              title: live.metadata?.title || "Awakening Soul",
+              artist: live.metadata?.author || "Meditation",
+            },
+          },
+        )
+        if (!next) return
+        trackRef.current = next
+        setTrack(next)
+        lastLoadedPartBytesRef.current = currentBytes
+        growingPartNeedsResumeRef.current = false
+        isLoadedRef.current = true
+        setIsLoading(false)
+        setIsPlaying(true)
+        setPlaying(true)
+      } finally {
+        growingPartReloadingRef.current = false
+      }
+    })()
+  }, [onPlaybackStatusUpdate, setPlaying])
+
+  tryReloadGrowingVaultPartRef.current = tryReloadGrowingVaultPart
+
+  // Download finished while still on a `.part`: hand off to the final local file
+  // at the current place, then this listen is a normal start-to-finish player.
+  useEffect(() => {
+    if (!fullPlayerTrackId || !vaultTrackComplete || !source || !isPlaying) return
+    const uri =
+      typeof source === "object" && source !== null && "uri" in source
+        ? String((source as { uri?: string }).uri ?? "")
+        : ""
+    if (!isGrowingVaultPartUri(uri)) {
+      growingPartNeedsResumeRef.current = false
+      return
+    }
+    if (growingPartReloadingRef.current) return
+    growingPartReloadingRef.current = true
+    const trackId = fullPlayerTrackId
+    const pos = lastPlaybackPositionMsRef.current
+    void (async () => {
+      try {
+        const finalUri = await peekSanctuaryTrack(trackId)
+        if (!finalUri || isGrowingVaultPartUri(finalUri)) return
+        if (useCurrentAudioStore.getState().fullPlayerTrackId !== trackId) return
+        const resumeMs = Math.max(pos, lastPlaybackPositionMsRef.current)
+        const abs = toAbsoluteFileUri(finalUri)
+        const live = useCurrentAudioStore.getState()
+        const next = await handoffExclusiveSound(
+          { uri: abs },
+          {
+            positionMs: resumeMs,
+            minDurationMs: resumeMs + 1000,
+            onPlaybackStatusUpdate,
+            keepPlayingInBackground: true,
+            isLooping: live.prefs?.shouldLoop === true,
+            lockScreen: {
+              title: live.metadata?.title || "Awakening Soul",
+              artist: live.metadata?.author || "Meditation",
+            },
+          },
+        )
+        if (!next) return
+        if (useCurrentAudioStore.getState().fullPlayerTrackId !== trackId) return
+        trackRef.current = next
+        setTrack(next)
+        growingPartNeedsResumeRef.current = false
+        lastLoadedPartBytesRef.current = 0
+        lastSourceSignatureRef.current = getSourceSignature({ uri: abs })
+        if (live.audioOrigin === "music-room") {
+          live.applyMusicRoomTrack(live.musicRoomIndex, { uri: abs })
+          live.setPositionMs(resumeMs)
+          return
+        }
+        live.setSource(
+          { uri: abs },
+          "full-player",
+          {
+            resumePositionMs: resumeMs,
+            fullPlayerTrackId: live.fullPlayerTrackId,
+          },
+        )
+      } finally {
+        growingPartReloadingRef.current = false
+      }
+    })()
+  }, [
+    vaultTrackComplete,
+    fullPlayerTrackId,
+    source,
+    isPlaying,
+    onPlaybackStatusUpdate,
+  ])
+
+  useEffect(() => {
+    if (vaultTrackComplete) return
+    const timer = setInterval(() => {
+      if (growingPartNeedsResumeRef.current) {
+        tryReloadGrowingVaultPart()
+      }
+    }, 2000)
+    return () => clearInterval(timer)
+  }, [vaultTrackComplete, tryReloadGrowingVaultPart])
 
   // Unload track when store is reset (e.g. mini player Close)
   useEffect(() => {
@@ -1776,7 +1997,12 @@ const AudioPlayer = () => {
           title={metadata.title}
           author={metadata.author}
           isLoading={isLoading}
-          embodimentPulse={prefs?.isIntroAudio === true && isPlaying}
+          audioId={fullPlayerTrackId}
+          embodimentPulse={
+            isPlaying &&
+            (prefs?.isIntroAudio === true ||
+              playerFieldTrackKind === "crystal_bowl")
+          }
           animatedStyle={animatedTrackContentStyle}
         />
       </Pressable>
