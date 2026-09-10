@@ -123,7 +123,7 @@ describe('ancestral bridge course move', () => {
         expect(open).not.toContain('openMusicRoomAtIndex')
         expect(open).not.toContain('music-room')
         const audioPlayer = read('app/AudioPlayer.tsx')
-        expect(audioPlayer).toContain('getAshaPlayerField')
+        expect(audioPlayer).toContain('getSanctuarySoundField')
         expect(audioPlayer).toContain('MusicRoomPlayerFieldLayer')
         for (const chakra of ALL_CHAKRAS) {
             expect(chakraContent[chakra].headtoheart.masterKey.text.length).toBeGreaterThan(

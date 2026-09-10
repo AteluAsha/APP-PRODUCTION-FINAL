@@ -9,15 +9,13 @@ export function openChakraDay(day: number, nav: Router = router): void {
 }
 
 /**
- * Gallery commit broke this: InteractionManager.replace plus an
- * `opened` latch fired during presence teardown, so the course push
- * never landed — every ball, whichever was first. Push the same
- * string route that already worked (`/(chakras)/heart`).
+ * Replace DayPresence so it does not sit faded-to-black under the day.
+ * Back from the course then lands on Hub, not a blank screen.
  */
 export function enterChakraDayAfterPresence(
     day: number,
     _nav: Router = router,
 ): void {
     useFirstLaunchStore.getState().markChakraGrounded(day)
-    router.push(chakraDayRoute(day) as never)
+    router.replace(chakraDayRoute(day) as never)
 }

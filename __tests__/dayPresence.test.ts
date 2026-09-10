@@ -90,7 +90,7 @@ describe("first-click day presence", () => {
             path.join(__dirname, "..", "components/chakras/ChakraTemplate.tsx"),
             "utf8",
         )
-        expect(open).toContain("router.push(chakraDayRoute(day)")
+        expect(open).toContain("router.replace(chakraDayRoute(day)")
         expect(open).not.toContain("courseDayHref")
         expect(open).not.toContain("runAfterInteractions")
         expect(screen).toContain("resolveCourseDayChakra")

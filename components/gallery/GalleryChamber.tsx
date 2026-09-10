@@ -1,8 +1,9 @@
 /**
- * One of seven Gallery chambers: the day's field, plate, mantra, correspondences.
+ * One of seven Gallery chambers: the day's plate first, reading on a
+ * second screen. The card is the room; the words wait behind it.
  */
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
     View,
     Image,
@@ -14,15 +15,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import { AppText } from '@/components/AppText'
 import { chakraContent } from '@/constants/chakras/content'
-import {
-    CHAKRA_NAMES,
-    DAY_NAMES,
-    getChakraColor,
-} from '@/constants/chakras/chakraConstants'
+import { getChakraColor } from '@/constants/chakras/chakraConstants'
 import {
     GALLERY_RETURN_TO_DAY,
     GALLERY_VEILED_LINE,
     GALLERY_CORRESPONDENCE_LABELS,
+    GALLERY_OPEN_READING,
+    GALLERY_BACK_TO_CARD,
 } from '@/constants/galleryChambersCopy'
 import {
     formatHeroAffirmationText,
@@ -58,12 +57,19 @@ export function GalleryChamber({
     bottomPad: number
     onReturnToDay: () => void
 }) {
+    const [isReading, setIsReading] = useState(false)
     const day = CHAKRA_TO_DAY[chakra]
     const content = chakraContent[chakra]
     const elements = content?.elements
     const mantra = formatHeroAffirmationText(content?.affirmationText ?? '')
     const chakraColor = getChakraColor(day)
-    const plateMax = Math.min(width * 0.72, 280)
+    const plateWidth = Math.min(width * 0.88, 400)
+    const plateHeight = plateWidth * (4 / 3)
+
+    const openReading = () => {
+        addHapticFeedback(HapticStrength.Light)
+        setIsReading(true)
+    }
 
     return (
         <View style={{ width, flex: 1 }}>
@@ -76,9 +82,9 @@ export function GalleryChamber({
                 colors={
                     unlocked
                         ? [
-                              'rgba(0,0,0,0.42)',
-                              'rgba(0,0,0,0.5)',
-                              'rgba(0,0,0,0.78)',
+                              'rgba(0,0,0,0.28)',
+                              'rgba(0,0,0,0.38)',
+                              'rgba(0,0,0,0.62)',
                           ]
                         : [
                               'rgba(0,0,0,0.62)',
@@ -96,25 +102,41 @@ export function GalleryChamber({
                 contentContainerStyle={{
                     paddingTop: topPad,
                     paddingBottom: bottomPad,
-                    paddingHorizontal: 28,
+                    paddingHorizontal: 20,
                     alignItems: 'center',
                     flexGrow: 1,
+                    justifyContent: unlocked && !isReading ? 'center' : 'flex-start',
                 }}
                 showsVerticalScrollIndicator={false}
                 nestedScrollEnabled
             >
-                <AppText font="cormorant-regular" style={styles.dayLabel}>
-                    {`${DAY_NAMES[day]}  ·  ${CHAKRA_NAMES[day]}`}
-                </AppText>
-                <View
-                    style={[
-                        styles.goldLine,
-                        { backgroundColor: hexToRgba(chakraColor, 0.45) },
-                    ]}
-                />
-
-                {unlocked ? (
+                {!unlocked ? (
+                    <AppText font="cormorant-italic" style={styles.veiled}>
+                        {GALLERY_VEILED_LINE}
+                    </AppText>
+                ) : isReading ? (
                     <>
+                        <Pressable
+                            onPress={() => {
+                                addHapticFeedback(HapticStrength.Light)
+                                setIsReading(false)
+                            }}
+                            style={({ pressed }) => [
+                                styles.backToCard,
+                                { opacity: pressed ? 0.88 : 1 },
+                            ]}
+                            hitSlop={TOUCH.hitSlop}
+                            accessibilityRole="button"
+                            accessibilityLabel={GALLERY_BACK_TO_CARD}
+                        >
+                            <AppText
+                                font="cormorant-italic"
+                                style={styles.backToCardLabel}
+                            >
+                                {GALLERY_BACK_TO_CARD}
+                            </AppText>
+                        </Pressable>
+
                         <AppText
                             font="cormorant-italic"
                             numberOfLines={HERO_AFFIRMATION_MAX_LINES}
@@ -122,27 +144,6 @@ export function GalleryChamber({
                         >
                             {mantra}
                         </AppText>
-
-                        {elements?.background ? (
-                            <View
-                                style={[
-                                    styles.plateWrap,
-                                    {
-                                        width: plateMax,
-                                        shadowColor: hexToRgba(
-                                            chakraColor,
-                                            0.55,
-                                        ),
-                                    },
-                                ]}
-                            >
-                                <Image
-                                    source={elements.background}
-                                    style={styles.plate}
-                                    resizeMode="contain"
-                                />
-                            </View>
-                        ) : null}
 
                         <View style={styles.correspondences}>
                             {(
@@ -205,14 +206,48 @@ export function GalleryChamber({
                             </AppText>
                         </Pressable>
                     </>
-                ) : (
-                    <AppText
-                        font="cormorant-italic"
-                        style={styles.veiled}
+                ) : elements?.background ? (
+                    <Pressable
+                        onPress={openReading}
+                        style={({ pressed }) => [
+                            styles.haloWrap,
+                            {
+                                width: plateWidth + 36,
+                                height: plateHeight + 36,
+                                shadowColor: hexToRgba(chakraColor, 0.85),
+                                opacity: pressed ? 0.94 : 1,
+                            },
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={GALLERY_OPEN_READING}
                     >
-                        {GALLERY_VEILED_LINE}
-                    </AppText>
-                )}
+                        <View
+                            pointerEvents="none"
+                            style={[
+                                styles.halo,
+                                {
+                                    backgroundColor: hexToRgba(chakraColor, 0.28),
+                                },
+                            ]}
+                        />
+                        <View
+                            style={[
+                                styles.plateWrap,
+                                {
+                                    width: plateWidth,
+                                    height: plateHeight,
+                                    shadowColor: hexToRgba(chakraColor, 0.7),
+                                },
+                            ]}
+                        >
+                            <Image
+                                source={elements.background}
+                                style={styles.plate}
+                                resizeMode="contain"
+                            />
+                        </View>
+                    </Pressable>
+                ) : null}
             </ScrollView>
         </View>
     )
@@ -222,17 +257,31 @@ const styles = StyleSheet.create({
     scroll: {
         flex: 1,
     },
-    dayLabel: {
-        color: 'rgba(255, 248, 236, 0.72)',
-        fontSize: 15,
-        letterSpacing: 1.6,
-        textAlign: 'center',
-        marginBottom: 12,
+    haloWrap: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.9,
+        shadowRadius: 36,
+        elevation: 16,
     },
-    goldLine: {
-        width: 42,
-        height: 1,
-        marginBottom: 18,
+    halo: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 999,
+        transform: [{ scaleX: 0.86 }, { scaleY: 0.92 }],
+    },
+    plateWrap: {
+        borderRadius: 22,
+        overflow: 'hidden',
+        backgroundColor: 'transparent',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.4,
+        shadowRadius: 22,
+        elevation: 12,
+    },
+    plate: {
+        width: '100%',
+        height: '100%',
     },
     mantra: {
         fontSize: 28,
@@ -243,24 +292,6 @@ const styles = StyleSheet.create({
         textShadowColor: 'rgba(232, 201, 140, 0.4)',
         textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 14,
-    },
-    plateWrap: {
-        aspectRatio: 3 / 4,
-        maxHeight: 280,
-        borderRadius: 18,
-        overflow: 'hidden',
-        marginBottom: 22,
-        backgroundColor: 'rgba(0,0,0,0.28)',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.45,
-        shadowRadius: 18,
-        elevation: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 248, 236, 0.12)',
-    },
-    plate: {
-        width: '100%',
-        height: '100%',
     },
     correspondences: {
         width: '100%',
@@ -297,6 +328,16 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 248, 236, 0.92)',
         fontSize: 17,
         letterSpacing: 0.3,
+    },
+    backToCard: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        marginBottom: 18,
+    },
+    backToCardLabel: {
+        color: 'rgba(232, 201, 140, 0.88)',
+        fontSize: 17,
+        letterSpacing: 0.4,
     },
     veiled: {
         color: 'rgba(255, 248, 236, 0.55)',

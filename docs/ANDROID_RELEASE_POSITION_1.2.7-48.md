@@ -1,9 +1,9 @@
 # Android release position — 1.2.7 (48)
 
 **Saved:** 2026-09-09  
-**Status:** READY — local Play AAB
+**Status:** SUPERSEDED — next Play cut is **1.2.7 / 49**.
 
-Marketing **1.2.7**. Native **versionCode 48**. Play already used **47**. Do not reuse 47.
+Marketing **1.2.7**. Native **versionCode 48**. Play already used **47**. Do not reuse 47 or 48.
 
 Same product as iOS config 1.2.7 (49). Do not submit this AAB as 1.2.6 or 47.
 

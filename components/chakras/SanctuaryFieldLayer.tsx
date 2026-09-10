@@ -83,7 +83,13 @@ function LightSwirl({
 }
 
 /** Full-bleed sanctuary field with a slow living motion. */
-export function SanctuaryFieldLayer({ dayIndex }: { dayIndex: number }) {
+export function SanctuaryFieldLayer({
+    dayIndex,
+    veil = 'deep',
+}: {
+    dayIndex: number
+    veil?: 'deep' | 'sound'
+}) {
     const { width, height } = useWindowDimensions()
     const color = getChakraColor(dayIndex)
     const drift = useSharedValue(1)
@@ -114,11 +120,19 @@ export function SanctuaryFieldLayer({ dayIndex }: { dayIndex: number }) {
                 />
             </Animated.View>
             <LinearGradient
-                colors={[
-                    'rgba(0,0,0,0.42)',
-                    'rgba(0,0,0,0.52)',
-                    'rgba(0,0,0,0.74)',
-                ]}
+                colors={
+                    veil === 'sound'
+                        ? [
+                              'rgba(18,12,10,0.18)',
+                              'rgba(20,14,12,0.28)',
+                              'rgba(10,8,8,0.42)',
+                          ]
+                        : [
+                              'rgba(0,0,0,0.42)',
+                              'rgba(0,0,0,0.52)',
+                              'rgba(0,0,0,0.74)',
+                          ]
+                }
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={StyleSheet.absoluteFill}

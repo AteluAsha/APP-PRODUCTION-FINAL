@@ -15,6 +15,11 @@ export type AshaPlayerField = {
     trackKind: Extract<MusicRoomTrackKind, 'head_to_heart'>
 }
 
+export type SanctuarySoundField = {
+    dayIndex: number
+    trackKind: Extract<MusicRoomTrackKind, 'head_to_heart' | 'crystal_bowl'>
+}
+
 export function getAshaPlayerField(
     audioId: string | null | undefined,
 ): AshaPlayerField | null {
@@ -31,5 +36,27 @@ export function getAshaPlayerField(
     return {
         dayIndex: getDayFromChakra(slug),
         trackKind: 'head_to_heart',
+    }
+}
+
+/** Asha + crystal bowl from Sound Bath — same sanctuary field, not Music Room. */
+export function getSanctuarySoundField(
+    audioId: string | null | undefined,
+): SanctuarySoundField | null {
+    const asha = getAshaPlayerField(audioId)
+    if (asha) return asha
+    if (!audioId?.startsWith('crystal_bowl_')) return null
+    const vault = getSanctuaryVaultTrack(audioId)
+    if (vault?.kind === 'crystal_bowl') {
+        return {
+            dayIndex: getDayFromChakra(vault.chakra),
+            trackKind: 'crystal_bowl',
+        }
+    }
+    const slug = audioId.slice('crystal_bowl_'.length).split('_')[0]
+    if (!isValidChakra(slug)) return null
+    return {
+        dayIndex: getDayFromChakra(slug),
+        trackKind: 'crystal_bowl',
     }
 }

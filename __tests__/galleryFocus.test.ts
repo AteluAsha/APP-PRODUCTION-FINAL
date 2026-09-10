@@ -69,6 +69,8 @@ describe('gallery focus from View in Gallery', () => {
         expect(chamber).toContain('elements?.stones')
         expect(chamber).toContain('elements?.foods')
         expect(chamber).toContain('GALLERY_RETURN_TO_DAY')
+        expect(chamber).toContain('GALLERY_OPEN_READING')
+        expect(chamber).toContain('isReading')
         const layout = fs.readFileSync(
             path.join(__dirname, '..', 'app/(chakras)/_layout.tsx'),
             'utf8',

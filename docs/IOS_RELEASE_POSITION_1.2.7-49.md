@@ -5,7 +5,7 @@
 
 Marketing **1.2.7**. Native **buildNumber 49**. App Store **1.2.6 (48)** can stay in review. This is a new train; do not reuse 48.
 
-Same product as Play **1.2.7 / versionCode 48**. EAS uses `app.config.js` (the local `ios/` tree is ignored by `.easignore`).
+Same product as Play **1.2.7 / versionCode 49**. EAS uses `app.config.js` (the local `ios/` tree is ignored by `.easignore`).
 
 ---
 

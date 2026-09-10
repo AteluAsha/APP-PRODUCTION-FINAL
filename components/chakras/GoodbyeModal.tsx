@@ -10,13 +10,16 @@ import {
   View,
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Platform,
+  useWindowDimensions,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Animated, {
   useSharedValue,
   withTiming,
+  withRepeat,
   useAnimatedStyle,
   Easing,
 } from "react-native-reanimated"
@@ -81,6 +84,7 @@ const GoodbyeModal = ({
   const overlayTop = safeOverlayTop(insets.top)
   const bottomInset = Math.max(insets.bottom, 24)
   const [stage, setStage] = useState<"presence" | "goodbye">("presence")
+  const [blessingReady, setBlessingReady] = useState(false)
   const goodbyeOpacity = useSharedValue(0)
   const overlayOpacity = useSharedValue(0)
   const currentChakra =
@@ -126,12 +130,26 @@ const GoodbyeModal = ({
     })
   }
 
+  const { width: windowWidth } = useWindowDimensions()
+  const plateWidth = Math.min(windowWidth * 0.56, 208)
+  const plateHeight = plateWidth * (4 / 3)
+  const platePulse = useSharedValue(1)
+  const blessingOpacity = useSharedValue(0)
+
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value,
   }))
 
   const goodbyeStyle = useAnimatedStyle(() => ({
     opacity: goodbyeOpacity.value,
+  }))
+
+  const platePulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: platePulse.value }],
+  }))
+
+  const blessingStyle = useAnimatedStyle(() => ({
+    opacity: blessingOpacity.value,
   }))
 
   const isVisibleRef = useRef(isVisible)
@@ -146,6 +164,8 @@ const GoodbyeModal = ({
     if (!isVisible) {
       overlayOpacity.value = withTiming(0, { duration: 280 })
       goodbyeOpacity.value = 0
+      blessingOpacity.value = 0
+      setBlessingReady(false)
       setStage("presence")
       return
     }
@@ -183,7 +203,27 @@ const GoodbyeModal = ({
       duration: 900,
       easing: Easing.out(Easing.ease),
     })
-  }, [isVisible, stage, goodbyeOpacity])
+    platePulse.value = withTiming(1, { duration: 0 })
+    platePulse.value = withRepeat(
+      withTiming(1.035, {
+        duration: 2200,
+        easing: Easing.inOut(Easing.ease),
+      }),
+      -1,
+      true,
+    )
+    blessingOpacity.value = 0
+    setBlessingReady(false)
+    const blessingReveal = setTimeout(() => {
+      if (!isVisibleRef.current) return
+      setBlessingReady(true)
+      blessingOpacity.value = withTiming(1, {
+        duration: 900,
+        easing: Easing.out(Easing.ease),
+      })
+    }, 7000)
+    return () => clearTimeout(blessingReveal)
+  }, [isVisible, stage, goodbyeOpacity, platePulse, blessingOpacity])
 
   const setGoodbyeVisible = useGoodbyeModalStore((s) => s.setGoodbyeVisible)
   useEffect(() => {
@@ -246,48 +286,60 @@ const GoodbyeModal = ({
             />
           </Pressable>
 
-          <View
-            style={[
+          <ScrollView
+            style={styles.goodbyeWrap}
+            contentContainerStyle={[
               styles.goodbyeInner,
               {
                 paddingTop: overlayTop + 48,
                 paddingBottom: bottomInset + 24,
               },
             ]}
+            showsVerticalScrollIndicator={false}
           >
-            <View style={styles.giftReveal}>
-              {content?.goodbye?.chakraImage ? (
-                <View style={styles.ballWrap}>
-                  <SoftChakraBall
-                    source={content.goodbye.chakraImage}
-                    size={148}
-                    glowColor={hexToRgba(chakraColor, 0.28)}
-                  />
-                </View>
-              ) : null}
-
-              <AppText
-                font="cormorant-italic"
-                numberOfLines={HERO_AFFIRMATION_MAX_LINES}
-                style={styles.heroMantra}
-              >
-                {heroMantra}
-              </AppText>
-            </View>
-
-            <View style={styles.goldLine} />
-
-            <AppText font="cormorant-italic" style={styles.closing}>
-              {closingMessage}
-            </AppText>
-
-            {chakraDay === 0 ? <DailyAlignmentToggleRow /> : null}
-
-            <View style={styles.actions}>
+            {content?.elements?.background ? (
               <Pressable
                 onPress={handleEnterGallery}
                 style={({ pressed }) => [
                   styles.galleryDoor,
+                  { opacity: pressed ? 0.92 : 1 },
+                ]}
+                accessibilityLabel={GALLERY_GOODBYE_DOOR}
+                accessibilityRole="button"
+              >
+                <Animated.View
+                  style={[
+                    styles.plateHalo,
+                    {
+                      width: plateWidth + 28,
+                      height: plateHeight + 28,
+                      shadowColor: hexToRgba(chakraColor, 0.8),
+                    },
+                    platePulseStyle,
+                  ]}
+                >
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.plateGlow,
+                      { backgroundColor: hexToRgba(chakraColor, 0.26) },
+                    ]}
+                  />
+                  <Image
+                    source={content.elements.background}
+                    style={{
+                      width: plateWidth,
+                      height: plateHeight,
+                    }}
+                    resizeMode="contain"
+                  />
+                </Animated.View>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={handleEnterGallery}
+                style={({ pressed }) => [
+                  styles.galleryDoorFallback,
                   { opacity: pressed ? 0.88 : 1 },
                 ]}
                 accessibilityLabel={GALLERY_GOODBYE_DOOR}
@@ -297,7 +349,40 @@ const GoodbyeModal = ({
                   {GALLERY_GOODBYE_DOOR}
                 </AppText>
               </Pressable>
+            )}
 
+            <AppText font="cormorant-italic" style={styles.closing}>
+              {closingMessage}
+            </AppText>
+
+            {blessingReady ? (
+              <Animated.View
+                style={[styles.giftReveal, blessingStyle]}
+                pointerEvents="none"
+              >
+                {content?.goodbye?.chakraImage ? (
+                  <View style={styles.ballWrap}>
+                    <SoftChakraBall
+                      source={content.goodbye.chakraImage}
+                      size={108}
+                      glowColor={hexToRgba(chakraColor, 0.28)}
+                    />
+                  </View>
+                ) : null}
+
+                <AppText
+                  font="cormorant-italic"
+                  numberOfLines={HERO_AFFIRMATION_MAX_LINES}
+                  style={styles.heroMantra}
+                >
+                  {heroMantra}
+                </AppText>
+              </Animated.View>
+            ) : null}
+
+            {chakraDay === 0 ? <DailyAlignmentToggleRow /> : null}
+
+            <View style={styles.actions}>
               <Pressable
                 onPress={handleNavigateHome}
                 style={({ pressed }) => [
@@ -316,7 +401,7 @@ const GoodbyeModal = ({
                 </AppText>
               </Pressable>
             </View>
-          </View>
+          </ScrollView>
         </Animated.View>
     )
   }
@@ -370,8 +455,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   ballWrap: {
-    width: 168,
-    height: 168,
+    width: 128,
+    height: 128,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -379,6 +464,7 @@ const styles = StyleSheet.create({
   giftReveal: {
     alignItems: "center",
     width: "100%",
+    marginTop: 22,
   },
   heroMantra: {
     fontSize: HERO_AFFIRMATION_FONT_SIZE,
@@ -390,17 +476,12 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
   },
-  goldLine: {
-    width: 48,
-    height: 1,
-    backgroundColor: "rgba(232, 201, 140, 0.45)",
-    marginVertical: 22,
-  },
   closing: {
     textAlign: "center",
     color: "rgba(255,255,255,0.86)",
     fontSize: 18,
     lineHeight: 28,
+    marginTop: 18,
     marginBottom: 20,
     maxWidth: 360,
   },
@@ -410,15 +491,34 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   galleryDoor: {
+    marginTop: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryDoorFallback: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     maxWidth: 360,
+    marginTop: 18,
   },
   galleryDoorLabel: {
     color: "rgba(232, 201, 140, 0.92)",
     fontSize: 18,
     lineHeight: 26,
     textAlign: "center",
+  },
+  plateHalo: {
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.85,
+    shadowRadius: 28,
+    elevation: 14,
+  },
+  plateGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
+    transform: [{ scaleX: 0.86 }, { scaleY: 0.9 }],
   },
   homeButton: {
     paddingVertical: 14,

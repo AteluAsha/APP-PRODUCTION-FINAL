@@ -34,8 +34,8 @@ export function SoundBathClosingSection({
         >
             <LinearGradient
                 colors={[
-                    'rgba(18, 16, 14, 0.92)',
-                    'rgba(8, 6, 5, 0.96)',
+                    'rgba(36, 26, 20, 0.55)',
+                    'rgba(24, 18, 14, 0.62)',
                 ]}
                 style={{ paddingHorizontal: 22, paddingVertical: 24 }}
             >

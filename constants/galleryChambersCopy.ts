@@ -12,7 +12,11 @@ export const GALLERY_CHAMBERS_NOTICE_COPY = {
 } as const
 
 export const GALLERY_GOODBYE_DOOR =
-    'This day lives in the Gallery of Alignment'
+    'Open this day in the Gallery of Alignment'
+
+export const GALLERY_OPEN_READING = 'Sit with this day'
+
+export const GALLERY_BACK_TO_CARD = 'The card'
 
 export const GALLERY_RETURN_TO_DAY = "Return to this day's practice"
 

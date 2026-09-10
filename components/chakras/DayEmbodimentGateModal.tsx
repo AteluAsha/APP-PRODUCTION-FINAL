@@ -4,12 +4,18 @@
  */
 
 import React from 'react'
-import { Modal, View, Pressable, StyleSheet, Platform } from 'react-native'
+import {
+    Modal,
+    View,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Platform,
+} from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AppText } from '@/components/AppText'
-import { Ionicons } from '@expo/vector-icons'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
-import { MODAL_CARD_MAX_WIDTH, TOUCH } from '@/constants/layout'
+import { TOUCH } from '@/constants/layout'
 import { DAY_EMBODIMENT_GATE_COPY } from '@/constants/dayEmbodimentCopy'
 import {
     type DayAudioKind,
@@ -19,7 +25,7 @@ import {
 interface DayEmbodimentGateModalProps {
     visible: boolean
     remaining: DayAudioKind[]
-    onTakeMeThere: () => void
+    onOpenPath: (kind: DayAudioKind) => void
     onCloseInMyTiming: () => void
     onStay: () => void
 }
@@ -27,13 +33,13 @@ interface DayEmbodimentGateModalProps {
 export function DayEmbodimentGateModal({
     visible,
     remaining,
-    onTakeMeThere,
+    onOpenPath,
     onCloseInMyTiming,
     onStay,
 }: DayEmbodimentGateModalProps) {
-    const handleThere = () => {
+    const handlePath = (kind: DayAudioKind) => {
         addHapticFeedback(HapticStrength.Medium)
-        onTakeMeThere()
+        onOpenPath(kind)
     }
     const handleOverride = () => {
         addHapticFeedback(HapticStrength.Medium)
@@ -81,118 +87,122 @@ export function DayEmbodimentGateModal({
                     >
                         <LinearGradient
                             colors={[
-                                'rgba(24, 20, 22, 0.99)',
-                                'rgba(14, 10, 12, 0.99)',
-                                'rgba(12, 14, 12, 0.99)',
+                                'rgba(18, 16, 14, 0.98)',
+                                'rgba(12, 14, 16, 0.99)',
+                                'rgba(10, 12, 12, 0.99)',
                             ]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                            start={{ x: 0.5, y: 0 }}
+                            end={{ x: 0.5, y: 1 }}
                             style={styles.gradient}
                         >
-                            <View style={styles.header}>
-                                <View style={styles.iconWrap}>
-                                    <Ionicons
-                                        name="heart"
-                                        size={22}
-                                        color="rgba(232, 201, 140, 0.95)"
-                                    />
-                                </View>
+                            <ScrollView
+                                contentContainerStyle={styles.scroll}
+                                showsVerticalScrollIndicator={false}
+                                bounces={false}
+                            >
                                 <AppText
                                     font="cormorant-italic"
                                     style={styles.title}
                                 >
                                     {DAY_EMBODIMENT_GATE_COPY.title}
                                 </AppText>
-                            </View>
-
-                            {remaining.map((kind) => (
                                 <AppText
-                                    key={kind}
                                     font="cormorant-italic"
-                                    style={styles.remaining}
+                                    style={styles.why}
                                 >
-                                    {labelForDayAudioKind(kind)}
+                                    {DAY_EMBODIMENT_GATE_COPY.why}
                                 </AppText>
-                            ))}
+                                <View style={styles.goldLine} />
 
-                            <AppText
-                                font="cormorant-italic"
-                                style={styles.why}
-                            >
-                                {DAY_EMBODIMENT_GATE_COPY.why}
-                            </AppText>
+                                <AppText
+                                    font="cormorant-italic"
+                                    style={styles.remainingHeading}
+                                >
+                                    {DAY_EMBODIMENT_GATE_COPY.remainingHeading}
+                                </AppText>
 
-                            <Pressable
-                                onPress={handleThere}
-                                style={({ pressed }) => [
-                                    pressed && { opacity: 0.9 },
-                                ]}
-                                hitSlop={TOUCH.hitSlop}
-                                accessibilityRole="button"
-                                accessibilityLabel={
-                                    DAY_EMBODIMENT_GATE_COPY.cta
-                                }
-                            >
-                                <LinearGradient
-                                    colors={[
-                                        'rgba(168, 201, 154, 0.38)',
-                                        'rgba(232, 201, 140, 0.2)',
+                                <View style={styles.pathList}>
+                                    {remaining.map((kind) => (
+                                        <Pressable
+                                            key={kind}
+                                            onPress={() => handlePath(kind)}
+                                            style={({ pressed }) => [
+                                                pressed && { opacity: 0.9 },
+                                            ]}
+                                            hitSlop={TOUCH.hitSlop}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={labelForDayAudioKind(
+                                                kind,
+                                            )}
+                                        >
+                                            <LinearGradient
+                                                colors={[
+                                                    'rgba(168, 201, 154, 0.88)',
+                                                    'rgba(107, 142, 90, 0.92)',
+                                                    'rgba(212, 165, 116, 0.55)',
+                                                ]}
+                                                start={{ x: 0, y: 0 }}
+                                                end={{ x: 1, y: 1 }}
+                                                style={styles.pathButton}
+                                            >
+                                                <AppText
+                                                    font="instrument-semibold"
+                                                    size="sm"
+                                                    style={styles.pathLabel}
+                                                >
+                                                    {labelForDayAudioKind(kind)}
+                                                </AppText>
+                                            </LinearGradient>
+                                        </Pressable>
+                                    ))}
+                                </View>
+
+                                <Pressable
+                                    onPress={handleOverride}
+                                    style={({ pressed }) => [
+                                        styles.overrideWrap,
+                                        pressed && { opacity: 0.9 },
                                     ]}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.ctaButton}
+                                    hitSlop={TOUCH.hitSlop}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={
+                                        DAY_EMBODIMENT_GATE_COPY.override
+                                    }
+                                    accessibilityHint={
+                                        DAY_EMBODIMENT_GATE_COPY.overrideHint
+                                    }
                                 >
                                     <AppText
                                         font="cormorant-italic"
-                                        style={styles.ctaText}
+                                        style={styles.overrideText}
                                     >
-                                        {DAY_EMBODIMENT_GATE_COPY.cta}
+                                        {DAY_EMBODIMENT_GATE_COPY.override}
                                     </AppText>
-                                </LinearGradient>
-                            </Pressable>
+                                    <AppText
+                                        font="cormorant-italic"
+                                        style={styles.overrideHint}
+                                    >
+                                        {DAY_EMBODIMENT_GATE_COPY.overrideHint}
+                                    </AppText>
+                                </Pressable>
 
-                            <Pressable
-                                onPress={handleOverride}
-                                style={styles.overrideWrap}
-                                hitSlop={TOUCH.hitSlop}
-                                accessibilityRole="button"
-                                accessibilityLabel={
-                                    DAY_EMBODIMENT_GATE_COPY.override
-                                }
-                                accessibilityHint={
-                                    DAY_EMBODIMENT_GATE_COPY.overrideHint
-                                }
-                            >
-                                <AppText
-                                    font="cormorant-italic"
-                                    style={styles.overrideText}
+                                <Pressable
+                                    onPress={handleStay}
+                                    style={styles.stayWrap}
+                                    hitSlop={TOUCH.hitSlop}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={
+                                        DAY_EMBODIMENT_GATE_COPY.stay
+                                    }
                                 >
-                                    {DAY_EMBODIMENT_GATE_COPY.override}
-                                </AppText>
-                                <AppText
-                                    font="cormorant-italic"
-                                    style={styles.overrideHint}
-                                >
-                                    {DAY_EMBODIMENT_GATE_COPY.overrideHint}
-                                </AppText>
-                            </Pressable>
-
-                            <Pressable
-                                onPress={handleStay}
-                                style={styles.stayWrap}
-                                hitSlop={TOUCH.hitSlop}
-                                accessibilityRole="button"
-                                accessibilityLabel={
-                                    DAY_EMBODIMENT_GATE_COPY.stay
-                                }
-                            >
-                                <AppText
-                                    font="cormorant-italic"
-                                    style={styles.stayText}
-                                >
-                                    {DAY_EMBODIMENT_GATE_COPY.stay}
-                                </AppText>
-                            </Pressable>
+                                    <AppText
+                                        font="cormorant-italic"
+                                        style={styles.stayText}
+                                    >
+                                        {DAY_EMBODIMENT_GATE_COPY.stay}
+                                    </AppText>
+                                </Pressable>
+                            </ScrollView>
                         </LinearGradient>
                     </View>
                 </View>
@@ -207,98 +217,108 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.78)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 24,
+        paddingHorizontal: 24,
+        paddingVertical: 40,
     },
     card: {
         width: '100%',
-        maxWidth: MODAL_CARD_MAX_WIDTH,
-        borderRadius: 20,
+        maxWidth: 400,
+        maxHeight: '92%',
+        borderRadius: 22,
         overflow: 'hidden',
+        backgroundColor: '#0c0a08',
         borderWidth: 1,
-        borderColor: 'rgba(232, 201, 140, 0.3)',
-        shadowColor: 'rgba(232, 201, 140, 0.22)',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.45,
-        shadowRadius: 16,
-        elevation: 12,
+        borderColor: 'rgba(232, 201, 140, 0.32)',
     },
     gradient: {
-        padding: 22,
-        alignItems: 'center',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
         width: '100%',
     },
-    iconWrap: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(232, 201, 140, 0.12)',
+    scroll: {
+        paddingVertical: 32,
+        paddingHorizontal: 26,
         alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
     },
     title: {
-        color: 'rgba(255, 248, 236, 0.96)',
-        fontSize: 22,
-        letterSpacing: 0.3,
-        flex: 1,
+        color: 'rgba(255, 248, 236, 0.98)',
+        fontSize: 26,
+        lineHeight: 34,
+        textAlign: 'center',
+        marginBottom: 12,
+        width: '100%',
     },
-    remaining: {
-        color: 'rgba(255, 248, 236, 0.9)',
+    why: {
+        color: 'rgba(232, 201, 140, 0.9)',
         fontSize: 18,
         lineHeight: 26,
         textAlign: 'center',
-        marginBottom: 6,
+        marginBottom: 18,
+        width: '100%',
     },
-    why: {
-        color: 'rgba(232, 201, 140, 0.82)',
-        fontSize: 17,
-        lineHeight: 26,
+    goldLine: {
+        width: 48,
+        height: 1,
+        backgroundColor: 'rgba(232, 201, 140, 0.55)',
+        marginBottom: 22,
+    },
+    remainingHeading: {
+        color: 'rgba(232, 201, 140, 0.92)',
+        fontSize: 14,
+        letterSpacing: 1.8,
         textAlign: 'center',
-        marginTop: 14,
-        marginBottom: 20,
+        textTransform: 'uppercase',
+        marginBottom: 14,
+        width: '100%',
     },
-    ctaButton: {
-        paddingVertical: 14,
-        paddingHorizontal: 28,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: 'rgba(168, 201, 154, 0.4)',
+    pathList: {
+        width: '100%',
+        gap: 12,
+    },
+    pathButton: {
+        paddingVertical: Platform.OS === 'ios' ? 16 : 15,
+        paddingHorizontal: 22,
+        borderRadius: 16,
+        minHeight: 52,
         alignItems: 'center',
-        minWidth: 200,
+        justifyContent: 'center',
+        width: '100%',
     },
-    ctaText: {
-        color: 'rgba(230, 245, 220, 0.96)',
-        fontSize: 17,
-        letterSpacing: 0.2,
+    pathLabel: {
+        color: '#ffffff',
+        textAlign: 'center',
+        textShadowColor: 'rgba(0, 0, 0, 0.45)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+    },
+    overrideWrap: {
+        alignItems: 'center',
+        width: '100%',
+        marginTop: 28,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(232, 201, 140, 0.42)',
+        backgroundColor: 'rgba(232, 201, 140, 0.08)',
+    },
+    overrideText: {
+        color: 'rgba(255, 248, 236, 0.94)',
+        fontSize: 18,
+        textAlign: 'center',
+    },
+    overrideHint: {
+        color: 'rgba(232, 201, 140, 0.72)',
+        fontSize: 15,
+        textAlign: 'center',
+        marginTop: 4,
     },
     stayWrap: {
         alignItems: 'center',
         paddingVertical: 8,
-        marginTop: 2,
+        marginTop: 18,
     },
     stayText: {
         color: 'rgba(255, 255, 255, 0.5)',
         fontSize: 16,
-    },
-    overrideWrap: {
-        alignItems: 'center',
-        paddingVertical: 12,
-        marginTop: 10,
-    },
-    overrideText: {
-        color: 'rgba(232, 201, 140, 0.88)',
-        fontSize: 17,
         textAlign: 'center',
-    },
-    overrideHint: {
-        color: 'rgba(232, 201, 140, 0.52)',
-        fontSize: 14,
-        textAlign: 'center',
-        marginTop: 4,
     },
 })

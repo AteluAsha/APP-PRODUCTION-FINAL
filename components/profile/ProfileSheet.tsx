@@ -920,6 +920,94 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   </AppText>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
                 </Pressable>
+                <View style={[styles.menuRowSwitch, styles.profileOnlyNotifyRow]} accessibilityRole="none">
+                  <Ionicons
+                    name="notifications-outline"
+                    size={22}
+                    color="rgba(168, 201, 154, 0.95)"
+                  />
+                  <View style={styles.menuRowSwitchTextCol}>
+                    <AppText
+                      font="instrument-medium"
+                      size="base"
+                      style={styles.menuRowSwitchTitle}
+                    >
+                      Journey reminders
+                    </AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={styles.menuRowSubtextMuted}
+                    >
+                      Weekly heart reminders — Sunday evening, and Wednesday
+                      once your journey has started. No marketing; turn off
+                      anytime in system settings.
+                    </AppText>
+                  </View>
+                  <Switch
+                    value={journeyNudgesSwitchValue}
+                    onValueChange={(v) => {
+                      void handleJourneyNudgesToggle(v)
+                    }}
+                    trackColor={{
+                      false: "rgba(255,255,255,0.2)",
+                      true: "rgba(168, 201, 154, 0.45)",
+                    }}
+                    thumbColor={
+                      Platform.OS === "android"
+                        ? journeyNudgesSwitchValue
+                          ? "rgba(230, 245, 220, 0.95)"
+                          : "rgba(200, 200, 200, 0.95)"
+                        : undefined
+                    }
+                    ios_backgroundColor="rgba(255,255,255,0.2)"
+                    accessibilityLabel="Journey reminders"
+                  />
+                </View>
+                <View style={[styles.menuRowSwitch, styles.profileOnlyNotifyRow]} accessibilityRole="none">
+                  <Ionicons
+                    name="sunny-outline"
+                    size={22}
+                    color="rgba(232, 201, 140, 0.88)"
+                  />
+                  <View style={styles.menuRowSwitchTextCol}>
+                    <AppText
+                      font="instrument-medium"
+                      size="base"
+                      style={styles.menuRowSwitchTitle}
+                    >
+                      Daily alignment reminders
+                    </AppText>
+                    <AppText
+                      font="instrument-regular"
+                      size="xs"
+                      style={styles.menuRowSubtextMuted}
+                    >
+                      Noon and night-before check-ins when you have not opened
+                      the app that day. Requires journey reminders above.
+                    </AppText>
+                  </View>
+                  <Switch
+                    value={dailyAlignmentSwitchValue}
+                    onValueChange={(v) => {
+                      void handleDailyAlignmentToggle(v)
+                    }}
+                    disabled={!journeyNudgesSwitchValue}
+                    trackColor={{
+                      false: "rgba(255,255,255,0.2)",
+                      true: "rgba(232, 201, 140, 0.42)",
+                    }}
+                    thumbColor={
+                      Platform.OS === "android"
+                        ? dailyAlignmentSwitchValue
+                          ? "rgba(255, 248, 236, 0.95)"
+                          : "rgba(200, 200, 200, 0.95)"
+                        : undefined
+                    }
+                    ios_backgroundColor="rgba(255,255,255,0.2)"
+                    accessibilityLabel="Daily alignment reminders"
+                  />
+                </View>
                 <Pressable
                   onPress={handleDeleteAccount}
                   style={styles.deleteAccountBtn}
@@ -1961,6 +2049,9 @@ const styles = StyleSheet.create({
       },
       android: { elevation: 3 },
     }),
+  },
+  profileOnlyNotifyRow: {
+    marginTop: 14,
   },
   profileOnlyPillBtnGold: {
     marginTop: 8,

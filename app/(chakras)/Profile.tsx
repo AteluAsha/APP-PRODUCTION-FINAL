@@ -1,5 +1,5 @@
 /**
- * Profile-only route: SOUL SCHOOL ID, name, and profile photo (editable).
+ * Profile route: ID, name, photo, Energy Exchange, and notification toggles.
  * Opened from ChakraHub profile icon. Cosmic field + soft healing presence UI.
  */
 

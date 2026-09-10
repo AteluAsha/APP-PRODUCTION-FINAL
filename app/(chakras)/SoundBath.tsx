@@ -239,7 +239,7 @@ const SoundBath = () => {
         style={[backgroundLayerStyle, soundBathBgFadeStyle]}
         pointerEvents="none"
       >
-        <SanctuaryFieldLayer dayIndex={chakraDayIndex} />
+        <SanctuaryFieldLayer dayIndex={chakraDayIndex} veil="sound" />
       </Animated.View>
       <SafeAreaView style={contentLayerStyle} edges={["top"]} pointerEvents="box-none">
         <View
@@ -250,7 +250,7 @@ const SoundBath = () => {
             left: 0,
             right: 0,
             height: insets.top + 52,
-            backgroundColor: "#000000",
+            backgroundColor: "rgba(12, 8, 8, 0.28)",
             zIndex: 0,
           }}
         />
@@ -259,7 +259,7 @@ const SoundBath = () => {
           <BackgroundOpacity
             topGradientHeight={0}
             bottomGradientHeight={0}
-            backgroundOpacity={0.7}
+            backgroundOpacity={0.32}
           />
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -275,7 +275,7 @@ const SoundBath = () => {
             colors={[
               "rgba(255, 248, 236, 0.08)",
               hexToRgba(chakraAccentColor, 0.12),
-              "rgba(8, 6, 10, 0.55)",
+              "rgba(22, 16, 14, 0.38)",
             ]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
@@ -290,7 +290,7 @@ const SoundBath = () => {
               borderColor: "rgba(232, 201, 140, 0.22)",
               alignItems: "center",
               overflow: "hidden",
-              backgroundColor: "rgba(10, 8, 12, 0.78)",
+              backgroundColor: "rgba(22, 16, 14, 0.42)",
             }}
           >
             <AppText

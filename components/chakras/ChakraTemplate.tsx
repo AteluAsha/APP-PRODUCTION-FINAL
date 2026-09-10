@@ -26,7 +26,6 @@ import { PillType } from "@/types/chakras/PillType"
 import ParallaxScrollView from "@/components/ParallaxScrollView"
 import { HeaderBackground } from "@/components/chakras/HeaderBackground"
 import Part2Section from "@/components/chakras/Part2Section"
-import ElementsSection from "@/components/chakras/ElementsSection"
 import Part3Section from "@/components/chakras/Part3Section"
 import { Part4BridgeSection } from "@/components/chakras/Part4BridgeSection"
 import { BridgeCueModal } from "@/components/chakras/BridgeCueModal"
@@ -201,14 +200,16 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
     })()
   }
 
-  const handleTakeMeToRemainingAudio = () => {
-    const next = embodimentRemaining[0]
+  const handleOpenRemainingPath = (kind: DayAudioKind) => {
     setEmbodimentGateVisible(false)
-    if (next === "bridge") {
+    if (kind === "bridge") {
       openAshaSpeaks(chakra, pathname)
       return
     }
-    const y = Math.max(0, screenWidth - 24)
+    const y =
+      kind === "sound-bath"
+        ? Math.max(0, screenWidth + 220)
+        : Math.max(0, screenWidth - 24)
     runOnUI(() => {
       "worklet"
       scrollTo(scrollRef, 0, y, true)
@@ -222,7 +223,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
 
   const handleBackToHub = () => {
     addHapticFeedback(HapticStrength.Light)
-    router.replace("/(chakras)/ChakraHub")
+    goToChakraHubRoot()
   }
 
   const handleGoodbyeNavigateHome = () => {
@@ -393,7 +394,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
                 style={{ alignSelf: "center", marginTop: 12 }}
               />
               <Part2Section chakra={chakra} />
-              <ElementsSection chakra={chakra} />
               <Part3Section chakra={chakra} />
             </View>
           </View>
@@ -511,7 +511,7 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
           <DayEmbodimentGateModal
             visible={embodimentGateVisible}
             remaining={embodimentRemaining}
-            onTakeMeThere={handleTakeMeToRemainingAudio}
+            onOpenPath={handleOpenRemainingPath}
             onCloseInMyTiming={handleCloseDayInMyTiming}
             onStay={() => setEmbodimentGateVisible(false)}
           />

@@ -5,7 +5,10 @@ import {
     getSanctuaryVaultTrack,
 } from '../constants/sanctuaryVaultTracks'
 import { getDayFromChakra } from '../utils/chakraMapping'
-import { getAshaPlayerField } from '../utils/ashaPlayerField'
+import {
+    getAshaPlayerField,
+    getSanctuarySoundField,
+} from '../utils/ashaPlayerField'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -33,6 +36,19 @@ describe('asha player field (visual only)', () => {
         expect(getAshaPlayerField(null)).toBeNull()
     })
 
+    it('gives Sound Bath crystal bowls the sanctuary field', () => {
+        const bowls = SANCTUARY_VAULT_TRACKS.filter(
+            (track) => track.kind === 'crystal_bowl',
+        )
+        expect(bowls.length).toBeGreaterThan(0)
+        for (const track of bowls) {
+            expect(getSanctuarySoundField(track.audioId)).toEqual({
+                dayIndex: getDayFromChakra(track.chakra),
+                trackKind: 'crystal_bowl',
+            })
+        }
+    })
+
     it('keeps course Asha on sanctuary playback, not the Music Room playlist', () => {
         const open = fs.readFileSync(
             path.join(__dirname, '..', 'utils/openAshaSpeaks.ts'),
@@ -57,7 +73,7 @@ describe('asha player field (visual only)', () => {
             path.join(__dirname, '..', 'app/AudioPlayer.tsx'),
             'utf8',
         )
-        expect(player).toContain('getAshaPlayerField')
+        expect(player).toContain('getSanctuarySoundField')
         expect(player).toContain('MusicRoomPlayerFieldLayer')
     })
 })

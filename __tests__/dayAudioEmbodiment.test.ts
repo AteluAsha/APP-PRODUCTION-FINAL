@@ -41,11 +41,11 @@ describe('day embodiment accountability', () => {
     })
 
     it('gates the close with loving copy and a path back into the remaining sound', () => {
-        expect(DAY_EMBODIMENT_GATE_COPY.why).toBe(
-            'We do not rush, here, we embody.',
-        )
-        expect(DAY_EMBODIMENT_GATE_COPY.override).toMatch(/already in me/i)
-        expect(DAY_EMBODIMENT_GATE_COPY.overrideHint).toMatch(/own timing/i)
+        expect(DAY_EMBODIMENT_GATE_COPY.why).toBe('We do not rush. We embody.')
+        expect(DAY_EMBODIMENT_GATE_COPY.override).toMatch(/embodied this day/i)
+        expect(DAY_EMBODIMENT_GATE_COPY.overrideHint).toMatch(/sovereignty/i)
+        expect(DAY_EMBODIMENT_GATE_COPY.remainingHeading).toMatch(/remaining/i)
+        expect(labelForDayAudioKind('bridge')).toMatch(/Divine Laws/i)
         const template = fs.readFileSync(
             path.join(
                 __dirname,
@@ -59,6 +59,7 @@ describe('day embodiment accountability', () => {
         expect(template).toContain('DAY_EMBODIED_CHECKBOX_LABEL')
         expect(template).not.toContain("I have completed today's journey")
         expect(template).toContain('handleEmbodimentCompletePress')
+        expect(template).toContain('handleOpenRemainingPath')
         expect(template).toContain('handleCloseDayInMyTiming')
         expect(template).toContain('hasCeremonyClosed')
         expect(template).toContain('hasEmbodiedToday')

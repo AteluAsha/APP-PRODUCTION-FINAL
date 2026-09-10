@@ -141,6 +141,8 @@ describe("end of day presence and goodbye", () => {
             path.join(__dirname, "..", "components/chakras/GoodbyeModal.tsx"),
             "utf8",
         )
+        expect(goodbye).toContain("7000")
+        expect(goodbye).toContain("blessingReady")
         expect(goodbye).toContain("queueTomorrowAwakening")
         expect(goodbye).toContain("goToChakraHubRoot")
         expect(goodbye).toContain("clearCompletedChakra")
@@ -152,5 +154,6 @@ describe("end of day presence and goodbye", () => {
         expect(template).toContain("clearCompletedChakra")
         expect(template).toContain("<AudioRow")
         expect(template).toContain("goToChakraHubRoot")
+        expect(template).not.toContain("ElementsSection")
     })
 })

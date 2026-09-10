@@ -94,7 +94,7 @@ import { clearVaultAutoPlayback } from "@/src/services/vaultAutoPlayback"
 import { registerAndroidHardwareBackOverride } from "@/utils/androidBackCleanup"
 import { MusicRoomPlayerFieldLayer } from "@/components/chakras/MusicRoomPlayerFieldLayer"
 import type { MusicRoomTrackKind } from "@/constants/musicRoomLibrary"
-import { getAshaPlayerField } from "@/utils/ashaPlayerField"
+import { getSanctuarySoundField } from "@/utils/ashaPlayerField"
 import {
   isLibrarySingleTrack,
   shouldTreatAsTrackEnd,
@@ -278,7 +278,7 @@ const AudioPlayer = () => {
     musicRoomPlaylist.length > 0
   const ashaPlayerField = isMusicRoomPlaylist
     ? null
-    : getAshaPlayerField(fullPlayerTrackId)
+    : getSanctuarySoundField(fullPlayerTrackId)
   const playerFieldDayIndex = isMusicRoomPlaylist
     ? musicRoomDayIndex
     : ashaPlayerField?.dayIndex
@@ -1891,14 +1891,17 @@ const AudioPlayer = () => {
         pointerEvents="box-none"
         style={{
           position: "absolute",
-          right: 12,
-          top: safeOverlayTop(insets.top),
+          left: 12,
+          bottom:
+            112 +
+            Math.max(insets.bottom, 24) +
+            (Platform.OS === "android" ? 24 : 0),
           zIndex: 20,
         }}
       >
         <NotesLeafButton
           whisperOnFirstOpen
-          whisperPlacement="below"
+          whisperPlacement="above"
           onPress={() => {
             justReturnedFromNotesRef.current = true
             router.push(`/(chakras)/NotesAlongTheWay?contextDay=${dayIndex}`)

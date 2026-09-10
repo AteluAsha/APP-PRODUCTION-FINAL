@@ -36,9 +36,9 @@ const MASTER: MusicRoomFieldVariant = { ...BASE }
 /** Crystal bowl — warmer veil, slower drift. */
 const CRYSTAL: MusicRoomFieldVariant = {
     ...BASE,
-    gradientTop: 'rgba(20,12,8,0.38)',
-    gradientMid: 'rgba(12,8,6,0.58)',
-    gradientBottom: 'rgba(0,0,0,0.78)',
+    gradientTop: 'rgba(28,18,12,0.22)',
+    gradientMid: 'rgba(20,14,10,0.36)',
+    gradientBottom: 'rgba(8,6,5,0.52)',
     primarySwirlDuration: 32000,
     secondarySwirlDuration: 22000,
     goldSwirlDuration: 36000,
