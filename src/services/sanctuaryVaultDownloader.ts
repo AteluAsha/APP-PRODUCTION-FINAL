@@ -66,7 +66,7 @@ const SEEDED_EXPECTED_BYTES: Record<string, number> = {
     'Day3_5thDivineLaw_AshaSpeaks.mp3': 17_515_216,
     'Day4_4thDivineLaw_AshaSpeaks.mp3': 16_207_096,
     'Day5_3rdDivineLaw_AshaSpeaks.mp3': 17_102_782,
-    'Day6_2ndDivineLaw_AshaSpeaks.mp3': 17_809_539,
+    'Day6_2ndDivineLaw_AshaSpeaks_v2.mp3': 17_810_691,
     'Day7_1stDivineLaw_AshaSpeaks.mp3': 11_307_068,
 }
 

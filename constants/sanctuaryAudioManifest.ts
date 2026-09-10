@@ -68,7 +68,7 @@ export const SANCTUARY_ANCESTRAL_FILE: Record<Chakra, string> = {
   [Chakra.SOLAR_PLEXUS]: "Day3_5thDivineLaw_AshaSpeaks.mp3",
   [Chakra.HEART]: "Day4_4thDivineLaw_AshaSpeaks.mp3",
   [Chakra.THROAT]: "Day5_3rdDivineLaw_AshaSpeaks.mp3",
-  [Chakra.THIRD_EYE]: "Day6_2ndDivineLaw_AshaSpeaks.mp3",
+  [Chakra.THIRD_EYE]: "Day6_2ndDivineLaw_AshaSpeaks_v2.mp3",
   [Chakra.CROWN]: "Day7_1stDivineLaw_AshaSpeaks.mp3",
 }
 

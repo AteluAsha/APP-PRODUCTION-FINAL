@@ -64,8 +64,8 @@ export const SANCTUARY_HOSTED_URLS: Record<string, string> = {
         r2('Day6_852hz_tuningFork.aac'),
     'Day6_CrystalBowlSoundBath_AwakeningSoul.mp3':
         r2('Day6_CrystalBowlSoundBath_AwakeningSoul.mp3'),
-    'Day6_2ndDivineLaw_AshaSpeaks.mp3':
-        r2('Day6_2ndDivineLaw_AshaSpeaks.mp3'),
+    'Day6_2ndDivineLaw_AshaSpeaks_v2.mp3':
+        r2('Day6_2ndDivineLaw_AshaSpeaks_v2.mp3'),
 
     'Day7_CrownChakra_MasterEmbodiment_Meditation_SoulSchool__TAGGED_.mp3':
         r2('Day7_CrownChakra_MasterEmbodiment_Meditation_SoulSchool__TAGGED_.mp3'),
