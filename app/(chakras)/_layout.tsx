@@ -115,7 +115,19 @@ const ChakrasLayout = () => {
             <Stack.Screen name="Chakras101" />
             <Stack.Screen name="EnergyExchange" />
             <Stack.Screen name="AccountabilityOfAwakening" />
-            <Stack.Screen name="GalleryOfGnosis" />
+            <Stack.Screen
+              name="GalleryOfGnosis"
+              options={{
+                animation: "fade",
+                animationDuration:
+                  Platform.OS === "ios"
+                    ? SOMATIC_SCREEN_TRANSITION_MS_IOS
+                    : SOMATIC_SCREEN_TRANSITION_MS,
+                contentStyle: { backgroundColor: "#000000" },
+                gestureEnabled: false,
+                fullScreenGestureEnabled: false,
+              }}
+            />
             <Stack.Screen name="NotesAlongTheWay" />
             <Stack.Screen name="Contribute" />
           </Stack>

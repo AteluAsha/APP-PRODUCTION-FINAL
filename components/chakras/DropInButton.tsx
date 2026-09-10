@@ -29,20 +29,12 @@ export function DropInButton({
     lockScreenTitle: "Tuning Fork",
     disabled,
   })
-  const { vaultReady, progressLabel, isActiveTrack } = useVaultTrackDownloadUi(
-    audioId,
-    {
-      labelMode: 'cue',
-      idleLabel: isPlaying ? 'Playing…' : 'Drop In',
-    },
-  )
+  const { vaultReady } = useVaultTrackDownloadUi(audioId)
   const dropInLabel = isPreparing
     ? 'Opening…'
-    : isActiveTrack && progressLabel
-      ? progressLabel
-      : isPlaying
-        ? 'Playing…'
-        : 'Drop In'
+    : isPlaying
+      ? 'Playing…'
+      : 'Drop In'
 
   const iconSize = compact ? 20 : 28
   const minWidth = compact ? 44 : 56

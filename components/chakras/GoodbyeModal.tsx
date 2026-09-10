@@ -2,7 +2,8 @@
  * Goodbye – End-of-Day Completion Screen
  *
  * Sequential: word-on-screen presence, then goodbye. The closing holds the
- * blessing, mantra, and ball together. Home rests. The Gallery is a quiet door.
+ * blessing and mantra at center, ball below. Home rests. The Gallery door
+ * line sits above the plate so the hero stands alone.
  */
 import { AppText } from "@/components/AppText"
 import React, { useCallback, useEffect, useRef, useState } from "react"
@@ -336,11 +337,22 @@ const GoodbyeModal = ({
                 accessibilityRole="button"
               >
                 <Animated.View
+                  style={[styles.galleryDoorLabelSlot, doorStyle]}
+                  pointerEvents="none"
+                >
+                  <AppText
+                    font="cormorant-italic"
+                    style={styles.galleryDoorLabel}
+                  >
+                    {GALLERY_GOODBYE_DOOR}
+                  </AppText>
+                </Animated.View>
+                <Animated.View
                   style={[
                     styles.plateHalo,
                     {
-                      width: plateWidth + 28,
-                      height: plateHeight + 28,
+                      width: plateWidth,
+                      height: plateHeight,
                       shadowColor: hexToRgba(chakraColor, 0.8),
                     },
                     platePulseStyle,
@@ -355,23 +367,9 @@ const GoodbyeModal = ({
                   />
                   <Image
                     source={content.elements.background}
-                    style={{
-                      width: plateWidth,
-                      height: plateHeight,
-                    }}
+                    style={styles.plateImage}
                     resizeMode="contain"
                   />
-                </Animated.View>
-                <Animated.View
-                  style={[styles.galleryDoorLabelSlot, doorStyle]}
-                  pointerEvents="none"
-                >
-                  <AppText
-                    font="cormorant-italic"
-                    style={styles.galleryDoorLabel}
-                  >
-                    {GALLERY_GOODBYE_DOOR}
-                  </AppText>
                 </Animated.View>
               </Pressable>
             ) : (
@@ -402,6 +400,20 @@ const GoodbyeModal = ({
               {closingMessage}
             </AppText>
 
+            <View style={styles.heroCenter} pointerEvents="none">
+              <Animated.View
+                style={[styles.heroSlot, mantraStyle]}
+              >
+                <AppText
+                  font="cormorant-italic"
+                  numberOfLines={HERO_AFFIRMATION_MAX_LINES}
+                  style={styles.heroMantra}
+                >
+                  {heroMantra}
+                </AppText>
+              </Animated.View>
+            </View>
+
             <View style={styles.giftSlot} pointerEvents="none">
               <Animated.View style={[styles.giftReveal, blessingStyle]}>
                 {content?.goodbye?.chakraImage ? (
@@ -415,17 +427,6 @@ const GoodbyeModal = ({
                 ) : (
                   <View style={styles.ballWrap} />
                 )}
-              </Animated.View>
-              <Animated.View
-                style={[styles.heroSlot, mantraStyle]}
-              >
-                <AppText
-                  font="cormorant-italic"
-                  numberOfLines={HERO_AFFIRMATION_MAX_LINES}
-                  style={styles.heroMantra}
-                >
-                  {heroMantra}
-                </AppText>
               </Animated.View>
             </View>
           </ScrollView>
@@ -518,7 +519,7 @@ const styles = StyleSheet.create({
   goodbyeInner: {
     flexGrow: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     paddingHorizontal: 28,
     paddingBottom: 16,
   },
@@ -533,11 +534,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginTop: 8,
-    minHeight: 128 + 16 + HERO_SLOT_HEIGHT,
+    minHeight: 128 + 16,
   },
   giftReveal: {
     alignItems: "center",
     width: "100%",
+  },
+  heroCenter: {
+    flexGrow: 1,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: HERO_SLOT_HEIGHT + 24,
+    paddingVertical: 12,
   },
   heroSlot: {
     width: "100%",
@@ -559,8 +568,8 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.86)",
     fontSize: 18,
     lineHeight: 28,
-    marginTop: 18,
-    marginBottom: 12,
+    marginTop: 10,
+    marginBottom: 4,
     maxWidth: 360,
   },
   homeFooter: {
@@ -581,6 +590,8 @@ const styles = StyleSheet.create({
   },
   galleryDoor: {
     marginTop: 4,
+    width: "100%",
+    alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
     gap: 14,
@@ -592,6 +603,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   galleryDoorLabelSlot: {
+    width: "100%",
     minHeight: 52,
     justifyContent: "center",
     alignItems: "center",
@@ -605,15 +617,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   plateHalo: {
+    alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "visible",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.85,
     shadowRadius: 28,
-    elevation: 14,
+    // Android elevation paints a bottom-right shadow that pulls the plate
+    // off the optical center. The glow behind the card is the bloom.
+    ...Platform.select({
+      ios: {},
+      android: { elevation: 0 },
+    }),
+  },
+  plateImage: {
+    width: "100%",
+    height: "100%",
   },
   plateGlow: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: -14,
+    left: -14,
+    right: -14,
+    bottom: -14,
     borderRadius: 999,
     transform: [{ scaleX: 0.86 }, { scaleY: 0.9 }],
   },

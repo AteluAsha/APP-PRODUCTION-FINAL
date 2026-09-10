@@ -40,7 +40,7 @@ import { getGoodbyeField } from '@/constants/sanctuaryFields'
 import { Chakra } from '@/types/chakras/Chakra'
 import { CHAKRA_TO_DAY } from '@/utils/chakraMapping'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
-import { TOUCH } from '@/constants/layout'
+import { ANDROID_PRESS_DELAY_MS, TOUCH } from '@/constants/layout'
 
 const FLIP_MS = 780
 const CARD_ASPECT = 4 / 3
@@ -311,35 +311,6 @@ export function GalleryChamber({
                                                     ) : null,
                                                 )}
                                             </View>
-
-                                            <Pressable
-                                                onPress={() => {
-                                                    addHapticFeedback(
-                                                        HapticStrength.Light,
-                                                    )
-                                                    onReturnToDay()
-                                                }}
-                                                style={({ pressed }) => [
-                                                    styles.returnBtn,
-                                                    {
-                                                        opacity: pressed
-                                                            ? 0.88
-                                                            : 1,
-                                                    },
-                                                ]}
-                                                hitSlop={TOUCH.hitSlop}
-                                                accessibilityRole="button"
-                                                accessibilityLabel={
-                                                    GALLERY_RETURN_TO_DAY
-                                                }
-                                            >
-                                                <AppText
-                                                    font="cormorant-italic"
-                                                    style={styles.returnLabel}
-                                                >
-                                                    {GALLERY_RETURN_TO_DAY}
-                                                </AppText>
-                                            </Pressable>
                                         </ScrollView>
                                     </LinearGradient>
                                 </Pressable>
@@ -353,6 +324,35 @@ export function GalleryChamber({
                                 ? GALLERY_FLIP_BACK_HINT
                                 : GALLERY_FLIP_HINT}
                         </AppText>
+                        {isFlipped ? (
+                            <Pressable
+                                onPress={() => {
+                                    addHapticFeedback(HapticStrength.Light)
+                                    onReturnToDay()
+                                }}
+                                delayPressIn={
+                                    Platform.OS === 'android'
+                                        ? ANDROID_PRESS_DELAY_MS
+                                        : undefined
+                                }
+                                style={({ pressed }) => [
+                                    styles.returnBtn,
+                                    {
+                                        opacity: pressed ? 0.88 : 1,
+                                    },
+                                ]}
+                                hitSlop={TOUCH.hitSlop}
+                                accessibilityRole="button"
+                                accessibilityLabel={GALLERY_RETURN_TO_DAY}
+                            >
+                                <AppText
+                                    font="cormorant-italic"
+                                    style={styles.returnLabel}
+                                >
+                                    {GALLERY_RETURN_TO_DAY}
+                                </AppText>
+                            </Pressable>
+                        ) : null}
                     </>
                 ) : null}
             </View>
@@ -451,6 +451,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     returnBtn: {
+        marginTop: 14,
         paddingVertical: Platform.OS === 'ios' ? 14 : 13,
         paddingHorizontal: 28,
         borderRadius: 9999,

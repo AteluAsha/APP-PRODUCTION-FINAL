@@ -549,37 +549,45 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
             ? "Awakening Soul"
             : null
 
+  /**
+   * Hub Profile is a full screen, not a tap-outside modal. On Android a wrapping
+   * Pressable expands child hit targets (Energy Exchange) over empty space and
+   * steals ScrollView pans: choppy scroll, reminder switches covered, tap-black
+   * opens the paywall. Use a View on asScreen; keep Pressable only for the modal card.
+   */
+  const cardStyle = [
+    profileOnly ? styles.profileOnlyCard : styles.card,
+    !profileOnly ? { maxWidth: cardMaxWidth } : null,
+  ]
+  const surfaceStyle = [
+    profileOnly ? styles.profileOnlyGradient : styles.gradient,
+    profileOnly && asScreen
+      ? { paddingTop: safeOverlayTop(insets.top) }
+      : null,
+  ]
+  const CardRoot = asScreen ? View : Pressable
+  const ProfileSurface = profileOnly ? View : LinearGradient
   const innerContent = (
-    <Pressable
-      style={[
-        profileOnly ? styles.profileOnlyCard : styles.card,
-        !profileOnly ? { maxWidth: cardMaxWidth } : null,
-      ]}
-      onPress={(e) => e.stopPropagation()}
+    <CardRoot
+      style={cardStyle}
+      {...(!asScreen
+        ? { onPress: (e: { stopPropagation: () => void }) => e.stopPropagation() }
+        : { pointerEvents: "box-none" as const })}
     >
       {(Platform.OS !== "android" || androidContentVisible || asScreen) && (
-          <LinearGradient
-            colors={
-              profileOnly
-                ? [
-                    "rgba(0,0,0,0)",
-                    "rgba(0,0,0,0)",
-                    "rgba(0,0,0,0)",
-                  ]
-                : [
+          <ProfileSurface
+            {...(profileOnly
+              ? {}
+              : {
+                  colors: [
                     "rgba(28, 28, 32, 0.92)",
                     "rgba(22, 26, 28, 0.90)",
                     "rgba(20, 26, 32, 0.88)",
-                  ]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[
-              profileOnly ? styles.profileOnlyGradient : styles.gradient,
-              profileOnly && asScreen
-                ? { paddingTop: safeOverlayTop(insets.top) }
-                : null,
-            ]}
+                  ],
+                  start: { x: 0, y: 0 },
+                  end: { x: 1, y: 1 },
+                })}
+            style={surfaceStyle}
           >
             <View style={styles.header}>
               {profileOnly && asScreen ? (
@@ -640,11 +648,13 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
               <ScrollView
                 style={styles.profileOnlyScroll}
                 showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+                removeClippedSubviews={false}
+                keyboardShouldPersistTaps="handled"
                 contentContainerStyle={[
                   styles.profileOnlyScrollContent,
                   { paddingBottom: Math.max(insets.bottom, 16) + 40 },
                 ]}
-                keyboardShouldPersistTaps="handled"
               >
                 <View style={styles.profileOnlyIdBlock}>
                   <AppText
@@ -903,28 +913,6 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   We do not share your information with anyone. It all stays
                   right here, with you.
                 </AppText>
-                <Pressable
-                  onPress={openEnergyExchange}
-                  style={({ pressed }) => [
-                    styles.profileOnlyPillBtn,
-                    styles.profileOnlyPillBtnGold,
-                    pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] },
-                  ]}
-                >
-                  <Ionicons
-                    name="sparkles-outline"
-                    size={20}
-                    color="rgba(212, 175, 55, 0.95)"
-                  />
-                  <AppText
-                    font="instrument-medium"
-                    size="sm"
-                    style={styles.upgradeRowText}
-                  >
-                    Energy Exchange
-                  </AppText>
-                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
-                </Pressable>
                 <View style={styles.profileOnlyReminders}>
                   <AppText
                     font="cormorant-italic"
@@ -956,6 +944,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                         anytime in system settings.
                       </AppText>
                     </View>
+                    <View style={styles.menuRowSwitchControl} pointerEvents="box-none">
                     <Switch
                       value={journeyNudgesSwitchValue}
                       onValueChange={(v) => {
@@ -975,6 +964,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                       ios_backgroundColor="rgba(255,255,255,0.2)"
                       accessibilityLabel="Journey reminders"
                     />
+                    </View>
                   </View>
                   <View
                     style={[styles.menuRowSwitch, styles.profileOnlyNotifyRow]}
@@ -1002,6 +992,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                         the app that day. Requires journey reminders above.
                       </AppText>
                     </View>
+                    <View style={styles.menuRowSwitchControl} pointerEvents="box-none">
                     <Switch
                       value={dailyAlignmentSwitchValue}
                       onValueChange={(v) => {
@@ -1022,7 +1013,40 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                       ios_backgroundColor="rgba(255,255,255,0.2)"
                       accessibilityLabel="Daily alignment reminders"
                     />
+                    </View>
                   </View>
+                </View>
+                <View
+                  style={styles.profileOnlyActionWrap}
+                  collapsable={false}
+                >
+                <Pressable
+                  onPress={openEnergyExchange}
+                  android_ripple={{
+                    color: "rgba(232, 201, 140, 0.18)",
+                    borderless: false,
+                    foreground: true,
+                  }}
+                  style={({ pressed }) => [
+                    styles.profileOnlyPillBtn,
+                    styles.profileOnlyPillBtnGold,
+                    pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] },
+                  ]}
+                >
+                  <Ionicons
+                    name="sparkles-outline"
+                    size={20}
+                    color="rgba(212, 175, 55, 0.95)"
+                  />
+                  <AppText
+                    font="instrument-medium"
+                    size="sm"
+                    style={styles.upgradeRowText}
+                  >
+                    Energy Exchange
+                  </AppText>
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+                </Pressable>
                 </View>
                 <Pressable
                   onPress={handleDeleteAccount}
@@ -1724,9 +1748,9 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                 </AppText>
               </ScrollView>
             )}
-          </LinearGradient>
+          </ProfileSurface>
           )}
-    </Pressable>
+    </CardRoot>
   )
   if (asScreen) {
     return (
@@ -1829,6 +1853,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingBottom: 32,
+    overflow: "visible",
   },
   scrollContent: { alignItems: "center", paddingBottom: 16 },
   header: {
@@ -1883,6 +1908,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 4,
     minWidth: 0,
+  },
+  menuRowSwitchControl: {
+    flexShrink: 0,
+    justifyContent: "center",
+    alignItems: "center",
   },
   menuRowSwitchTitle: {
     color: "rgba(255,255,255,0.95)",
@@ -2073,17 +2103,29 @@ const styles = StyleSheet.create({
   },
   profileOnlyReminders: {
     width: "100%",
-    marginTop: 36,
+    marginTop: 20,
     paddingTop: 8,
     gap: 12,
   },
   profileOnlyNotifyRow: {
     marginTop: 0,
   },
+  profileOnlyActionWrap: {
+    width: "100%",
+    alignSelf: "stretch",
+    flexGrow: 0,
+    flexShrink: 0,
+    marginTop: 28,
+    overflow: "hidden",
+    borderRadius: 20,
+  },
   profileOnlyPillBtnGold: {
-    marginTop: 32,
+    marginTop: 0,
     borderLeftColor: "rgba(232, 201, 140, 0.35)",
     backgroundColor: "rgba(232, 201, 140, 0.1)",
+    ...Platform.select({
+      android: { elevation: 0 },
+    }),
   },
   avatarWrap: {
     marginBottom: 12,

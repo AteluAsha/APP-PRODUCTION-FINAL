@@ -118,6 +118,8 @@ describe('Audio Library single-track mode', () => {
         expect(player).toContain('shouldReloadGrowingVaultPart')
         expect(player).toContain('tryReloadGrowingVaultPart')
         expect(player).toContain('PlayerVaultSaveCue')
+        expect(player).toContain('usePlayerDownloadGlitch')
+        expect(player).toContain('visible={showGlitch}')
         expect(player).toContain('crystal_bowl')
         const open = read('utils/musicRoomPlayback.ts')
         expect(open).toContain('if (!allowsTrackQueue(store.playMode)) return false')

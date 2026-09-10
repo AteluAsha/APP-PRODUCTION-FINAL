@@ -34,7 +34,7 @@ module.exports = {
     // Android app_name via withLauncherDisplayName — both "Awakening Soul".
     name: "Awakening Soul",
     slug: "soul-school",
-    version: "1.2.9",
+    version: "1.2.10",
     orientation: "portrait",
     icon: APP_ICON_BLACK,
     // Native shield: golden "7" load art (small, centered). JS splash uses SoulSchool_HERO_Logo. Run prebuild --clean after change.
@@ -82,8 +82,8 @@ module.exports = {
         AppStoreID: "6760920862",
       },
       bundleIdentifier: "com.sevenchakras.SevenChakras",
-      // iOS 1.2.9 (51): next App Store cut. Build 50 was 1.2.8.
-      buildNumber: "51",
+      // iOS 1.2.10 (52): matches Play versionCode 52. Build 51 was 1.2.9.
+      buildNumber: "52",
       privacyManifests: {
         NSPrivacyTracking: false,
         NSPrivacyCollectedDataTypes: [
@@ -117,8 +117,8 @@ module.exports = {
         translucent: true,
       },
       package: "com.sevenchakras.SevenChakras",
-      // User-facing 1.2.9. Production AAB versionCode 50 (Play already used 49).
-      versionCode: 50,
+      // User-facing 1.2.10. Production AAB versionCode 52 (Play already used 50).
+      versionCode: 52,
       // No SEND_SMS / SMS permissions: app never sends messages automatically; invite flow only opens system Messages/WhatsApp with pre-filled text; user taps Send.
       permissions: [
         "RECORD_AUDIO",

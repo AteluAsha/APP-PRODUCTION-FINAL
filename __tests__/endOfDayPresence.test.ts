@@ -153,6 +153,12 @@ describe("end of day presence and goodbye", () => {
         expect(goodbye).toContain("delayPressIn")
         expect(goodbye).toContain("giftSlot")
         expect(goodbye).toContain("heroSlot")
+        expect(goodbye).toContain("heroCenter")
+        expect(goodbye).toContain("plateImage")
+        expect(goodbye).toContain("alignSelf: \"center\"")
+        expect(goodbye.indexOf("galleryDoorLabelSlot")).toBeLessThan(
+            goodbye.indexOf("styles.plateHalo"),
+        )
         const enterGallery = goodbye.slice(
             goodbye.indexOf("const handleEnterGallery"),
             goodbye.indexOf("const handleNavigateHome"),

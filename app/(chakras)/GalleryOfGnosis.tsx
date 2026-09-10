@@ -2,6 +2,9 @@
  * Gallery of Alignment — seven chambers.
  * `?chakra=` from goodbye opens that day's chamber. Home when arriving from goodbye.
  * Flip is local: back unturns the plate before it ever leaves the room.
+ * Goodbye replaces the day with this room, so a stack swipe-back would dump
+ * the user on ChakraHub (tomorrow blessing already queued). Turning the plate
+ * locks the pager; that used to leak the pan to the stack. Gestures stay off.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -14,7 +17,7 @@ import {
     Platform,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { ActionBar } from '@/components/ActionBar'
 import { ScreenCrashBoundary } from '@/components/ScreenCrashBoundary'
@@ -42,6 +45,7 @@ const { width: WINDOW_WIDTH } = Dimensions.get('window')
 
 function GalleryOfGnosis() {
     const router = useRouter()
+    const navigation = useNavigation()
     const insets = useSafeAreaInsets()
     const overlayTop = safeOverlayTop(insets.top)
     const { chakra: chakraParam } = useLocalSearchParams<{
@@ -72,6 +76,12 @@ function GalleryOfGnosis() {
     const [noticeVisible, setNoticeVisible] = useState(false)
     const [flippedIndex, setFlippedIndex] = useState<number | null>(null)
     const scrollRef = useRef<ScrollView>(null)
+    const currentIndexRef = useRef(0)
+    const flippedIndexRef = useRef<number | null>(null)
+    const noticeVisibleRef = useRef(false)
+    currentIndexRef.current = currentIndex
+    flippedIndexRef.current = flippedIndex
+    noticeVisibleRef.current = noticeVisible
 
     const lastUnlockedDay = useMemo(() => {
         let last = 0
@@ -116,17 +126,36 @@ function GalleryOfGnosis() {
         setNoticeVisible(true)
     }, [storesReady, hasSeenNotice])
 
-    const handleScroll = useCallback(
-        (e: { nativeEvent: { contentOffset: { x: number } } }) => {
-            const offset = e.nativeEvent.contentOffset.x
+    const syncIndexFromOffset = useCallback(
+        (offset: number, settlePage: boolean) => {
+            if (viewportWidth <= 0) return
             const index = Math.round(offset / viewportWidth)
+            if (!Number.isFinite(index)) return
             const next = Math.max(0, Math.min(index, 6))
             setCurrentIndex(next)
+            if (!settlePage) return
             setFlippedIndex((current) =>
                 current == null || current === next ? current : null,
             )
         },
         [viewportWidth],
+    )
+
+    const handlePagerScroll = useCallback(
+        (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+            // While a plate is turning, ignore Android's spurious offset
+            // when scrollEnabled flips off — that used to desync the room.
+            if (flippedIndexRef.current != null) return
+            syncIndexFromOffset(e.nativeEvent.contentOffset.x, false)
+        },
+        [syncIndexFromOffset],
+    )
+
+    const handlePagerSettled = useCallback(
+        (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+            syncIndexFromOffset(e.nativeEvent.contentOffset.x, true)
+        },
+        [syncIndexFromOffset],
     )
 
     const scrollToChamber = useCallback(
@@ -161,17 +190,17 @@ function GalleryOfGnosis() {
     }, [openedFromGoodbye, focusChakra, router])
 
     const handleBack = useCallback(() => {
-        if (noticeVisible) {
+        if (noticeVisibleRef.current) {
             closeNotice()
             return
         }
-        if (flippedIndex === currentIndex) {
+        if (flippedIndexRef.current === currentIndexRef.current) {
             addHapticFeedback(HapticStrength.Light)
             setFlippedIndex(null)
             return
         }
         leaveGallery()
-    }, [noticeVisible, closeNotice, flippedIndex, currentIndex, leaveGallery])
+    }, [closeNotice, leaveGallery])
 
     useEffect(() => {
         if (Platform.OS !== 'android') return
@@ -180,6 +209,31 @@ function GalleryOfGnosis() {
             return true
         })
     }, [handleBack])
+
+    useEffect(() => {
+        navigation.setOptions({
+            gestureEnabled: false,
+            fullScreenGestureEnabled: false,
+        })
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            const actionType = (e.data?.action as { type?: string } | undefined)
+                ?.type
+            if (actionType !== 'GO_BACK' && actionType !== 'POP') return
+            if (
+                flippedIndexRef.current == null &&
+                !noticeVisibleRef.current
+            ) {
+                return
+            }
+            e.preventDefault()
+            if (noticeVisibleRef.current) {
+                closeNotice()
+                return
+            }
+            setFlippedIndex(null)
+        })
+        return unsubscribe
+    }, [navigation, closeNotice])
 
     const reopenNotice = useCallback(() => {
         addHapticFeedback(HapticStrength.Light)
@@ -199,8 +253,8 @@ function GalleryOfGnosis() {
                     nestedScrollEnabled
                     scrollEnabled={flippedIndex == null && !noticeVisible}
                     showsHorizontalScrollIndicator={false}
-                    onMomentumScrollEnd={handleScroll}
-                    onScroll={handleScroll}
+                    onMomentumScrollEnd={handlePagerSettled}
+                    onScroll={handlePagerScroll}
                     scrollEventThrottle={16}
                     style={styles.pager}
                 >
@@ -233,7 +287,7 @@ function GalleryOfGnosis() {
 
             <ActionBar
                 onBackPress={handleBack}
-                useHomeButton={openedFromGoodbye && flippedIndex == null}
+                useHomeButton={openedFromGoodbye}
             />
             <Pressable
                 onPress={reopenNotice}

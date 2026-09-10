@@ -1,5 +1,6 @@
 import { ActivityIndicator, View } from 'react-native'
 import { AppText } from '@/components/AppText'
+import { usePlayerDownloadGlitch } from '@/hooks/usePlayerDownloadGlitch'
 import { useSanctuaryVaultStore } from '@/src/services/sanctuaryVaultDownloader'
 import {
     formatDownloadingHeadline,
@@ -15,12 +16,17 @@ export function VaultFirstLoadPanel({
     audioId?: string | null
     durationMs?: number
 }) {
+    const { showGlitch } = usePlayerDownloadGlitch(audioId, { isLoading: true })
     const downloadingAudioId = useSanctuaryVaultStore((s) => s.downloadingAudioId)
     const rushedAudioId = useSanctuaryVaultStore((s) => s.rushedAudioId)
     const trackProgress = useSanctuaryVaultStore((s) =>
         audioId ? s.progressByAudioId[audioId] : undefined,
     )
     const status = useSanctuaryVaultStore((s) => s.status)
+
+    if (!showGlitch) {
+        return null
+    }
 
     const isThisTrack =
         !audioId ||

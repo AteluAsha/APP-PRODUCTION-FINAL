@@ -34,6 +34,7 @@ import { SoftChakraBall } from "@/components/chakras/SoftChakraBall"
 import { VaultFirstLoadPanel } from "@/components/chakras/VaultFirstLoadPanel"
 import { HeadsetListenReminder } from "@/components/audio/HeadsetListenReminder"
 import { PlayerVaultSaveCue } from "@/components/audio/PlayerVaultSaveCue"
+import { usePlayerDownloadGlitch } from "@/hooks/usePlayerDownloadGlitch"
 import { NotesLeafButton } from "@/components/notes/NotesLeafButton"
 import {
   getChakraImage,
@@ -148,6 +149,7 @@ function PlayerTrackFace({
   embodimentPulse: boolean
   animatedStyle: object
 }) {
+  const { showGlitch } = usePlayerDownloadGlitch(audioId, { isLoading })
   return (
     <Animated.View
       style={[
@@ -198,7 +200,7 @@ function PlayerTrackFace({
           {author}
         </AppText>
       ) : null}
-      {isLoading ? (
+      {isLoading && showGlitch ? (
         <AppText
           font="instrument-regular"
           size="base"
@@ -211,7 +213,11 @@ function PlayerTrackFace({
           Preparing audio…
         </AppText>
       ) : null}
-      <PlayerVaultSaveCue audioId={audioId} visible />
+      <PlayerVaultSaveCue
+        audioId={audioId}
+        visible={showGlitch}
+        isLoading={isLoading}
+      />
     </Animated.View>
   )
 }

@@ -103,6 +103,11 @@ describe('weekly heart reminders', () => {
     expect(sheet).toContain('Daily alignment reminders')
     expect(sheet).toContain('profileOnlyReminders')
     expect(sheet).toContain('profileOnlyScroll')
+    expect(sheet).toContain('profileOnlyActionWrap')
+    expect(sheet).toContain('asScreen ? View : Pressable')
     expect(sheet).toContain('Energy Exchange')
+    expect(sheet.indexOf('profileOnlyReminders')).toBeLessThan(
+      sheet.indexOf('profileOnlyActionWrap'),
+    )
   })
 })

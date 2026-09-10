@@ -1,11 +1,12 @@
 /**
- * Full-player save cue while a sanctuary `.part` is still arriving.
- * Native playback can stall on the first snapshot; this tells the listener why.
+ * Full-player save cue. Hidden while a track is saving in the background.
+ * Opens only when the download stalls, pauses, or errors.
  */
 
 import { View } from 'react-native'
 import { AppText } from '@/components/AppText'
 import { getSanctuaryVaultTrack } from '@/constants/sanctuaryVaultTracks'
+import { usePlayerDownloadGlitch } from '@/hooks/usePlayerDownloadGlitch'
 import { useSanctuaryVaultStore } from '@/src/services/sanctuaryVaultDownloader'
 import {
     formatDownloadingHeadline,
@@ -16,10 +17,13 @@ import {
 export function PlayerVaultSaveCue({
     audioId,
     visible,
+    isLoading = false,
 }: {
     audioId?: string | null
     visible: boolean
+    isLoading?: boolean
 }) {
+    const { showGlitch } = usePlayerDownloadGlitch(audioId, { isLoading })
     const fullyStored = useSanctuaryVaultStore((s) =>
         audioId ? s.readyIds[audioId] === true : false,
     )
@@ -32,6 +36,7 @@ export function PlayerVaultSaveCue({
 
     if (
         !visible ||
+        !showGlitch ||
         !audioId ||
         fullyStored ||
         !getSanctuaryVaultTrack(audioId)

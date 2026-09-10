@@ -36,6 +36,44 @@ describe('unified vault download UI', () => {
         expect(audioIdx).toBeGreaterThan(dropIdx)
     })
 
+    it('full player keeps download chrome quiet unless the save glitches', () => {
+        const hook = fs.readFileSync(
+            path.join(__dirname, '..', 'hooks/usePlayerDownloadGlitch.ts'),
+            'utf8',
+        )
+        expect(hook).toContain('PLAYER_LOAD_GLITCH_MS')
+        expect(hook).toContain('healthyDownload')
+        expect(hook).toContain("vaultStatus === 'error'")
+        const cue = fs.readFileSync(
+            path.join(__dirname, '..', 'components/audio/PlayerVaultSaveCue.tsx'),
+            'utf8',
+        )
+        expect(cue).toContain('usePlayerDownloadGlitch')
+        expect(cue).toContain('!showGlitch')
+        const panel = fs.readFileSync(
+            path.join(
+                __dirname,
+                '..',
+                'components/chakras/VaultFirstLoadPanel.tsx',
+            ),
+            'utf8',
+        )
+        expect(panel).toContain('usePlayerDownloadGlitch')
+        expect(panel).toContain('if (!showGlitch)')
+        const player = fs.readFileSync(
+            path.join(__dirname, '..', 'app/AudioPlayer.tsx'),
+            'utf8',
+        )
+        expect(player).toContain('visible={showGlitch}')
+        expect(player).toContain('isLoading && showGlitch')
+        const dropIn = fs.readFileSync(
+            path.join(__dirname, '..', 'components/chakras/DropInButton.tsx'),
+            'utf8',
+        )
+        expect(dropIn).not.toContain('progressLabel')
+        expect(dropIn).toContain("'Drop In'")
+    })
+
     it('full player shows a fading headset reminder, not headphone detection', () => {
         const reminder = fs.readFileSync(
             path.join(

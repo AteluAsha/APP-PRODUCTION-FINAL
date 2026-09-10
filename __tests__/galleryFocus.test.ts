@@ -80,6 +80,9 @@ describe('gallery focus from View in Gallery', () => {
         expect(chamber).toContain('GALLERY_OPEN_READING')
         expect(chamber).toContain('isFlipped')
         expect(chamber).toContain('rotateY')
+        expect(chamber.indexOf('onReturnToDay()')).toBeGreaterThan(
+            chamber.indexOf('styles.hint'),
+        )
         expect(chamber).not.toContain('isReading')
         const gallery = fs.readFileSync(
             path.join(__dirname, '..', 'app/(chakras)/GalleryOfGnosis.tsx'),
@@ -88,10 +91,16 @@ describe('gallery focus from View in Gallery', () => {
         expect(gallery).toContain('flippedIndex')
         expect(gallery).toContain('registerAndroidHardwareBackOverride')
         expect(gallery).toContain('markDayCompleteDeparture')
+        expect(gallery).toContain('beforeRemove')
+        expect(gallery).toContain('handlePagerSettled')
+        expect(gallery).toContain('useHomeButton={openedFromGoodbye}')
         expect(gallery).not.toContain('SETTLE_NOTICE_MS')
         const layout = fs.readFileSync(
             path.join(__dirname, '..', 'app/(chakras)/_layout.tsx'),
             'utf8',
+        )
+        expect(layout).toMatch(
+            /name="GalleryOfGnosis"[\s\S]*gestureEnabled:\s*false/,
         )
         expect(layout).not.toContain('GiftChakra')
         const goodbye = fs.readFileSync(
