@@ -173,6 +173,8 @@ describe("progressive vault playback", () => {
             "utf8",
         )
         expect(src).toContain("progressByAudioId")
+        expect(src).toContain("formatDownloadingHeadline")
+        expect(src).not.toContain("fontSize: percent != null ? 64")
         expect(src).not.toMatch(/useSanctuaryVaultStore\(\(s\) => s\.bytesWritten\)/)
     })
 

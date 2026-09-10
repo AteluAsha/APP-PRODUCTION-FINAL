@@ -93,7 +93,7 @@ export function MusicRoomTrackButton({
         def.trackKind === 'tuning_fork'
             ? getTuningForkHertz(def.chakra)
             : undefined
-    const { vaultReady, isDownloading, percent } = useVaultTrackDownloadUi(
+    const { vaultReady, isDownloading } = useVaultTrackDownloadUi(
         def.audioId,
     )
     const isDownloaded = vaultReady
@@ -299,9 +299,6 @@ export function MusicRoomTrackButton({
                             >
                                 <DownloadIconCell
                                     variant={downloadVariant}
-                                    downloadPercent={
-                                        isDownloading ? percent : null
-                                    }
                                     onPress={downloadDisabled ? undefined : onDownload}
                                     disabled={downloadDisabled}
                                 />

@@ -72,21 +72,9 @@ export function VaultFirstLoadPanel({
                 </AppText>
             ) : null}
             <AppText
-                font="cormorant-italic"
-                style={{
-                    color: '#ffffff',
-                    textAlign: 'center',
-                    fontSize: percent != null ? 64 : 42,
-                    lineHeight: percent != null ? 72 : 50,
-                }}
-            >
-                {percent != null ? `${percent}%` : '…'}
-            </AppText>
-            <AppText
                 font="instrument-regular"
                 size="lg"
                 style={{
-                    marginTop: 8,
                     color: 'rgba(255,255,255,0.92)',
                     textAlign: 'center',
                 }}
