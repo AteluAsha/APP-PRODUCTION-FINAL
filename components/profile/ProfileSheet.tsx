@@ -553,7 +553,7 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
     <Pressable
       style={[
         profileOnly ? styles.profileOnlyCard : styles.card,
-        { maxWidth: cardMaxWidth },
+        !profileOnly ? { maxWidth: cardMaxWidth } : null,
       ]}
       onPress={(e) => e.stopPropagation()}
     >
@@ -638,8 +638,13 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
 
             {profileOnly ? (
               <ScrollView
+                style={styles.profileOnlyScroll}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.profileOnlyScrollContent}
+                contentContainerStyle={[
+                  styles.profileOnlyScrollContent,
+                  { paddingBottom: Math.max(insets.bottom, 16) + 40 },
+                ]}
+                keyboardShouldPersistTaps="handled"
               >
                 <View style={styles.profileOnlyIdBlock}>
                   <AppText
@@ -920,93 +925,104 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = ({
                   </AppText>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
                 </Pressable>
-                <View style={[styles.menuRowSwitch, styles.profileOnlyNotifyRow]} accessibilityRole="none">
-                  <Ionicons
-                    name="notifications-outline"
-                    size={22}
-                    color="rgba(168, 201, 154, 0.95)"
-                  />
-                  <View style={styles.menuRowSwitchTextCol}>
-                    <AppText
-                      font="instrument-medium"
-                      size="base"
-                      style={styles.menuRowSwitchTitle}
-                    >
-                      Journey reminders
-                    </AppText>
-                    <AppText
-                      font="instrument-regular"
-                      size="xs"
-                      style={styles.menuRowSubtextMuted}
-                    >
-                      Weekly heart reminders — Sunday evening, and Wednesday
-                      once your journey has started. No marketing; turn off
-                      anytime in system settings.
-                    </AppText>
+                <View style={styles.profileOnlyReminders}>
+                  <AppText
+                    font="cormorant-italic"
+                    style={styles.profileOnlySectionLabel}
+                  >
+                    Reminders
+                  </AppText>
+                  <View style={styles.menuRowSwitch} accessibilityRole="none">
+                    <Ionicons
+                      name="notifications-outline"
+                      size={22}
+                      color="rgba(168, 201, 154, 0.95)"
+                    />
+                    <View style={styles.menuRowSwitchTextCol}>
+                      <AppText
+                        font="instrument-medium"
+                        size="base"
+                        style={styles.menuRowSwitchTitle}
+                      >
+                        Journey reminders
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={styles.menuRowSubtextMuted}
+                      >
+                        Weekly heart reminders — Sunday evening, and Wednesday
+                        once your journey has started. No marketing; turn off
+                        anytime in system settings.
+                      </AppText>
+                    </View>
+                    <Switch
+                      value={journeyNudgesSwitchValue}
+                      onValueChange={(v) => {
+                        void handleJourneyNudgesToggle(v)
+                      }}
+                      trackColor={{
+                        false: "rgba(255,255,255,0.2)",
+                        true: "rgba(168, 201, 154, 0.45)",
+                      }}
+                      thumbColor={
+                        Platform.OS === "android"
+                          ? journeyNudgesSwitchValue
+                            ? "rgba(230, 245, 220, 0.95)"
+                            : "rgba(200, 200, 200, 0.95)"
+                          : undefined
+                      }
+                      ios_backgroundColor="rgba(255,255,255,0.2)"
+                      accessibilityLabel="Journey reminders"
+                    />
                   </View>
-                  <Switch
-                    value={journeyNudgesSwitchValue}
-                    onValueChange={(v) => {
-                      void handleJourneyNudgesToggle(v)
-                    }}
-                    trackColor={{
-                      false: "rgba(255,255,255,0.2)",
-                      true: "rgba(168, 201, 154, 0.45)",
-                    }}
-                    thumbColor={
-                      Platform.OS === "android"
-                        ? journeyNudgesSwitchValue
-                          ? "rgba(230, 245, 220, 0.95)"
-                          : "rgba(200, 200, 200, 0.95)"
-                        : undefined
-                    }
-                    ios_backgroundColor="rgba(255,255,255,0.2)"
-                    accessibilityLabel="Journey reminders"
-                  />
-                </View>
-                <View style={[styles.menuRowSwitch, styles.profileOnlyNotifyRow]} accessibilityRole="none">
-                  <Ionicons
-                    name="sunny-outline"
-                    size={22}
-                    color="rgba(232, 201, 140, 0.88)"
-                  />
-                  <View style={styles.menuRowSwitchTextCol}>
-                    <AppText
-                      font="instrument-medium"
-                      size="base"
-                      style={styles.menuRowSwitchTitle}
-                    >
-                      Daily alignment reminders
-                    </AppText>
-                    <AppText
-                      font="instrument-regular"
-                      size="xs"
-                      style={styles.menuRowSubtextMuted}
-                    >
-                      Noon and night-before check-ins when you have not opened
-                      the app that day. Requires journey reminders above.
-                    </AppText>
+                  <View
+                    style={[styles.menuRowSwitch, styles.profileOnlyNotifyRow]}
+                    accessibilityRole="none"
+                  >
+                    <Ionicons
+                      name="sunny-outline"
+                      size={22}
+                      color="rgba(232, 201, 140, 0.88)"
+                    />
+                    <View style={styles.menuRowSwitchTextCol}>
+                      <AppText
+                        font="instrument-medium"
+                        size="base"
+                        style={styles.menuRowSwitchTitle}
+                      >
+                        Daily alignment reminders
+                      </AppText>
+                      <AppText
+                        font="instrument-regular"
+                        size="xs"
+                        style={styles.menuRowSubtextMuted}
+                      >
+                        Noon and night-before check-ins when you have not opened
+                        the app that day. Requires journey reminders above.
+                      </AppText>
+                    </View>
+                    <Switch
+                      value={dailyAlignmentSwitchValue}
+                      onValueChange={(v) => {
+                        void handleDailyAlignmentToggle(v)
+                      }}
+                      disabled={!journeyNudgesSwitchValue}
+                      trackColor={{
+                        false: "rgba(255,255,255,0.2)",
+                        true: "rgba(232, 201, 140, 0.42)",
+                      }}
+                      thumbColor={
+                        Platform.OS === "android"
+                          ? dailyAlignmentSwitchValue
+                            ? "rgba(255, 248, 236, 0.95)"
+                            : "rgba(200, 200, 200, 0.95)"
+                          : undefined
+                      }
+                      ios_backgroundColor="rgba(255,255,255,0.2)"
+                      accessibilityLabel="Daily alignment reminders"
+                    />
                   </View>
-                  <Switch
-                    value={dailyAlignmentSwitchValue}
-                    onValueChange={(v) => {
-                      void handleDailyAlignmentToggle(v)
-                    }}
-                    disabled={!journeyNudgesSwitchValue}
-                    trackColor={{
-                      false: "rgba(255,255,255,0.2)",
-                      true: "rgba(232, 201, 140, 0.42)",
-                    }}
-                    thumbColor={
-                      Platform.OS === "android"
-                        ? dailyAlignmentSwitchValue
-                          ? "rgba(255, 248, 236, 0.95)"
-                          : "rgba(200, 200, 200, 0.95)"
-                        : undefined
-                    }
-                    ios_backgroundColor="rgba(255,255,255,0.2)"
-                    accessibilityLabel="Daily alignment reminders"
-                  />
                 </View>
                 <Pressable
                   onPress={handleDeleteAccount}
@@ -1804,7 +1820,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: "100%",
     borderRadius: 0,
-    overflow: "hidden",
+    overflow: "visible",
     borderWidth: 0,
     backgroundColor: "transparent",
   },
@@ -1944,6 +1960,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.04)",
   },
   deleteAccountText: { color: "rgba(255,255,255,0.6)" },
+  profileOnlyScroll: {
+    flex: 1,
+    width: "100%",
+  },
   profileOnlyScrollContent: {
     alignItems: "center",
     paddingBottom: 32,
@@ -2021,6 +2041,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.6)",
     fontSize: 11,
     marginTop: 28,
+    marginBottom: 8,
     textAlign: "center",
     paddingHorizontal: 8,
   },
@@ -2050,11 +2071,17 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
     }),
   },
+  profileOnlyReminders: {
+    width: "100%",
+    marginTop: 36,
+    paddingTop: 8,
+    gap: 12,
+  },
   profileOnlyNotifyRow: {
-    marginTop: 14,
+    marginTop: 0,
   },
   profileOnlyPillBtnGold: {
-    marginTop: 8,
+    marginTop: 32,
     borderLeftColor: "rgba(232, 201, 140, 0.35)",
     backgroundColor: "rgba(232, 201, 140, 0.1)",
   },

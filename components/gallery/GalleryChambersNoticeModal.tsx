@@ -4,13 +4,20 @@
  */
 
 import React from 'react'
-import { Modal, View, Pressable, StyleSheet, Platform } from 'react-native'
+import {
+    Modal,
+    View,
+    Pressable,
+    Image,
+    StyleSheet,
+    Platform,
+} from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AppText } from '@/components/AppText'
-import { Ionicons } from '@expo/vector-icons'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
 import { MODAL_CARD_MAX_WIDTH } from '@/constants/layout'
 import { GALLERY_CHAMBERS_NOTICE_COPY } from '@/constants/galleryChambersCopy'
+import { WELLNESS_GATE_FIELD } from '@/constants/sanctuaryFields'
 
 interface GalleryChambersNoticeModalProps {
     visible: boolean
@@ -45,11 +52,6 @@ export function GalleryChambersNoticeModal({
                     ]}
                     pointerEvents="box-none"
                 >
-                    <Pressable
-                        style={StyleSheet.absoluteFill}
-                        onPress={handleUnderstand}
-                        accessibilityLabel="Dismiss"
-                    />
                     <View
                         style={[
                             styles.card,
@@ -61,37 +63,40 @@ export function GalleryChambersNoticeModal({
                         pointerEvents="box-none"
                         collapsable={false}
                     >
+                        <Image
+                            source={WELLNESS_GATE_FIELD}
+                            style={StyleSheet.absoluteFill}
+                            resizeMode="cover"
+                        />
                         <LinearGradient
                             colors={[
-                                'rgba(24, 22, 20, 0.99)',
-                                'rgba(14, 12, 10, 0.99)',
-                                'rgba(10, 14, 12, 0.99)',
+                                'rgba(8, 8, 8, 0.62)',
+                                'rgba(10, 10, 10, 0.78)',
+                                'rgba(8, 8, 8, 0.88)',
                             ]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                            start={{ x: 0.5, y: 0 }}
+                            end={{ x: 0.5, y: 1 }}
                             style={styles.gradient}
                         >
-                            <View style={styles.header}>
-                                <View style={styles.iconWrap}>
-                                    <Ionicons
-                                        name="flower-outline"
-                                        size={22}
-                                        color="rgba(232, 201, 140, 0.92)"
-                                    />
-                                </View>
-                                <AppText
-                                    font="cormorant-italic"
-                                    style={styles.title}
-                                >
-                                    {GALLERY_CHAMBERS_NOTICE_COPY.title}
-                                </AppText>
-                            </View>
+                            <AppText
+                                font="cormorant-italic"
+                                style={styles.title}
+                            >
+                                {GALLERY_CHAMBERS_NOTICE_COPY.title}
+                            </AppText>
 
                             <AppText
                                 font="cormorant-italic"
                                 style={styles.body}
                             >
                                 {GALLERY_CHAMBERS_NOTICE_COPY.body}
+                            </AppText>
+
+                            <AppText
+                                font="cormorant-italic"
+                                style={styles.bodyAfter}
+                            >
+                                {GALLERY_CHAMBERS_NOTICE_COPY.bodyAfter}
                             </AppText>
 
                             <AppText
@@ -119,8 +124,8 @@ export function GalleryChambersNoticeModal({
                             >
                                 <LinearGradient
                                     colors={[
-                                        'rgba(168, 201, 154, 0.35)',
-                                        'rgba(232, 201, 140, 0.18)',
+                                        'rgba(168, 201, 154, 0.55)',
+                                        'rgba(232, 201, 140, 0.38)',
                                     ]}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
@@ -153,62 +158,74 @@ const styles = StyleSheet.create({
     card: {
         width: '100%',
         maxWidth: MODAL_CARD_MAX_WIDTH,
-        borderRadius: 20,
+        borderRadius: 22,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(232, 201, 140, 0.28)',
-        shadowColor: 'rgba(232, 201, 140, 0.2)',
+        borderColor: 'rgba(232, 201, 140, 0.38)',
+        backgroundColor: '#0c0a08',
+        shadowColor: 'rgba(232, 201, 140, 0.28)',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.45,
-        shadowRadius: 16,
+        shadowOpacity: 0.5,
+        shadowRadius: 18,
         elevation: 12,
     },
     gradient: {
-        padding: 22,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-    iconWrap: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(232, 201, 140, 0.12)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
+        paddingVertical: 28,
+        paddingHorizontal: 24,
     },
     title: {
-        color: 'rgba(255, 248, 236, 0.96)',
-        fontSize: 22,
+        color: 'rgba(255, 248, 236, 0.98)',
+        fontSize: 26,
+        lineHeight: 32,
         letterSpacing: 0.3,
-        flex: 1,
+        textAlign: 'center',
+        marginBottom: 18,
+        textShadowColor: 'rgba(0,0,0,0.55)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 8,
     },
     body: {
+        color: 'rgba(255, 248, 236, 0.92)',
+        fontSize: 18,
+        lineHeight: 28,
+        textAlign: 'center',
+        marginBottom: 18,
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
+    },
+    bodyAfter: {
         color: 'rgba(255, 248, 236, 0.88)',
         fontSize: 17,
         lineHeight: 26,
-        marginBottom: 12,
+        textAlign: 'center',
+        marginBottom: 16,
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
     },
     note: {
-        color: 'rgba(232, 201, 140, 0.78)',
+        color: 'rgba(232, 201, 140, 0.88)',
         fontSize: 15,
         lineHeight: 22,
-        marginBottom: 20,
+        textAlign: 'center',
+        marginBottom: 24,
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
     },
     ctaButton: {
-        paddingVertical: 14,
-        paddingHorizontal: 20,
-        borderRadius: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 22,
+        borderRadius: 16,
         borderWidth: 1,
-        borderColor: 'rgba(168, 201, 154, 0.4)',
+        borderColor: 'rgba(232, 201, 140, 0.55)',
         alignItems: 'center',
     },
     ctaText: {
-        color: 'rgba(230, 245, 220, 0.96)',
-        fontSize: 17,
-        letterSpacing: 0.2,
+        color: 'rgba(255, 248, 236, 0.98)',
+        fontSize: 19,
+        letterSpacing: 0.3,
+        textAlign: 'center',
     },
 })

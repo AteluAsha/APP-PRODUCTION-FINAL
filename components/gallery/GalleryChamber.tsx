@@ -1,9 +1,9 @@
 /**
- * One of seven Gallery chambers: the day's plate first, reading on a
- * second screen. The card is the room; the words wait behind it.
+ * One of seven Gallery chambers: full-size plate that flips to the reading.
+ * Tap turns the plate. Tap again turns it back. Back never leaves the room.
  */
 
-import React, { useState } from 'react'
+import React, { useEffect } from 'react'
 import {
     View,
     Image,
@@ -11,8 +11,16 @@ import {
     ScrollView,
     StyleSheet,
     Platform,
+    useWindowDimensions,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import Animated, {
+    Easing,
+    interpolate,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated'
 import { AppText } from '@/components/AppText'
 import { chakraContent } from '@/constants/chakras/content'
 import { getChakraColor } from '@/constants/chakras/chakraConstants'
@@ -21,7 +29,8 @@ import {
     GALLERY_VEILED_LINE,
     GALLERY_CORRESPONDENCE_LABELS,
     GALLERY_OPEN_READING,
-    GALLERY_BACK_TO_CARD,
+    GALLERY_FLIP_HINT,
+    GALLERY_FLIP_BACK_HINT,
 } from '@/constants/galleryChambersCopy'
 import {
     formatHeroAffirmationText,
@@ -32,6 +41,9 @@ import { Chakra } from '@/types/chakras/Chakra'
 import { CHAKRA_TO_DAY } from '@/utils/chakraMapping'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
 import { TOUCH } from '@/constants/layout'
+
+const FLIP_MS = 780
+const CARD_ASPECT = 4 / 3
 
 function hexToRgba(hex: string, alpha: number): string {
     const raw = hex.replace('#', '')
@@ -48,6 +60,8 @@ export function GalleryChamber({
     unlocked,
     topPad,
     bottomPad,
+    isFlipped,
+    onToggleFlip,
     onReturnToDay,
 }: {
     chakra: Chakra
@@ -55,20 +69,56 @@ export function GalleryChamber({
     unlocked: boolean
     topPad: number
     bottomPad: number
+    isFlipped: boolean
+    onToggleFlip: () => void
     onReturnToDay: () => void
 }) {
-    const [isReading, setIsReading] = useState(false)
+    const { height: windowHeight } = useWindowDimensions()
     const day = CHAKRA_TO_DAY[chakra]
     const content = chakraContent[chakra]
     const elements = content?.elements
     const mantra = formatHeroAffirmationText(content?.affirmationText ?? '')
     const chakraColor = getChakraColor(day)
-    const plateWidth = Math.min(width * 0.88, 400)
-    const plateHeight = plateWidth * (4 / 3)
+    const flip = useSharedValue(isFlipped ? 1 : 0)
 
-    const openReading = () => {
+    const maxWidth = Math.max(width - 20, 280)
+    const maxHeight = Math.max(
+        windowHeight - topPad - bottomPad - 56,
+        320,
+    )
+    let plateWidth = maxWidth
+    let plateHeight = plateWidth * CARD_ASPECT
+    if (plateHeight > maxHeight) {
+        plateHeight = maxHeight
+        plateWidth = plateHeight / CARD_ASPECT
+    }
+
+    useEffect(() => {
+        flip.value = withTiming(isFlipped ? 1 : 0, {
+            duration: FLIP_MS,
+            easing: Easing.inOut(Easing.cubic),
+        })
+    }, [isFlipped, flip])
+
+    const frontStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(flip.value, [0, 0.46, 0.54, 1], [1, 1, 0, 0]),
+        transform: [
+            { perspective: 1400 },
+            { rotateY: `${interpolate(flip.value, [0, 1], [0, 180])}deg` },
+        ],
+    }))
+
+    const backStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(flip.value, [0, 0.46, 0.54, 1], [0, 0, 1, 1]),
+        transform: [
+            { perspective: 1400 },
+            { rotateY: `${interpolate(flip.value, [0, 1], [180, 360])}deg` },
+        ],
+    }))
+
+    const toggle = () => {
         addHapticFeedback(HapticStrength.Light)
-        setIsReading(true)
+        onToggleFlip()
     }
 
     return (
@@ -97,165 +147,225 @@ export function GalleryChamber({
                 style={StyleSheet.absoluteFill}
             />
 
-            <ScrollView
-                style={styles.scroll}
-                contentContainerStyle={{
-                    paddingTop: topPad,
-                    paddingBottom: bottomPad,
-                    paddingHorizontal: 20,
-                    alignItems: 'center',
-                    flexGrow: 1,
-                    justifyContent: unlocked && !isReading ? 'center' : 'flex-start',
-                }}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
+            <View
+                style={[
+                    styles.stage,
+                    {
+                        paddingTop: topPad,
+                        paddingBottom: bottomPad,
+                    },
+                ]}
             >
                 {!unlocked ? (
                     <AppText font="cormorant-italic" style={styles.veiled}>
                         {GALLERY_VEILED_LINE}
                     </AppText>
-                ) : isReading ? (
-                    <>
-                        <Pressable
-                            onPress={() => {
-                                addHapticFeedback(HapticStrength.Light)
-                                setIsReading(false)
-                            }}
-                            style={({ pressed }) => [
-                                styles.backToCard,
-                                { opacity: pressed ? 0.88 : 1 },
-                            ]}
-                            hitSlop={TOUCH.hitSlop}
-                            accessibilityRole="button"
-                            accessibilityLabel={GALLERY_BACK_TO_CARD}
-                        >
-                            <AppText
-                                font="cormorant-italic"
-                                style={styles.backToCardLabel}
-                            >
-                                {GALLERY_BACK_TO_CARD}
-                            </AppText>
-                        </Pressable>
-
-                        <AppText
-                            font="cormorant-italic"
-                            numberOfLines={HERO_AFFIRMATION_MAX_LINES}
-                            style={styles.mantra}
-                        >
-                            {mantra}
-                        </AppText>
-
-                        <View style={styles.correspondences}>
-                            {(
-                                [
-                                    [
-                                        GALLERY_CORRESPONDENCE_LABELS.stones,
-                                        elements?.stones,
-                                    ],
-                                    [
-                                        GALLERY_CORRESPONDENCE_LABELS.foods,
-                                        elements?.foods,
-                                    ],
-                                    [
-                                        GALLERY_CORRESPONDENCE_LABELS.colors,
-                                        elements?.colors,
-                                    ],
-                                    [
-                                        GALLERY_CORRESPONDENCE_LABELS.smells,
-                                        elements?.smells,
-                                    ],
-                                ] as const
-                            ).map(([label, value]) =>
-                                value ? (
-                                    <View key={label} style={styles.corrRow}>
-                                        <AppText
-                                            font="instrument-regular"
-                                            style={styles.corrLabel}
-                                        >
-                                            {label}
-                                        </AppText>
-                                        <AppText
-                                            font="cormorant-italic"
-                                            style={styles.corrValue}
-                                        >
-                                            {value}
-                                        </AppText>
-                                    </View>
-                                ) : null,
-                            )}
-                        </View>
-
-                        <Pressable
-                            onPress={() => {
-                                addHapticFeedback(HapticStrength.Light)
-                                onReturnToDay()
-                            }}
-                            style={({ pressed }) => [
-                                styles.returnBtn,
-                                { opacity: pressed ? 0.88 : 1 },
-                            ]}
-                            hitSlop={TOUCH.hitSlop}
-                            accessibilityRole="button"
-                            accessibilityLabel={GALLERY_RETURN_TO_DAY}
-                        >
-                            <AppText
-                                font="cormorant-italic"
-                                style={styles.returnLabel}
-                            >
-                                {GALLERY_RETURN_TO_DAY}
-                            </AppText>
-                        </Pressable>
-                    </>
                 ) : elements?.background ? (
-                    <Pressable
-                        onPress={openReading}
-                        style={({ pressed }) => [
-                            styles.haloWrap,
-                            {
-                                width: plateWidth + 36,
-                                height: plateHeight + 36,
-                                shadowColor: hexToRgba(chakraColor, 0.85),
-                                opacity: pressed ? 0.94 : 1,
-                            },
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={GALLERY_OPEN_READING}
-                    >
-                        <View
-                            pointerEvents="none"
-                            style={[
-                                styles.halo,
-                                {
-                                    backgroundColor: hexToRgba(chakraColor, 0.28),
-                                },
-                            ]}
-                        />
+                    <>
                         <View
                             style={[
-                                styles.plateWrap,
+                                styles.haloWrap,
                                 {
                                     width: plateWidth,
                                     height: plateHeight,
-                                    shadowColor: hexToRgba(chakraColor, 0.7),
+                                    shadowColor: hexToRgba(chakraColor, 0.85),
                                 },
                             ]}
                         >
-                            <Image
-                                source={elements.background}
-                                style={styles.plate}
-                                resizeMode="contain"
+                            <View
+                                pointerEvents="none"
+                                style={[
+                                    styles.halo,
+                                    {
+                                        backgroundColor: hexToRgba(
+                                            chakraColor,
+                                            0.28,
+                                        ),
+                                    },
+                                ]}
                             />
+                            <Animated.View
+                                pointerEvents={isFlipped ? 'none' : 'auto'}
+                                style={[
+                                    styles.face,
+                                    {
+                                        width: plateWidth,
+                                        height: plateHeight,
+                                        shadowColor: hexToRgba(
+                                            chakraColor,
+                                            0.7,
+                                        ),
+                                    },
+                                    frontStyle,
+                                ]}
+                            >
+                                <Pressable
+                                    onPress={toggle}
+                                    style={styles.platePress}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={GALLERY_OPEN_READING}
+                                >
+                                    <Image
+                                        source={elements.background}
+                                        style={styles.plate}
+                                        resizeMode="contain"
+                                    />
+                                </Pressable>
+                            </Animated.View>
+                            <Animated.View
+                                pointerEvents={isFlipped ? 'auto' : 'none'}
+                                style={[
+                                    styles.face,
+                                    styles.backFace,
+                                    {
+                                        width: plateWidth,
+                                        height: plateHeight,
+                                        borderColor: hexToRgba(
+                                            chakraColor,
+                                            0.42,
+                                        ),
+                                    },
+                                    backStyle,
+                                ]}
+                            >
+                                <Pressable
+                                    onPress={toggle}
+                                    style={styles.platePress}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={GALLERY_FLIP_BACK_HINT}
+                                >
+                                    <LinearGradient
+                                        colors={[
+                                            'rgba(12, 10, 8, 0.94)',
+                                            'rgba(8, 10, 12, 0.96)',
+                                        ]}
+                                        start={{ x: 0.5, y: 0 }}
+                                        end={{ x: 0.5, y: 1 }}
+                                        style={styles.backFill}
+                                    >
+                                        <ScrollView
+                                            style={styles.backScroll}
+                                            contentContainerStyle={
+                                                styles.backScrollInner
+                                            }
+                                            showsVerticalScrollIndicator={false}
+                                            bounces={false}
+                                        >
+                                            <AppText
+                                                font="cormorant-italic"
+                                                numberOfLines={
+                                                    HERO_AFFIRMATION_MAX_LINES
+                                                }
+                                                style={styles.mantra}
+                                            >
+                                                {mantra}
+                                            </AppText>
+
+                                            <View
+                                                style={styles.correspondences}
+                                            >
+                                                {(
+                                                    [
+                                                        [
+                                                            GALLERY_CORRESPONDENCE_LABELS.stones,
+                                                            elements?.stones,
+                                                        ],
+                                                        [
+                                                            GALLERY_CORRESPONDENCE_LABELS.foods,
+                                                            elements?.foods,
+                                                        ],
+                                                        [
+                                                            GALLERY_CORRESPONDENCE_LABELS.colors,
+                                                            elements?.colors,
+                                                        ],
+                                                        [
+                                                            GALLERY_CORRESPONDENCE_LABELS.smells,
+                                                            elements?.smells,
+                                                        ],
+                                                    ] as const
+                                                ).map(([label, value]) =>
+                                                    value ? (
+                                                        <View
+                                                            key={label}
+                                                            style={
+                                                                styles.corrRow
+                                                            }
+                                                        >
+                                                            <AppText
+                                                                font="instrument-regular"
+                                                                style={
+                                                                    styles.corrLabel
+                                                                }
+                                                            >
+                                                                {label}
+                                                            </AppText>
+                                                            <AppText
+                                                                font="cormorant-italic"
+                                                                style={
+                                                                    styles.corrValue
+                                                                }
+                                                            >
+                                                                {value}
+                                                            </AppText>
+                                                        </View>
+                                                    ) : null,
+                                                )}
+                                            </View>
+
+                                            <Pressable
+                                                onPress={() => {
+                                                    addHapticFeedback(
+                                                        HapticStrength.Light,
+                                                    )
+                                                    onReturnToDay()
+                                                }}
+                                                style={({ pressed }) => [
+                                                    styles.returnBtn,
+                                                    {
+                                                        opacity: pressed
+                                                            ? 0.88
+                                                            : 1,
+                                                    },
+                                                ]}
+                                                hitSlop={TOUCH.hitSlop}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={
+                                                    GALLERY_RETURN_TO_DAY
+                                                }
+                                            >
+                                                <AppText
+                                                    font="cormorant-italic"
+                                                    style={styles.returnLabel}
+                                                >
+                                                    {GALLERY_RETURN_TO_DAY}
+                                                </AppText>
+                                            </Pressable>
+                                        </ScrollView>
+                                    </LinearGradient>
+                                </Pressable>
+                            </Animated.View>
                         </View>
-                    </Pressable>
+                        <AppText
+                            font="cormorant-italic"
+                            style={styles.hint}
+                        >
+                            {isFlipped
+                                ? GALLERY_FLIP_BACK_HINT
+                                : GALLERY_FLIP_HINT}
+                        </AppText>
+                    </>
                 ) : null}
-            </ScrollView>
+            </View>
         </View>
     )
 }
 
 const styles = StyleSheet.create({
-    scroll: {
+    stage: {
         flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 10,
     },
     haloWrap: {
         alignItems: 'center',
@@ -268,9 +378,10 @@ const styles = StyleSheet.create({
     halo: {
         ...StyleSheet.absoluteFillObject,
         borderRadius: 999,
-        transform: [{ scaleX: 0.86 }, { scaleY: 0.92 }],
+        transform: [{ scaleX: 0.9 }, { scaleY: 0.94 }],
     },
-    plateWrap: {
+    face: {
+        position: 'absolute',
         borderRadius: 22,
         overflow: 'hidden',
         backgroundColor: 'transparent',
@@ -279,16 +390,39 @@ const styles = StyleSheet.create({
         shadowRadius: 22,
         elevation: 12,
     },
+    backFace: {
+        borderWidth: 1,
+        backgroundColor: '#0c0a08',
+    },
     plate: {
         width: '100%',
         height: '100%',
     },
+    platePress: {
+        width: '100%',
+        height: '100%',
+    },
+    backFill: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+    },
+    backScroll: {
+        flex: 1,
+    },
+    backScrollInner: {
+        paddingVertical: 22,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        flexGrow: 1,
+        justifyContent: 'center',
+    },
     mantra: {
-        fontSize: 28,
-        lineHeight: 36,
+        fontSize: 26,
+        lineHeight: 34,
         color: 'rgba(255, 248, 236, 0.98)',
         textAlign: 'center',
-        marginBottom: 22,
+        marginBottom: 18,
         textShadowColor: 'rgba(232, 201, 140, 0.4)',
         textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 14,
@@ -296,8 +430,8 @@ const styles = StyleSheet.create({
     correspondences: {
         width: '100%',
         maxWidth: 360,
-        gap: 14,
-        marginBottom: 28,
+        gap: 12,
+        marginBottom: 22,
     },
     corrRow: {
         alignItems: 'center',
@@ -329,22 +463,18 @@ const styles = StyleSheet.create({
         fontSize: 17,
         letterSpacing: 0.3,
     },
-    backToCard: {
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        marginBottom: 18,
-    },
-    backToCardLabel: {
-        color: 'rgba(232, 201, 140, 0.88)',
-        fontSize: 17,
-        letterSpacing: 0.4,
+    hint: {
+        marginTop: 16,
+        color: 'rgba(232, 201, 140, 0.82)',
+        fontSize: 16,
+        letterSpacing: 0.3,
+        textAlign: 'center',
     },
     veiled: {
         color: 'rgba(255, 248, 236, 0.55)',
         fontSize: 18,
         lineHeight: 28,
         textAlign: 'center',
-        marginTop: 36,
         maxWidth: 280,
     },
 })

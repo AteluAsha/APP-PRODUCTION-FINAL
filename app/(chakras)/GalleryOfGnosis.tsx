@@ -1,6 +1,7 @@
 /**
  * Gallery of Alignment — seven chambers.
  * `?chakra=` from goodbye opens that day's chamber. Home when arriving from goodbye.
+ * Flip is local: back unturns the plate before it ever leaves the room.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -10,6 +11,7 @@ import {
     Pressable,
     StyleSheet,
     Dimensions,
+    Platform,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -23,6 +25,8 @@ import { GalleryChambersNoticeModal } from '@/components/gallery/GalleryChambers
 import { GALLERY_TITLE } from '@/constants/galleryChambersCopy'
 import { useChakraJourneyStore } from '@/hooks/useChakraJourneyStore'
 import { useFirstLaunchStore } from '@/hooks/useFirstLaunchStore'
+import { useStoreRehydration } from '@/hooks/useStoreRehydration'
+import { markDayCompleteDeparture } from '@/utils/goodbyeDeparture'
 import {
     CHAKRA_ORDER,
     CHAKRA_TO_DAY,
@@ -30,11 +34,11 @@ import {
     parseChakraSlug,
 } from '@/utils/chakraMapping'
 import { goToChakraHubRoot } from '@/utils/navigationHelpers'
+import { registerAndroidHardwareBackOverride } from '@/utils/androidBackCleanup'
 import { ICON, safeOverlayTop, TOUCH } from '@/constants/layout'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window')
-const SETTLE_NOTICE_MS = 720
 
 function GalleryOfGnosis() {
     const router = useRouter()
@@ -57,10 +61,16 @@ function GalleryOfGnosis() {
     const markNoticeSeen = useFirstLaunchStore(
         (s) => s.markGalleryChambersNoticeSeen,
     )
+    const firstLaunchRehydrated = useStoreRehydration(
+        (s) => s.firstLaunchRehydrated,
+    )
+    const safetyPassed = useStoreRehydration((s) => s.safetyPassed)
+    const storesReady = firstLaunchRehydrated || safetyPassed
 
     const [currentIndex, setCurrentIndex] = useState(0)
     const [viewportWidth, setViewportWidth] = useState(WINDOW_WIDTH)
     const [noticeVisible, setNoticeVisible] = useState(false)
+    const [flippedIndex, setFlippedIndex] = useState<number | null>(null)
     const scrollRef = useRef<ScrollView>(null)
 
     const lastUnlockedDay = useMemo(() => {
@@ -98,16 +108,23 @@ function GalleryOfGnosis() {
     }, [viewportWidth, startIndex])
 
     useEffect(() => {
-        if (hasSeenNotice) return
-        const t = setTimeout(() => setNoticeVisible(true), SETTLE_NOTICE_MS)
-        return () => clearTimeout(t)
-    }, [hasSeenNotice])
+        if (!storesReady) return
+        if (hasSeenNotice) {
+            setNoticeVisible(false)
+            return
+        }
+        setNoticeVisible(true)
+    }, [storesReady, hasSeenNotice])
 
     const handleScroll = useCallback(
         (e: { nativeEvent: { contentOffset: { x: number } } }) => {
             const offset = e.nativeEvent.contentOffset.x
             const index = Math.round(offset / viewportWidth)
-            setCurrentIndex(Math.max(0, Math.min(index, 6)))
+            const next = Math.max(0, Math.min(index, 6))
+            setCurrentIndex(next)
+            setFlippedIndex((current) =>
+                current == null || current === next ? current : null,
+            )
         },
         [viewportWidth],
     )
@@ -115,6 +132,7 @@ function GalleryOfGnosis() {
     const scrollToChamber = useCallback(
         (index: number) => {
             const clamped = Math.max(0, Math.min(6, index))
+            setFlippedIndex(null)
             scrollRef.current?.scrollTo({
                 x: viewportWidth * clamped,
                 animated: true,
@@ -124,8 +142,14 @@ function GalleryOfGnosis() {
         [viewportWidth],
     )
 
-    const handleBack = () => {
-        if (openedFromGoodbye) {
+    const closeNotice = useCallback(() => {
+        setNoticeVisible(false)
+        markNoticeSeen()
+    }, [markNoticeSeen])
+
+    const leaveGallery = useCallback(() => {
+        if (openedFromGoodbye && focusChakra) {
+            markDayCompleteDeparture(CHAKRA_TO_DAY[focusChakra])
             goToChakraHubRoot()
             return
         }
@@ -134,12 +158,28 @@ function GalleryOfGnosis() {
             return
         }
         goToChakraHubRoot()
-    }
+    }, [openedFromGoodbye, focusChakra, router])
 
-    const closeNotice = useCallback(() => {
-        setNoticeVisible(false)
-        markNoticeSeen()
-    }, [markNoticeSeen])
+    const handleBack = useCallback(() => {
+        if (noticeVisible) {
+            closeNotice()
+            return
+        }
+        if (flippedIndex === currentIndex) {
+            addHapticFeedback(HapticStrength.Light)
+            setFlippedIndex(null)
+            return
+        }
+        leaveGallery()
+    }, [noticeVisible, closeNotice, flippedIndex, currentIndex, leaveGallery])
+
+    useEffect(() => {
+        if (Platform.OS !== 'android') return
+        return registerAndroidHardwareBackOverride(() => {
+            handleBack()
+            return true
+        })
+    }, [handleBack])
 
     const reopenNotice = useCallback(() => {
         addHapticFeedback(HapticStrength.Light)
@@ -157,13 +197,14 @@ function GalleryOfGnosis() {
                     horizontal
                     pagingEnabled
                     nestedScrollEnabled
+                    scrollEnabled={flippedIndex == null && !noticeVisible}
                     showsHorizontalScrollIndicator={false}
                     onMomentumScrollEnd={handleScroll}
                     onScroll={handleScroll}
                     scrollEventThrottle={16}
                     style={styles.pager}
                 >
-                    {CHAKRA_ORDER.map((chakra) => {
+                    {CHAKRA_ORDER.map((chakra, index) => {
                         const day = CHAKRA_TO_DAY[chakra]
                         return (
                             <GalleryChamber
@@ -173,6 +214,12 @@ function GalleryOfGnosis() {
                                 unlocked={hasEverCompletedChakra(day)}
                                 topPad={topPad}
                                 bottomPad={bottomPad}
+                                isFlipped={flippedIndex === index}
+                                onToggleFlip={() =>
+                                    setFlippedIndex((current) =>
+                                        current === index ? null : index,
+                                    )
+                                }
                                 onReturnToDay={() => {
                                     router.push(
                                         `/(chakras)/${chakra}` as const,
@@ -186,14 +233,14 @@ function GalleryOfGnosis() {
 
             <ActionBar
                 onBackPress={handleBack}
-                useHomeButton={openedFromGoodbye}
+                useHomeButton={openedFromGoodbye && flippedIndex == null}
             />
             <Pressable
                 onPress={reopenNotice}
                 style={[styles.infoBtn, { top: overlayTop }]}
                 hitSlop={TOUCH.hitSlop}
                 accessibilityRole="button"
-                    accessibilityLabel="About the Gallery of Alignment"
+                accessibilityLabel="About the Gallery of Alignment"
             >
                 <Ionicons
                     name="information-circle-outline"

@@ -141,11 +141,29 @@ describe("end of day presence and goodbye", () => {
             path.join(__dirname, "..", "components/chakras/GoodbyeModal.tsx"),
             "utf8",
         )
-        expect(goodbye).toContain("7000")
+        expect(goodbye).toContain("BLESSING_HOLD_MS")
+        expect(goodbye).toContain("BLESSING_FADE_MS")
         expect(goodbye).toContain("blessingReady")
-        expect(goodbye).toContain("queueTomorrowAwakening")
+        expect(goodbye).toContain("markDayCompleteDeparture")
         expect(goodbye).toContain("goToChakraHubRoot")
         expect(goodbye).toContain("clearCompletedChakra")
+        expect(goodbye).toContain("GALLERY_GOODBYE_DOOR")
+        expect(goodbye).toContain("DOOR_FADE_MS")
+        expect(goodbye).toContain("homeFooter")
+        expect(goodbye).toContain("delayPressIn")
+        expect(goodbye).toContain("giftSlot")
+        expect(goodbye).toContain("heroSlot")
+        const enterGallery = goodbye.slice(
+            goodbye.indexOf("const handleEnterGallery"),
+            goodbye.indexOf("const handleNavigateHome"),
+        )
+        expect(enterGallery).toContain("markDayCompleteDeparture")
+        const departure = fs.readFileSync(
+            path.join(__dirname, "..", "utils/goodbyeDeparture.ts"),
+            "utf8",
+        )
+        expect(departure).toContain("queueTomorrowAwakening")
+        expect(departure).toContain("setPendingCrownReminderNotice")
         const template = fs.readFileSync(
             path.join(__dirname, "..", "components/chakras/ChakraTemplate.tsx"),
             "utf8",

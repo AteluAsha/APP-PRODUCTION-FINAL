@@ -157,34 +157,49 @@ export function DayEmbodimentGateModal({
                                     ))}
                                 </View>
 
-                                <Pressable
-                                    onPress={handleOverride}
-                                    style={({ pressed }) => [
-                                        styles.overrideWrap,
-                                        pressed && { opacity: 0.9 },
-                                    ]}
-                                    hitSlop={TOUCH.hitSlop}
-                                    accessibilityRole="button"
-                                    accessibilityLabel={
-                                        DAY_EMBODIMENT_GATE_COPY.override
-                                    }
-                                    accessibilityHint={
-                                        DAY_EMBODIMENT_GATE_COPY.overrideHint
-                                    }
-                                >
-                                    <AppText
-                                        font="cormorant-italic"
-                                        style={styles.overrideText}
+                                <View style={styles.overrideBlock}>
+                                    <Pressable
+                                        onPress={handleOverride}
+                                        style={({ pressed }) => [
+                                            styles.overrideWrap,
+                                            pressed && { opacity: 0.9 },
+                                        ]}
+                                        hitSlop={TOUCH.hitSlop}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={
+                                            DAY_EMBODIMENT_GATE_COPY.override
+                                        }
                                     >
-                                        {DAY_EMBODIMENT_GATE_COPY.override}
-                                    </AppText>
-                                    <AppText
-                                        font="cormorant-italic"
-                                        style={styles.overrideHint}
+                                        <AppText
+                                            font="cormorant-italic"
+                                            style={styles.overrideText}
+                                        >
+                                            {DAY_EMBODIMENT_GATE_COPY.override}
+                                        </AppText>
+                                    </Pressable>
+
+                                    <Pressable
+                                        onPress={handleOverride}
+                                        style={({ pressed }) => [
+                                            styles.bypassWrap,
+                                            pressed && { opacity: 0.9 },
+                                        ]}
+                                        hitSlop={TOUCH.hitSlop}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={
+                                            DAY_EMBODIMENT_GATE_COPY.overrideHint
+                                        }
                                     >
-                                        {DAY_EMBODIMENT_GATE_COPY.overrideHint}
-                                    </AppText>
-                                </Pressable>
+                                        <AppText
+                                            font="cormorant-italic"
+                                            style={styles.bypassText}
+                                        >
+                                            {
+                                                DAY_EMBODIMENT_GATE_COPY.overrideHint
+                                            }
+                                        </AppText>
+                                    </Pressable>
+                                </View>
 
                                 <Pressable
                                     onPress={handleStay}
@@ -272,6 +287,7 @@ const styles = StyleSheet.create({
     pathList: {
         width: '100%',
         gap: 12,
+        marginBottom: 8,
     },
     pathButton: {
         paddingVertical: Platform.OS === 'ios' ? 16 : 15,
@@ -289,12 +305,17 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
     },
+    overrideBlock: {
+        width: '100%',
+        marginTop: 36,
+        gap: 16,
+        paddingTop: 8,
+    },
     overrideWrap: {
         alignItems: 'center',
         width: '100%',
-        marginTop: 28,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
+        paddingVertical: 18,
+        paddingHorizontal: 20,
         borderRadius: 16,
         borderWidth: 1,
         borderColor: 'rgba(232, 201, 140, 0.42)',
@@ -302,19 +323,31 @@ const styles = StyleSheet.create({
     },
     overrideText: {
         color: 'rgba(255, 248, 236, 0.94)',
-        fontSize: 18,
+        fontSize: 19,
+        lineHeight: 26,
         textAlign: 'center',
     },
-    overrideHint: {
-        color: 'rgba(232, 201, 140, 0.72)',
-        fontSize: 15,
+    bypassWrap: {
+        alignItems: 'center',
+        width: '100%',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(232, 201, 140, 0.55)',
+        backgroundColor: 'rgba(232, 201, 140, 0.14)',
+    },
+    bypassText: {
+        color: 'rgba(232, 201, 140, 0.96)',
+        fontSize: 18,
+        lineHeight: 24,
         textAlign: 'center',
-        marginTop: 4,
     },
     stayWrap: {
         alignItems: 'center',
-        paddingVertical: 8,
-        marginTop: 18,
+        paddingVertical: 14,
+        marginTop: 28,
+        marginBottom: 8,
     },
     stayText: {
         color: 'rgba(255, 255, 255, 0.5)',

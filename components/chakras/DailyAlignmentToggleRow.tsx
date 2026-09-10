@@ -2,7 +2,7 @@
  * Daily alignment switch for Root day — same preference as Profile.
  */
 import React, { useCallback } from 'react'
-import { View, Switch, Platform, Alert, Linking, StyleSheet } from 'react-native'
+import { View, Switch, Platform, Alert, Linking, StyleSheet, type ViewStyle } from 'react-native'
 import { AppText } from '@/components/AppText'
 import { addHapticFeedback, HapticStrength } from '@/utils/haptic'
 import { useChakraJourneyStore } from '@/hooks/useChakraJourneyStore'
@@ -13,8 +13,10 @@ import {
 
 export function DailyAlignmentToggleRow({
     note,
+    style,
 }: {
     note?: string
+    style?: ViewStyle
 } = {}) {
     const soulJourneyNudgesEnabled = useChakraJourneyStore(
         (s) => s.soulJourneyNudgesEnabled,
@@ -67,7 +69,7 @@ export function DailyAlignmentToggleRow({
     )
 
     return (
-        <View style={styles.row}>
+        <View style={[styles.row, style]}>
             <View style={styles.textCol}>
                 <AppText font="instrument-medium" size="sm" style={styles.title}>
                     Daily alignment reminders

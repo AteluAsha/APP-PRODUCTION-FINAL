@@ -166,7 +166,20 @@ describe('week 1 journey reminders', () => {
             'utf8',
         )
         expect(root).not.toContain('DailyAlignmentToggleRow')
-        expect(root).toContain('setPendingCrownReminderNotice')
+        const departure = fs.readFileSync(
+            path.join(__dirname, '..', 'utils/goodbyeDeparture.ts'),
+            'utf8',
+        )
+        expect(departure).toContain('setPendingCrownReminderNotice')
+        const crownHost = fs.readFileSync(
+            path.join(
+                __dirname,
+                '..',
+                'components/store/CrownReminderNoticeHost.tsx',
+            ),
+            'utf8',
+        )
+        expect(crownHost).toContain('tomorrowDayIndex')
         expect(layout).toContain('CrownReminderNoticeHost')
     })
 })

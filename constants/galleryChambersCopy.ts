@@ -5,16 +5,22 @@
 export const GALLERY_CHAMBERS_NOTICE_COPY = {
     title: 'Gallery of Alignment',
     body:
-        'These are not gifts. Each day you complete opens a chamber — the field, the plate, the I Am. The plate holds what that day works with: foods, stones, colors, scent.',
+        'These are not gifts. Each day you complete opens a chamber — the field, the plate, The Bridge to your reality here.',
+    bodyAfter:
+        'The plate holds what that day works with: foods, stones, colors, scent.',
     menuNote:
         'When you need them later, open Gallery in the menu at the bottom of Sanctuary.',
-    cta: 'I understand',
+    cta: 'I am open to Receive',
 } as const
 
 export const GALLERY_GOODBYE_DOOR =
     'Open this day in the Gallery of Alignment'
 
 export const GALLERY_OPEN_READING = 'Sit with this day'
+
+export const GALLERY_FLIP_HINT = 'Touch to turn the plate'
+
+export const GALLERY_FLIP_BACK_HINT = 'Touch to turn the plate back'
 
 export const GALLERY_BACK_TO_CARD = 'The card'
 

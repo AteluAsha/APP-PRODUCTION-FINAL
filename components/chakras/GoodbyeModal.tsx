@@ -20,6 +20,7 @@ import Animated, {
   useSharedValue,
   withTiming,
   withRepeat,
+  withDelay,
   useAnimatedStyle,
   Easing,
 } from "react-native-reanimated"
@@ -39,7 +40,7 @@ import { addHapticFeedback, HapticStrength } from "@/utils/haptic"
 import { useCompletedChakraStore } from "@/hooks/useCompletedChakraStore"
 import { useCurrentAudioStore } from "@/hooks/useCurrentAudioStore"
 import { goToChakraHubRoot } from "@/utils/navigationHelpers"
-import { useTomorrowAwakeningStore } from "@/hooks/useTomorrowAwakeningStore"
+import { markDayCompleteDeparture } from "@/utils/goodbyeDeparture"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { getGoodbyeField } from "@/constants/sanctuaryFields"
 import { mantraForDay } from "@/constants/endOfDayPresenceCopy"
@@ -54,9 +55,18 @@ import {
   HERO_AFFIRMATION_LINE_HEIGHT,
   HERO_AFFIRMATION_MAX_LINES,
 } from "@/constants/heroAffirmation"
-import { ICON, safeOverlayTop } from "@/constants/layout"
+import { ANDROID_PRESS_DELAY_MS, ICON, safeOverlayTop, TOUCH } from "@/constants/layout"
 import { DailyAlignmentToggleRow } from "@/components/chakras/DailyAlignmentToggleRow"
 import { GALLERY_GOODBYE_DOOR } from "@/constants/galleryChambersCopy"
+
+const DOOR_FADE_DELAY_MS = 480
+const DOOR_FADE_MS = 3600
+const BLESSING_HOLD_MS = 7000
+const BLESSING_FADE_MS = 4800
+const BLESSING_MANTRA_STAGGER_MS = 1600
+const MAGICAL_EASE = Easing.bezier(0.22, 0.61, 0.36, 1)
+const HERO_SLOT_HEIGHT =
+  HERO_AFFIRMATION_LINE_HEIGHT * HERO_AFFIRMATION_MAX_LINES
 
 function hexToRgba(hex: string, alpha: number): string {
   const raw = hex.replace("#", "")
@@ -94,29 +104,19 @@ const GoodbyeModal = ({
   const heroMantra = formatHeroAffirmationText(mantraForDay(chakraDay ?? 0))
   const chakraColor = getChakraColor(chakraDay ?? 0)
 
-  const queueTomorrow = () => {
-    useTomorrowAwakeningStore
-      .getState()
-      .queueTomorrowAwakening(chakraDay ?? 0)
-  }
-
   const handleEnterGallery = () => {
     addHapticFeedback(HapticStrength.Light)
-    queueTomorrow()
+    markDayCompleteDeparture(chakraDay ?? 0)
     useCompletedChakraStore.getState().clearCompletedChakra()
+    router.replace(
+      `/(chakras)/GalleryOfGnosis?chakra=${currentChakra}` as const,
+    )
     onClose()
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        router.replace(
-          `/(chakras)/GalleryOfGnosis?chakra=${currentChakra}` as const,
-        )
-      }, 200)
-    })
   }
 
   const handleNavigateHome = () => {
     addHapticFeedback(HapticStrength.Light)
-    queueTomorrow()
+    markDayCompleteDeparture(chakraDay ?? 0)
     useCompletedChakraStore.getState().clearCompletedChakra()
     if (onNavigateHome) {
       onNavigateHome()
@@ -134,7 +134,9 @@ const GoodbyeModal = ({
   const plateWidth = Math.min(windowWidth * 0.56, 208)
   const plateHeight = plateWidth * (4 / 3)
   const platePulse = useSharedValue(1)
+  const doorOpacity = useSharedValue(0)
   const blessingOpacity = useSharedValue(0)
+  const mantraOpacity = useSharedValue(0)
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value,
@@ -148,8 +150,16 @@ const GoodbyeModal = ({
     transform: [{ scale: platePulse.value }],
   }))
 
+  const doorStyle = useAnimatedStyle(() => ({
+    opacity: doorOpacity.value,
+  }))
+
   const blessingStyle = useAnimatedStyle(() => ({
     opacity: blessingOpacity.value,
+  }))
+
+  const mantraStyle = useAnimatedStyle(() => ({
+    opacity: mantraOpacity.value,
   }))
 
   const isVisibleRef = useRef(isVisible)
@@ -164,7 +174,9 @@ const GoodbyeModal = ({
     if (!isVisible) {
       overlayOpacity.value = withTiming(0, { duration: 280 })
       goodbyeOpacity.value = 0
+      doorOpacity.value = 0
       blessingOpacity.value = 0
+      mantraOpacity.value = 0
       setBlessingReady(false)
       setStage("presence")
       return
@@ -212,18 +224,34 @@ const GoodbyeModal = ({
       -1,
       true,
     )
+    doorOpacity.value = 0
     blessingOpacity.value = 0
+    mantraOpacity.value = 0
     setBlessingReady(false)
+    doorOpacity.value = withDelay(
+      DOOR_FADE_DELAY_MS,
+      withTiming(1, {
+        duration: DOOR_FADE_MS,
+        easing: MAGICAL_EASE,
+      }),
+    )
     const blessingReveal = setTimeout(() => {
       if (!isVisibleRef.current) return
       setBlessingReady(true)
       blessingOpacity.value = withTiming(1, {
-        duration: 900,
-        easing: Easing.out(Easing.ease),
+        duration: BLESSING_FADE_MS,
+        easing: MAGICAL_EASE,
       })
-    }, 7000)
+      mantraOpacity.value = withDelay(
+        BLESSING_MANTRA_STAGGER_MS,
+        withTiming(1, {
+          duration: BLESSING_FADE_MS,
+          easing: MAGICAL_EASE,
+        }),
+      )
+    }, BLESSING_HOLD_MS)
     return () => clearTimeout(blessingReveal)
-  }, [isVisible, stage, goodbyeOpacity, platePulse, blessingOpacity])
+  }, [isVisible, stage, goodbyeOpacity, platePulse, doorOpacity, blessingOpacity, mantraOpacity])
 
   const setGoodbyeVisible = useGoodbyeModalStore((s) => s.setGoodbyeVisible)
   useEffect(() => {
@@ -257,7 +285,7 @@ const GoodbyeModal = ({
     stageView = (
       <Animated.View
         style={[styles.goodbyeWrap, goodbyeStyle]}
-        pointerEvents="box-none"
+        pointerEvents="auto"
       >
           <Pressable
             onPress={() => {
@@ -275,7 +303,7 @@ const GoodbyeModal = ({
               justifyContent: "center",
               alignItems: "center",
             }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={TOUCH.hitSlop}
             accessibilityLabel="Back"
             accessibilityHint="Return to chakra day"
           >
@@ -287,15 +315,15 @@ const GoodbyeModal = ({
           </Pressable>
 
           <ScrollView
-            style={styles.goodbyeWrap}
+            style={styles.goodbyeScroll}
             contentContainerStyle={[
               styles.goodbyeInner,
               {
                 paddingTop: overlayTop + 48,
-                paddingBottom: bottomInset + 24,
               },
             ]}
             showsVerticalScrollIndicator={false}
+            bounces={false}
           >
             {content?.elements?.background ? (
               <Pressable
@@ -334,6 +362,17 @@ const GoodbyeModal = ({
                     resizeMode="contain"
                   />
                 </Animated.View>
+                <Animated.View
+                  style={[styles.galleryDoorLabelSlot, doorStyle]}
+                  pointerEvents="none"
+                >
+                  <AppText
+                    font="cormorant-italic"
+                    style={styles.galleryDoorLabel}
+                  >
+                    {GALLERY_GOODBYE_DOOR}
+                  </AppText>
+                </Animated.View>
               </Pressable>
             ) : (
               <Pressable
@@ -345,9 +384,17 @@ const GoodbyeModal = ({
                 accessibilityLabel={GALLERY_GOODBYE_DOOR}
                 accessibilityRole="button"
               >
-                <AppText font="cormorant-italic" style={styles.galleryDoorLabel}>
-                  {GALLERY_GOODBYE_DOOR}
-                </AppText>
+                <Animated.View
+                  style={[styles.galleryDoorLabelSlot, doorStyle]}
+                  pointerEvents="none"
+                >
+                  <AppText
+                    font="cormorant-italic"
+                    style={styles.galleryDoorLabel}
+                  >
+                    {GALLERY_GOODBYE_DOOR}
+                  </AppText>
+                </Animated.View>
               </Pressable>
             )}
 
@@ -355,11 +402,8 @@ const GoodbyeModal = ({
               {closingMessage}
             </AppText>
 
-            {blessingReady ? (
-              <Animated.View
-                style={[styles.giftReveal, blessingStyle]}
-                pointerEvents="none"
-              >
+            <View style={styles.giftSlot} pointerEvents="none">
+              <Animated.View style={[styles.giftReveal, blessingStyle]}>
                 {content?.goodbye?.chakraImage ? (
                   <View style={styles.ballWrap}>
                     <SoftChakraBall
@@ -368,8 +412,13 @@ const GoodbyeModal = ({
                       glowColor={hexToRgba(chakraColor, 0.28)}
                     />
                   </View>
-                ) : null}
-
+                ) : (
+                  <View style={styles.ballWrap} />
+                )}
+              </Animated.View>
+              <Animated.View
+                style={[styles.heroSlot, mantraStyle]}
+              >
                 <AppText
                   font="cormorant-italic"
                   numberOfLines={HERO_AFFIRMATION_MAX_LINES}
@@ -378,37 +427,52 @@ const GoodbyeModal = ({
                   {heroMantra}
                 </AppText>
               </Animated.View>
-            ) : null}
-
-            {chakraDay === 0 ? <DailyAlignmentToggleRow /> : null}
-
-            <View style={styles.actions}>
-              <Pressable
-                onPress={handleNavigateHome}
-                style={({ pressed }) => [
-                  styles.homeButton,
-                  { opacity: pressed ? 0.9 : 1 },
-                ]}
-                accessibilityLabel="Home"
-                accessibilityRole="button"
-              >
-                <AppText
-                  font="instrument-medium"
-                  size="base"
-                  style={{ color: "#fff" }}
-                >
-                  Home
-                </AppText>
-              </Pressable>
             </View>
           </ScrollView>
+
+          <View
+            style={[
+              styles.homeFooter,
+              { paddingBottom: bottomInset + 12 },
+            ]}
+            pointerEvents="auto"
+          >
+            {chakraDay === 0 ? (
+              <View style={styles.alignmentSlot}>
+                <DailyAlignmentToggleRow
+                  style={styles.alignmentToggle}
+                />
+              </View>
+            ) : null}
+            <Pressable
+              onPress={handleNavigateHome}
+              delayPressIn={
+                Platform.OS === "android" ? ANDROID_PRESS_DELAY_MS : undefined
+              }
+              hitSlop={TOUCH.hitSlop}
+              style={({ pressed }) => [
+                styles.homeButton,
+                { opacity: pressed ? 0.9 : 1 },
+              ]}
+              accessibilityLabel="Home"
+              accessibilityRole="button"
+            >
+              <AppText
+                font="instrument-medium"
+                size="base"
+                style={{ color: "#fff" }}
+              >
+                Home
+              </AppText>
+            </Pressable>
+          </View>
         </Animated.View>
     )
   }
 
   return (
     <Animated.View
-      pointerEvents={isVisible ? "box-none" : "none"}
+      pointerEvents={isVisible ? "auto" : "none"}
       style={[
         overlayStyle,
         {
@@ -448,23 +512,37 @@ const styles = StyleSheet.create({
   goodbyeWrap: {
     flex: 1,
   },
-  goodbyeInner: {
+  goodbyeScroll: {
     flex: 1,
+  },
+  goodbyeInner: {
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 28,
+    paddingBottom: 16,
   },
   ballWrap: {
     width: 128,
     height: 128,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  giftSlot: {
+    alignItems: "center",
+    width: "100%",
+    marginTop: 8,
+    minHeight: 128 + 16 + HERO_SLOT_HEIGHT,
   },
   giftReveal: {
     alignItems: "center",
     width: "100%",
-    marginTop: 22,
+  },
+  heroSlot: {
+    width: "100%",
+    minHeight: HERO_SLOT_HEIGHT,
+    justifyContent: "center",
   },
   heroMantra: {
     fontSize: HERO_AFFIRMATION_FONT_SIZE,
@@ -482,18 +560,30 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 28,
     marginTop: 18,
-    marginBottom: 20,
+    marginBottom: 12,
     maxWidth: 360,
   },
-  actions: {
+  homeFooter: {
     width: "100%",
     alignItems: "center",
-    gap: 18,
+    paddingHorizontal: 28,
+    paddingTop: 8,
+    zIndex: 20,
+  },
+  alignmentSlot: {
+    width: "100%",
+    marginBottom: 36,
+    paddingTop: 10,
+  },
+  alignmentToggle: {
+    marginTop: 0,
+    marginBottom: 0,
   },
   galleryDoor: {
     marginTop: 4,
     alignItems: "center",
     justifyContent: "center",
+    gap: 14,
   },
   galleryDoorFallback: {
     paddingVertical: 8,
@@ -501,11 +591,18 @@ const styles = StyleSheet.create({
     maxWidth: 360,
     marginTop: 18,
   },
+  galleryDoorLabelSlot: {
+    minHeight: 52,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   galleryDoorLabel: {
     color: "rgba(232, 201, 140, 0.92)",
     fontSize: 18,
     lineHeight: 26,
     textAlign: "center",
+    maxWidth: 280,
+    paddingHorizontal: 8,
   },
   plateHalo: {
     alignItems: "center",
@@ -521,14 +618,16 @@ const styles = StyleSheet.create({
     transform: [{ scaleX: 0.86 }, { scaleY: 0.9 }],
   },
   homeButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 48,
+    paddingVertical: 18,
+    paddingHorizontal: 56,
     borderRadius: 9999,
     borderWidth: 1,
     borderColor: "rgba(168, 201, 154, 0.5)",
     backgroundColor: "rgba(168, 201, 154, 0.2)",
-    minWidth: 160,
+    minWidth: 220,
+    minHeight: 56,
     alignItems: "center",
+    justifyContent: "center",
   },
 })
 

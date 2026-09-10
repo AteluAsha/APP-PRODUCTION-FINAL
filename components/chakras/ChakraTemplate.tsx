@@ -227,12 +227,6 @@ const ChakraTemplate = ({ chakra }: { chakra: Chakra }) => {
   }
 
   const handleGoodbyeNavigateHome = () => {
-    if (
-      chakraDay === 6 &&
-      !useFirstLaunchStore.getState().hasSeenCrownReminderNotice
-    ) {
-      useFirstLaunchStore.getState().setPendingCrownReminderNotice(true)
-    }
     setShowGoodbyeModal(false)
     clearCompletedChakra()
     goToChakraHubRoot()

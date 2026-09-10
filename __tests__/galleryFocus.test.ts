@@ -57,6 +57,14 @@ describe('gallery focus from View in Gallery', () => {
         expect(GALLERY_CHAMBERS_NOTICE_COPY.menuNote.toLowerCase()).toContain(
             'gallery',
         )
+        expect(GALLERY_CHAMBERS_NOTICE_COPY.body).toContain(
+            'The Bridge to your reality here',
+        )
+        expect(GALLERY_CHAMBERS_NOTICE_COPY.body).not.toMatch(/the I Am/i)
+        expect(GALLERY_CHAMBERS_NOTICE_COPY.bodyAfter.toLowerCase()).toContain(
+            'plate',
+        )
+        expect(GALLERY_CHAMBERS_NOTICE_COPY.cta).toBe('I am open to Receive')
         const chamber = fs.readFileSync(
             path.join(
                 __dirname,
@@ -70,7 +78,17 @@ describe('gallery focus from View in Gallery', () => {
         expect(chamber).toContain('elements?.foods')
         expect(chamber).toContain('GALLERY_RETURN_TO_DAY')
         expect(chamber).toContain('GALLERY_OPEN_READING')
-        expect(chamber).toContain('isReading')
+        expect(chamber).toContain('isFlipped')
+        expect(chamber).toContain('rotateY')
+        expect(chamber).not.toContain('isReading')
+        const gallery = fs.readFileSync(
+            path.join(__dirname, '..', 'app/(chakras)/GalleryOfGnosis.tsx'),
+            'utf8',
+        )
+        expect(gallery).toContain('flippedIndex')
+        expect(gallery).toContain('registerAndroidHardwareBackOverride')
+        expect(gallery).toContain('markDayCompleteDeparture')
+        expect(gallery).not.toContain('SETTLE_NOTICE_MS')
         const layout = fs.readFileSync(
             path.join(__dirname, '..', 'app/(chakras)/_layout.tsx'),
             'utf8',

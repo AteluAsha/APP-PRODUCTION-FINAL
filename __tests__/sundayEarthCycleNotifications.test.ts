@@ -90,5 +90,19 @@ describe('weekly heart reminders', () => {
   it('modal tells users they can turn daily reminders off in Profile', () => {
     const { DAILY_ALIGNMENT_MODAL_COPY } = require('@/constants/journeyNotificationCopy')
     expect(DAILY_ALIGNMENT_MODAL_COPY.profileNote).toMatch(/Profile/i)
+
+    const profile = fs.readFileSync(
+      path.join(__dirname, '..', 'app/(chakras)/Profile.tsx'),
+      'utf8',
+    )
+    expect(profile).toContain('profileOnly')
+    const sheet = fs.readFileSync(
+      path.join(__dirname, '..', 'components/profile/ProfileSheet.tsx'),
+      'utf8',
+    )
+    expect(sheet).toContain('Daily alignment reminders')
+    expect(sheet).toContain('profileOnlyReminders')
+    expect(sheet).toContain('profileOnlyScroll')
+    expect(sheet).toContain('Energy Exchange')
   })
 })
